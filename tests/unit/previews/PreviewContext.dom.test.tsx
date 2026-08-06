@@ -74,10 +74,18 @@ describe('PreviewContext', () => {
     const { result } = renderHook(() => usePreviewContext(), { wrapper });
 
     act(() => {
-      result.current.openPreview('first', 'code', { file_name: 'first.ts', file_path: '/workspace/first.ts' });
+      result.current.openPreview('first', 'code', {
+        file_name: 'first.ts',
+        file_path: '/workspace/first.ts',
+        fileRef: { kind: 'local', path: '/workspace/first.ts' },
+      });
     });
     act(() => {
-      result.current.openPreview('second', 'code', { file_name: 'second.ts', file_path: '/workspace/second.ts' });
+      result.current.openPreview('second', 'code', {
+        file_name: 'second.ts',
+        file_path: '/workspace/second.ts',
+        fileRef: { kind: 'local', path: '/workspace/second.ts' },
+      });
     });
 
     expect(result.current.tabs.map((tab) => tab.title)).toEqual(['first.ts', 'second.ts']);
@@ -87,6 +95,7 @@ describe('PreviewContext', () => {
       result.current.openPreview('first updated', 'code', {
         file_name: 'first.ts',
         file_path: '/workspace/first.ts',
+        fileRef: { kind: 'local', path: '/workspace/first.ts' },
       });
     });
 
@@ -95,13 +104,28 @@ describe('PreviewContext', () => {
     expect(result.current.activeTab?.content).toBe('first updated');
   });
 
-  it('closes preview and clears all tabs', () => {
+  // `closePreview` hides the panel and KEEPS the tabs. It used to also empty them,
+  // which propagated to storage and wiped the whole project's remembered tab list —
+  // see clearPreviewForScope for the discarding variant.
+  it('closes the panel but keeps its tabs', () => {
     const { result } = renderHook(() => usePreviewContext(), { wrapper });
     act(() => {
       result.current.openPreview('content', 'code');
     });
     act(() => {
       result.current.closePreview();
+    });
+    expect(result.current.isOpen).toBe(false);
+    expect(result.current.tabs).toHaveLength(1);
+  });
+
+  it('discards tabs only when asked to explicitly', () => {
+    const { result } = renderHook(() => usePreviewContext(), { wrapper });
+    act(() => {
+      result.current.openPreview('content', 'code');
+    });
+    act(() => {
+      result.current.clearPreviewForScope();
     });
     expect(result.current.isOpen).toBe(false);
     expect(result.current.tabs).toEqual([]);

@@ -313,8 +313,6 @@
   "cacheClearFailed": "Échec du vidage du cache",
   "language": "Langue",
   "saveUploadToWorkspace": "Enregistrer les téléversements dans l'espace de travail",
-  "autoPreviewOfficeFiles": "Aperçu automatique des nouveaux fichiers Office",
-  "autoPreviewOfficeFilesDesc": "Ouvrir automatiquement les nouveaux fichiers Word, Excel et PowerPoint créés dans l'espace de travail actuel. Les fichiers de verrouillage temporaires Office sont ignorés.",
   "startOnBoot": "Démarrage automatique",
   "startOnBootDesc": "Lancer GEAUi automatiquement au démarrage de macOS ou Windows.",
   "startOnBootUnsupported": "Disponible uniquement dans les applications macOS et Windows packagées.",
@@ -323,7 +321,10 @@
   "hardwareAcceleration": "Accélération matérielle",
   "hardwareAccelerationDesc": "Utilisez le GPU pour restituer l'interface utilisateur. Désactivez-le si l'application plante au lancement ou si les graphiques scintillent.",
   "hardwareAccelerationAutoDisabled": "Désactivé automatiquement après des pannes répétées du GPU.",
+  "hardwareAccelerationAutoDisabledTitle": "Accélération matérielle désactivée",
+  "hardwareAccelerationAutoDisabledNotice": "Des plantages graphiques répétés ont été détectés ; l'accélération matérielle a donc été désactivée automatiquement pour garder l'application stable. Vous pouvez la réactiver dans Paramètres → Système.",
   "hardwareAccelerationRestartConfirm": "Redémarrer GEAUi pour appliquer le nouveau paramètre d'accélération matérielle ?",
+
   "hardwareAccelerationUpdateFailed": "Échec de la mise à jour du paramètre d'accélération matérielle",
   "browserNotification": {
     "enable": "Activer les notifications du navigateur",
@@ -341,6 +342,8 @@
   "groupAbout": "Autres",
   "agentIdleTimeout": "Délai d'inactivité de l'agent (min)",
   "agentIdleTimeoutDesc": "Arrêter les processus d'agent inactifs après cette durée pour libérer de la mémoire",
+  "previewTextSizeLimit": "Limite de taille d'aperçu (Mo)",
+  "previewTextSizeLimitDesc": "Les fichiers texte plus volumineux s'ouvrent avec un message au lieu du contenu. S'applique uniquement aux nouveaux onglets.",
   "gemini": "Gemini CLI",
   "model": "Modèle",
   "system": "Système",
@@ -1302,5 +1305,19 @@
   "personalModelFetchFailed": "Impossible de récupérer les modèles personnels depuis GEA. Réessayez plus tard ou contactez l'administrateur.",
   "personalModelLoginRequired": "Connectez-vous avant de récupérer les modèles personnels depuis GEA.",
   "personalModelNoneAvailable": "Aucune autorisation de modèle personnel n'est disponible à synchroniser depuis GEA.",
-  "autoInjectedSkillsHint": "Chargé automatiquement dans chaque conversation – pas besoin de les activer ; l'agent décide quand les utiliser."
+  "autoInjectedSkillsHint": "Chargé automatiquement dans chaque conversation – pas besoin de les activer ; l'agent décide quand les utiliser.",
+  "browserData": {
+    "title": "Navigateur intégré",
+    "agentControlLabel": "Autoriser l'agent à utiliser le navigateur intégré",
+    "agentControlDesc": "Lorsque cette option est activée, l'agent peut ouvrir des pages, cliquer et remplir des formulaires à votre place dans le navigateur intégré — par exemple pour faire une recherche ou terminer une démarche sur un site. Il ne peut piloter que cette vue de navigateur : il n'a pas accès à l'interface d'GEAUi elle-même et n'ouvre jamais de fenêtre Chrome distincte. Désactivée, le navigateur reste utilisable par vous ; seul l'agent perd l'accès.",
+    "agentControlSaved": "Paramètre enregistré",
+    "agentControlFailed": "Échec de l'enregistrement du paramètre",
+    "agentControlRestartRequired": "Ce paramètre prend effet après le redémarrage de l'application.",
+    "clearLabel": "Effacer les données de navigation",
+    "clearDesc": "Vous déconnecte de tous les sites où le navigateur est connecté et vide le cache. Les onglets ouverts sont concernés après rechargement.",
+    "clearConfirmTitle": "Effacer les données de navigation ?",
+    "clearConfirmContent": "Vous serez déconnecté de tous les sites du navigateur intégré. Cette action est irréversible.",
+    "clearSuccess": "Données de navigation effacées",
+    "clearFailed": "Échec de l'effacement des données de navigation"
+  }
 }
