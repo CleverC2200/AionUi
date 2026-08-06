@@ -142,6 +142,21 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     collapsed,
   });
 
+  // Fork-lineage badge support: resolve a parent conversation's display name
+  // from the already-loaded sidebar list (no extra fetch; unresolved = the
+  // parent was deleted or not loaded → the badge falls back to a generic tip).
+  const conversationNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const conversation of conversations) {
+      map.set(conversation.id, conversation.name);
+    }
+    return map;
+  }, [conversations]);
+  const resolveConversationName = useCallback(
+    (conversationId: string) => conversationNameById.get(conversationId),
+    [conversationNameById]
+  );
+
   const getConversationRowProps = useCallback(
     (conversation: TChatConversation): ConversationRowProps => ({
       conversation,
@@ -162,6 +177,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       onDelete: handleDeleteClick,
       onTogglePin: handleTogglePin,
       getJobStatus,
+      resolveConversationName,
     }),
     [
       collapsed,
@@ -181,6 +197,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       handleDeleteClick,
       handleTogglePin,
       getJobStatus,
+      resolveConversationName,
     ]
   );
 

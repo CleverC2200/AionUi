@@ -26,7 +26,7 @@ const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
   tokenUsage,
   context_limit,
   className = '',
-  size = 24,
+  size = 20,
 }) => {
   const { t } = useTranslation();
 
@@ -73,7 +73,7 @@ const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
   }
 
   // 计算圆环参数
-  const strokeWidth = 2.5;
+  const strokeWidth = 2;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (visualPercentage / 100) * circumference;

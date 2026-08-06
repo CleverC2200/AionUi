@@ -665,11 +665,7 @@ const GuidPage: React.FC = () => {
       selectedMcpServerIds={guidSelectedMcpServerIds ?? []}
       onToggleMcpServer={handleToggleMcpServer}
       speechInputNode={
-        <SpeechInputButton
-          disabled={guidInput.loading}
-          onLiveTranscript={handleLiveTranscript}
-          onTranscript={handleSpeechTranscript}
-        />
+        <SpeechInputButton onLiveTranscript={handleLiveTranscript} onTranscript={handleSpeechTranscript} />
       }
       loading={guidInput.loading}
       isButtonDisabled={send.isButtonDisabled}
