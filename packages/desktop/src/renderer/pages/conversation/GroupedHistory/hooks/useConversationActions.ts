@@ -6,6 +6,7 @@
 
 import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
+import { removeSidebarProject } from '@/renderer/components/workspace';
 import { requestConversationSendBoxPrefill } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { refreshConversationCache } from '@/renderer/pages/conversation/utils/conversationCache';
 import { isLegacyReadOnlyConversationType } from '@/renderer/pages/conversation/utils/conversationRuntime';
@@ -266,14 +267,17 @@ export const useConversationActions = ({
    */
   const [removeProjectTarget, setRemoveProjectTarget] = useState<{
     name: string;
+    workspace: string;
     conversations: TChatConversation[];
   } | null>(null);
   const [removeProjectLoading, setRemoveProjectLoading] = useState(false);
 
-  const handleRemoveProject = useCallback((projectName: string, conversations: TChatConversation[]) => {
-    if (conversations.length === 0) return;
-    setRemoveProjectTarget({ name: projectName, conversations });
-  }, []);
+  const handleRemoveProject = useCallback(
+    (projectName: string, workspace: string, conversations: TChatConversation[]) => {
+      setRemoveProjectTarget({ name: projectName, workspace, conversations });
+    },
+    []
+  );
 
   const handleRemoveProjectCancel = useCallback(() => {
     if (removeProjectLoading) return;
@@ -287,12 +291,9 @@ export const useConversationActions = ({
       const results = await Promise.all(removeProjectTarget.conversations.map((c) => removeConversation(c.id)));
       const successCount = results.filter(Boolean).length;
       emitter.emit('chat.history.refresh');
-      if (successCount > 0) {
-        Message.success(
-          t('conversation.history.batchDeleteSuccess', {
-            count: successCount,
-          })
-        );
+      if (successCount === removeProjectTarget.conversations.length) {
+        removeSidebarProject(removeProjectTarget.workspace);
+        Message.success(t('conversation.history.removeProjectSuccess'));
       } else {
         Message.error(t('conversation.history.deleteFailed'));
       }
