@@ -138,6 +138,28 @@ describe('PersonalModelGatewayService', () => {
     });
   });
 
+  it('reports an enabled credential with no local secret as a sync failure', async () => {
+    const vault = new MemoryVault();
+    const providerStore = new MemoryProviderStore();
+    const proxy: PersonalModelProxy = {
+      deactivate: vi.fn().mockResolvedValue(undefined),
+      register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
+    };
+    const authClient = createAuthClient('ENABLED');
+    const service = new PersonalModelGatewayService(vault, providerStore, proxy);
+
+    await expect(service.sync({ id: 'user-1', username: 'zhangsan', realname: '张三' }, authClient)).resolves.toEqual({
+      configured: 0,
+      failed: 1,
+      reason: 'credentialSyncFailed',
+      skipped: 0,
+      status: 'partial',
+    });
+    expect(authClient.claimPersonalModelCredential).not.toHaveBeenCalled();
+    expect(authClient.listPersonalModels).not.toHaveBeenCalled();
+    expect(providerStore.providers).toEqual([]);
+  });
+
   it('disables and clears a managed provider when GEA no longer returns models', async () => {
     const vault = new MemoryVault();
     const providerStore = new MemoryProviderStore();
