@@ -42,6 +42,8 @@ const AcpChat: React.FC<{
   teamRuntime?: TeamSendBoxRuntime;
   hideComposerModelSelector?: boolean;
   assistantId?: string;
+  forkCapability?: { at_turn: boolean };
+  promptCapability?: { image: boolean; audio: boolean };
 }> = ({
   conversation_id,
   workspace,
@@ -58,6 +60,8 @@ const AcpChat: React.FC<{
   teamRuntime,
   hideComposerModelSelector,
   assistantId,
+  forkCapability,
+  promptCapability,
 }) => {
   useMessageLstCache(conversation_id);
   usePendingConfirmationsRecovery(conversation_id);
@@ -79,6 +83,8 @@ const AcpChat: React.FC<{
         loadedMcpServers,
         loadedMcpStatuses,
         assistantId,
+        forkCapability,
+        promptCapability,
       }}
     >
       <ConversationArtifactProvider conversation_id={conversation_id}>

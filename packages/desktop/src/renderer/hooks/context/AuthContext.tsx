@@ -6,6 +6,7 @@ import type {
   LarkQrLoginPollResult,
   LarkQrLoginSession,
 } from '@/common/types/platform/larkAuth';
+import { PREVIEW_SCOPE_KEY_PREFIX } from '@/renderer/pages/conversation/Preview/context/previewScope';
 
 type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
 
@@ -33,7 +34,13 @@ function clearAuthCache(): void {
     const keysToRemove: string[] = [];
     for (let index = 0; index < localStorage.length; index++) {
       const key = localStorage.key(index);
-      if (key && (key.includes('auth') || key.includes('csrf') || key.includes('token'))) {
+      if (
+        key &&
+        (key.includes('auth') ||
+          key.includes('csrf') ||
+          key.includes('token') ||
+          key.startsWith(PREVIEW_SCOPE_KEY_PREFIX))
+      ) {
         keysToRemove.push(key);
       }
     }
@@ -149,6 +156,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       setUser(null);
       setStatus('unauthenticated');
       setReady(true);
+      clearAuthCache();
       return;
     }
 

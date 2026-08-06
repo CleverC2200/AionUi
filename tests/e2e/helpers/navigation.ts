@@ -56,6 +56,22 @@ function isAlreadyAt(page: Page, hash: string): boolean {
   }
 }
 
+/** Open/close Settings through either the authenticated account menu or the plain footer button. */
+async function clickSettingsEntry(page: Page): Promise<void> {
+  const accountTrigger = page.getByTestId('sider-account-trigger');
+  if (await accountTrigger.isVisible().catch(() => false)) {
+    await accountTrigger.click();
+    const accountSettings = page.getByTestId('sider-account-settings');
+    await accountSettings.waitFor({ state: 'visible', timeout: 10_000 });
+    await accountSettings.click();
+    return;
+  }
+
+  const settingsButton = page.locator('.sider-footer button').first();
+  await settingsButton.waitFor({ state: 'visible', timeout: 10_000 });
+  await settingsButton.click();
+}
+
 /**
  * Navigate to a hash route via UI clicks.
  *
@@ -82,10 +98,9 @@ export async function navigateTo(page: Page, hash: string): Promise<void> {
   if (!targetIsSettings) {
     // Target is non-settings (guid, conversation, etc.)
     if (isOnSettings) {
-      // Click the sider back button to leave settings
-      const siderBtn = page.locator('.sider-footer div').first();
-      await siderBtn.waitFor({ state: 'visible', timeout: 10_000 });
-      await siderBtn.click();
+      // The authenticated fork keeps Settings inside the account menu; the
+      // unauthenticated/plain footer still exposes a direct button.
+      await clickSettingsEntry(page);
       // Wait for hash to change away from settings
       await page
         .waitForFunction(() => !window.location.hash.includes('/settings/'), { timeout: 10_000 })
@@ -104,10 +119,8 @@ export async function navigateTo(page: Page, hash: string): Promise<void> {
   } else {
     // Target is a settings sub-page
     if (!isOnSettings) {
-      // Click sider settings button to enter settings
-      const siderBtn = page.locator('.sider-footer div').first();
-      await siderBtn.waitFor({ state: 'visible', timeout: 10_000 });
-      await siderBtn.click();
+      // Click the account-menu Settings entry or the plain footer button.
+      await clickSettingsEntry(page);
       await page
         .waitForFunction(() => window.location.hash.includes('/settings/'), { timeout: 10_000 })
         .catch(() => {});
