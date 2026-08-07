@@ -22,12 +22,12 @@ import {
 } from '../utils/sortOrderHelpers';
 
 type UseDragAndDropParams = {
-  sortableConversations: TChatConversation[];
+  pinnedConversations: TChatConversation[];
   batchMode: boolean;
   collapsed: boolean;
 };
 
-export const useDragAndDrop = ({ sortableConversations, batchMode, collapsed }: UseDragAndDropParams) => {
+export const useDragAndDrop = ({ pinnedConversations, batchMode, collapsed }: UseDragAndDropParams) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
 
@@ -67,7 +67,7 @@ export const useDragAndDrop = ({ sortableConversations, batchMode, collapsed }: 
       const overIdStr = String(over.id);
 
       // Build pinned items list with sort orders
-      const items = sortableConversations.map((c) => ({
+      const items = pinnedConversations.map((c) => ({
         id: c.id,
         sortOrder: getConversationSortOrder(c),
       }));
@@ -98,7 +98,7 @@ export const useDragAndDrop = ({ sortableConversations, batchMode, collapsed }: 
       await persistSortOrder(activeIdStr, newSortOrder);
       emitter.emit('chat.history.refresh');
     },
-    [sortableConversations, persistSortOrder]
+    [pinnedConversations, persistSortOrder]
   );
 
   return {

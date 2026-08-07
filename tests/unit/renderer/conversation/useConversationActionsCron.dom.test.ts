@@ -8,8 +8,18 @@ import type { TChatConversation } from '@/common/config/storage';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { emitterEmitMock, navigateMock, removeConversationMock, requestPrefillMock, routeState } = vi.hoisted(() => ({
+const {
+  emitterEmitMock,
+  messageErrorMock,
+  messageSuccessMock,
+  navigateMock,
+  removeConversationMock,
+  requestPrefillMock,
+  routeState,
+} = vi.hoisted(() => ({
   emitterEmitMock: vi.fn(),
+  messageErrorMock: vi.fn(),
+  messageSuccessMock: vi.fn(),
   navigateMock: vi.fn(),
   removeConversationMock: vi.fn(),
   requestPrefillMock: vi.fn(),
@@ -27,8 +37,8 @@ vi.mock('@arco-design/web-react', async () => {
   return {
     ...actual,
     Message: {
-      error: vi.fn(),
-      success: vi.fn(),
+      error: messageErrorMock,
+      success: messageSuccessMock,
       warning: vi.fn(),
     },
   };
@@ -168,5 +178,47 @@ describe('delete conversation action', () => {
     expect(emitterEmitMock).toHaveBeenCalledWith('chat.history.refresh');
     expect(result.current.deleteConversationId).toBeNull();
     expect(result.current.deleteConversationLoading).toBe(false);
+  });
+});
+
+describe('remove project action', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    routeState.id = 'current-conversation';
+  });
+
+  it('deletes every supplied project conversation and closes after complete success', async () => {
+    removeConversationMock.mockResolvedValue(true);
+    const conversations = [makeConversation('regular', 'acp'), makeConversation('pinned', 'acp')];
+    const { result } = renderActions();
+
+    act(() => result.current.handleRemoveProject('AionUi', conversations));
+    expect(result.current.removeProjectTarget?.conversations).toEqual(conversations);
+
+    await act(async () => result.current.handleRemoveProjectConfirm());
+
+    expect(removeConversationMock).toHaveBeenCalledTimes(2);
+    expect(removeConversationMock).toHaveBeenCalledWith({ id: 'regular' });
+    expect(removeConversationMock).toHaveBeenCalledWith({ id: 'pinned' });
+    expect(emitterEmitMock).toHaveBeenCalledWith('chat.history.refresh');
+    expect(messageSuccessMock).toHaveBeenCalledWith('conversation.history.batchDeleteSuccess');
+    expect(messageErrorMock).not.toHaveBeenCalled();
+    expect(result.current.removeProjectTarget).toBeNull();
+  });
+
+  it('keeps failed conversations in the dialog so a partial deletion can be retried', async () => {
+    removeConversationMock.mockResolvedValueOnce(true).mockRejectedValueOnce(new Error('backend unavailable'));
+    const regular = makeConversation('regular', 'acp');
+    const pinned = makeConversation('pinned', 'acp');
+    const { result } = renderActions();
+
+    act(() => result.current.handleRemoveProject('AionUi', [regular, pinned]));
+    await act(async () => result.current.handleRemoveProjectConfirm());
+
+    expect(emitterEmitMock).toHaveBeenCalledWith('chat.history.refresh');
+    expect(messageSuccessMock).toHaveBeenCalledWith('conversation.history.batchDeleteSuccess');
+    expect(messageErrorMock).toHaveBeenCalledWith('conversation.history.deleteFailed');
+    expect(result.current.removeProjectTarget?.conversations).toEqual([pinned]);
+    expect(result.current.removeProjectLoading).toBe(false);
   });
 });

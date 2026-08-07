@@ -66,11 +66,11 @@ const rowProps: ConversationRowProps = {
   getJobStatus: () => 'none',
 };
 
-const renderRow = (conversation = pinnedConversation) =>
+const renderRow = () =>
   render(
     <DndContext>
-      <SortableContext items={[conversation.id]} strategy={verticalListSortingStrategy}>
-        <SortableConversationRow {...rowProps} conversation={conversation} />
+      <SortableContext items={[pinnedConversation.id]} strategy={verticalListSortingStrategy}>
+        <SortableConversationRow {...rowProps} />
       </SortableContext>
     </DndContext>
   );
@@ -85,11 +85,5 @@ describe('SortableConversationRow', () => {
     renderRow();
     fireEvent.click(screen.getByTestId('conversation-drag-handle-conv-1'));
     expect(onConversationClick).not.toHaveBeenCalled();
-  });
-
-  it('renders the drag handle for unpinned conversations in manual sort mode', () => {
-    renderRow({ ...pinnedConversation, id: 'conv-unpinned', extra: { pinned: false } } as TChatConversation);
-
-    expect(screen.getByTestId('conversation-drag-handle-conv-unpinned')).toBeInTheDocument();
   });
 });

@@ -94,6 +94,14 @@ const isTeamConversation = (conversation: TChatConversation): boolean => {
   return Boolean(extra?.team_id || extra?.teamId);
 };
 
+export const getProjectConversations = (conversations: TChatConversation[], workspace: string): TChatConversation[] =>
+  conversations.filter(
+    (conversation) =>
+      !isTeamConversation(conversation) &&
+      conversation.extra?.custom_workspace === true &&
+      conversation.extra.workspace === workspace
+  );
+
 export const buildGroupedHistory = (
   conversations: TChatConversation[],
   t: (key: string) => string

@@ -41,7 +41,7 @@ const SortableConversationRow: React.FC<ConversationRowProps> = (props) => {
       {...attributes}
       {...listeners}
       role='button'
-      aria-label={t('conversation.history.reorderConversation')}
+      aria-label={t('conversation.history.reorderPinned')}
       data-testid={`conversation-drag-handle-${props.conversation.id}`}
       className={`absolute inset-0 flex-center text-t-secondary transition-opacity ${
         isDragging ? 'opacity-100 cursor-grabbing' : 'opacity-0 group-hover:opacity-100 cursor-grab'
