@@ -2,8 +2,9 @@
  * Resolve the aioncore binary path.
  *
  * Search order:
- *  1. Bundled with app (production)
- *  2. System PATH
+ *  1. Explicit AIONUI_AIONCORE_BINARY override (development)
+ *  2. Bundled with app (production)
+ *  3. System PATH
  */
 
 import { existsSync, readdirSync } from 'node:fs';
@@ -11,6 +12,7 @@ import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 
 const BINARY_NAME = 'aioncore';
+const BINARY_OVERRIDE_ENV = 'AIONUI_AIONCORE_BINARY';
 const MAX_DIR_ENTRIES = 20;
 const MAX_LOOKUP_TEXT_LENGTH = 1000;
 
@@ -72,6 +74,9 @@ export function resolveBinaryPath(): string {
     binaryName,
     pathLookupCommand: process.platform === 'win32' ? `where ${BINARY_NAME}` : `which ${BINARY_NAME}`,
   };
+
+  const override = process.env[BINARY_OVERRIDE_ENV]?.trim();
+  if (override && existsSync(override)) return override;
 
   const bundled = bundledPath(runtimeKey, binaryName, diagnostics);
   if (bundled) return bundled;

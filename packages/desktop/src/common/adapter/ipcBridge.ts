@@ -98,6 +98,15 @@ import type { AgentMetadata } from '@/renderer/utils/model/agentTypes';
 import type { Theme } from '@/common/theme/types';
 import type { AttachFolderRequest, ProjectDetailDto, ProjectEntryDto } from '@/common/types/project';
 import type { ChatFileRef } from '@/common/types/chatFile';
+import type {
+  ManagedVoiceCapability,
+  ManagedVoiceConfiguration,
+  ManagedVoiceHealthResponse,
+  UpdateManagedVoiceConfigurationRequest,
+  VoiceSessionCreateResponse,
+  VoiceSessionCreateRequest,
+  VoiceTurnResponse,
+} from '@/common/types/voice';
 import type { ProtocolDetectionRequest, ProtocolDetectionResponse } from '../utils/protocolDetector';
 import {
   buildCreateConversationBody,
@@ -155,6 +164,46 @@ export const shell = {
   checkToolInstalled: httpPost<boolean, { tool: string }>('/api/shell/check-tool-installed'),
   openFolderWith: httpPost<void, { folder_path: string; tool: 'vscode' | 'terminal' | 'explorer' }>(
     '/api/shell/open-folder-with'
+  ),
+};
+
+// ---------------------------------------------------------------------------
+// Managed realtime voice — routed to /api/voice/*
+// ---------------------------------------------------------------------------
+
+export const voice = {
+  getCapability: httpGet<ManagedVoiceCapability, void>('/api/voice/capabilities', { silentStatuses: [404] }),
+  listConfigurations: httpGet<ManagedVoiceConfiguration[], void>('/api/voice/configurations'),
+  createConfiguration: httpPost<ManagedVoiceConfiguration, UpdateManagedVoiceConfigurationRequest>(
+    '/api/voice/configurations'
+  ),
+  updateConfiguration: httpPut<
+    ManagedVoiceConfiguration,
+    UpdateManagedVoiceConfigurationRequest & { configuration_id: string }
+  >(
+    (p) => `/api/voice/configurations/${p.configuration_id}`,
+    ({ configuration_id: _configurationId, ...body }) => body
+  ),
+  setConfigurationEnabled: httpPut<ManagedVoiceConfiguration, { configuration_id: string; enabled: boolean }>(
+    (p) => `/api/voice/configurations/${p.configuration_id}/enabled`,
+    ({ configuration_id: _configurationId, enabled }) => ({ enabled })
+  ),
+  deleteConfiguration: httpDelete<void, { configuration_id: string }>(
+    (p) => `/api/voice/configurations/${p.configuration_id}`
+  ),
+  checkConfigurationHealth: httpPost<ManagedVoiceHealthResponse, { configuration_id: string }>(
+    (p) => `/api/voice/configurations/${p.configuration_id}/health`,
+    () => ({})
+  ),
+  createSession: httpPost<VoiceSessionCreateResponse, VoiceSessionCreateRequest>('/api/voice/sessions'),
+  startSession: httpPost<void, { session_id: string }>(
+    (p) => `/api/voice/sessions/${p.session_id}/start`,
+    () => ({})
+  ),
+  stopSession: httpDelete<void, { session_id: string }>((p) => `/api/voice/sessions/${p.session_id}`),
+  runTurn: httpPost<VoiceTurnResponse, { session_id: string; text: string }>(
+    (p) => `/api/voice/sessions/${p.session_id}/turns`,
+    ({ session_id: _sessionId, text }) => ({ text })
   ),
 };
 

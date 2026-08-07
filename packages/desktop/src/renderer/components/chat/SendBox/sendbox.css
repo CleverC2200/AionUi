@@ -256,6 +256,7 @@
 }
 
 .speech-input-feedback__waveform {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -266,7 +267,19 @@
   overflow: hidden;
 }
 
+.speech-input-feedback__waveform::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--color-text-3) 18%, transparent);
+}
+
 .speech-input-feedback__bar {
+  position: relative;
+  z-index: 1;
   width: 2px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-text-2) 72%, transparent);
@@ -274,6 +287,10 @@
   transition:
     height 120ms ease,
     background-color 120ms ease;
+}
+
+.speech-input-feedback--recording .speech-input-feedback__bar {
+  background: color-mix(in srgb, rgb(var(--danger-6)) 74%, var(--color-text-2));
 }
 
 .speech-input-feedback--processing .speech-input-feedback__bar {
@@ -294,6 +311,7 @@
 }
 
 .speech-input-button {
+  position: relative;
   width: 32px;
   min-width: 32px;
   height: 32px;
@@ -306,6 +324,15 @@
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
+}
+
+.speech-input-button::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
 }
 
 .speech-input-button .arco-btn-icon,
@@ -375,6 +402,11 @@
   border-radius: 999px !important;
 }
 
+.speech-input-button--listening::before {
+  border: 1px solid color-mix(in srgb, rgb(var(--danger-6)) 48%, transparent);
+  animation: speech-listening-ring 1.45s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
 .speech-input-button--processing,
 .speech-input-button--processing:hover,
 .speech-input-button--processing:active,
@@ -396,6 +428,19 @@
   }
 }
 
+@keyframes speech-listening-ring {
+  0% {
+    opacity: 0.72;
+    transform: scale(0.78);
+  }
+
+  75%,
+  100% {
+    opacity: 0;
+    transform: scale(1.38);
+  }
+}
+
 @keyframes speech-loader-spin {
   from {
     transform: rotate(0deg);
@@ -403,6 +448,14 @@
 
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .speech-input-button--listening::before,
+  .speech-input-feedback--processing .speech-input-feedback__bar,
+  .speech-loader-spinner {
+    animation: none;
   }
 }
 

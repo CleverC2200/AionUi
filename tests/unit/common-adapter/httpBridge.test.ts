@@ -185,6 +185,35 @@ describe('httpBridge', () => {
     });
   });
 
+  describe('request logging', () => {
+    it('redacts every managed voice credential while preserving the actual request body', async () => {
+      const fetchSpy = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: { ok: true } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+      vi.stubGlobal('fetch', fetchSpy);
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      const credentials = {
+        access_key: 'voice-access-key',
+        secret_key: 'voice-secret-key',
+        rtc_app_key: 'voice-rtc-app-key',
+        llm_api_key: 'voice-llm-api-key',
+      };
+
+      await httpPut<{ ok: boolean }, typeof credentials>('/api/voice/configuration').invoke(credentials);
+
+      const logLine = debugSpy.mock.calls[0].join(' ');
+      expect(logLine).not.toContain('voice-access-key');
+      expect(logLine).not.toContain('voice-secret-key');
+      expect(logLine).not.toContain('voice-rtc-app-key');
+      expect(logLine).not.toContain('voice-llm-api-key');
+      expect(logLine).toContain('[REDACTED]');
+      expect(fetchSpy.mock.calls[0][1]?.body).toBe(JSON.stringify(credentials));
+    });
+  });
+
   describe('path as function', () => {
     it('resolves path with params', async () => {
       const fetchSpy = vi.fn().mockResolvedValue(
