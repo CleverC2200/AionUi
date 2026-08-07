@@ -6,7 +6,10 @@
 
 import { describe, expect, it } from 'vitest';
 import type { TChatConversation } from '@/common/config/storage';
-import { buildGroupedHistory } from '@/renderer/pages/conversation/GroupedHistory/utils/groupingHelpers';
+import {
+  buildGroupedHistory,
+  getProjectConversations,
+} from '@/renderer/pages/conversation/GroupedHistory/utils/groupingHelpers';
 
 const t = (key: string): string => key;
 
@@ -70,5 +73,34 @@ describe('buildGroupedHistory', () => {
     );
 
     expect(result.timelineSections).toEqual([]);
+  });
+});
+
+describe('getProjectConversations', () => {
+  it('includes pinned conversations from the same workspace and excludes unrelated or team-owned conversations', () => {
+    const workspace = '/repo/aionui';
+    const regular = conversation('regular', { backend: 'aioncore', workspace, custom_workspace: true }, 100);
+    const pinned = conversation('pinned', { backend: 'aioncore', workspace, custom_workspace: true, pinned: true }, 90);
+    const otherProject = conversation(
+      'other-project',
+      { backend: 'aioncore', workspace: '/repo/other', custom_workspace: true },
+      80
+    );
+    const temporaryWorkspace = conversation(
+      'temporary',
+      { backend: 'aioncore', workspace, custom_workspace: false },
+      70
+    );
+    const teamOwned = conversation(
+      'team-owned',
+      { backend: 'aioncore', workspace, custom_workspace: true, team_id: 'team-1' },
+      60
+    );
+
+    expect(
+      getProjectConversations([regular, pinned, otherProject, temporaryWorkspace, teamOwned], workspace).map(
+        (item) => item.id
+      )
+    ).toEqual(['regular', 'pinned']);
   });
 });

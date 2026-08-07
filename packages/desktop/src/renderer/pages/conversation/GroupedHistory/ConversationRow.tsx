@@ -72,9 +72,8 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
     // When the row is pinned, hovering reveals an overlay on the leading icon —
     // the drag handle when the row is sortable, otherwise a pushpin marker.
     // We dim the resting icon on hover so the overlay reads cleanly.
-    const hasHoverOverlay = isPinned || Boolean(dragHandle);
-    const hoverOverlayFade = hasHoverOverlay ? 'group-hover:opacity-0 transition-opacity' : '';
-    const composedClass = classNames(hoverOverlayFade);
+    const pinnedHoverFade = isPinned ? 'group-hover:opacity-0 transition-opacity' : '';
+    const composedClass = classNames(pinnedHoverFade);
 
     const leadingMark = resolveConversationLeadingMark(conversation, assistantInfo, logos);
     if (leadingMark.kind === 'emoji') {
@@ -179,7 +178,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
           {isGenerating && !batchMode ? <Spin size={16} /> : renderLeadingIcon()}
           {/* Hover overlay on the leading icon: drag handle for sortable pinned rows, pushpin marker otherwise */}
           {!batchMode &&
-            (isPinned || Boolean(dragHandle)) &&
+            isPinned &&
             !isMobile &&
             !isGenerating &&
             (dragHandle ?? (
