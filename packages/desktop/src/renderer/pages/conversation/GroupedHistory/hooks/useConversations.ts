@@ -14,8 +14,6 @@ import {
   readExpandedWorkspaces,
   WORKSPACE_EXPANSION_STORAGE_KEY,
 } from './useWorkspaceExpansionState';
-import { useSidebarPreferences } from './useSidebarPreferences';
-import { resolveSidebarRevealSection } from '../utils/sidebarPresentation';
 
 // Persist section collapsed state across reloads.
 const COLLAPSED_SECTIONS_KEY = 'grouped-history-collapsed-sections';
@@ -58,7 +56,6 @@ const locateConversation = (
 export const useConversations = () => {
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<string[]>(() => readExpandedWorkspaces());
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => readCollapsedSections());
-  const sidebarPreferences = useSidebarPreferences();
   const { id } = useParams();
   const {
     conversations,
@@ -77,7 +74,7 @@ export const useConversations = () => {
   // Guard so the auto-expand + scroll for a given active id runs only once.
   // Reset when the active id changes so navigating back to a conversation
   // re-triggers, but manual collapses afterwards are not fought.
-  const revealedTargetRef = useRef<string | null>(null);
+  const revealedIdRef = useRef<string | null>(null);
 
   const toggleSection = useCallback((key: string) => {
     setCollapsedSections((prev) => {
@@ -97,26 +94,24 @@ export const useConversations = () => {
   useEffect(() => {
     if (!id) {
       setActiveConversation(null);
-      revealedTargetRef.current = null;
+      revealedIdRef.current = null;
       return;
     }
 
     setActiveConversation(id);
     clearCompletionUnread(id);
 
-    const revealTarget = `${sidebarPreferences.layoutMode}:${id}`;
-    if (revealedTargetRef.current === revealTarget) return;
+    if (revealedIdRef.current === id) return;
 
     const location = locateConversation(id, pinnedConversations, timelineSections);
     if (!location) return; // data not loaded yet; effect re-runs when it arrives
-    revealedTargetRef.current = revealTarget;
-    const visibleSection = resolveSidebarRevealSection(location.section, sidebarPreferences.layoutMode);
+    revealedIdRef.current = id;
 
     // Expand the containing section if collapsed.
     setCollapsedSections((prev) => {
-      if (!prev.has(visibleSection)) return prev;
+      if (!prev.has(location.section)) return prev;
       const next = new Set(prev);
-      next.delete(visibleSection);
+      next.delete(location.section);
       return next;
     });
     // Expand the containing project folder if collapsed.
@@ -142,14 +137,7 @@ export const useConversations = () => {
       cancelAnimationFrame(outerRafId);
       cancelAnimationFrame(innerRafId);
     };
-  }, [
-    clearCompletionUnread,
-    id,
-    setActiveConversation,
-    pinnedConversations,
-    sidebarPreferences.layoutMode,
-    timelineSections,
-  ]);
+  }, [clearCompletionUnread, id, setActiveConversation, pinnedConversations, timelineSections]);
 
   // Persist workspace expansion state
   useEffect(() => {
@@ -228,6 +216,5 @@ export const useConversations = () => {
     handleToggleWorkspace,
     collapsedSections,
     toggleSection,
-    ...sidebarPreferences,
   };
 };
