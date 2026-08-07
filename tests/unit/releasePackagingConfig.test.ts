@@ -38,6 +38,18 @@ describe('release packaging configuration', () => {
     expect(winBlock).not.toContain('    - zip');
   });
 
+  it('keeps Windows installer executable checks aligned with electron-builder', () => {
+    const config = readProjectFile('packages/desktop/electron-builder.yml');
+    const executableName = config.match(/^executableName:\s*(.+)$/m)?.[1]?.trim();
+    const observability = readProjectFile('resources/windows/installer-observability.nsh');
+    const updateVerify = readProjectFile('resources/windows/installer-update-verify.nsh');
+
+    expect(executableName).toBeTruthy();
+    expect(observability).toContain(`!define AIONUI_APP_EXECUTABLE_FILENAME "${executableName}.exe"`);
+    expect(observability).toContain('${FileExists} "$INSTDIR\\${AIONUI_APP_EXECUTABLE_FILENAME}"');
+    expect(updateVerify).toContain('AIONUI_VERIFY_REQUIRED_FILE "$INSTDIR\\${AIONUI_APP_EXECUTABLE_FILENAME}"');
+  });
+
   it('uploads mac zip artifacts without a stale Windows zip glob', () => {
     const workflow = readProjectFile('.github/workflows/_build-reusable.yml');
 

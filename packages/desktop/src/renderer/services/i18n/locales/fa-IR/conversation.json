@@ -70,13 +70,29 @@
     "recent7Days": "۷ روز اخیر",
     "earlier": "قدیمی‌تر",
     "projectsSection": "پروژه‌ها",
+    "projectManagement": "مدیریت پروژه",
+    "addProject": "افزودن پروژه",
+    "projectActions": "عملیات پروژه {{name}}",
+    "organizeSidebar": "مرتب‌سازی نوار کناری",
+    "organizeByProject": "بر اساس پروژه",
+    "organizeInOneList": "در یک فهرست",
+    "sortChatsBy": "مرتب‌سازی گفتگوها بر اساس",
+    "sortPriority": "اولویت",
+    "sortPriorityDescription": "گفتگوهای نیازمند ورودی و خوانده‌نشده را ابتدا نمایش بده",
+    "sortRecent": "آخرین به‌روزرسانی",
+    "sortManual": "مرتب‌سازی دستی",
+    "reorderConversation": "برای تغییر ترتیب گفتگوها بکشید",
     "conversationsSection": "مکالمات",
     "removeProjectTitle": "حذف پروژه",
     "removeProject": "حذف پروژه",
+    "removeProjectSuccess": "پروژه حذف شد",
+    "noChatsInProject": "گفتگویی نیست",
     "removeProjectConfirm": "پروژه «{{name}}» حذف شود؟ {{count}} مکالمه مرتبط نیز حذف خواهند شد.",
     "newConversationInProject": "چت جدید در این پروژه",
     "deleting": "در حال حذف...",
-    "reorderPinned": "برای تغییر ترتیب گفتگوی سنجاق‌شده بکشید"
+    "reorderPinned": "برای تغییر ترتیب گفتگوی سنجاق‌شده بکشید",
+    "forkedFrom": "انشعاب از «{{name}}»",
+    "forkedConversation": "گفتگوی منشعب"
   },
   "historySearch": {
     "tooltip": "جستجوی پیام‌ها",
@@ -418,7 +434,8 @@
     "openWith": {
       "vscode": "VS Code",
       "terminal": "ترمینال",
-      "explorer": "فایل اکسپلورر"
+      "explorer": "فایل اکسپلورر",
+      "browser": "مرورگر"
     }
   },
   "minimap": {
@@ -565,7 +582,8 @@
     "sendboxHint": "در حال آماده‌سازی محیط اجرا. اولین راه‌اندازی ممکن است کمی بیشتر طول بکشد."
   },
   "sendbox": {
-    "hint": "برای دستورات /، برای ارجاع فایل‌ها @ و برای تاریخچه پیام‌ها ↑/↓ را بزنید"
+    "hint": "برای دستورات /، برای ارجاع فایل‌ها @ و برای تاریخچه پیام‌ها ↑/↓ را بزنید",
+    "mediaPathFallback": "این ایجنت از این نوع فایل به‌صورت بومی پشتیبانی نمی‌کند؛ به‌صورت مسیر فایل ارسال خواهد شد."
   },
   "agentTip": {
     "codes": {
@@ -628,5 +646,12 @@
       "empty": "هیچ فایلی مطابقت ندارد",
       "limitReached": "نمایش {{count}} مورد اول — جستجو را محدود کنید"
     }
+  },
+  "terminal": {
+    "running": "در حال اجرا",
+    "stopped": "متوقف شد",
+    "exited": "کد خروج {{code}}",
+    "stop": "توقف",
+    "truncated": "(خروجی قبلی کوتاه شد)"
   }
 }

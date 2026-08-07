@@ -5,7 +5,6 @@
  */
 
 import type { IMessageText } from '@/common/chat/chatLib';
-import { AIONUI_FILES_MARKER } from '@/common/config/constants';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useLocalFilePreview } from '@/renderer/pages/conversation/Preview/hooks/useLocalFilePreview';
@@ -22,6 +21,13 @@ import HorizontalFileList from '@renderer/components/media/HorizontalFileList';
 import MarkdownView from '@renderer/components/Markdown';
 import { stripThinkTags, hasThinkTags } from '@renderer/utils/chat/thinkTagFilter';
 import { stripSkillSuggest, hasSkillSuggest } from '@renderer/utils/chat/skillSuggestParser';
+import { isForkEnabled } from '@/common/chat/forkConversation';
+import { useForkConversation } from '@/renderer/hooks/chat/useForkConversation';
+import ForkBranchIcon from '@renderer/components/base/ForkBranchIcon';
+import {
+  parseMessageFileMarker,
+  resolveConversationResourcePath,
+} from '@/renderer/pages/conversation/components/ConversationResources/model';
 
 /**
  * Format a timestamp for message display.
@@ -52,82 +58,7 @@ import { useTeammateColor } from '@/renderer/pages/team/identity/TeamIdentityCon
 
 const CODE_STYLE = { marginTop: 4, marginBlock: 4 };
 
-type ParsedFileMarker = {
-  text: string;
-  files: string[];
-};
-
-const URL_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i;
-const MARKDOWN_ATTACHMENT_LINE_PATTERN = /^(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s?|```|~~~|\|)/;
-
-const parseFileMarker = (content: string, canParseFileMarker: boolean): ParsedFileMarker => {
-  if (!canParseFileMarker) {
-    return { text: content, files: [] };
-  }
-
-  const lines = content.split(/\r?\n/);
-  let markerLineIndex = -1;
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    if (lines[index].trim() === AIONUI_FILES_MARKER) {
-      markerLineIndex = index;
-      break;
-    }
-  }
-
-  if (markerLineIndex === -1) {
-    return { text: content, files: [] };
-  }
-
-  const files = lines
-    .slice(markerLineIndex + 1)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (!files.length || files.some((file_path) => !isLocalMessageFilePath(file_path))) {
-    return { text: content, files: [] };
-  }
-
-  return {
-    text: lines.slice(0, markerLineIndex).join('\n').trimEnd(),
-    files,
-  };
-};
-
-const isAbsoluteMessageFilePath = (file_path: string): boolean =>
-  file_path.startsWith('/') || file_path.startsWith('\\\\') || /^[A-Za-z]:[\\/]/.test(file_path);
-
-const isWorkspaceRelativeMessageFilePath = (file_path: string): boolean => {
-  const normalizedFilePath = file_path.replace(/\\/g, '/');
-  return (
-    normalizedFilePath.startsWith('./') ||
-    normalizedFilePath.startsWith('../') ||
-    normalizedFilePath.includes('/') ||
-    /(?:^|\/)[^/]+\.[^./\s][^/]*$/.test(normalizedFilePath)
-  );
-};
-
-const isLocalMessageFilePath = (file_path: string): boolean => {
-  const trimmedFilePath = file_path.trim();
-  if (
-    !trimmedFilePath ||
-    URL_SCHEME_PATTERN.test(trimmedFilePath) ||
-    MARKDOWN_ATTACHMENT_LINE_PATTERN.test(trimmedFilePath)
-  ) {
-    return false;
-  }
-
-  return isAbsoluteMessageFilePath(trimmedFilePath) || isWorkspaceRelativeMessageFilePath(trimmedFilePath);
-};
-
-export const resolveMessageFilePath = (file_path: string, workspace?: string): string => {
-  if (!file_path || isAbsoluteMessageFilePath(file_path) || !workspace) {
-    return file_path;
-  }
-
-  const normalizedWorkspace = workspace.replace(/[\\/]+$/, '').replace(/\\/g, '/');
-  const normalizedFilePath = file_path.replace(/^\.?[\\/]+/, '').replace(/\\/g, '/');
-  return `${normalizedWorkspace}/${normalizedFilePath}`.replace(/\/+/g, '/');
-};
+export const resolveMessageFilePath = resolveConversationResourcePath;
 
 const useFormatContent = (content: string) => {
   return useMemo(() => {
@@ -144,7 +75,12 @@ const useFormatContent = (content: string) => {
   }, [content]);
 };
 
-const MessageText: React.FC<{ message: IMessageText; showCopyRow?: boolean }> = ({ message, showCopyRow = true }) => {
+const MessageText: React.FC<{
+  message: IMessageText;
+  showCopyRow?: boolean;
+  isLastMessage?: boolean;
+  hasForkAnchor?: boolean;
+}> = ({ message, showCopyRow = true, isLastMessage = false, hasForkAnchor = false }) => {
   const logos = useAgentLogos();
   // Filter think tags from content before rendering
   // 在渲染前过滤 think 标签
@@ -168,12 +104,13 @@ const MessageText: React.FC<{ message: IMessageText; showCopyRow?: boolean }> = 
   const isUserMessage = message.position === 'right';
   const isTeammateMessage = message.position === 'left' && message.content.teammateMessage === true;
   const { text, files } = useMemo(
-    () => parseFileMarker(contentToRender, isUserMessage),
+    () => parseMessageFileMarker(contentToRender, isUserMessage),
     [contentToRender, isUserMessage]
   );
   const { data, json } = useFormatContent(text);
   const shouldRenderPlainText = isUserMessage;
   const conversationContext = useConversationContextSafe();
+  const forkConversation = useForkConversation(conversationContext?.conversation_id);
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const handleLocalFileLink = useLocalFilePreview(conversationContext?.workspace);
@@ -212,6 +149,26 @@ const MessageText: React.FC<{ message: IMessageText; showCopyRow?: boolean }> = 
       </div>
     </Tooltip>
   );
+
+  // Fork entry point: only when the agent declares the capability, and only on
+  // messages the backend can actually fork at (any message for at_turn/codex,
+  // the last message otherwise) — see `isForkEnabled`.
+  const showForkButton = isForkEnabled(conversationContext?.forkCapability, {
+    isLastMessage,
+    hasTurnAnchor: hasForkAnchor,
+  });
+  const forkButton = showForkButton ? (
+    <Tooltip content={t('messages.fork.action')}>
+      <div
+        className='p-4px rd-4px cursor-pointer hover:bg-3 transition-colors opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto'
+        onClick={() => void forkConversation(message.msg_id ?? message.id)}
+        style={{ lineHeight: 0 }}
+        data-testid='message-fork-button'
+      >
+        <ForkBranchIcon size={16} fill={iconColors.secondary} />
+      </div>
+    </Tooltip>
+  ) : null;
 
   const cronMeta = message.content.cronMeta;
   const senderName = message.content.senderName;
@@ -305,6 +262,7 @@ const MessageText: React.FC<{ message: IMessageText; showCopyRow?: boolean }> = 
             })}
           >
             {copyButton}
+            {forkButton}
             {message.created_at && (
               <span className='text-12px text-t-secondary opacity-0 group-hover:opacity-100 transition-opacity select-none'>
                 {formatMessageTime(message.created_at)}

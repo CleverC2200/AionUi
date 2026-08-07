@@ -5,10 +5,13 @@
  */
 
 import type { TChatConversation } from '@/common/config/storage';
+import { ipcBridge } from '@/common';
 import AionModal from '@/renderer/components/base/AionModal';
+import { addRecentWorkspace } from '@/renderer/components/workspace';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useCronJobsMap } from '@/renderer/pages/cron';
 import { restrictToVerticalAxis } from '@/renderer/utils/ui/dndModifiers';
+import { getWorkspaceDisplayName } from '@/renderer/utils/workspace/workspace';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Button, Dropdown, Empty, Input, Menu, Modal, Tooltip } from '@arco-design/web-react';
@@ -22,11 +25,74 @@ import WorkspaceCollapse from '../components/WorkspaceCollapse';
 import ConversationRow from './ConversationRow';
 import SortableConversationRow from './SortableConversationRow';
 import ConversationDeleteModal from './components/ConversationDeleteModal';
+import ProjectSectionActions from './components/ProjectSectionActions';
 import { useBatchSelection } from './hooks/useBatchSelection';
 import { useConversationActions } from './hooks/useConversationActions';
 import { useConversations } from './hooks/useConversations';
 import { useDragAndDrop } from './hooks/useDragAndDrop';
+import { useSidebarProjects } from './hooks/useSidebarProjects';
 import type { ConversationRowProps, WorkspaceGroupedHistoryProps } from './types';
+import { shouldShowSidebarEmptyState } from './utils/sidebarPresentation';
+import { conversationNeedsAttention, sortSidebarConversations } from './utils/sidebarSorting';
+
+type ConversationListProps = {
+  conversations: TChatConversation[];
+  getConversationRowProps: (conversation: TChatConversation) => ConversationRowProps;
+  dimIcon?: boolean;
+  reorderEnabled?: boolean;
+  batchMode: boolean;
+  collapsed: boolean;
+};
+
+const ConversationList: React.FC<ConversationListProps> = ({
+  conversations,
+  getConversationRowProps,
+  dimIcon = false,
+  reorderEnabled = false,
+  batchMode,
+  collapsed,
+}) => {
+  const { sensors, handleDragEnd, isDragEnabled } = useDragAndDrop({
+    sortableConversations: conversations,
+    batchMode,
+    collapsed,
+  });
+  const canReorder = reorderEnabled && isDragEnabled;
+
+  if (!canReorder) {
+    return (
+      <div className='min-w-0'>
+        {conversations.map((conversation) => (
+          <ConversationRow key={conversation.id} {...getConversationRowProps(conversation)} dimIcon={dimIcon} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      modifiers={[restrictToVerticalAxis]}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={conversations.map((conversation) => conversation.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className='min-w-0'>
+          {conversations.map((conversation) => (
+            <SortableConversationRow
+              key={conversation.id}
+              {...getConversationRowProps(conversation)}
+              dimIcon={dimIcon}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+};
 
 const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   onSessionClick,
@@ -41,6 +107,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   const navigate = useNavigate();
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
+  const sidebarProjects = useSidebarProjects();
   const { getJobStatus, markAsRead, setActiveConversation } = useCronJobsMap();
 
   const {
@@ -53,6 +120,10 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     handleToggleWorkspace,
     collapsedSections,
     toggleSection,
+    layoutMode,
+    sortMode,
+    setLayoutMode,
+    setSortMode,
   } = useConversations();
 
   const SectionLabel = useCallback(
@@ -136,11 +207,20 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     markAsRead,
   });
 
-  const { sensors, handleDragEnd, isDragEnabled } = useDragAndDrop({
-    pinnedConversations,
-    batchMode,
-    collapsed,
-  });
+  // Fork-lineage badge support: resolve a parent conversation's display name
+  // from the already-loaded sidebar list (no extra fetch; unresolved = the
+  // parent was deleted or not loaded → the badge falls back to a generic tip).
+  const conversationNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const conversation of conversations) {
+      map.set(conversation.id, conversation.name);
+    }
+    return map;
+  }, [conversations]);
+  const resolveConversationName = useCallback(
+    (conversationId: string) => conversationNameById.get(conversationId),
+    [conversationNameById]
+  );
 
   const getConversationRowProps = useCallback(
     (conversation: TChatConversation): ConversationRowProps => ({
@@ -162,6 +242,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       onDelete: handleDeleteClick,
       onTogglePin: handleTogglePin,
       getJobStatus,
+      resolveConversationName,
     }),
     [
       collapsed,
@@ -181,16 +262,17 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       handleDeleteClick,
       handleTogglePin,
       getJobStatus,
+      resolveConversationName,
     ]
   );
 
-  const renderConversation = (conversation: TChatConversation, dimIcon = false) => {
-    const rowProps = getConversationRowProps(conversation);
-    return <ConversationRow key={conversation.id} {...rowProps} dimIcon={dimIcon} />;
-  };
-
-  // Collect all sortable IDs for the pinned section
-  const pinnedIds = useMemo(() => pinnedConversations.map((c) => c.id), [pinnedConversations]);
+  const sortConversations = useCallback(
+    (items: TChatConversation[]) =>
+      sortSidebarConversations(items, sortMode, (conversation) =>
+        conversationNeedsAttention(conversation, hasCompletionUnread)
+      ),
+    [hasCompletionUnread, sortMode]
+  );
 
   // Codex-style split: project folders (workspaces) on top, free conversations below.
   // Projects section: collect all workspace groups across timeline sections, ordered by recency.
@@ -204,36 +286,62 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
           groups.push({
             workspace: item.workspaceGroup.workspace,
             displayName: item.workspaceGroup.display_name,
-            conversations: item.workspaceGroup.conversations,
+            conversations: sortConversations(item.workspaceGroup.conversations),
           });
         }
       }
     }
-    return groups;
-  }, [timelineSections]);
+    const emptyRecentGroups: Array<{
+      workspace: string;
+      displayName: string;
+      conversations: TChatConversation[];
+    }> = sidebarProjects
+      .filter((workspace) => !seen.has(workspace))
+      .map((workspace) => ({
+        workspace,
+        displayName: getWorkspaceDisplayName(workspace, false, t),
+        conversations: [] as TChatConversation[],
+      }));
+    return [...emptyRecentGroups, ...groups];
+  }, [sidebarProjects, sortConversations, t, timelineSections]);
 
-  // Conversations section: keep timeline grouping (today/yesterday/...) but only show non-workspace conversations.
-  const conversationOnlySections = useMemo(
+  const standaloneConversations = useMemo(
     () =>
-      timelineSections
-        .map((section) => ({
-          ...section,
-          items: section.items.filter((item) => item.type === 'conversation' && item.conversation),
-        }))
-        .filter((section) => section.items.length > 0),
-    [timelineSections]
+      sortConversations(
+        timelineSections.flatMap((section) =>
+          section.items.flatMap((item) =>
+            item.type === 'conversation' && item.conversation ? [item.conversation] : []
+          )
+        )
+      ),
+    [sortConversations, timelineSections]
   );
 
-  if (timelineSections.length === 0 && pinnedConversations.length === 0) {
-    return (
-      <>
-        {afterPinnedContent}
-        <div className='py-48px flex-center'>
-          <Empty description={t('conversation.history.noHistory')} />
-        </div>
-      </>
-    );
-  }
+  const flatConversations = useMemo(
+    () => sortConversations([...projectGroups.flatMap((group) => group.conversations), ...standaloneConversations]),
+    [projectGroups, sortConversations, standaloneConversations]
+  );
+
+  const showEmptyState = shouldShowSidebarEmptyState({
+    layoutMode,
+    pinnedCount: pinnedConversations.length,
+    projectCount: projectGroups.length,
+    projectConversationCount: projectGroups.reduce((count, group) => count + group.conversations.length, 0),
+    standaloneCount: standaloneConversations.length,
+  });
+
+  const handleAddProject = useCallback(async () => {
+    try {
+      const directories = await ipcBridge.dialog.showOpen.invoke({ properties: ['openDirectory', 'createDirectory'] });
+      const workspace = directories?.[0];
+      if (!workspace) return;
+      addRecentWorkspace(workspace);
+      await navigate('/guid', { state: { workspace } });
+      onSessionClick?.();
+    } catch (error) {
+      console.error('[WorkspaceGroupedHistory] Failed to add project:', error);
+    }
+  }, [navigate, onSessionClick]);
 
   return (
     <>
@@ -364,47 +472,59 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
 
       <div>
         {/* L1: Pinned section */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          onDragEnd={handleDragEnd}
-        >
-          {pinnedConversations.length > 0 && (
-            <div className='min-w-0'>
-              {!collapsed && <SectionLabel sectionKey='pinned' label={t('conversation.history.pinnedSection')} />}
-              {!collapsedSections.has('pinned') && (
-                <SortableContext items={pinnedIds} strategy={verticalListSortingStrategy}>
-                  <div className='min-w-0'>
-                    {pinnedConversations.map((conversation) => {
-                      const props = getConversationRowProps(conversation);
-                      return isDragEnabled ? (
-                        <SortableConversationRow key={conversation.id} {...props} />
-                      ) : (
-                        <ConversationRow key={conversation.id} {...props} />
-                      );
-                    })}
-                  </div>
-                </SortableContext>
-              )}
-            </div>
-          )}
-        </DndContext>
+        {pinnedConversations.length > 0 && (
+          <div className='min-w-0'>
+            {!collapsed && <SectionLabel sectionKey='pinned' label={t('conversation.history.pinnedSection')} />}
+            {!collapsedSections.has('pinned') && (
+              <ConversationList
+                conversations={pinnedConversations}
+                getConversationRowProps={getConversationRowProps}
+                reorderEnabled
+                batchMode={batchMode}
+                collapsed={collapsed}
+              />
+            )}
+          </div>
+        )}
 
         {/* Slot 由父级（Sider）填入：例如 Team / CronJob sections，位于「置顶」之后、「项目」之前 */}
         {afterPinnedContent}
 
-        {/* L1: Projects section — workspace folders, peer to conversations */}
-        {projectGroups.length > 0 && (
-          <div className='min-w-0'>
-            {!collapsed && <SectionLabel sectionKey='projects' label={t('conversation.history.projectsSection')} />}
-            {!collapsedSections.has('projects') &&
+        {/* L1: Projects section — the header also owns sidebar layout and chat sorting. */}
+        <div className='min-w-0'>
+          {!collapsed && (
+            <SectionLabel
+              sectionKey='projects'
+              label={t('conversation.history.projectsSection')}
+              trailing={
+                !batchMode ? (
+                  <ProjectSectionActions
+                    layoutMode={layoutMode}
+                    sortMode={sortMode}
+                    onLayoutModeChange={setLayoutMode}
+                    onSortModeChange={setSortMode}
+                    onAddProject={() => void handleAddProject()}
+                  />
+                ) : undefined
+              }
+            />
+          )}
+          {!collapsedSections.has('projects') &&
+            (layoutMode === 'list' ? (
+              <ConversationList
+                conversations={flatConversations}
+                getConversationRowProps={getConversationRowProps}
+                reorderEnabled={sortMode === 'manual'}
+                batchMode={batchMode}
+                collapsed={collapsed}
+              />
+            ) : (
               projectGroups.map((group) => {
                 const projectMenu = (
                   <Menu
                     onClickMenuItem={(key) => {
                       if (key === 'remove') {
-                        handleRemoveProject(group.displayName, group.conversations);
+                        handleRemoveProject(group.displayName, group.workspace, group.conversations);
                       }
                     }}
                   >
@@ -432,28 +552,20 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                       trailing={
                         <span className='flex items-center gap-6px'>
                           <Tooltip content={t('conversation.history.newConversationInProject')} position='top'>
-                            <span
-                              role='button'
-                              tabIndex={0}
+                            <Button
+                              type='text'
+                              size='mini'
                               aria-label={t('conversation.history.newConversationInProject')}
                               className={classNames(
-                                'flex-center cursor-pointer transition-colors text-t-secondary hover:text-t-primary size-20px rd-4px sider-action-btn',
+                                '!size-20px !min-w-0 !p-0 !text-t-secondary hover:!text-t-primary',
                                 isMobile ? 'flex' : 'hidden group-hover:flex'
                               )}
+                              icon={<Plus theme='outline' size='14' fill='currentColor' />}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 void navigate('/guid', { state: { workspace: group.workspace } });
                               }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  void navigate('/guid', { state: { workspace: group.workspace } });
-                                }
-                              }}
-                            >
-                              <Plus theme='outline' size='14' fill='currentColor' className='block leading-none' />
-                            </span>
+                            />
                           </Tooltip>
                           <Dropdown
                             droplist={projectMenu}
@@ -462,49 +574,64 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                             getPopupContainer={() => document.body}
                             unmountOnExit={false}
                           >
-                            <span
-                              aria-label='Project actions'
+                            <Button
+                              type='text'
+                              size='mini'
+                              aria-label={t('conversation.history.projectActions', { name: group.displayName })}
                               className={classNames(
-                                'flex-center cursor-pointer transition-colors text-t-secondary hover:text-t-primary size-20px rd-4px sider-action-btn',
+                                '!size-20px !min-w-0 !p-0 !text-t-secondary hover:!text-t-primary',
                                 isMobile ? 'flex' : 'hidden group-hover:flex'
                               )}
+                              icon={<MoreOne theme='outline' size='14' fill='currentColor' />}
                               onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreOne theme='outline' size='14' fill='currentColor' className='block leading-none' />
-                            </span>
+                            />
                           </Dropdown>
                         </span>
                       }
                     >
                       <div className={classNames('flex flex-col min-w-0', { 'mt-1px': !collapsed })}>
-                        {group.conversations.map((conversation) => renderConversation(conversation, true))}
+                        <ConversationList
+                          conversations={group.conversations}
+                          getConversationRowProps={getConversationRowProps}
+                          dimIcon
+                          reorderEnabled={sortMode === 'manual'}
+                          batchMode={batchMode}
+                          collapsed={collapsed}
+                        />
                       </div>
                     </WorkspaceCollapse>
+                    {group.conversations.length === 0 && !collapsed && (
+                      <div className='pl-42px pr-10px pb-6px text-13px leading-20px text-t-tertiary'>
+                        {t('conversation.history.noChatsInProject')}
+                      </div>
+                    )}
                   </div>
                 );
-              })}
-          </div>
-        )}
+              })
+            ))}
+        </div>
 
         {/* L1: Conversations section — peer to projects, internally split by timeline */}
-        {conversationOnlySections.length > 0 && (
+        {layoutMode === 'projects' && standaloneConversations.length > 0 && (
           <div className='min-w-0'>
             {!collapsed && (
               <SectionLabel sectionKey='conversations' label={t('conversation.history.conversationsSection')} />
             )}
-            {!collapsedSections.has('conversations') &&
-              conversationOnlySections.map((section) => (
-                <div key={section.timeline} className='min-w-0'>
-                  {!collapsed && conversationOnlySections.length > 1 && (
-                    <div className='flex items-center px-16px h-24px select-none'>
-                      <span className='text-12px text-t-secondary font-[500] leading-none'>{section.timeline}</span>
-                    </div>
-                  )}
-                  {section.items.map((item) =>
-                    item.type === 'conversation' && item.conversation ? renderConversation(item.conversation) : null
-                  )}
-                </div>
-              ))}
+            {!collapsedSections.has('conversations') && (
+              <ConversationList
+                conversations={standaloneConversations}
+                getConversationRowProps={getConversationRowProps}
+                reorderEnabled={sortMode === 'manual'}
+                batchMode={batchMode}
+                collapsed={collapsed}
+              />
+            )}
+          </div>
+        )}
+
+        {showEmptyState && (
+          <div className='py-32px flex-center'>
+            <Empty description={t('conversation.history.noHistory')} />
           </div>
         )}
       </div>

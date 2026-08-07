@@ -70,13 +70,29 @@
     "deleteSuccess": "削除しました",
     "deleteFailed": "削除に失敗しました",
     "projectsSection": "プロジェクト",
+    "projectManagement": "プロジェクト管理",
+    "addProject": "プロジェクトを追加",
+    "projectActions": "{{name}} のプロジェクト操作",
+    "organizeSidebar": "サイドバーを整理",
+    "organizeByProject": "プロジェクト別",
+    "organizeInOneList": "1つのリスト",
+    "sortChatsBy": "チャットの並び順",
+    "sortPriority": "優先度",
+    "sortPriorityDescription": "入力が必要なチャットと未読チャットを優先表示",
+    "sortRecent": "最近の更新",
+    "sortManual": "手動並べ替え",
+    "reorderConversation": "ドラッグして会話を並べ替え",
     "conversationsSection": "会話",
     "removeProjectTitle": "プロジェクトを削除",
     "removeProject": "プロジェクトを削除",
+    "removeProjectSuccess": "プロジェクトを削除しました",
+    "noChatsInProject": "チャットはありません",
     "removeProjectConfirm": "プロジェクト「{{name}}」を削除しますか？プロジェクト内の {{count}} 件の会話も削除されます。",
     "newConversationInProject": "このプロジェクト内で新しい会話",
     "deleting": "削除中...",
-    "reorderPinned": "ドラッグしてピン留め会話の順序を変更"
+    "reorderPinned": "ドラッグしてピン留め会話の順序を変更",
+    "forkedFrom": "「{{name}}」から分岐",
+    "forkedConversation": "分岐した会話"
   },
   "historySearch": {
     "tooltip": "メッセージを検索",
@@ -418,7 +434,8 @@
     "openWith": {
       "vscode": "VS Code",
       "terminal": "ターミナル",
-      "explorer": "エクスプローラー"
+      "explorer": "エクスプローラー",
+      "browser": "ブラウザ"
     }
   },
   "minimap": {
@@ -565,7 +582,8 @@
     "sendboxHint": "実行環境を準備しています。初回起動は少し時間がかかる場合があります。"
   },
   "sendbox": {
-    "hint": "/ でコマンド、@ でファイルを参照、↑/↓ でメッセージ履歴"
+    "hint": "/ でコマンド、@ でファイルを参照、↑/↓ でメッセージ履歴",
+    "mediaPathFallback": "このエージェントはこのファイル形式をネイティブに扱えないため、ファイルパスとして送信されます。"
   },
   "agentTip": {
     "codes": {
@@ -628,5 +646,12 @@
       "empty": "一致するファイルがありません",
       "limitReached": "最初の {{count}} 件を表示 — 絞り込んでください"
     }
+  },
+  "terminal": {
+    "running": "実行中",
+    "stopped": "停止済み",
+    "exited": "終了コード {{code}}",
+    "stop": "停止",
+    "truncated": "(以前の出力は切り捨て)"
   }
 }

@@ -70,13 +70,29 @@
     "recent7Days": "Останні 7 днів",
     "earlier": "Раніше",
     "projectsSection": "Проєкти",
+    "projectManagement": "Керування проєктами",
+    "addProject": "Додати проєкт",
+    "projectActions": "Дії проєкту {{name}}",
+    "organizeSidebar": "Упорядкувати бічну панель",
+    "organizeByProject": "За проєктами",
+    "organizeInOneList": "В одному списку",
+    "sortChatsBy": "Сортувати чати за",
+    "sortPriority": "Пріоритетом",
+    "sortPriorityDescription": "Спочатку показувати чати, що потребують введення, і непрочитані чати",
+    "sortRecent": "Останнім оновленням",
+    "sortManual": "Вручну",
+    "reorderConversation": "Перетягніть, щоб змінити порядок розмов",
     "conversationsSection": "Розмови",
     "removeProjectTitle": "Видалити проєкт",
     "removeProject": "Видалити проєкт",
+    "removeProjectSuccess": "Проєкт видалено",
+    "noChatsInProject": "Немає чатів",
     "removeProjectConfirm": "Видалити проєкт «{{name}}»? Також буде видалено {{count}} розмов у ньому.",
     "newConversationInProject": "Нова розмова в цьому проєкті",
     "deleting": "Видалення...",
-    "reorderPinned": "Перетягніть, щоб змінити порядок закріплених розмов"
+    "reorderPinned": "Перетягніть, щоб змінити порядок закріплених розмов",
+    "forkedFrom": "Відгалуження від «{{name}}»",
+    "forkedConversation": "Відгалужена розмова"
   },
   "historySearch": {
     "tooltip": "Пошук повідомлень",
@@ -418,7 +434,8 @@
     "openWith": {
       "vscode": "VS Code",
       "terminal": "Термінал",
-      "explorer": "Провідник"
+      "explorer": "Провідник",
+      "browser": "Браузер"
     }
   },
   "minimap": {
@@ -565,7 +582,8 @@
     "sendboxHint": "Готується середовище виконання. Перший запуск може тривати трохи довше."
   },
   "sendbox": {
-    "hint": "Введіть / для команд, @ для посилань на файли, ↑/↓ для історії повідомлень"
+    "hint": "Введіть / для команд, @ для посилань на файли, ↑/↓ для історії повідомлень",
+    "mediaPathFallback": "Цей агент не підтримує цей тип файлу нативно; його буде надіслано як шлях до файлу."
   },
   "agentTip": {
     "codes": {
@@ -628,5 +646,12 @@
       "empty": "Немає відповідних файлів",
       "limitReached": "Показано перші {{count}} — уточніть запит"
     }
+  },
+  "terminal": {
+    "running": "Виконується",
+    "stopped": "Зупинено",
+    "exited": "Код {{code}}",
+    "stop": "Зупинити",
+    "truncated": "(ранній вивід обрізано)"
   }
 }

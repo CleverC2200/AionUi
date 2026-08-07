@@ -70,13 +70,29 @@
     "deleteSuccess": "刪除成功",
     "deleteFailed": "刪除失敗",
     "projectsSection": "專案",
+    "projectManagement": "專案管理",
+    "addProject": "新增專案",
+    "projectActions": "{{name}} 的專案操作",
+    "organizeSidebar": "整理側邊欄",
+    "organizeByProject": "按專案",
+    "organizeInOneList": "放在同一個清單",
+    "sortChatsBy": "聊天排序方式",
+    "sortPriority": "優先級",
+    "sortPriorityDescription": "優先顯示需要輸入和未讀的聊天",
+    "sortRecent": "最近更新",
+    "sortManual": "手動排序",
+    "reorderConversation": "拖動以調整對話順序",
     "conversationsSection": "對話",
     "removeProjectTitle": "移除專案",
     "removeProject": "移除專案",
+    "removeProjectSuccess": "專案已移除",
+    "noChatsInProject": "沒有聊天",
     "removeProjectConfirm": "確定要移除專案「{{name}}」嗎？專案下的 {{count}} 個對話也會被一起移除。",
     "newConversationInProject": "在此專案中新建對話",
     "deleting": "刪除中...",
-    "reorderPinned": "拖動以調整置頂會話順序"
+    "reorderPinned": "拖動以調整置頂會話順序",
+    "forkedFrom": "分叉自「{{name}}」",
+    "forkedConversation": "分叉對話"
   },
   "historySearch": {
     "tooltip": "搜尋訊息",
@@ -418,7 +434,8 @@
     "openWith": {
       "vscode": "VS Code",
       "terminal": "終端機",
-      "explorer": "檔案總管"
+      "explorer": "檔案總管",
+      "browser": "瀏覽器"
     }
   },
   "minimap": {
@@ -601,7 +618,8 @@
     "sendboxHint": "正在準備執行環境。首次啟動可能會稍慢一些。"
   },
   "sendbox": {
-    "hint": "輸入 / 喚起命令，@ 引用檔案，↑/↓ 切換歷史訊息"
+    "hint": "輸入 / 喚起命令，@ 引用檔案，↑/↓ 切換歷史訊息",
+    "mediaPathFallback": "該 Agent 不原生支援此檔案類型，將以檔案路徑形式傳送。"
   },
   "agentTip": {
     "codes": {
@@ -664,5 +682,12 @@
       "empty": "沒有符合的檔案",
       "limitReached": "僅顯示前 {{count}} 項 — 請縮小範圍"
     }
+  },
+  "terminal": {
+    "running": "執行中",
+    "stopped": "已停止",
+    "exited": "結束碼 {{code}}",
+    "stop": "停止",
+    "truncated": "(較早輸出已截斷)"
   }
 }

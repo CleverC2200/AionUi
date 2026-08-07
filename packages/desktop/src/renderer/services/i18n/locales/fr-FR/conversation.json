@@ -70,13 +70,29 @@
     "recent7Days": "7 derniers jours",
     "earlier": "Plus tôt",
     "projectsSection": "Projets",
+    "projectManagement": "Gestion des projets",
+    "addProject": "Ajouter un projet",
+    "projectActions": "Actions du projet {{name}}",
+    "organizeSidebar": "Organiser la barre latérale",
+    "organizeByProject": "Par projet",
+    "organizeInOneList": "Dans une seule liste",
+    "sortChatsBy": "Trier les discussions par",
+    "sortPriority": "Priorité",
+    "sortPriorityDescription": "Afficher d’abord les discussions nécessitant une saisie et les non lues",
+    "sortRecent": "Mise à jour récente",
+    "sortManual": "Ordre manuel",
+    "reorderConversation": "Faites glisser pour réorganiser les conversations",
     "conversationsSection": "Conversations",
     "removeProjectTitle": "Supprimer le projet",
     "removeProject": "Supprimer le projet",
+    "removeProjectSuccess": "Projet supprimé",
+    "noChatsInProject": "Aucune discussion",
     "removeProjectConfirm": "Supprimer le projet \"{{name}}\" ? Sa ou ses conversations {{count}} seront également supprimées.",
     "newConversationInProject": "Nouveau chat dans ce projet",
     "deleting": "Suppression...",
-    "reorderPinned": "Faites glisser pour réorganiser la conversation épinglée"
+    "reorderPinned": "Faites glisser pour réorganiser la conversation épinglée",
+    "forkedFrom": "Bifurquée depuis « {{name}} »",
+    "forkedConversation": "Conversation bifurquée"
   },
   "historySearch": {
     "tooltip": "Rechercher des messages",
@@ -418,7 +434,8 @@
     "openWith": {
       "vscode": "VS Code",
       "terminal": "Terminal",
-      "explorer": "Explorateur de fichiers"
+      "explorer": "Explorateur de fichiers",
+      "browser": "Navigateur"
     }
   },
   "minimap": {
@@ -564,7 +581,8 @@
     "sendboxHint": "Préparation de l'environnement d'exécution. Le premier démarrage peut prendre un peu plus de temps."
   },
   "sendbox": {
-    "hint": "Tapez / pour les commandes, @ pour référencer des fichiers, ↑/↓ pour l'historique des messages"
+    "hint": "Tapez / pour les commandes, @ pour référencer des fichiers, ↑/↓ pour l'historique des messages",
+    "mediaPathFallback": "Cet agent ne prend pas en charge nativement ce type de fichier ; il sera envoyé sous forme de chemin de fichier."
   },
   "agentTip": {
     "codes": {
@@ -627,5 +645,12 @@
       "empty": "Aucun fichier correspondant",
       "limitReached": "Affichage des {{count}} premiers — affinez la recherche"
     }
+  },
+  "terminal": {
+    "running": "En cours",
+    "stopped": "Arrêté",
+    "exited": "Code {{code}}",
+    "stop": "Arrêter",
+    "truncated": "(sortie antérieure tronquée)"
   }
 }

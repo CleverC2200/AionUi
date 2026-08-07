@@ -70,13 +70,29 @@
     "deleteSuccess": "Başarıyla silindi",
     "deleteFailed": "Silme başarısız oldu",
     "projectsSection": "Projeler",
+    "projectManagement": "Proje yönetimi",
+    "addProject": "Proje ekle",
+    "projectActions": "{{name}} proje işlemleri",
+    "organizeSidebar": "Kenar çubuğunu düzenle",
+    "organizeByProject": "Projeye göre",
+    "organizeInOneList": "Tek listede",
+    "sortChatsBy": "Sohbetleri sırala",
+    "sortPriority": "Öncelik",
+    "sortPriorityDescription": "Girdi gereken ve okunmamış sohbetleri önce göster",
+    "sortRecent": "Son güncelleme",
+    "sortManual": "El ile sırala",
+    "reorderConversation": "Konuşmaları yeniden sıralamak için sürükleyin",
     "conversationsSection": "Konuşmalar",
     "removeProjectTitle": "Projeyi kaldır",
     "removeProject": "Projeyi kaldır",
+    "removeProjectSuccess": "Proje kaldırıldı",
+    "noChatsInProject": "Sohbet yok",
     "removeProjectConfirm": "\"{{name}}\" projesi kaldırılsın mı? Projedeki {{count}} konuşma da kaldırılacak.",
     "newConversationInProject": "Bu projede yeni konuşma",
     "deleting": "Siliniyor...",
-    "reorderPinned": "Sabitlenmiş sohbetin sırasını değiştirmek için sürükleyin"
+    "reorderPinned": "Sabitlenmiş sohbetin sırasını değiştirmek için sürükleyin",
+    "forkedFrom": "“{{name}}” konuşmasından çatallandı",
+    "forkedConversation": "Çatallanmış konuşma"
   },
   "historySearch": {
     "tooltip": "Mesajları ara",
@@ -403,7 +419,8 @@
     "openWith": {
       "vscode": "VS Code",
       "terminal": "Terminal",
-      "explorer": "Dosya Gezgini"
+      "explorer": "Dosya Gezgini",
+      "browser": "Tarayıcı"
     }
   },
   "minimap": {
@@ -567,7 +584,8 @@
     "sendboxHint": "Çalışma ortamı hazırlanıyor. İlk başlatma biraz daha uzun sürebilir."
   },
   "sendbox": {
-    "hint": "Komutlar için /, dosya için @ yazın, ↑/↓ ile mesaj geçmişi"
+    "hint": "Komutlar için /, dosya için @ yazın, ↑/↓ ile mesaj geçmişi",
+    "mediaPathFallback": "Bu ajan bu dosya türünü yerel olarak desteklemiyor; dosya yolu olarak gönderilecek."
   },
   "agentTip": {
     "codes": {
@@ -630,5 +648,12 @@
       "empty": "Eşleşen dosya yok",
       "limitReached": "İlk {{count}} gösteriliyor — daraltın"
     }
+  },
+  "terminal": {
+    "running": "Çalışıyor",
+    "stopped": "Durduruldu",
+    "exited": "Çıkış {{code}}",
+    "stop": "Durdur",
+    "truncated": "(önceki çıktı kesildi)"
   }
 }

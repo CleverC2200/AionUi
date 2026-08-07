@@ -14,11 +14,9 @@ const mocks = vi.hoisted(() => ({
   managedStart: vi.fn(),
   managedStop: vi.fn(),
   managedStatus: 'idle' as 'idle' | 'connecting' | 'recording' | 'transcribing' | 'error',
+  startRecording: vi.fn(() => Promise.resolve()),
+  stopRecording: vi.fn(),
   status: 'idle' as 'idle' | 'recording' | 'transcribing' | 'error',
-}));
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 vi.mock('@/renderer/services/clientBusinessSettings', () => ({
@@ -59,11 +57,30 @@ vi.mock('@/renderer/hooks/system/useSpeechInput', () => ({
     errorMessage: null,
     recordingDurationMs: 1200,
     recordingLevels: [0.1, 0.25, 0.5, 0.8, 0.4, 0.2],
-    startRecording: vi.fn(),
+    startRecording: mocks.startRecording,
     status: mocks.status,
-    stopRecording: vi.fn(),
+    stopRecording: mocks.stopRecording,
     transcribeFile: vi.fn(),
   }),
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { shortcut?: string }) =>
+      key === 'conversation.chat.speech.recordTooltipWithShortcut'
+        ? '语音输入 cmd+M'
+        : options?.shortcut
+          ? `${key}:${options.shortcut}`
+          : key,
+  }),
+}));
+
+vi.mock('@arco-design/web-react', () => ({
+  Button: ({ icon, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { icon?: React.ReactNode }) => (
+    <button {...props}>{icon}</button>
+  ),
+  Tooltip: ({ children }: { children: React.ReactNode }) => <span data-testid='speech-tooltip'>{children}</span>,
+  Message: { warning: vi.fn(), error: vi.fn() },
 }));
 
 import SpeechInputButton from '@/renderer/components/chat/SpeechInputButton';
@@ -71,6 +88,7 @@ import SpeechInputButton from '@/renderer/components/chat/SpeechInputButton';
 describe('SpeechInputButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.config.mockResolvedValue({ enabled: true });
     mocks.capability.mockResolvedValue({ enabled: false });
     mocks.managedStatus = 'idle';
     mocks.status = 'idle';
@@ -88,7 +106,7 @@ describe('SpeechInputButton', () => {
     mocks.capability.mockResolvedValue({ enabled: true, provider: 'volcengine-rtc' });
     render(<SpeechInputButton onTranscript={vi.fn()} />);
 
-    const button = await screen.findByRole('button', { name: 'conversation.chat.speech.recordTooltip' });
+    const button = await screen.findByRole('button', { name: /M/ });
     fireEvent.click(button);
 
     expect(mocks.managedStart).toHaveBeenCalledOnce();
@@ -114,5 +132,59 @@ describe('SpeechInputButton', () => {
     fireEvent.click(button);
 
     expect(mocks.managedStop).toHaveBeenCalledOnce();
+  });
+
+  it('shows the shortcut and toggles recording on consecutive presses', async () => {
+    const view = render(<SpeechInputButton onTranscript={vi.fn()} />);
+
+    const button = await screen.findByRole('button');
+    expect(button.getAttribute('aria-label')).toContain('M');
+    fireEvent.mouseEnter(view.container.querySelector('.speech-input-control') as Element);
+
+    // The window keydown listener is attached in an effect gated on async
+    // config loading, so a single fire can race the attachment on slow CI
+    // runners. Retry the press until it is observed; presses before the
+    // listener exists contribute zero calls, so the final count stays exact.
+    await waitFor(() => {
+      fireEvent.keyDown(window, { code: 'KeyM', metaKey: true });
+      expect(mocks.startRecording).toHaveBeenCalled();
+    });
+    expect(mocks.startRecording).toHaveBeenCalledTimes(1);
+
+    mocks.status = 'recording';
+    view.rerender(<SpeechInputButton onTranscript={vi.fn()} />);
+    fireEvent.keyDown(window, { code: 'KeyM', metaKey: true });
+    await waitFor(() => expect(mocks.stopRecording).toHaveBeenCalledTimes(1));
+  });
+
+  it('only triggers the active voice input when several send boxes are mounted', async () => {
+    const view = render(
+      <>
+        <SpeechInputButton onTranscript={vi.fn()} />
+        <SpeechInputButton onTranscript={vi.fn()} />
+      </>
+    );
+    await screen.findAllByRole('button');
+    const controls = view.container.querySelectorAll('.speech-input-control');
+    fireEvent.mouseEnter(controls[1]);
+
+    // Same listener-attachment race as above: retry the press until observed.
+    // Only the hovered instance passes the ownership check, so the final
+    // count still proves exactly one recording started.
+    await waitFor(() => {
+      fireEvent.keyDown(window, { code: 'KeyM', metaKey: true });
+      expect(mocks.startRecording).toHaveBeenCalled();
+    });
+    expect(mocks.startRecording).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows only the spinner button while transcribing', async () => {
+    mocks.status = 'transcribing';
+    const { container } = render(<SpeechInputButton onTranscript={vi.fn()} />);
+    const button = await screen.findByRole('button');
+
+    expect(button).toBeDisabled();
+    expect(container.querySelector('.speech-input-feedback')).toBeNull();
+    expect(screen.queryByTestId('speech-tooltip')).toBeNull();
   });
 });

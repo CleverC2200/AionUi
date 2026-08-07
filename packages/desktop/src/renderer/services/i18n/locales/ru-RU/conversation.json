@@ -70,13 +70,29 @@
     "recent7Days": "Последние 7 дней",
     "earlier": "Ранее",
     "projectsSection": "Проекты",
+    "projectManagement": "Управление проектами",
+    "addProject": "Добавить проект",
+    "projectActions": "Действия проекта {{name}}",
+    "organizeSidebar": "Организовать боковую панель",
+    "organizeByProject": "По проектам",
+    "organizeInOneList": "В одном списке",
+    "sortChatsBy": "Сортировать чаты по",
+    "sortPriority": "Приоритету",
+    "sortPriorityDescription": "Сначала показывать чаты, требующие ввода, и непрочитанные чаты",
+    "sortRecent": "Последнему обновлению",
+    "sortManual": "Вручную",
+    "reorderConversation": "Перетащите, чтобы изменить порядок разговоров",
     "conversationsSection": "Беседы",
     "removeProjectTitle": "Удалить проект",
     "removeProject": "Удалить проект",
+    "removeProjectSuccess": "Проект удалён",
+    "noChatsInProject": "Нет чатов",
     "removeProjectConfirm": "Удалить проект «{{name}}»? Беседы в проекте тоже будут удалены: {{count}}.",
     "newConversationInProject": "Новая беседа в этом проекте",
     "deleting": "Удаление...",
-    "reorderPinned": "Перетащите, чтобы изменить порядок закреплённых бесед"
+    "reorderPinned": "Перетащите, чтобы изменить порядок закреплённых бесед",
+    "forkedFrom": "Ответвление от «{{name}}»",
+    "forkedConversation": "Ответвлённая беседа"
   },
   "historySearch": {
     "tooltip": "Поиск сообщений",
@@ -418,7 +434,8 @@
     "openWith": {
       "vscode": "VS Code",
       "terminal": "Терминал",
-      "explorer": "Проводник"
+      "explorer": "Проводник",
+      "browser": "Браузер"
     }
   },
   "minimap": {
@@ -565,7 +582,8 @@
     "sendboxHint": "Подготавливается среда выполнения. Первый запуск может занять немного больше времени."
   },
   "sendbox": {
-    "hint": "Введите / для команд, @ для ссылок на файлы, ↑/↓ для истории сообщений"
+    "hint": "Введите / для команд, @ для ссылок на файлы, ↑/↓ для истории сообщений",
+    "mediaPathFallback": "Этот агент не поддерживает данный тип файла нативно; он будет отправлен в виде пути к файлу."
   },
   "agentTip": {
     "codes": {
@@ -628,5 +646,12 @@
       "empty": "Нет совпадающих файлов",
       "limitReached": "Показаны первые {{count}} — уточните запрос"
     }
+  },
+  "terminal": {
+    "running": "Выполняется",
+    "stopped": "Остановлено",
+    "exited": "Код {{code}}",
+    "stop": "Остановить",
+    "truncated": "(ранний вывод усечён)"
   }
 }

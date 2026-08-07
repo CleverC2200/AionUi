@@ -135,10 +135,6 @@ export class PersonalModelGatewayService {
         }
 
         const record = await this.resolveSecretRecord(user.id, credential, authClient);
-        if (!record) {
-          skipped += 1;
-          continue;
-        }
 
         failureReason = 'modelDiscoveryFailed';
         const models = await authClient.listPersonalModels(record.baseUrl, record.secret);
@@ -187,9 +183,11 @@ export class PersonalModelGatewayService {
     userId: string,
     credential: GeaPersonalModelCredential,
     authClient: PersonalModelAuthClient
-  ): Promise<PersonalModelSecretRecord | null> {
+  ): Promise<PersonalModelSecretRecord> {
     if (credential.status === 'ENABLED') {
-      return this.vault.get(userId, credential.credentialId);
+      const record = await this.vault.get(userId, credential.credentialId);
+      if (!record) throw new Error('GEA_PERSONAL_SECRET_MISSING');
+      return record;
     }
 
     const claimed = await authClient.claimPersonalModelCredential(credential.credentialId, credential.tenantId);

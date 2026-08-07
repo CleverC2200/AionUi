@@ -693,7 +693,7 @@ const AionrsSendBox: React.FC<{
     },
     [effectiveHandleStop, prioritize]
   );
-  const sendBoxWidthClass = getChatSurfaceWidthClass(Boolean(teamPermission));
+  const sendBoxWidthClass = getChatSurfaceWidthClass();
   const composerControlSlots = createConversationComposerControlSlots({
     attachment: (
       <FileAttachButton
@@ -767,6 +767,8 @@ const AionrsSendBox: React.FC<{
           setAtPath(items);
         }}
         loading={teamRuntime?.loading ?? isBusy}
+        active={teamRuntime?.isActive}
+        onFocused={teamRuntime?.onFocus}
         disabled={!current_model?.use_model}
         placeholder={
           current_model?.use_model

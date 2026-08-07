@@ -25,6 +25,7 @@ import React from 'react';
 import AcpE2EStreamInjector from './AcpE2EStreamInjector';
 import AcpSendBox from './AcpSendBox';
 import { useAcpMessage } from './useAcpMessage';
+import ConversationResourcesPortal from '../../components/ConversationResources';
 
 const AcpChat: React.FC<{
   conversation_id: string;
@@ -42,6 +43,8 @@ const AcpChat: React.FC<{
   teamRuntime?: TeamSendBoxRuntime;
   hideComposerModelSelector?: boolean;
   assistantId?: string;
+  forkCapability?: { at_turn: boolean };
+  promptCapability?: { image: boolean; audio: boolean };
 }> = ({
   conversation_id,
   workspace,
@@ -58,6 +61,8 @@ const AcpChat: React.FC<{
   teamRuntime,
   hideComposerModelSelector,
   assistantId,
+  forkCapability,
+  promptCapability,
 }) => {
   useMessageLstCache(conversation_id);
   usePendingConfirmationsRecovery(conversation_id);
@@ -79,9 +84,12 @@ const AcpChat: React.FC<{
         loadedMcpServers,
         loadedMcpStatuses,
         assistantId,
+        forkCapability,
+        promptCapability,
       }}
     >
       <ConversationArtifactProvider conversation_id={conversation_id}>
+        <ConversationResourcesPortal conversationId={conversation_id} workspace={workspace} />
         <div className={`${CHAT_SURFACE_CONTAINER_CLASS} flex-1 flex flex-col px-20px min-h-0`}>
           <FlexFullContainer>
             <MessageList className='flex-1' emptySlot={emptySlot} />

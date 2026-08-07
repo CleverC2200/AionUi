@@ -70,13 +70,29 @@
     "recent7Days": "Últimos 7 Dias",
     "earlier": "Mais Antigos",
     "projectsSection": "Projetos",
+    "projectManagement": "Gerenciamento de projetos",
+    "addProject": "Adicionar projeto",
+    "projectActions": "Ações do projeto {{name}}",
+    "organizeSidebar": "Organizar barra lateral",
+    "organizeByProject": "Por projeto",
+    "organizeInOneList": "Em uma lista",
+    "sortChatsBy": "Ordenar conversas por",
+    "sortPriority": "Prioridade",
+    "sortPriorityDescription": "Mostrar primeiro conversas que precisam de entrada e não lidas",
+    "sortRecent": "Atualização recente",
+    "sortManual": "Ordem manual",
+    "reorderConversation": "Arraste para reordenar conversas",
     "conversationsSection": "Conversas",
     "removeProjectTitle": "Remover projeto",
     "removeProject": "Remover projeto",
+    "removeProjectSuccess": "Projeto removido",
+    "noChatsInProject": "Nenhuma conversa",
     "removeProjectConfirm": "Remover o projeto \"{{name}}\"? Suas {{count}} conversa(s) também serão removidas.",
     "newConversationInProject": "Novo chat neste projeto",
     "deleting": "Excluindo...",
-    "reorderPinned": "Arraste para reordenar a conversa fixada"
+    "reorderPinned": "Arraste para reordenar a conversa fixada",
+    "forkedFrom": "Bifurcada de “{{name}}”",
+    "forkedConversation": "Conversa bifurcada"
   },
   "historySearch": {
     "tooltip": "Pesquisar mensagens",
@@ -424,7 +440,8 @@
     "openWith": {
       "vscode": "VS Code",
       "terminal": "Terminal",
-      "explorer": "Explorador de Arquivos"
+      "explorer": "Explorador de Arquivos",
+      "browser": "Navegador"
     }
   },
   "minimap": {
@@ -571,7 +588,8 @@
     "sendboxHint": "Preparando o ambiente de execução. A primeira inicialização pode demorar um pouco mais."
   },
   "sendbox": {
-    "hint": "Digite / para comandos, @ para referenciar arquivos, ↑/↓ para o histórico de mensagens"
+    "hint": "Digite / para comandos, @ para referenciar arquivos, ↑/↓ para o histórico de mensagens",
+    "mediaPathFallback": "Este agente não tem suporte nativo para este tipo de arquivo; ele será enviado como um caminho de arquivo."
   },
   "agentTip": {
     "codes": {
@@ -634,5 +652,12 @@
       "empty": "Nenhum arquivo corresponde",
       "limitReached": "Mostrando os primeiros {{count}} — refine a busca"
     }
+  },
+  "terminal": {
+    "running": "Executando",
+    "stopped": "Parado",
+    "exited": "Saída {{code}}",
+    "stop": "Parar",
+    "truncated": "(saída anterior truncada)"
   }
 }
