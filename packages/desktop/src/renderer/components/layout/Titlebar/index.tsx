@@ -7,6 +7,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ipcBridge } from '@/common';
 import { TEAM_MODE_ENABLED } from '@/common/config/constants';
 import ConversationSearchPopover from '@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
+import VoiceConversation from '@/renderer/components/chat/VoiceConversation';
 import MobileConversationBrand from './MobileConversationBrand';
 import WindowControls from '../WindowControls';
 import { WORKSPACE_STATE_EVENT, dispatchWorkspaceToggleEvent } from '@renderer/utils/workspace/workspaceEvents';
@@ -139,6 +140,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
     : t('common.collapse', { defaultValue: 'Collapse workspace' });
   const backToChatTooltip = t('common.back', { defaultValue: 'Back to Chat' });
   const feedbackTooltip = t('conversation.welcome.quickActionFeedback', { defaultValue: 'Report Issue' });
+  const conversationId = location.pathname.match(/^\/conversation\/([^/]+)/)?.[1];
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const iconSize = 18;
   // Desktop uses slimmer strokes to match macOS-native chrome aesthetics;
@@ -299,6 +301,18 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
     };
   }, [isMacRuntime, showSiderToggle, layout?.isMobile]);
 
+  const feedbackButton = (
+    <button
+      type='button'
+      className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
+      onClick={() => void openFeedback({ autoScreenshot: true, module: resolveFeedbackModule(location.pathname) })}
+      aria-label={feedbackTooltip}
+      title={feedbackTooltip}
+    >
+      <FeedbackIcon size={iconSize} strokeWidth={desktopIconStroke} />
+    </button>
+  );
+
   return (
     <div
       ref={containerRef}
@@ -407,15 +421,17 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
       </div>
       <div ref={toolbarRef} className='app-titlebar__toolbar'>
         {layout?.isMobile && <div id='app-titlebar-actions-slot' className='app-titlebar__actions-slot' />}
-        <button
-          type='button'
-          className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
-          onClick={() => void openFeedback({ autoScreenshot: true, module: resolveFeedbackModule(location.pathname) })}
-          aria-label={feedbackTooltip}
-          title={feedbackTooltip}
-        >
-          <FeedbackIcon size={iconSize} strokeWidth={desktopIconStroke} />
-        </button>
+        {conversationId ? (
+          <VoiceConversation
+            conversationId={conversationId}
+            iconSize={iconSize}
+            iconStrokeWidth={desktopIconStroke}
+            triggerClassName={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
+            unavailableFallback={feedbackButton}
+          />
+        ) : (
+          feedbackButton
+        )}
         {showWorkspaceButton && (
           <button
             type='button'

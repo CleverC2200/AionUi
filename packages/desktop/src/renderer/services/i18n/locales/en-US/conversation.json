@@ -450,10 +450,12 @@
       "recordTooltipWithShortcut": "Voice input cmd+M",
       "pickFileTooltip": "Select an audio file",
       "stopTooltip": "Stop recording",
+      "connecting": "Connecting to the voice service; click again to cancel",
       "processing": "Transcribing audio...",
       "unsupported": "Voice input is not available in this environment",
       "startShort": "Mic",
       "stopShort": "Stop",
+      "connectingShort": "Connecting",
       "transcribingShort": "...",
       "audioCaptureError": "No microphone was detected",
       "emptyTranscript": "No speech was detected",
@@ -464,6 +466,40 @@
       "recordingUnsupported": "Live recording is not supported here. Please upload an audio file instead",
       "transcriptionFailed": "Audio transcription failed",
       "genericError": "Voice input failed. Please try again"
+    },
+    "realtimeVoice": {
+      "startTooltip": "Start realtime voice conversation",
+      "title": "Realtime voice",
+      "startFailed": "Could not start the realtime voice session",
+      "stopFailed": "Could not end the session. Please try again",
+      "confirmationFailed": "Could not submit the confirmation",
+      "you": "You",
+      "ai": "AI",
+      "waitingForSpeech": "Listening for your voice...",
+      "waitingForReply": "Waiting for the AI response...",
+      "confirmationTitle": "Confirm this action",
+      "reject": "Reject",
+      "confirm": "Confirm",
+      "sessionError": "Realtime voice session failed",
+      "mute": "Mute microphone",
+      "unmute": "Unmute microphone",
+      "end": "End conversation",
+      "connection": {
+        "idle": "Not started",
+        "connecting": "Connecting",
+        "connected": "Connected",
+        "reconnecting": "Reconnecting",
+        "ended": "Ended",
+        "error": "Connection error"
+      },
+      "agent": {
+        "idle": "Idle",
+        "listening": "Listening",
+        "thinking": "Thinking",
+        "speaking": "Speaking",
+        "tool-running": "Running an action",
+        "awaiting-confirmation": "Waiting for confirmation"
+      }
     }
   },
   "sideQuestion": {

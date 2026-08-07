@@ -98,6 +98,10 @@ const ensureCliSafeSymlink = (targetPath: string, symlinkName: string): string =
 export const getDataPath = (): string => {
   const rootPath = getElectronPathOrFallback('userData');
   const dataPath = path.join(rootPath, 'aionui');
+  // E2E already uses a disposable path without spaces. Reusing the global
+  // dev symlink here would repoint ~/.aionui-dev at the temporary sandbox and
+  // leave normal development with a broken database path after cleanup.
+  if (process.env.AIONUI_E2E_TEST === '1') return dataPath;
   return ensureCliSafeSymlink(dataPath, getEnvAwareName('.aionui'));
 };
 
@@ -110,6 +114,7 @@ export const getDataPath = (): string => {
 export const getConfigPath = (): string => {
   const rootPath = getElectronPathOrFallback('userData');
   const configPath = path.join(rootPath, 'config');
+  if (process.env.AIONUI_E2E_TEST === '1') return configPath;
   return ensureCliSafeSymlink(configPath, getEnvAwareName('.aionui-config'));
 };
 

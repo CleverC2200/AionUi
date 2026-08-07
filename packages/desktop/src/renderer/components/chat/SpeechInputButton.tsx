@@ -14,6 +14,9 @@ import {
   useSpeechInput,
   type SpeechInputAvailability,
 } from '@/renderer/hooks/system/useSpeechInput';
+import { useManagedVoiceDictation } from '@/renderer/hooks/voice/useManagedVoiceDictation';
+import { getManagedVoiceCapability } from '@/renderer/services/voice/voiceCapability';
+import { preloadVolcengineVoiceTransport } from '@/renderer/services/voice/VolcengineVoiceTransport';
 
 type SpeechInputButtonProps = {
   /** Live transcript of the active streaming session; `null` clears it. */
@@ -58,9 +61,17 @@ const formatSpeechDuration = (durationMs: number): string => {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 };
 
-const getTooltipKey = (availability: SpeechInputAvailability, isListening: boolean, isProcessing: boolean) => {
+const getTooltipKey = (
+  availability: SpeechInputAvailability,
+  isListening: boolean,
+  isConnecting: boolean,
+  isProcessing: boolean
+) => {
   if (isProcessing) {
     return 'conversation.chat.speech.processing';
+  }
+  if (isConnecting) {
+    return 'conversation.chat.speech.connecting';
   }
   if (isListening) {
     return 'conversation.chat.speech.stopTooltip';
@@ -80,7 +91,17 @@ const SpeechInputButton: React.FC<SpeechInputButtonProps> = ({ onLiveTranscript,
   const controlRef = useRef<HTMLDivElement | null>(null);
   const ownerIdRef = useRef(Symbol('speech-input'));
   const [isSpeechToTextEnabled, setIsSpeechToTextEnabled] = useState(false);
+  const [isManagedDictationEnabled, setIsManagedDictationEnabled] = useState(false);
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
+  const legacySpeechInput = useSpeechInput({
+    onLiveTranscript,
+    onTranscript,
+  });
+  const managedSpeechInput = useManagedVoiceDictation({
+    onLiveTranscript,
+    onTranscript,
+  });
+  const speechInput = isSpeechToTextEnabled ? legacySpeechInput : managedSpeechInput;
   const {
     availability,
     clearError,
@@ -92,16 +113,25 @@ const SpeechInputButton: React.FC<SpeechInputButtonProps> = ({ onLiveTranscript,
     status,
     stopRecording,
     transcribeFile,
-  } = useSpeechInput({
-    onLiveTranscript,
-    onTranscript,
-  });
+  } = {
+    availability: isSpeechToTextEnabled ? legacySpeechInput.availability : ('record' as const),
+    clearError: speechInput.clearError,
+    errorCode: speechInput.errorCode,
+    errorMessage: speechInput.errorMessage,
+    recordingDurationMs: speechInput.recordingDurationMs,
+    recordingLevels: speechInput.recordingLevels,
+    startRecording: speechInput.startRecording,
+    status: speechInput.status,
+    stopRecording: speechInput.stopRecording,
+    transcribeFile: legacySpeechInput.transcribeFile,
+  };
 
   const isRecording = status === 'recording';
+  const isConnecting = status === 'connecting';
   const isProcessing = status === 'transcribing';
   const speechStatusRef = useRef(status);
   speechStatusRef.current = status;
-  const showSpeechFeedback = isRecording;
+  const showSpeechFeedback = isConnecting || isRecording;
   const displayedWaveformLevels = useMemo(() => {
     if (recordingLevels.length > 0) {
       return recordingLevels;
@@ -114,16 +144,24 @@ const SpeechInputButton: React.FC<SpeechInputButtonProps> = ({ onLiveTranscript,
 
     const syncSpeechToTextEnabled = async () => {
       try {
-        const config = await getClientBusinessSetting('tools.speechToText');
+        const [config, capability] = await Promise.all([
+          getClientBusinessSetting('tools.speechToText'),
+          getManagedVoiceCapability(),
+        ]);
         if (cancelled) {
           return;
         }
         setIsSpeechToTextEnabled(Boolean(config?.enabled));
+        setIsManagedDictationEnabled(capability.enabled);
+        if (capability.enabled) {
+          void preloadVolcengineVoiceTransport();
+        }
       } catch {
         if (cancelled) {
           return;
         }
         setIsSpeechToTextEnabled(false);
+        setIsManagedDictationEnabled(false);
       } finally {
         if (!cancelled) {
           setIsConfigLoaded(true);
@@ -161,7 +199,7 @@ const SpeechInputButton: React.FC<SpeechInputButtonProps> = ({ onLiveTranscript,
   }, [clearError, errorCode, errorMessage, t]);
 
   useEffect(() => {
-    if (!isConfigLoaded || !isSpeechToTextEnabled || availability !== 'record') {
+    if (!isConfigLoaded || (!isSpeechToTextEnabled && !isManagedDictationEnabled) || availability !== 'record') {
       return;
     }
 
@@ -177,7 +215,7 @@ const SpeechInputButton: React.FC<SpeechInputButtonProps> = ({ onLiveTranscript,
       }
       activeSpeechInputOwner = ownerIdRef.current;
       event.preventDefault();
-      if (speechStatusRef.current === 'recording') {
+      if (speechStatusRef.current === 'connecting' || speechStatusRef.current === 'recording') {
         stopRecording();
         return;
       }
@@ -191,20 +229,25 @@ const SpeechInputButton: React.FC<SpeechInputButtonProps> = ({ onLiveTranscript,
         activeSpeechInputOwner = null;
       }
     };
-  }, [availability, isConfigLoaded, isSpeechToTextEnabled, startRecording, stopRecording]);
+  }, [availability, isConfigLoaded, isManagedDictationEnabled, isSpeechToTextEnabled, startRecording, stopRecording]);
 
   const handleClick = () => {
-    if (availability === 'unsupported') {
+    if (!isSpeechToTextEnabled && !isManagedDictationEnabled) {
+      Message.warning(t('conversation.chat.speech.notConfigured'));
+      return;
+    }
+
+    if (isSpeechToTextEnabled && availability === 'unsupported') {
       Message.warning(t(getAvailabilityMessageKey(availability)));
       return;
     }
 
-    if (isRecording) {
+    if (isConnecting || isRecording) {
       stopRecording();
       return;
     }
 
-    if (availability === 'file') {
+    if (isSpeechToTextEnabled && availability === 'file') {
       fileInputRef.current?.click();
       return;
     }
@@ -221,16 +264,20 @@ const SpeechInputButton: React.FC<SpeechInputButtonProps> = ({ onLiveTranscript,
     void transcribeFile(file);
   };
 
-  if (!isConfigLoaded || !isSpeechToTextEnabled) {
+  if (!isConfigLoaded) {
     return null;
   }
 
-  const tooltipKey = getTooltipKey(availability, isRecording, isProcessing);
+  const isConfigured = isSpeechToTextEnabled || isManagedDictationEnabled;
+  const tooltipKey = isConfigured
+    ? getTooltipKey(availability, isRecording, isConnecting, isProcessing)
+    : 'conversation.chat.speech.notConfigured';
   const ariaLabel =
-    availability === 'record' && !isRecording && !isProcessing
+    isConfigured && availability === 'record' && !isConnecting && !isRecording && !isProcessing
       ? t('conversation.chat.speech.recordTooltipWithShortcut')
       : t(tooltipKey);
-  const icon = isRecording ? <SpeechStopIcon /> : isProcessing ? <SpeechLoaderIcon /> : <SpeechMicIcon />;
+  const icon =
+    isConnecting || isRecording ? <SpeechStopIcon /> : isProcessing ? <SpeechLoaderIcon /> : <SpeechMicIcon />;
 
   return (
     <>
@@ -253,7 +300,11 @@ const SpeechInputButton: React.FC<SpeechInputButtonProps> = ({ onLiveTranscript,
         }}
       >
         {showSpeechFeedback && (
-          <div className='speech-input-feedback' role='status' aria-live='polite'>
+          <div
+            className={`speech-input-feedback ${isRecording ? 'speech-input-feedback--recording' : ''}`}
+            role='status'
+            aria-live='polite'
+          >
             <div className='speech-input-feedback__waveform' aria-hidden='true'>
               {displayedWaveformLevels.map((level, index) => (
                 <span
@@ -266,7 +317,9 @@ const SpeechInputButton: React.FC<SpeechInputButtonProps> = ({ onLiveTranscript,
                 />
               ))}
             </div>
-            <span className='speech-input-feedback__label'>{formatSpeechDuration(recordingDurationMs)}</span>
+            <span className='speech-input-feedback__label'>
+              {isConnecting ? t('conversation.chat.speech.connectingShort') : formatSpeechDuration(recordingDurationMs)}
+            </span>
           </div>
         )}
         {isProcessing ? (

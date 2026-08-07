@@ -8,7 +8,7 @@ import { ipcBridge } from '@/common';
 import { isGeaPersonalProvider } from '@/common/config/geaPersonalModel';
 import type { IProvider } from '@/common/config/storage';
 import { supportsOpenAiApiMode } from '@/common/utils/modelCapabilities';
-import { Button, Divider, Message, Popconfirm, Collapse, Tag, Switch, Tooltip } from '@arco-design/web-react';
+import { Button, Divider, Message, Popconfirm, Collapse, Tag, Switch, Tabs, Tooltip } from '@arco-design/web-react';
 import {
   DeleteFour,
   Heartbeat,
@@ -20,7 +20,7 @@ import {
   SettingTwo,
   Write,
 } from '@icon-park/react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AddModelModal from '@/renderer/pages/settings/components/AddModelModal';
 import AddPlatformModal from '@/renderer/pages/settings/components/AddPlatformModal';
@@ -32,6 +32,7 @@ import { useProvidersQuery } from '@/renderer/hooks/agent/useModelProviderList';
 import { useSettingsViewMode } from '../settingsViewContext';
 import SettingsPageHeader from '@/renderer/pages/settings/components/SettingsPageHeader';
 import { consumePendingDeepLink } from '@/renderer/hooks/system/useDeepLink';
+import VoiceModelConfiguration, { type VoiceModelConfigurationHandle } from './VoiceModelConfiguration';
 import '../model-provider.css';
 
 /**
@@ -114,6 +115,8 @@ const ModelModalContent: React.FC = () => {
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
   const [collapseKey, setCollapseKey] = useState<Record<string, boolean>>({});
+  const [activeCategory, setActiveCategory] = useState<'large' | 'voice'>('large');
+  const voiceConfigurationRef = useRef<VoiceModelConfigurationHandle>(null);
   const [geaSyncing, setGeaSyncing] = useState(false);
   const [healthCheckLoading, setHealthCheckLoading] = useState<Record<string, boolean>>({});
   const { data, mutate } = useProvidersQuery();
@@ -403,6 +406,17 @@ const ModelModalContent: React.FC = () => {
     </>
   );
 
+  const voiceHeaderActions = (
+    <Button
+      type='primary'
+      size='small'
+      icon={<Plus size='16' />}
+      onClick={() => voiceConfigurationRef.current?.openCreate()}
+    >
+      {t('settings.voiceConfigurationAdd')}
+    </Button>
+  );
+
   const supportNote = (
     <div
       className='rd-8px px-12px py-8px text-12px leading-5 border border-solid'
@@ -415,6 +429,11 @@ const ModelModalContent: React.FC = () => {
       {t('settings.customModelSupportNote')}
     </div>
   );
+
+  const categoryTabs = [
+    { key: 'large', label: t('settings.modelCategoryLarge') },
+    { key: 'voice', label: t('settings.modelCategoryVoice') },
+  ];
 
   return (
     <div
@@ -434,24 +453,41 @@ const ModelModalContent: React.FC = () => {
           data-testid='model-header'
           title={t('settings.model')}
           description={t('settings.modelDescription', {
-            defaultValue: 'Configure LLM providers and API keys for use across all assistants.',
+            defaultValue: 'Configure language and voice model services used by assistants.',
           })}
-          actions={headerActions}
+          actions={activeCategory === 'large' ? headerActions : voiceHeaderActions}
+          tabs={categoryTabs}
+          activeTab={activeCategory}
+          onTabChange={(key) => setActiveCategory(key as 'large' | 'voice')}
         />
       ) : (
         /* Modal mode keeps its compact self-contained header. */
         <div className='flex-shrink-0 border-b border-[var(--color-border-2)] pb-12px mb-14px flex flex-col gap-10px'>
           <div className='flex items-center justify-between gap-8px flex-wrap'>
             <div className='text-20px font-600 text-t-primary leading-34px'>{t('settings.model')}</div>
-            <div className='flex items-center gap-8px flex-wrap'>{headerActions}</div>
+            <div className='flex items-center gap-8px flex-wrap'>
+              {activeCategory === 'large' ? headerActions : voiceHeaderActions}
+            </div>
           </div>
-          {supportNote}
+          {activeCategory === 'large' ? supportNote : null}
+          <Tabs
+            activeTab={activeCategory}
+            onChange={(key) => setActiveCategory(key as 'large' | 'voice')}
+            type='line'
+            size='small'
+          >
+            {categoryTabs.map((tab) => (
+              <Tabs.TabPane key={tab.key} title={tab.label} />
+            ))}
+          </Tabs>
         </div>
       )}
 
       {/* Content Area */}
       <AionScrollArea className='flex-1 min-h-0' disableOverflow={isPageMode}>
-        {!data || data.length === 0 ? (
+        {activeCategory === 'voice' ? (
+          <VoiceModelConfiguration ref={voiceConfigurationRef} />
+        ) : !data || data.length === 0 ? (
           <div className='flex flex-col items-center justify-center py-40px'>
             <Info theme='outline' size='48' className='text-t-secondary mb-16px' />
             <h3 className='text-16px font-500 text-t-primary mb-8px'>{t('settings.noConfiguredModels')}</h3>

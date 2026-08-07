@@ -449,10 +449,12 @@
       "recordTooltip": "開始語音輸入",
       "pickFileTooltip": "選擇音訊檔案",
       "stopTooltip": "停止錄音",
+      "connecting": "正在連線語音服務，再次點擊可取消",
       "processing": "正在轉寫音訊...",
       "unsupported": "目前環境不支援語音輸入",
       "startShort": "語音",
       "stopShort": "停止",
+      "connectingShort": "連線中",
       "transcribingShort": "...",
       "audioCaptureError": "未偵測到可用麥克風",
       "emptyTranscript": "未識別到語音內容",
@@ -463,6 +465,40 @@
       "recordingUnsupported": "目前環境不支援直接錄音，請改為上傳音訊檔案",
       "transcriptionFailed": "音訊轉寫失敗",
       "genericError": "語音輸入失敗，請再試一次"
+    },
+    "realtimeVoice": {
+      "startTooltip": "開始即時語音對話",
+      "title": "即時語音",
+      "startFailed": "無法啟動即時語音工作階段",
+      "stopFailed": "結束工作階段失敗，請再試一次",
+      "confirmationFailed": "提交確認失敗",
+      "you": "你",
+      "ai": "AI",
+      "waitingForSpeech": "正在等待你說話…",
+      "waitingForReply": "正在等待 AI 回覆…",
+      "confirmationTitle": "確認執行此操作",
+      "reject": "拒絕",
+      "confirm": "確認",
+      "sessionError": "即時語音工作階段發生錯誤",
+      "mute": "關閉麥克風",
+      "unmute": "開啟麥克風",
+      "end": "結束對話",
+      "connection": {
+        "idle": "未開始",
+        "connecting": "連線中",
+        "connected": "已連線",
+        "reconnecting": "重新連線中",
+        "ended": "已結束",
+        "error": "連線錯誤"
+      },
+      "agent": {
+        "idle": "閒置",
+        "listening": "正在聆聽",
+        "thinking": "正在思考",
+        "speaking": "正在說話",
+        "tool-running": "正在執行操作",
+        "awaiting-confirmation": "等待確認"
+      }
     }
   },
   "sideQuestion": {

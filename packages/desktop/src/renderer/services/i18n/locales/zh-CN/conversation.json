@@ -450,10 +450,12 @@
       "recordTooltipWithShortcut": "语音输入 cmd+M",
       "pickFileTooltip": "选择音频文件",
       "stopTooltip": "停止录音",
+      "connecting": "正在连接语音服务，再次点击可取消",
       "processing": "正在转写音频...",
       "unsupported": "当前环境不支持语音输入",
       "startShort": "语音",
       "stopShort": "停止",
+      "connectingShort": "连接中",
       "transcribingShort": "...",
       "audioCaptureError": "未检测到可用麦克风",
       "emptyTranscript": "未识别到语音内容",
@@ -464,6 +466,40 @@
       "recordingUnsupported": "当前环境不支持直接录音，请改为上传音频文件",
       "transcriptionFailed": "音频转写失败",
       "genericError": "语音输入失败，请重试"
+    },
+    "realtimeVoice": {
+      "startTooltip": "开始实时语音对话",
+      "title": "实时语音",
+      "startFailed": "无法启动实时语音会话",
+      "stopFailed": "结束会话失败，请重试",
+      "confirmationFailed": "提交确认失败",
+      "you": "你",
+      "ai": "AI",
+      "waitingForSpeech": "正在等待你说话…",
+      "waitingForReply": "正在等待 AI 回复…",
+      "confirmationTitle": "确认执行此操作",
+      "reject": "拒绝",
+      "confirm": "确认",
+      "sessionError": "实时语音会话发生错误",
+      "mute": "关闭麦克风",
+      "unmute": "打开麦克风",
+      "end": "结束对话",
+      "connection": {
+        "idle": "未开始",
+        "connecting": "连接中",
+        "connected": "已连接",
+        "reconnecting": "重新连接中",
+        "ended": "已结束",
+        "error": "连接错误"
+      },
+      "agent": {
+        "idle": "空闲",
+        "listening": "正在聆听",
+        "thinking": "正在思考",
+        "speaking": "正在说话",
+        "tool-running": "正在执行操作",
+        "awaiting-confirmation": "等待确认"
+      }
     }
   },
   "sideQuestion": {
