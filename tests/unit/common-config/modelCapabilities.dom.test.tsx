@@ -350,6 +350,27 @@ describe('updateModelSettings', () => {
       )
     ).toEqual({ other: { image_input: 'supported' } });
   });
+
+  it('preserves runtime-owned tool choice while editing user-facing settings', () => {
+    expect(
+      updateModelSettings(
+        {
+          'deepseek-v4-flash': {
+            image_input: 'supported',
+            initial_tool_choice: 'required',
+          },
+        },
+        ['deepseek-v4-flash'],
+        'auto',
+        'responses'
+      )
+    ).toEqual({
+      'deepseek-v4-flash': {
+        initial_tool_choice: 'required',
+        openai_api_mode: 'responses',
+      },
+    });
+  });
 });
 
 describe('model capability selectors', () => {
