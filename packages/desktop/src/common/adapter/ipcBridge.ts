@@ -78,6 +78,13 @@ import type {
   ITeamSlotWorkChangedEvent,
   ITeamTaskChangedEvent,
   ITeamTaskItem,
+  ITeamWorkCommandEnvelope,
+  ITeamWorkCommandReceipt,
+  ITeamWorkEvent,
+  ITeamWorkEventBatch,
+  ITeamWorkSnapshot,
+  ITeamWorkTask,
+  ICreateTeamWorkTaskRequest,
   ICancelTeamChildTurnParams,
   ICancelTeamRunParams,
   IPauseTeamSlotParams,
@@ -2216,6 +2223,27 @@ export const team = {
     if (p.kind) q.set('kind', p.kind);
     return `/api/teams/${p.team_id}/activity?${q.toString()}`;
   }),
+  getWorkSnapshot: httpGet<ITeamWorkSnapshot, { team_id: string }>((p) => `/api/teams/${p.team_id}/work/snapshot`),
+  listWorkEvents: httpGet<ITeamWorkEventBatch, { team_id: string; after_sequence: number; limit?: number }>((p) => {
+    const query = new URLSearchParams({ after_sequence: String(p.after_sequence) });
+    if (p.limit != null) query.set('limit', String(p.limit));
+    return `/api/teams/${p.team_id}/work/events?${query.toString()}`;
+  }),
+  createWorkTask: httpPost<ITeamWorkTask, { team_id: string; task: ICreateTeamWorkTaskRequest }>(
+    (p) => `/api/teams/${p.team_id}/work/tasks`,
+    (p) => p.task
+  ),
+  applyWorkCommand: httpPost<
+    ITeamWorkCommandReceipt,
+    { team_id: string; task_id: string; envelope: ITeamWorkCommandEnvelope }
+  >(
+    (p) => `/api/teams/${p.team_id}/work/tasks/${p.task_id}/commands`,
+    (p) => p.envelope
+  ),
+  reconcileStaleWork: httpPost<ITeamWorkCommandReceipt[], { team_id: string }>(
+    (p) => `/api/teams/${p.team_id}/work/reconcile-stale`,
+    () => undefined
+  ),
   sendMessage: httpPost<ITeamRunAck, ISendTeamMessageParams>(
     (p) => `/api/teams/${p.team_id}/messages`,
     (p) => ({
@@ -2265,6 +2293,7 @@ export const team = {
   sessionStatusChanged: wsEmitter<ITeamSessionStatusChangedEvent>('team.sessionStatusChanged'),
   taskChanged: wsEmitter<ITeamTaskChangedEvent>('team.taskChanged'),
   mailboxChanged: wsEmitter<ITeamMailboxChangedEvent>('team.mailboxChanged'),
+  workEvent: wsEmitter<ITeamWorkEvent>('team.workEvent'),
   sessionChanged: wsEmitter<ITeamSessionChangedEvent>('team.sessionChanged'),
   runAccepted: wsEmitter<ITeamRunEvent>('team.runAccepted'),
   runStarted: wsEmitter<ITeamRunEvent>('team.runStarted'),

@@ -22,7 +22,7 @@ import TeamTabs from './components/TeamTabs';
 import TeamChatView from './components/TeamChatView';
 import TeamAgentIdentity from './components/TeamAgentIdentity';
 import TeamViewToggle from './components/TeamViewToggle';
-import TeamActivityView from './activity/TeamActivityView';
+import TeamControlBoard from './control-board/TeamControlBoard';
 import TeamWarmupOverlay from './components/TeamWarmupOverlay';
 import { useTeamViewMode } from './hooks/useTeamViewMode';
 import { useTeamWarmup, type TeamWarmupMemberState, type TeamWarmupPhase } from './hooks/useTeamWarmup';
@@ -516,7 +516,7 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
             {viewMode === 'board' ? (
               // 看板视图：只读展现全队 mailbox 与 task-board。
               <div className='flex-1 h-full min-w-0'>
-                <TeamActivityView team={team} />
+                <TeamControlBoard team={team} />
               </div>
             ) : isSingleView ? (
               // 单聊视图：全屏显示当前选中成员（activeSlotId），找不到时回退到 Leader。
