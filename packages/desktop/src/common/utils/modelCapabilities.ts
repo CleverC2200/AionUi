@@ -81,15 +81,14 @@ export const updateModelSettings = (
   const next = { ...current };
 
   for (const modelId of modelIds) {
-    if (imageInput === 'auto' && openAiApiMode === 'auto') {
-      delete next[modelId];
-      continue;
-    }
+    const settings: ModelSettings = { ...current?.[modelId] };
+    if (imageInput === 'auto') delete settings.image_input;
+    else settings.image_input = imageInput;
+    if (openAiApiMode === 'auto') delete settings.openai_api_mode;
+    else settings.openai_api_mode = openAiApiMode;
 
-    const settings: ModelSettings = {};
-    if (imageInput !== 'auto') settings.image_input = imageInput;
-    if (openAiApiMode !== 'auto') settings.openai_api_mode = openAiApiMode;
-    next[modelId] = settings;
+    if (Object.keys(settings).length === 0) delete next[modelId];
+    else next[modelId] = settings;
   }
 
   return next;

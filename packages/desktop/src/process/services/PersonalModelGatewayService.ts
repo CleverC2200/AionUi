@@ -8,6 +8,8 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import http, { type IncomingHttpHeaders, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import https from 'node:https';
 import type { AddressInfo } from 'node:net';
+import { Transform } from 'node:stream';
+import { StringDecoder } from 'node:string_decoder';
 import { GEA_PERSONAL_PROVIDER_PREFIX } from '@/common/config/geaPersonalModel';
 import type { IProvider } from '@/common/config/storage';
 import type { LarkAuthUser, PersonalModelSyncResult } from '@/common/types/platform/larkAuth';
@@ -260,9 +262,15 @@ function buildManagedProvider(
     model_health: existing?.model_health
       ? Object.fromEntries(Object.entries(existing.model_health).filter(([model]) => modelSet.has(model)))
       : undefined,
-    model_settings: existing?.model_settings
-      ? Object.fromEntries(Object.entries(existing.model_settings).filter(([model]) => modelSet.has(model)))
-      : undefined,
+    model_settings: Object.fromEntries(
+      models.map((model) => [
+        model,
+        {
+          ...existing?.model_settings?.[model],
+          initial_tool_choice: 'required' as const,
+        },
+      ])
+    ),
   };
 }
 
@@ -333,8 +341,15 @@ export class LocalPersonalModelProxy implements PersonalModelProxy {
         headers,
       },
       (upstreamResponse) => {
-        res.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
-        upstreamResponse.pipe(res);
+        const responseHeaders = { ...upstreamResponse.headers };
+        const normalizeSse = shouldNormalizeGeaSse(
+          responseHeaders['content-type'],
+          responseHeaders['content-encoding']
+        );
+        if (normalizeSse) delete responseHeaders['content-length'];
+        res.writeHead(upstreamResponse.statusCode ?? 502, responseHeaders);
+        if (normalizeSse) upstreamResponse.pipe(createGeaSseNormalizer()).pipe(res);
+        else upstreamResponse.pipe(res);
         if (upstreamResponse.statusCode === 401 || upstreamResponse.statusCode === 403) {
           this.routes.delete(providerId);
           void route.onRejected(upstreamResponse.statusCode);
@@ -347,6 +362,65 @@ export class LocalPersonalModelProxy implements PersonalModelProxy {
     });
     req.on('aborted', () => upstream.destroy());
     req.pipe(upstream);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function shouldNormalizeGeaSse(
+  contentType: string | string[] | undefined,
+  contentEncoding: string | undefined
+): boolean {
+  const resolvedContentType = Array.isArray(contentType) ? contentType[0] : contentType;
+  return (
+    resolvedContentType?.toLowerCase().startsWith('text/event-stream') === true &&
+    (!contentEncoding || contentEncoding.toLowerCase() === 'identity')
+  );
+}
+
+function createGeaSseNormalizer(): Transform {
+  const decoder = new StringDecoder('utf8');
+  let pending = '';
+
+  return new Transform({
+    transform(chunk, _encoding, callback) {
+      pending += decoder.write(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      const lines = pending.split('\n');
+      pending = lines.pop() ?? '';
+      if (lines.length > 0) this.push(`${lines.map(normalizeGeaSseLine).join('\n')}\n`);
+      callback();
+    },
+    flush(callback) {
+      pending += decoder.end();
+      if (pending) this.push(normalizeGeaSseLine(pending));
+      callback();
+    },
+  });
+}
+
+function normalizeGeaSseLine(line: string): string {
+  const carriageReturn = line.endsWith('\r') ? '\r' : '';
+  const content = carriageReturn ? line.slice(0, -1) : line;
+  if (!content.startsWith('data:')) return line;
+
+  const rawData = content.slice('data:'.length);
+  const data = rawData.startsWith(' ') ? rawData.slice(1) : rawData;
+  if (data === '[DONE]') return `data: [DONE]${carriageReturn}`;
+
+  try {
+    const event = JSON.parse(data) as Record<string, unknown>;
+    if (Array.isArray(event.choices)) {
+      event.choices = event.choices.map((choice) =>
+        isRecord(choice) && choice.finish_reason === 'tool_execution'
+          ? { ...choice, finish_reason: 'tool_calls' }
+          : choice
+      );
+    }
+    return `data: ${JSON.stringify(event)}${carriageReturn}`;
+  } catch {
+    return `data: ${data}${carriageReturn}`;
   }
 }
 

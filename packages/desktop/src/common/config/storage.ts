@@ -496,9 +496,12 @@ export type ModelOpenAiApiMode = 'chat_completions' | 'responses';
 
 export type ModelImageInputCapability = 'supported' | 'unsupported';
 
+export type ModelInitialToolChoice = 'auto' | 'required';
+
 export type ModelSettings = {
   image_input?: ModelImageInputCapability;
   openai_api_mode?: ModelOpenAiApiMode;
+  initial_tool_choice?: ModelInitialToolChoice;
 };
 
 export interface IProvider {

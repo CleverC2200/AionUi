@@ -107,6 +107,9 @@ describe('PersonalModelGatewayService', () => {
       api_key: 'local-proxy-key',
       models: ['deepseek-v4-flash'],
       enabled: true,
+      model_settings: {
+        'deepseek-v4-flash': { initial_tool_choice: 'required' },
+      },
     });
     expect(JSON.stringify(providerStore.providers[0])).not.toContain('sk-user-sensitive');
   });
@@ -284,6 +287,104 @@ describe('LocalPersonalModelProxy', () => {
 
     expect(response.status).toBe(200);
     expect(upstreamAuthorization).toBe('Bearer sk-user-sensitive');
+  });
+
+  it('passes tool_choice through without inferring it from message roles', async () => {
+    const upstreamBodies: Array<Record<string, unknown>> = [];
+    upstream = http.createServer((req, res) => {
+      let body = '';
+      req.setEncoding('utf8');
+      req.on('data', (chunk) => {
+        body += chunk;
+      });
+      req.on('end', () => {
+        upstreamBodies.push(JSON.parse(body) as Record<string, unknown>);
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }));
+      });
+    });
+    await new Promise<void>((resolve) => upstream!.listen(0, '127.0.0.1', resolve));
+    const upstreamPort = (upstream.address() as AddressInfo).port;
+    proxy = new LocalPersonalModelProxy();
+    const config = await proxy.register(
+      {
+        userId: 'user-1',
+        credentialId: 'credential-1',
+        accessKeyId: 'uk-gea-1',
+        agentCode: 'sales-forecast',
+        baseUrl: `http://127.0.0.1:${upstreamPort}/v1`,
+        proxyKey: 'local-proxy-key',
+        secret: 'sk-user-sensitive',
+      },
+      vi.fn()
+    );
+    const tools = [
+      {
+        type: 'function',
+        function: { name: 'query_data', description: 'Query data', parameters: { type: 'object' } },
+      },
+    ];
+    const request = (messages: Array<Record<string, unknown>>, toolChoice?: string) =>
+      fetch(`${config.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages,
+          tools,
+          ...(toolChoice ? { tool_choice: toolChoice } : {}),
+        }),
+      });
+
+    await request([{ role: 'user', content: 'query this month' }]);
+    await request([
+      { role: 'user', content: 'query this month' },
+      { role: 'assistant', tool_calls: [{ id: 'call-1', type: 'function' }] },
+      { role: 'tool', tool_call_id: 'call-1', content: '{}' },
+    ]);
+    await request([{ role: 'user', content: 'answer directly' }], 'auto');
+
+    expect(upstreamBodies[0]).not.toHaveProperty('tool_choice');
+    expect(upstreamBodies[1]).not.toHaveProperty('tool_choice');
+    expect(upstreamBodies[2].tool_choice).toBe('auto');
+  });
+
+  it('normalizes GEA tool execution SSE events for the OpenAI-compatible client', async () => {
+    upstream = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.write(
+        'data:{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call-1","type":"function","function":{"name":"query_data","arguments":"{}"}}]},"finish_reason":"tool_execution"}]}\n\n'
+      );
+      res.end('data:[DONE]\n\n');
+    });
+    await new Promise<void>((resolve) => upstream!.listen(0, '127.0.0.1', resolve));
+    const upstreamPort = (upstream.address() as AddressInfo).port;
+    proxy = new LocalPersonalModelProxy();
+    const config = await proxy.register(
+      {
+        userId: 'user-1',
+        credentialId: 'credential-1',
+        accessKeyId: 'uk-gea-1',
+        agentCode: 'sales-forecast',
+        baseUrl: `http://127.0.0.1:${upstreamPort}/v1`,
+        proxyKey: 'local-proxy-key',
+        secret: 'sk-user-sensitive',
+      },
+      vi.fn()
+    );
+
+    const response = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'deepseek-chat', stream: true, messages: [] }),
+    });
+    const lines = (await response.text()).split('\n').filter(Boolean);
+
+    expect(lines[0]).toMatch(/^data: /);
+    expect(JSON.parse(lines[0].slice('data: '.length))).toMatchObject({
+      choices: [{ finish_reason: 'tool_calls', delta: { tool_calls: [{ id: 'call-1' }] } }],
+    });
+    expect(lines[1]).toBe('data: [DONE]');
   });
 
   it('completes a chat through the provider created from the authenticated user credential', async () => {
