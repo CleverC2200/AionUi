@@ -20,6 +20,7 @@ import FilePreview from '@renderer/components/media/FilePreview';
 import HorizontalFileList from '@renderer/components/media/HorizontalFileList';
 import MarkdownView from '@renderer/components/Markdown';
 import { stripThinkTags, hasThinkTags } from '@renderer/utils/chat/thinkTagFilter';
+import { buildTurnClipboardText } from '@renderer/utils/chat/turnCopy';
 import { stripSkillSuggest, hasSkillSuggest } from '@renderer/utils/chat/skillSuggestParser';
 import { isForkEnabled } from '@/common/chat/forkConversation';
 import { useForkConversation } from '@/renderer/hooks/chat/useForkConversation';
@@ -80,7 +81,10 @@ const MessageText: React.FC<{
   showCopyRow?: boolean;
   isLastMessage?: boolean;
   hasForkAnchor?: boolean;
-}> = ({ message, showCopyRow = true, isLastMessage = false, hasForkAnchor = false }) => {
+  /** All text segments of this message's turn, in order — the copy button
+   * copies the whole reply, not just the segment it happens to sit on. */
+  turnTexts?: string[];
+}> = ({ message, showCopyRow = true, isLastMessage = false, hasForkAnchor = false, turnTexts }) => {
   const logos = useAgentLogos();
   // Filter think tags from content before rendering
   // 在渲染前过滤 think 标签
@@ -127,7 +131,9 @@ const MessageText: React.FC<{
   const handleCopy = () => {
     const baseText = shouldRenderPlainText ? text : json ? JSON.stringify(data, null, 2) : text;
     const fileList = files.length ? `Files:\n${files.map((path) => `- ${path}`).join('\n')}\n\n` : '';
-    const textToCopy = fileList + baseText;
+    // An AI turn split by tool calls / thinking stores several text messages;
+    // the row sits on the last one but must copy the whole reply.
+    const textToCopy = turnTexts?.length ? buildTurnClipboardText(turnTexts) : fileList + baseText;
     copyText(textToCopy)
       .then(() => {
         setShowCopyAlert(true);
