@@ -8,7 +8,7 @@ E2E 测试会直接启动 Electron（`electron .`），并加载 `out/` 中预�
 
 ```bash
 # 完整构建（main + preload + renderer）
-bunx electron-vite build
+bunx electron-vite build --config packages/desktop/electron.vite.config.ts
 ```
 
 > `bun run start`（`electron-vite dev`）使用 Vite 的 HMR，并会自动热重载。
@@ -232,7 +232,7 @@ await page.screenshot({ path: 'tests/e2e/results/my-step.png' });
 
 ```bash
 # 在本地运行所有 E2E（开发模式，需要先构建）
-bunx electron-vite build && bun run test:e2e
+bunx electron-vite build --config packages/desktop/electron.vite.config.ts && bun run test:e2e
 
 # 使用 list reporter 仅运行 Team 测试
 bun run test:e2e:team
@@ -256,7 +256,7 @@ E2E_PACKAGED=1 bun run test:e2e
 **原因：** 源代码变更后没有重新构建。
 
 ```bash
-bunx electron-vite build
+bunx electron-vite build --config packages/desktop/electron.vite.config.ts
 ```
 
 ### `Bridge invoke timeout: xxx`
@@ -265,14 +265,14 @@ bunx electron-vite build
 
 - 检查 `src/common/adapter/ipcBridge.ts` 中的端点定义
 - 检查对应的 Bridge 文件（例如 `src/process/bridge/teamBridge.ts`）中是否调用了 `.provider()` 进行注册
-- 重新构建：`bunx electron-vite build`
+- 重新构建：`bunx electron-vite build --config packages/desktop/electron.vite.config.ts`
 
 ### 应用可以启动，但页面为空白
 
 **原因：** Renderer 构建缺失或已损坏。
 
 ```bash
-bunx electron-vite build
+bunx electron-vite build --config packages/desktop/electron.vite.config.ts
 ```
 
 ### 涉及 AI 响应的测试不稳定
