@@ -30,11 +30,11 @@
 </p>
 
 <p align="center">
-  <a href="../../readme.md">Development Guide</a> | <a href="./readme_ch.md">简体中文</a> | <a href="./readme_tw.md">繁體中文</a> | <a href="./readme_jp.md">日本語</a> | <a href="./readme_ko.md">한국어</a> | <a href="./readme_es.md">Español</a> | <a href="./readme_pt.md">Português</a> | <a href="./readme_tr.md">Türkçe</a> | <strong>Русский</strong> | <a href="./readme_uk.md">Українська</a> | <a href="https://www.aionui.com" target="_blank">Официальный сайт</a>
+  <a href="../../readme.md">English</a> | <a href="./readme_ch.md">简体中文</a> | <a href="./readme_tw.md">繁體中文</a> | <a href="./readme_jp.md">日本語</a> | <a href="./readme_ko.md">한국어</a> | <a href="./readme_es.md">Español</a> | <a href="./readme_pt.md">Português</a> | <a href="./readme_tr.md">Türkçe</a> | <strong>Русский</strong> | <a href="./readme_uk.md">Українська</a> | <a href="https://www.aionui.com" target="_blank">Официальный сайт</a>
 </p>
 
 <p align="center">
-  <strong>💬 Сообщество:</strong> <a href="https://discord.gg/2QAwJn7Egx" target="_blank">Discord (English)</a> | <a href="../../resources/wx-18.png" target="_blank">微信 (中文群)</a> | <a href="https://twitter.com/AionUI" target="_blank">Twitter</a>
+  <strong>💬 Сообщество:</strong> <a href="https://discord.gg/2QAwJn7Egx" target="_blank">Discord (English)</a> | <a href="../../resources/wx-19.png" target="_blank">微信 (中文群)</a> | <a href="https://twitter.com/AionUI" target="_blank">Twitter</a>
 </p>
 
 ---
@@ -64,7 +64,7 @@
 <p align="center">
 
 [✨ Cowork в действии](#-cowork-in-action) ·
-[🤔 Почему GEAUi?](#-why-choose-geaui-over-claude-cowork) ·
+[🤔 Почему GEAUi?](#-why-choose-aionui-over-claude-cowork) ·
 [🚀 Быстрый старт](#-quick-start) ·
 [💬 Сообщество](#-community--support)
 
@@ -76,14 +76,14 @@
 
 **GEAUi — это больше, чем просто клиент для чата.** Это платформа Cowork, где ИИ-агенты работают вместе с вами на вашем компьютере — читают файлы, пишут код, просматривают веб-страницы и автоматизируют задачи. Вы видите всё, что делает агент, и всегда остаётесь в управлении.
 
-|                                        | Традиционные ИИ-чаты | **GEAUi (Cowork)**                                                                                                       |
-| :------------------------------------- | :------------------- | :----------------------------------------------------------------------------------------------------------------------- |
-| ИИ может работать с вашими файлами     | Ограниченно или нет  | **Да — встроенный агент с полным доступом к файлам**                                                                     |
-| ИИ может выполнять многошаговые задачи | Ограниченно          | **Да — автономно с вашего одобрения**                                                                                    |
-| Удалённый доступ с телефона            | Редко                | **WebUI + Telegram / Lark / DingTalk / WeChat**                                                                          |
-| Запланированная автоматизация          | Нет                  | **Cron — 24/7 без присмотра**                                                                                            |
-| Несколько ИИ-агентов одновременно      | Нет                  | **Claude Code, Codex, Qwen Code, Hermes Agent, Snow CLI, Cursor Agent и 13+ других — автоопределение, единый интерфейс** |
-| Цена                                   | Бесплатно / Платно   | **Бесплатно и с открытым исходным кодом**                                                                                |
+|                                        | Традиционные ИИ-чаты | **GEAUi (Cowork)**                                                                                                   |
+| :------------------------------------- | :------------------- | :------------------------------------------------------------------------------------------------------------------- |
+| ИИ может работать с вашими файлами     | Ограниченно или нет  | **Да — встроенный агент с полным доступом к файлам**                                                                 |
+| ИИ может выполнять многошаговые задачи | Ограниченно          | **Да — автономно с вашего одобрения**                                                                                |
+| Удалённый доступ с телефона            | Редко                | **WebUI + Telegram / Lark / DingTalk / WeChat**                                                                      |
+| Запланированная автоматизация          | Нет                  | **Cron — 24/7 без присмотра**                                                                                        |
+| Несколько ИИ-агентов одновременно      | Нет                  | **Десятки внешних агентов, включая Claude Code, Codex, Qwen Code, Hermes Agent и Cursor Agent, в едином интерфейсе** |
+| Цена                                   | Бесплатно / Платно   | **Бесплатно и с открытым исходным кодом**                                                                            |
 
 <p align="center">
   <img src="../../resources/offica-ai BANNER-function.png" alt="GEAUi Cowork Platform" width="800">
@@ -106,7 +106,7 @@ GEAUi поставляется с полноценным движком ИИ-а�
 
 ### **Офисные ассистенты — PPT, Word и Excel**
 
-Эти направления соответствуют тому, что приложение действительно предоставляет: предустановки **Morph PPT** и навыки **`pptx` / `docx` / `xlsx`** (см. предустановки `assistant/` и `skills/` в репозитории). Нужен вывод в документы или таблицы? Встроенный **[OfficeCLI](https://github.com/iOfficeAI/OfficeCLI)** помогает превратить запрос в готовый PPT (Morph), Word (`.docx`) и Excel (`.xlsx/.xlsm/.csv`) быстрее и надёжнее.
+Эти направления соответствуют тому, что приложение действительно предоставляет: предустановки **Morph PPT** и навыки **`pptx` / `docx` / `xlsx`**. Канонические [определения ассистентов](https://github.com/iOfficeAI/AionCore/blob/main/crates/aionui-app/assets/builtin-assistants/assistants.json) и [встроенные навыки](https://github.com/iOfficeAI/AionCore/tree/main/crates/aionui-app/assets/builtin-skills) поддерживаются в GEACore. Нужен вывод в документы или таблицы? Встроенный **[OfficeCLI](https://github.com/iOfficeAI/OfficeCLI)** помогает превратить запрос в готовый PPT (Morph), Word (`.docx`) и Excel (`.xlsx/.xlsm/.csv`) быстрее и надёжнее.
 Три типа ассистентов соответствуют файловым рабочим процессам, а итоговые файлы можно сразу редактировать и использовать повторно.
 
 #### **Ассистент PPT**
@@ -163,7 +163,7 @@ GEAUi поставляется с полноценным движком ИИ-а�
 
 Если вы уже используете Claude Code, Codex, Hermes Agent или OpenClaw, GEAUi автоматически обнаружит их и позволит работать со всеми ними вместе со встроенным агентом.
 
-**Поддерживаемые агенты:** Встроенный агент (без настройки) • Claude Code • Codex • Qwen Code • Goose AI • OpenClaw • Augment Code • CodeBuddy • Kimi CLI • OpenCode • Factory Droid • GitHub Copilot • Qoder CLI • Mistral Vibe • Nanobot • GEA CLI (aionrs, Rust-бэкенд-сервис, поставляемый с GEAUi) • Snow CLI • Hermes Agent • Cursor Agent и другие
+**Поддерживаемые агенты:** Встроенный агент (на встроенном движке [aionrs](https://github.com/iOfficeAI/aionrs)) • Claude Code • Codex • Qwen Code • Gemini CLI • Goose • OpenClaw • Augment Code • CodeBuddy • Kimi CLI • OpenCode • Factory Droid • GitHub Copilot • Qoder • Mistral Vibe • Nanobot • Snow • Hermes • Cursor Agent • Pi • MiMo Code • omp • Antigravity и другие
 
 <p align="center">
   <img src="../../resources/multi-agent支持openclaw.gif" alt="Multi-Agent Cowork" width="800">
@@ -172,8 +172,8 @@ GEAUi поставляется с полноценным движком ИИ-а�
 - **Автоопределение** — автоматически распознаёт установленные CLI-инструменты
 - **Единый интерфейс** — одна платформа Cowork для всех ваших ИИ-агентов
 - **Параллельные сессии** — запуск нескольких агентов одновременно с независимым контекстом
-- **Единое управление MCP** — настройте MCP (Model Context Protocol) инструменты один раз, автоматическая синхронизация со всеми агентами — не нужно настраивать каждый агент отдельно
-- **YOLO Mode / Full-Auto Mode** — одним кликом пропускайте запросы разрешений; все агенты поддерживают полностью автоматический режим для работы без присмотра
+- **Единое управление MCP** — управляйте MCP-инструментами в одном месте; GEAUi внедряет или синхронизирует совместимые транспорты с учётом возможностей каждого агента
+- **YOLO / Full-Auto Mode** — поддерживаемые агенты могут предоставлять режим без присмотра; доступные режимы и разрешения зависят от выбранного агента
 
 ### Team Mode — скоординированная мультиагентная совместная работа
 
@@ -183,7 +183,7 @@ GEAUi поставляется с полноценным движком ИИ-а�
   <img src="../../resources/AionUi_team.gif" alt="Team Mode overview" width="800">
 </p>
 
-- **Параллельное выполнение нескольких агентов** — Leader разбивает задачи на подзадачи и делегирует параллельно работающим Teammate-агентам; каждый Teammate использует свою модель через ACP (Agent Communication Protocol, слой координации мультиагентности GEAUi), Gemini или Aionrs
+- **Параллельное выполнение нескольких агентов** — Leader разбивает и делегирует задачи Teammate-агентам; внешние агенты подключаются через ACP (Agent Client Protocol), а GEAUi координирует команду
 - **Оркестрация Leader** — Leader назначает, отслеживает и агрегирует результаты; поддерживаемые бэкенды: Claude Code, Codex, Hermes Agent, Gemini, Snow CLI, GEA CLI
 - **Изолированное рабочее пространство команды** — все агенты совместно используют одну папку; у каждого есть свой диалог подтверждения разрешений с бейджем на боковой панели для ожидающих подтверждений
 
@@ -280,9 +280,11 @@ GEAUi включает **21 профессиональный ассистент*
 - **🔧 OpenClaw Setup** — ассистент по настройке и конфигурации интеграции OpenClaw
 - **📖 Story Roleplay** — иммерсивная ролевая игра с карточками персонажей и информацией о мире (совместимо с SillyTavern)
 
-**Пользовательские навыки**: создавайте навыки в директории `skills/`, включайте/отключайте навыки для ассистентов, расширяя возможности ИИ. Навыки поступают из трёх источников: встроенные (поставляются с GEAUi), пользовательские (ваши собственные) и Extension (через Extension SDK). Встроенные навыки включают `pptx`, `docx`, `pdf`, `xlsx`, `mermaid` и другие.
+- **🧭 GEAUi Butler** — Руководство по продукту, помощь в настройке и устранение неполадок внутри GEAUi
 
-> 💡 Каждый ассистент определяется markdown-файлом. Проверьте директорию `assistant/` для примеров.
+**Пользовательские навыки**: импортируйте или создавайте навыки в **Настройки → Skills**, затем назначайте их нужным ассистентам. Навыки поступают из трёх источников: встроенные, пользовательские и Extension. Встроенные навыки включают `pptx`, `docx`, `pdf`, `xlsx`, `mermaid` и другие.
+
+> 💡 Канонические встроенные определения находятся в [каталоге ассистентов](https://github.com/iOfficeAI/AionCore/blob/main/crates/aionui-app/assets/builtin-assistants/assistants.json) GEACore. Правила остаются в Markdown и настраиваются в GEAUi.
 
 </details>
 
@@ -704,7 +706,7 @@ brew install aionui
 - [Сообщить о проблемах](https://github.com/iOfficeAI/AionUi/issues) — ошибки и запросы функций
 - [Обновления релизов](https://github.com/iOfficeAI/AionUi/releases) — получите последнюю версию
 - [Сообщество Discord](https://discord.gg/2QAwJn7Egx) — англоязычное сообщество
-- [Группа WeChat](../../resources/wx-18.png) — китайское сообщество
+- [Группа WeChat](../../resources/wx-19.png) — китайское сообщество
 
 ### Вклад в проект
 
