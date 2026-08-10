@@ -68,8 +68,8 @@ test.describe('Extension: Complete Capabilities', () => {
       expect((bodyText || '').length).toBeGreaterThan(30);
     }
 
-    const iframeCount = await page.locator('iframe[title*="Extension settings"]').count();
-    expect(iframeCount).toBeGreaterThan(0);
+    const embeddedSettingsCount = await page.locator('iframe[title*="Extension settings"], webview').count();
+    expect(embeddedSettingsCount).toBeGreaterThan(0);
   });
 
   test('extension channel plugins expose expected metadata schema', async ({ page }) => {

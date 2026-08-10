@@ -49,7 +49,10 @@ const MIGRATION_BACKEND_PORT = 25902;
  * Node version used at install time (Electron vs. Playwright worker mismatch).
  */
 function querySqliteIds(dataDir: string, sql: string): string[] {
-  const dbPath = path.join(dataDir, 'aionui.db');
+  const dbPath = ['aionui-backend.db', 'aionui.db']
+    .map((name) => path.join(dataDir, name))
+    .find((candidate) => fs.existsSync(candidate));
+  if (!dbPath) throw new Error(`Sibling backend database not found in ${dataDir}`);
   const out = execFileSync('sqlite3', ['-readonly', dbPath, sql], { encoding: 'utf8' });
   return out
     .split('\n')
@@ -59,9 +62,11 @@ function querySqliteIds(dataDir: string, sql: string): string[] {
 
 /** Backend binary resolved from PATH / cargo bin. */
 function resolveBackendBinary(): string {
-  const candidates = [process.env.AIONUI_BACKEND_BINARY, path.join(os.homedir(), '.cargo', 'bin', 'aioncore')].filter(
-    (x): x is string => typeof x === 'string' && x.length > 0
-  );
+  const candidates = [
+    process.env.AIONUI_AIONCORE_BINARY,
+    process.env.AIONUI_BACKEND_BINARY,
+    path.join(os.homedir(), '.cargo', 'bin', 'aioncore'),
+  ].filter((x): x is string => typeof x === 'string' && x.length > 0);
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;
   }
@@ -80,6 +85,7 @@ interface Assistant {
   enabled: boolean;
   sort_order: number;
   preset_agent_type: string;
+  agent_id?: string;
   name_i18n?: Record<string, string>;
   description_i18n?: Record<string, string>;
   prompts?: string[];
@@ -153,11 +159,15 @@ test.describe('Assistant User Data Migration (T5)', () => {
     const renamed = `E2E S3 Renamed ${stamp}`;
     const ruleBody = `# S3 rule ${stamp}\n\nHello.\n`;
 
+    const list = await httpGet<Assistant[]>(page, '/api/assistants');
+    const agentId = list.find((assistant) => assistant.agent_id)?.agent_id;
+    expect(agentId, 'expected at least one assistant with an explicit agent_id').toBeTruthy();
+
     // Create via HTTP to avoid UI-creation cost.
     const created = await httpPost<Assistant>(page, '/api/assistants', {
       name: initial.name,
       description: initial.description,
-      preset_agent_type: 'gemini',
+      agent_id: agentId,
     });
     expect(created.id).toBeTruthy();
 
@@ -191,9 +201,13 @@ test.describe('Assistant User Data Migration (T5)', () => {
     const stamp = Date.now();
     const name = `E2E S4 Delete ${stamp}`;
 
+    const list = await httpGet<Assistant[]>(page, '/api/assistants');
+    const agentId = list.find((assistant) => assistant.agent_id)?.agent_id;
+    expect(agentId, 'expected at least one assistant with an explicit agent_id').toBeTruthy();
+
     const created = await httpPost<Assistant>(page, '/api/assistants', {
       name,
-      preset_agent_type: 'gemini',
+      agent_id: agentId,
     });
     await httpPost(page, '/api/skills/assistant-rule/write', {
       assistant_id: created.id,
@@ -374,6 +388,13 @@ test.describe('Assistant User Data Migration (T5)', () => {
       return json.data;
     }
 
+    async function getSiblingAgentId(): Promise<string> {
+      const assistants = await httpJson<Assistant[]>('GET', '/api/assistants');
+      const agentId = assistants.find((assistant) => assistant.agent_id)?.agent_id;
+      if (!agentId) throw new Error('Sibling backend exposed no assistant agent_id for import fixtures');
+      return agentId;
+    }
+
     async function stopBackend(): Promise<void> {
       if (!backend) return;
       const p = backend;
@@ -428,14 +449,15 @@ test.describe('Assistant User Data Migration (T5)', () => {
     // ── Scenario 8 — Happy path ────────────────────────────────────────────
 
     test('S8: legacy import happy path — 3 user rows land, built-ins filtered', async () => {
+      const agentId = await getSiblingAgentId();
       // The Electron migration hook filters built-ins (prefix + whitelist)
       // *before* calling /api/assistants/import. We replay the same
       // filtering that migrateAssistants.ts does.
       const legacyPayload = {
         assistants: [
-          { id: 'custom-s8-alpha', name: 'Alpha' },
-          { id: 'custom-s8-beta', name: 'Beta' },
-          { id: 'custom-s8-gamma', name: 'Gamma' },
+          { id: 'custom-s8-alpha', name: 'Alpha', agent_id: agentId },
+          { id: 'custom-s8-beta', name: 'Beta', agent_id: agentId },
+          { id: 'custom-s8-gamma', name: 'Gamma', agent_id: agentId },
           // Built-in rows are filtered by the hook itself, so no payload
           // entry for them here (the hook strips `builtin-*` before import).
         ],
@@ -459,10 +481,11 @@ test.describe('Assistant User Data Migration (T5)', () => {
     // ── Scenario 9 — Retry idempotency ────────────────────────────────────
 
     test('S9: retry import is idempotent (skips existing, no duplicates)', async () => {
+      const agentId = await getSiblingAgentId();
       const payload = {
         assistants: [
-          { id: 'custom-s9-retry', name: 'Retry' },
-          { id: 'custom-s9-other', name: 'Other' },
+          { id: 'custom-s9-retry', name: 'Retry', agent_id: agentId },
+          { id: 'custom-s9-other', name: 'Other', agent_id: agentId },
         ],
       };
       const first = await httpJson<ImportResult>('POST', '/api/assistants/import', payload);
@@ -482,14 +505,15 @@ test.describe('Assistant User Data Migration (T5)', () => {
     // ── Scenario 10 — Collision rename ────────────────────────────────────
 
     test('S10: legacy row with built-in id is either skipped (if hook renames) or rejected', async () => {
+      const agentId = await getSiblingAgentId();
       // Contract: /api/assistants/import MUST skip any payload entry whose
       // id matches a known built-in. The frontend migration hook first
       // renames colliding ids to `custom-migrated-*` *before* calling this
       // endpoint (spec §8.1); the renamed row then imports cleanly.
       const collisionPayload = {
         assistants: [
-          { id: BUILTIN_PROBE_ID, name: 'Hijacked' }, // hook would have renamed
-          { id: `custom-migrated-1700000000000-abcd`, name: 'Hijacked' }, // post-rename form
+          { id: BUILTIN_PROBE_ID, name: 'Hijacked', agent_id: agentId }, // hook would have renamed
+          { id: `custom-migrated-1700000000000-abcd`, name: 'Hijacked', agent_id: agentId }, // post-rename form
         ],
       };
       const result = await httpJson<ImportResult>('POST', '/api/assistants/import', collisionPayload);

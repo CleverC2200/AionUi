@@ -81,14 +81,25 @@ export async function getExtensionSnapshot(page: Page): Promise<ExtensionSnapsho
 }
 
 export async function getChannelPluginStatus(page: Page): Promise<ChannelPluginStatus[]> {
-  const result = (await invokeBridge(page, 'channel.get-plugin-status')) as {
+  const result = (await invokeBridge(page, 'channel.get-plugin-status')) as
+    | ChannelPluginStatus[]
+    | {
+        success?: boolean;
+        data?: ChannelPluginStatus[];
+      };
+
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  const legacyResult = result as {
     success?: boolean;
     data?: ChannelPluginStatus[];
   };
 
-  if (!result?.success || !Array.isArray(result.data)) {
+  if (!legacyResult?.success || !Array.isArray(legacyResult.data)) {
     return [];
   }
 
-  return result.data;
+  return legacyResult.data;
 }

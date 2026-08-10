@@ -10,6 +10,7 @@
 import { test, expect } from '../../../fixtures';
 import {
   goToSkillsHub,
+  refreshSkillsHub,
   importSkillViaBridge,
   createTempExternalSource,
   createTestSkill,
@@ -59,8 +60,7 @@ test.describe('Skills Hub - Special Cases (P2)', () => {
         results.map((r) => r.success)
       );
 
-      await goToSkillsHub(page);
-      await page.waitForTimeout(500);
+      await refreshSkillsHub(page);
 
       // Screenshot 02: After importing skills with special chars
       await takeScreenshot(page, 'skills-hub/tc-s-24/02-after-import.png');
@@ -76,6 +76,7 @@ test.describe('Skills Hub - Special Cases (P2)', () => {
       const allCards = page.locator('[data-testid^="my-skill-card-"]');
       const cardCount = await allCards.count();
       console.log(`[TC-S-24] Total skill cards visible: ${cardCount}`);
+      expect(cardCount).toBeGreaterThanOrEqual(specialNames.length);
 
       // Screenshot 04: Final state
       await takeScreenshot(page, 'skills-hub/tc-s-24/04-final-state.png');
@@ -111,8 +112,7 @@ test.describe('Skills Hub - Special Cases (P2)', () => {
       }
 
       // Navigate to Skills Hub to render all skills
-      await goToSkillsHub(page);
-      await page.waitForTimeout(1000);
+      await refreshSkillsHub(page);
 
       // Screenshot 02: After importing 20 skills
       await takeScreenshot(page, 'skills-hub/tc-s-25/02-all-skills-imported.png');
@@ -151,6 +151,7 @@ test.describe('Skills Hub - Special Cases (P2)', () => {
   // ============================================================================
 
   test('TC-S-26: should handle rapid refresh clicks without crashing', async ({ page }) => {
+    test.skip(true, 'The dedicated Skills refresh button was removed; data refreshes on page mount');
     // Screenshot 01: Initial state
     await takeScreenshot(page, 'skills-hub/tc-s-26/01-initial-state.png');
 

@@ -40,10 +40,10 @@ test.describe('Team Assistant Leader Options', () => {
     await navigateTo(page, '#/team');
 
     // Close any leftover modal from previous tests before interacting with the page
-    const existingModal = page.locator('.arco-modal button[aria-label="Close"]');
+    const existingModal = page.locator('.team-create-modal button[aria-label="Close"]');
     if (await existingModal.isVisible({ timeout: 1000 }).catch(() => false)) {
       await existingModal.first().click({ force: true });
-      await expect(page.locator('.arco-modal')).toBeHidden({ timeout: 5000 });
+      await expect(page.locator('.team-create-modal')).toBeHidden({ timeout: 5000 });
     }
 
     await expect(page.locator('[data-testid="team-create-btn"]').first()).toBeVisible({ timeout: 10000 });
@@ -98,8 +98,8 @@ test.describe('Team Assistant Leader Options', () => {
     expect(testIds.every((id) => !id.includes('cli::') && !id.includes('preset::'))).toBeTruthy();
     expect(optionAssistantIds.every((id) => assistantIds.has(id))).toBeTruthy();
 
-    await page.locator('.arco-modal button[aria-label="Close"]').first().click();
-    await expect(page.locator('.arco-modal')).toBeHidden({ timeout: 5000 });
+    await modal.locator('button[aria-label="Close"]').first().click();
+    await expect(modal).toBeHidden({ timeout: 5000 });
   });
 
   test('UI keeps backend team_selectable assistants selectable', async ({ page }) => {
@@ -146,7 +146,7 @@ test.describe('Team Assistant Leader Options', () => {
       await option.click();
       await modal.locator('[data-testid="team-create-name-input"]').fill(`E2E Team Selectable ${suffix}`);
 
-      const confirmBtn = modal.getByRole('button', { name: /create team|创建团队/i });
+      const confirmBtn = modal.getByRole('button', { name: /Confirm Create|确认创建|Create Team|创建团队/i });
       await expect(confirmBtn).toBeEnabled({ timeout: 5_000 });
     } finally {
       if (customAgentId) {

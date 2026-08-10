@@ -6,7 +6,13 @@
  * they're unit-testable and don't require a browser context.
  */
 
-export type ResponseMapperKey = 'dirOrFileTree' | 'flatFileList' | 'snapshotCompare' | 'conversation';
+export type ResponseMapperKey =
+  | 'dirOrFileTree'
+  | 'flatFileList'
+  | 'snapshotCompare'
+  | 'conversation'
+  | 'extensionWebui'
+  | 'channelPlugins';
 
 type DirOrFileRaw = {
   name: string;
@@ -95,6 +101,100 @@ function mapConversation(data: unknown): unknown {
   };
 }
 
+function mapExtensionWebui(data: unknown): unknown {
+  if (!Array.isArray(data)) return data;
+
+  const legacyShape = data.some((entry) => {
+    if (!entry || typeof entry !== 'object') return false;
+    const contribution = entry as Record<string, unknown>;
+    return 'api_routes' in contribution || 'apiRoutes' in contribution || 'static_assets' in contribution;
+  });
+
+  if (!legacyShape) {
+    const grouped = new Map<
+      string,
+      {
+        extensionName: string;
+        apiRoutes: Array<{ path: string; auth: boolean }>;
+        staticAssets: Array<{ urlPrefix: string; directory: string }>;
+      }
+    >();
+
+    for (const entry of data) {
+      if (!entry || typeof entry !== 'object') continue;
+      const contribution = entry as Record<string, unknown>;
+      const extensionName = String(contribution.extension_name ?? contribution.extensionName ?? '');
+      if (!extensionName) continue;
+      const aggregate = grouped.get(extensionName) ?? {
+        extensionName,
+        apiRoutes: [],
+        staticAssets: [],
+      };
+      const routes = contribution.routes;
+      if (Array.isArray(routes)) {
+        aggregate.apiRoutes.push(
+          ...routes.flatMap((route) => {
+            if (!route || typeof route !== 'object') return [];
+            const record = route as Record<string, unknown>;
+            return [{ path: String(record.path ?? ''), auth: Boolean(record.auth) }];
+          })
+        );
+      } else if (typeof contribution.directory === 'string') {
+        aggregate.staticAssets.push({
+          urlPrefix: `/${extensionName}/assets`,
+          directory: contribution.directory,
+        });
+      }
+      grouped.set(extensionName, aggregate);
+    }
+
+    return [...grouped.values()];
+  }
+
+  return data.map((entry) => {
+    if (!entry || typeof entry !== 'object') return entry;
+    const contribution = entry as Record<string, unknown>;
+    const apiRoutes = contribution.api_routes ?? contribution.apiRoutes;
+    const staticAssets = contribution.static_assets ?? contribution.staticAssets;
+
+    return {
+      ...contribution,
+      extensionName: contribution.extension_name ?? contribution.extensionName,
+      apiRoutes,
+      staticAssets: Array.isArray(staticAssets)
+        ? staticAssets.map((asset) => {
+            if (!asset || typeof asset !== 'object') return asset;
+            const record = asset as Record<string, unknown>;
+            return {
+              ...record,
+              urlPrefix: record.url_prefix ?? record.urlPrefix,
+            };
+          })
+        : staticAssets,
+    };
+  });
+}
+
+function mapChannelPlugins(data: unknown): unknown {
+  if (!Array.isArray(data)) return data;
+
+  return data.map((entry) => {
+    if (!entry || typeof entry !== 'object') return entry;
+    const plugin = entry as Record<string, unknown>;
+    return {
+      ...plugin,
+      id: plugin.plugin_id ?? plugin.id,
+      type: plugin.type ?? plugin.plugin_type,
+      connected: plugin.connected ?? false,
+      activeUsers: plugin.active_users ?? plugin.activeUsers ?? 0,
+      botUsername: plugin.bot_username ?? plugin.botUsername,
+      hasToken: plugin.has_token ?? plugin.hasToken ?? false,
+      isExtension: plugin.is_extension ?? plugin.isExtension,
+      extensionMeta: plugin.extension_meta ?? plugin.extensionMeta,
+    };
+  });
+}
+
 export const RESPONSE_MAPPERS: Record<ResponseMapperKey, (data: unknown) => unknown> = {
   dirOrFileTree: (data) => (Array.isArray(data) ? data.map(mapDirOrFile) : data),
   flatFileList: (data) => (Array.isArray(data) ? data.map((e) => mapFlatFile(e as Record<string, unknown>)) : data),
@@ -107,4 +207,6 @@ export const RESPONSE_MAPPERS: Record<ResponseMapperKey, (data: unknown) => unkn
     };
   },
   conversation: (data) => mapConversation(data),
+  extensionWebui: (data) => mapExtensionWebui(data),
+  channelPlugins: (data) => mapChannelPlugins(data),
 };

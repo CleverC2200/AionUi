@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { cleanupTeamsByName, createTeam } from '../../helpers';
+import { mkdirSync, rmSync } from 'node:fs';
 
 const TEAM_COLLAPSED = 'E2E Collapsed Team';
 const TEAM_WORKSPACE = 'E2E Workspace Team';
@@ -42,9 +43,8 @@ test.describe('Team UI Details', () => {
     await cleanupTeamsByName(page, TEAM_WORKSPACE);
 
     const tmpDir = `/tmp/e2e-workspace-${Date.now()}`;
+    mkdirSync(tmpDir, { recursive: true });
     await electronApp.evaluate(async ({ dialog }, dir) => {
-      const fs = await import('fs');
-      fs.mkdirSync(dir, { recursive: true });
       dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [dir] });
     }, tmpDir);
 
@@ -52,27 +52,24 @@ test.describe('Team UI Details', () => {
     await expect(createBtn).toBeVisible({ timeout: 10_000 });
     await createBtn.click();
 
-    const modal = page.locator('.arco-modal').last();
+    const modal = page.locator('.team-create-modal');
     await modal.waitFor({ state: 'visible', timeout: 5_000 });
 
     const nameInput = modal.getByRole('textbox').first();
     await nameInput.fill(TEAM_WORKSPACE);
 
-    const leaderSelect = modal.locator('[data-testid="team-create-leader-select"]');
-    const hasSelect = await leaderSelect.isVisible({ timeout: 3_000 }).catch(() => false);
-    if (!hasSelect) {
+    const firstOption = modal.locator('[data-testid^="team-create-agent-option-"]').first();
+    const hasOption = await firstOption.isVisible({ timeout: 3_000 }).catch(() => false);
+    if (!hasOption) {
       await modal
         .locator('.arco-btn')
         .filter({ hasText: /Cancel|取消/i })
         .first()
         .click({ force: true });
+      rmSync(tmpDir, { recursive: true, force: true });
       test.skip();
       return;
     }
-    await leaderSelect.click();
-
-    const firstOption = page.locator('[data-testid^="team-create-agent-option-"]').first();
-    await expect(firstOption).toBeVisible({ timeout: 5_000 });
     await firstOption.click();
 
     const trigger = modal.locator('[data-testid="team-create-workspace-trigger"]');
@@ -103,11 +100,6 @@ test.describe('Team UI Details', () => {
 
     await cleanupTeamsByName(page, TEAM_WORKSPACE);
 
-    await electronApp.evaluate(async (_ctx, dir) => {
-      const fs = await import('fs');
-      try {
-        fs.rmSync(dir, { recursive: true, force: true });
-      } catch {}
-    }, tmpDir);
+    rmSync(tmpDir, { recursive: true, force: true });
   });
 });

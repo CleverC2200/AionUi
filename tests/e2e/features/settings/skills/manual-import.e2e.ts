@@ -58,8 +58,11 @@ test.describe('Skills Hub - Manual Import (P1)', () => {
       // Screenshot 02: Before clicking import button
       await takeScreenshot(page, 'skills-hub/tc-s-29/02-before-click.png');
 
-      // Step 2: Click "Import from Folder" button
-      const importButton = page.locator('[data-testid="btn-manual-import"]');
+      // Step 2: Open Add Skill and choose the current manual import action.
+      const addSkillButton = page.getByTestId('btn-add-skill');
+      await expect(addSkillButton).toBeVisible();
+      await addSkillButton.click();
+      const importButton = page.getByTestId('btn-add-skill-manual');
       await expect(importButton).toBeVisible();
       await importButton.click();
 

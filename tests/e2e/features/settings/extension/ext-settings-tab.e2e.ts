@@ -44,6 +44,15 @@ async function waitForIframeLoaded(page: Page, timeoutMs = 15_000): Promise<void
     .toBe(1);
 }
 
+async function waitForExtensionSurface(page: Page, timeoutMs = 15_000): Promise<void> {
+  await expect
+    .poll(async () => (await page.locator(`${IFRAME_SEL}, webview`).count()) > 0, {
+      timeout: timeoutMs,
+      message: 'Waiting for the extension settings surface',
+    })
+    .toBeTruthy();
+}
+
 test.describe('Extension: Page-Route Entry', () => {
   test('page route sets correct hash', async ({ page }) => {
     await goToSettings(page, 'gemini');
@@ -67,8 +76,7 @@ test.describe('Extension: Page-Route Entry', () => {
 
     const siderItem = page.locator(settingsSiderItemById(tabId!));
     await expect(siderItem).toBeVisible({ timeout: 5_000 });
-    const cls = await siderItem.evaluate((el) => el.className);
-    expect(cls).toMatch(/active|selected/i);
+    await expect(siderItem).toHaveClass(/!bg-fill-3/);
   });
 });
 
@@ -80,6 +88,7 @@ test.describe('Extension: Iframe Content Rendering', () => {
 
     await goToExtensionSettings(page, tabId!);
     await waitForSettle(page);
+    await waitForExtensionSurface(page);
 
     const iframe = page.locator(IFRAME_SEL);
     const webview = page.locator('webview');
@@ -98,6 +107,7 @@ test.describe('Extension: Iframe Content Rendering', () => {
     test.skip(!tabId, 'No extension tabs installed');
 
     await goToExtensionSettings(page, tabId!);
+    await waitForExtensionSurface(page);
     test.skip((await page.locator(IFRAME_SEL).count()) === 0, 'External webview tab');
 
     await waitForIframeLoaded(page);
@@ -110,6 +120,7 @@ test.describe('Extension: Iframe Content Rendering', () => {
 
     await goToExtensionSettings(page, tabId!);
     await waitForSettle(page);
+    await waitForExtensionSurface(page);
 
     const iframe = page.locator(IFRAME_SEL);
     test.skip((await iframe.count()) === 0, 'No iframe found');
@@ -127,6 +138,7 @@ test.describe('Extension: Tab Switch Round-Trip', () => {
 
     await goToExtensionSettings(page, tabId!);
     await waitForSettle(page);
+    await waitForExtensionSurface(page);
 
     const iframe = page.locator(IFRAME_SEL);
     const hasIframe = (await iframe.count()) > 0;

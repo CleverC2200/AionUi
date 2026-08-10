@@ -41,11 +41,11 @@ test.describe('Guid Page', () => {
 
 test.describe('Settings Pages', () => {
   const tabs: { tab: SettingsTab; name: string }[] = [
-    { tab: 'gemini', name: 'Gemini Settings' },
     { tab: 'model', name: 'Model Settings' },
     { tab: 'agent', name: 'Agent/ACP Settings' },
+    { tab: 'skills', name: 'Skills Settings' },
     { tab: 'tools', name: 'Tools/MCP Settings' },
-    { tab: 'display', name: 'Display Settings' },
+    { tab: 'display', name: 'Appearance Settings' },
     { tab: 'webui', name: 'WebUI Settings' },
     { tab: 'system', name: 'System Settings' },
     { tab: 'about', name: 'About Page' },
@@ -54,7 +54,7 @@ test.describe('Settings Pages', () => {
   for (const { tab, name } of tabs) {
     test(`${name} loads`, async ({ page }) => {
       await goToSettings(page, tab);
-      await expectUrlContains(page, tab);
+      await expectUrlContains(page, ROUTES.settings[tab].replace(/^#\//, ''));
       const body = await page.locator('body').textContent();
       expect(body!.length).toBeGreaterThan(10);
     });

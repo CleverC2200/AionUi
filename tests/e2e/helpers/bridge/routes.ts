@@ -18,6 +18,28 @@ export type HttpRoute = {
  * to the legacy IPC bridge.
  */
 export const HTTP_ROUTES: Record<string, HttpRoute> = {
+  'extensions.get-loaded-extensions': { method: 'GET', path: '/api/extensions' },
+  'extensions.get-acp-adapters': { method: 'GET', path: '/api/extensions/acp-adapters' },
+  'extensions.get-mcp-servers': { method: 'GET', path: '/api/extensions/mcp-servers' },
+  'extensions.get-assistants': { method: 'GET', path: '/api/extensions/assistants' },
+  'extensions.get-agents': { method: 'GET', path: '/api/extensions/agents' },
+  'extensions.get-skills': { method: 'GET', path: '/api/extensions/skills' },
+  'extensions.get-themes': { method: 'GET', path: '/api/extensions/themes' },
+  'extensions.get-settings-tabs': { method: 'GET', path: '/api/extensions/settings-tabs' },
+  'extensions.get-webui-contributions': {
+    method: 'GET',
+    path: '/api/extensions/webui',
+    mapResponse: 'extensionWebui',
+  },
+  'extensions.get-permissions': { method: 'POST', path: '/api/extensions/permissions' },
+  'extensions.get-risk-level': { method: 'POST', path: '/api/extensions/risk-level' },
+  'extensions.enable': { method: 'POST', path: '/api/extensions/enable' },
+  'extensions.disable': { method: 'POST', path: '/api/extensions/disable' },
+  'channel.get-plugin-status': {
+    method: 'GET',
+    path: '/api/channel/plugins',
+    mapResponse: 'channelPlugins',
+  },
   'cron.list-jobs': {
     method: 'GET',
     path: '/api/cron/jobs',

@@ -82,7 +82,7 @@ test.describe('Team Workspace Migration', () => {
     const teamSection = page.locator('text=Teams').or(page.locator('text=团队'));
     await expect(teamSection.first()).toBeVisible({ timeout: 15_000 });
 
-    const createBtn = page.locator('.h-20px.w-20px.rd-4px').first();
+    const createBtn = page.locator('[data-testid="team-create-btn"]').first();
     await expect(createBtn).toBeVisible({ timeout: 10_000 });
     await createBtn.click();
 
@@ -92,13 +92,15 @@ test.describe('Team Workspace Migration', () => {
     const nameInput = modal.locator('input').first();
     await nameInput.fill(TEAM_NAME);
 
-    const agentCard = modal.locator('[data-testid^="team-create-agent-card-"]').first();
-    if (!(await agentCard.isVisible().catch(() => false))) {
+    const agentOption = modal.locator('[data-testid^="team-create-agent-option-"]').first();
+    if (!(await agentOption.isVisible().catch(() => false))) {
+      await modal.locator('button[aria-label="Close"]').first().click({ force: true });
+      await expect(modal).toBeHidden({ timeout: 5_000 });
       test.skip(true, 'No supported agents available');
       return;
     }
-    await agentCard.click();
-    await expect(modal.locator('[data-testid^="team-create-agent-selected-badge-"]').first()).toBeVisible({
+    await agentOption.click();
+    await expect(modal.locator('[data-testid^="team-create-member-draft-"]').first()).toBeVisible({
       timeout: 3_000,
     });
 

@@ -10,9 +10,6 @@
     "localesDir": "i18n",
     "defaultLocale": "en-US"
   },
-  "engine": {
-    "aionui": "^1.0.0"
-  },
   "lifecycle": {
     "onActivate": "scripts/activate.js",
     "onDeactivate": "scripts/deactivate.js"

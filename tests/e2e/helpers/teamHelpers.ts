@@ -28,15 +28,15 @@ export async function createTeam(page: Page, name: string, leaderType?: string):
   }
 
   await page.evaluate(() => {
-    window.location.hash = '#/team';
+    window.location.hash = '/guid';
   });
-  await page.waitForFunction(() => window.location.hash === '#/team', { timeout: 10_000 }).catch(() => {});
+  await page.waitForFunction(() => window.location.hash === '#/guid', { timeout: 10_000 });
 
   const createBtn = page.locator('[data-testid="team-create-btn"]').first();
   await createBtn.waitFor({ state: 'visible', timeout: 10_000 });
   await createBtn.click();
 
-  const modal = page.locator('.arco-modal').last();
+  const modal = page.locator('.team-create-modal');
   await modal.waitFor({ state: 'visible', timeout: 5_000 });
 
   const nameInput = modal.getByRole('textbox').first();
@@ -51,9 +51,13 @@ export async function createTeam(page: Page, name: string, leaderType?: string):
 
   const confirmBtn = modal.locator('.arco-btn-primary');
   await expect(confirmBtn).toBeEnabled({ timeout: 5_000 });
-  await confirmBtn.click();
-
-  await page.waitForURL(/\/team\/[^/?#]+/, { timeout: 15_000 });
+  try {
+    await confirmBtn.click();
+    await page.waitForURL(/\/team\/[^/?#]+/, { timeout: 15_000 });
+  } catch (error) {
+    await closeModal(page, modal);
+    throw error;
+  }
 
   const hash = await page.evaluate(() => window.location.hash);
   const match = hash.match(/#\/team\/([^/?#]+)/);
@@ -100,11 +104,7 @@ async function closeModal(page: Page, modal: Locator): Promise<void> {
   if ((await cancel.count().catch(() => 0)) > 0) {
     await cancel.click({ force: true }).catch(() => {});
   }
-  await page
-    .locator('.arco-modal')
-    .last()
-    .waitFor({ state: 'hidden', timeout: 5_000 })
-    .catch(() => {});
+  await modal.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
 }
 
 /**
@@ -146,8 +146,7 @@ export async function cleanupTeamsByName(page: Page, name: string): Promise<void
   }
 
   if (matches.length > 0) {
-    const url = page.url();
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(2_000);
+    await page.evaluate(() => window.location.assign('#/guid'));
+    await page.waitForFunction(() => window.location.hash === '#/guid', { timeout: 10_000 });
   }
 }

@@ -296,7 +296,7 @@ test.describe('Skills Hub - Core UI (P0)', () => {
 
     // Query all skills and find a real builtin skill
     const skills = await getMySkills(page);
-    const builtinSkills = skills.filter((s) => s.source === 'builtin');
+    const builtinSkills = skills.filter((s) => s.source === 'builtin' && !s.is_auto_inject);
 
     // Env-gated: dev-mode sandboxes and fresh CI runs may have no builtin
     // skills (builtin dir points at app bundle resources which are only
@@ -311,9 +311,12 @@ test.describe('Skills Hub - Core UI (P0)', () => {
     // Test the first builtin skill
     const firstBuiltin = builtinSkills[0];
     const normalizedName = normalizeTestId(firstBuiltin.name);
+    const officialTab = page.getByTestId('settings-tab-official');
+    await officialTab.click();
+    await expect(officialTab).toHaveAttribute('aria-selected', 'true');
 
     // Step 2: Locate the builtin skill card
-    const builtinCard = page.locator(`[data-testid="my-skill-card-${normalizedName}"]`);
+    const builtinCard = page.locator(`[data-testid="official-skill-card-${normalizedName}"]`);
     await expect(builtinCard).toBeVisible();
 
     // Step 3: Hover to card to reveal buttons
@@ -339,6 +342,7 @@ test.describe('Skills Hub - Core UI (P0)', () => {
   // ============================================================================
 
   test('TC-S-08: should render external skills section with custom source', async ({ page }) => {
+    test.skip(true, 'External source tabs were replaced by direct folder/zip import');
     // Setup: Create temporary external source with 1 skill (real directory + SKILL.md)
     const tempSource = createTempExternalSource('tc-s-08');
     try {
@@ -396,6 +400,7 @@ test.describe('Skills Hub - Core UI (P0)', () => {
   // ============================================================================
 
   test('TC-S-10: should import external skill via UI click', async ({ page }) => {
+    test.skip(true, 'External source cards were replaced by the Add Skill import flow');
     // Setup: Create external source with 1 skill (real directory + SKILL.md)
     const tempSource = createTempExternalSource('tc-s-10');
     try {
@@ -458,6 +463,7 @@ test.describe('Skills Hub - Core UI (P0)', () => {
   // ============================================================================
 
   test('TC-S-16: should add custom external path via UI', async ({ page, electronApp }) => {
+    test.skip(true, 'Persistent external source paths are no longer part of Skills settings');
     // Setup: Create real skill directory with SKILL.md
     const tempSource = createTempExternalSource('tc-s-16');
     try {
@@ -545,6 +551,7 @@ test.describe('Skills Hub - Core UI (P0)', () => {
   // ============================================================================
 
   test('TC-S-19: should export skill to external source via UI', async ({ page }) => {
+    test.skip(true, 'Export-to-external-source was removed from the current Skills settings');
     // Setup: Create real skill directory and export destination
     const skillName = `E2E-Test-Export-Source-${Date.now()}`;
     const tempExportDest = createTempExternalSource('tc-s-19-export');

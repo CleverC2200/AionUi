@@ -37,24 +37,32 @@ async function setWindowContentSize(
 }
 
 test.describe('Team Create - mobile (narrow screen)', () => {
-  let originalSize: { width: number; height: number } | null = null;
-
   test.beforeEach(async ({ electronApp }) => {
-    // Remember the current content size so we can restore it afterwards.
-    originalSize = await electronApp.evaluate(async ({ BrowserWindow }) => {
-      const win = BrowserWindow.getAllWindows().find((w) => !w.webContents.getURL().startsWith('devtools://'));
-      const [width, height] = win?.getContentSize() ?? [1200, 900];
-      return { width, height };
-    });
     // Force a known desktop width regardless of prior state (the window is shared
     // across specs; a previous run may have left it narrow).
     await setWindowContentSize(electronApp, DESKTOP_WIDTH, DESKTOP_HEIGHT);
   });
 
-  test.afterEach(async ({ electronApp }) => {
-    // Restore the original size — the Electron window is shared across specs.
-    if (originalSize) {
-      await setWindowContentSize(electronApp, originalSize.width, originalSize.height);
+  test.afterEach(async ({ electronApp, page }) => {
+    const modal = page.locator('.team-create-modal');
+    if (await modal.isVisible().catch(() => false)) {
+      await modal
+        .locator('button[aria-label="Close"]')
+        .first()
+        .click({ force: true })
+        .catch(() => {});
+      await expect(modal).toBeHidden({ timeout: 5_000 });
+    }
+    // Restore a known desktop size. The launch size may itself be narrow when
+    // Electron restores window state, and that must not leak into later specs.
+    await setWindowContentSize(electronApp, DESKTOP_WIDTH, DESKTOP_HEIGHT);
+    const createButton = page.locator('[data-testid="team-create-btn"]').first();
+    if (!(await createButton.isVisible().catch(() => false))) {
+      const expandSider = page.getByRole('button', { name: /Expand sidebar|展开侧边栏|展开/i }).first();
+      if (await expandSider.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await expandSider.click();
+        await expect(createButton).toBeVisible({ timeout: 5_000 });
+      }
     }
   });
 
@@ -64,9 +72,10 @@ test.describe('Team Create - mobile (narrow screen)', () => {
     await expect(createBtn).toBeVisible({ timeout: 15_000 });
     await createBtn.click();
 
-    await expect(
-      page.locator('.arco-modal h3').filter({ hasText: /Create Team|创建团队|New Team|新建团队/ })
-    ).toBeVisible({ timeout: 5_000 });
+    const modal = page.locator('.team-create-modal');
+    await expect(modal.getByRole('heading', { name: /Create Team|创建团队|New Team|新建团队/i })).toBeVisible({
+      timeout: 5_000,
+    });
 
     // Shrink below the breakpoint — the open modal re-renders into its mobile layout.
     await setWindowContentSize(electronApp, MOBILE_WIDTH, MOBILE_HEIGHT);
@@ -95,6 +104,8 @@ test.describe('Team Create - mobile (narrow screen)', () => {
     await page.screenshot({ path: 'tests/e2e/results/team-mobile-02-dropdown.png' });
 
     if (!hasOption || TEAM_SUPPORTED_BACKENDS.size === 0) {
+      await modal.locator('button[aria-label="Close"]').first().click({ force: true });
+      await expect(modal).toBeHidden({ timeout: 5_000 });
       console.log('[E2E] No supported assistant available — skipping mobile create flow');
       test.skip();
       return;
@@ -111,7 +122,7 @@ test.describe('Team Create - mobile (narrow screen)', () => {
     const nameInput = page.locator('[data-testid="team-create-name-input"]');
     await nameInput.fill('E2E Mobile Team');
 
-    const confirmBtn = page.locator('.arco-modal .arco-btn-primary');
+    const confirmBtn = modal.locator('.arco-btn-primary');
     await expect(confirmBtn).toBeEnabled({ timeout: 5_000 });
 
     await page.screenshot({ path: 'tests/e2e/results/team-mobile-03-filled.png' });

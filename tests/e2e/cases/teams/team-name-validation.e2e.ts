@@ -13,33 +13,31 @@ type ModalHandles = {
 };
 
 async function openCreateModal(page: import('@playwright/test').Page): Promise<ModalHandles> {
-  const createBtn = page.locator('.h-20px.w-20px.rd-4px').first();
+  const createBtn = page.locator('[data-testid="team-create-btn"]').first();
   await expect(createBtn).toBeVisible({ timeout: 10_000 });
   await createBtn.click();
 
-  const modal = page
-    .locator('.arco-modal')
-    .filter({ hasText: /Create Team|创建团队/ })
-    .first();
+  const modal = page.locator('.team-create-modal');
   await expect(modal).toBeVisible({ timeout: 5_000 });
 
-  const nameInput = modal.locator('input').first();
+  const nameInput = modal.locator('[data-testid="team-create-name-input"]');
   await expect(nameInput).toBeVisible({ timeout: 5_000 });
 
-  const submitBtn = page.locator('.arco-modal .arco-btn-primary');
+  const submitBtn = modal.locator('.arco-btn-primary');
 
   return { modal, nameInput, createBtn: submitBtn };
 }
 
 async function closeModal(page: import('@playwright/test').Page): Promise<void> {
-  const closeIcon = page.locator('.arco-modal button[aria-label="Close"]').first();
+  const modal = page.locator('.team-create-modal');
+  const closeIcon = modal.locator('button[aria-label="Close"]').first();
   const visible = await closeIcon.isVisible().catch(() => false);
   if (visible) {
     await closeIcon.click();
   } else {
     await page.keyboard.press('Escape');
   }
-  await expect(page.locator('.arco-modal')).toBeHidden({ timeout: 5_000 });
+  await expect(modal).toBeHidden({ timeout: 5_000 });
 }
 
 test.describe('Team Name Validation', () => {

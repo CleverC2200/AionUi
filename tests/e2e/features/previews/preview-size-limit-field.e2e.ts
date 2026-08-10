@@ -12,17 +12,11 @@
  * the broken build.
  */
 import { expect, test } from '../../fixtures';
-import { goToGuid } from '../../helpers';
+import { goToSettings } from '../../helpers';
 
 /** The field lives under settings → system, which is not the landing section. */
 async function openSystemSettings(page: import('@playwright/test').Page) {
-  await goToGuid(page);
-  await page.evaluate(() => window.location.assign('#/settings'));
-  // 'System' / 「系统」 — both spellings, so the file does not silently test one locale.
-  await page
-    .getByText(/^(系统|System)$/)
-    .first()
-    .click();
+  await goToSettings(page, 'system');
   await expect(page.getByText(/预览大小上限|Preview Size Limit/i).first()).toBeVisible({ timeout: 20_000 });
   // The section has three numeric fields; this one is last.
   return page.locator('.arco-input-number input').last();

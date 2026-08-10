@@ -142,6 +142,7 @@ test.describe('Skills Hub - Search (P1)', () => {
   // ============================================================================
 
   test('TC-S-12: should filter external skills list by search keyword', async ({ page }) => {
+    test.skip(true, 'External source lists were replaced by direct folder/zip import');
     // Setup: Create external source with 3 skills
     const tempSource = createTempExternalSource('tc-s-12');
     try {
@@ -194,6 +195,7 @@ test.describe('Skills Hub - Search (P1)', () => {
   // ============================================================================
 
   test('TC-S-13: should show empty state when external search has no match', async ({ page }) => {
+    test.skip(true, 'External source lists were replaced by direct folder/zip import');
     // Setup: Create external source with 1 skill
     const tempSource = createTempExternalSource('tc-s-13');
     try {

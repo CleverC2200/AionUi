@@ -39,32 +39,38 @@ test.describe('Team Create', () => {
     // Screenshot: modal open
     await page.screenshot({ path: 'tests/e2e/results/team-02-modal.png' });
 
-    // Verify Modal is visible with "Create Team" title
-    const modalTitle = page.locator('.arco-modal h3').filter({ hasText: /Create Team|创建团队/ });
+    // Verify Modal is visible with the current title.
+    const modal = page.locator('.team-create-modal');
+    const modalTitle = modal.getByRole('heading', { name: /New Team|新建团队|Create Team|创建团队/i });
     await expect(modalTitle).toBeVisible({ timeout: 5000 });
 
     // Verify Team name input exists
-    const modal = page.locator('.arco-modal');
     const nameInput = modal.getByRole('textbox').first();
     await expect(nameInput).toBeVisible();
 
     // Verify assistant leader choices render, or the empty-state appears.
+    const mobileLayout = modal.locator('[data-testid="team-create-layout-mobile"]');
+    if (await mobileLayout.isVisible().catch(() => false)) {
+      await modal.locator('[data-testid="team-create-add-member-btn"]').click();
+    }
     const leaderOptions = modal.locator('[data-testid^="team-create-agent-option-"]');
-    const noAssistantsMsg = page.locator('.arco-modal').getByText(/No supported assistants available|没有支持的助手/i);
+    const noAssistantsMsg = modal.getByText(/No supported assistants available|未检测到可用的助手|没有支持的助手/i);
+    const noMatchingAssistantsMsg = modal.getByText(/No results|未找到结果/i);
     const hasOptions = await leaderOptions
       .first()
       .isVisible({ timeout: 3000 })
       .catch(() => false);
     const hasNoAssistantsMsg = await noAssistantsMsg.isVisible({ timeout: 1000 }).catch(() => false);
-    expect(hasOptions || hasNoAssistantsMsg).toBeTruthy();
+    const hasNoMatchingAssistantsMsg = await noMatchingAssistantsMsg.isVisible({ timeout: 1000 }).catch(() => false);
+    expect(hasOptions || hasNoAssistantsMsg || hasNoMatchingAssistantsMsg).toBeTruthy();
 
     // Verify Create button exists (disabled until agent is selected and name is filled)
-    const confirmBtn = page.locator('.arco-modal .arco-btn-primary');
+    const confirmBtn = modal.locator('.arco-btn-primary');
     await expect(confirmBtn).toBeVisible();
 
     // Close modal via the standard header close button
-    await page.locator('.arco-modal button[aria-label="Close"]').first().click();
-    await expect(page.locator('.arco-modal')).toBeHidden({ timeout: 5000 });
+    await modal.locator('button[aria-label="Close"]').first().click();
+    await expect(modal).toBeHidden({ timeout: 5000 });
   });
 
   test('can fill form and create team', async ({ page }) => {
@@ -74,11 +80,11 @@ test.describe('Team Create', () => {
     await createBtn.click();
 
     // Wait for modal to appear
-    const modalTitle = page.locator('.arco-modal h3').filter({ hasText: /Create Team|创建团队/ });
+    const modal = page.locator('.team-create-modal');
+    const modalTitle = modal.getByRole('heading', { name: /New Team|新建团队|Create Team|创建团队/i });
     await expect(modalTitle).toBeVisible({ timeout: 5000 });
 
     // Fill team name
-    const modal = page.locator('.arco-modal');
     const nameInput = modal.getByRole('textbox').first();
     await nameInput.fill('E2E Test Team');
 
@@ -92,7 +98,7 @@ test.describe('Team Create', () => {
       await firstOption.click();
 
       // Wait for select value to reflect the chosen option (Create btn becomes enabled)
-      const confirmBtn = page.locator('.arco-modal .arco-btn-primary');
+      const confirmBtn = modal.locator('.arco-btn-primary');
       await expect(confirmBtn).toBeEnabled({ timeout: 5000 });
 
       // Screenshot: form filled
@@ -114,6 +120,8 @@ test.describe('Team Create', () => {
     } else {
       // No supported agents installed — screenshot and skip
       await page.screenshot({ path: 'tests/e2e/results/team-03-no-assistants.png' });
+      await modal.locator('button[aria-label="Close"]').first().click({ force: true });
+      await expect(modal).toBeHidden({ timeout: 5000 });
       console.log('[E2E] No supported assistants available for team creation');
       test.skip();
     }
@@ -137,11 +145,11 @@ async function createTeamWithAgent(
   await createBtn.click();
 
   // Wait for modal to appear
-  const modalTitle = page.locator('.arco-modal h3').filter({ hasText: /Create Team|创建团队/ });
+  const modal = page.locator('.team-create-modal');
+  const modalTitle = modal.getByRole('heading', { name: /New Team|新建团队|Create Team|创建团队/i });
   await expect(modalTitle).toBeVisible({ timeout: 5000 });
 
   // Fill team name
-  const modal = page.locator('.arco-modal');
   const nameInput = modal.getByRole('textbox').first();
   await nameInput.fill(teamName);
 
@@ -165,8 +173,8 @@ async function createTeamWithAgent(
   }
 
   if (!matchingOption) {
-    await page.locator('.arco-modal button[aria-label="Close"]').first().click({ force: true });
-    await expect(page.locator('.arco-modal')).toBeHidden({ timeout: 5000 });
+    await modal.locator('button[aria-label="Close"]').first().click({ force: true });
+    await expect(modal).toBeHidden({ timeout: 5000 });
     console.log(`[E2E] Assistant matching ${agentTextPattern} not found — skipping`);
     test.skip();
     return;
@@ -175,7 +183,7 @@ async function createTeamWithAgent(
   await matchingOption.click();
 
   // Wait for Create button to become enabled (select value applied)
-  const confirmBtn = page.locator('.arco-modal .arco-btn-primary');
+  const confirmBtn = modal.locator('.arco-btn-primary');
   await expect(confirmBtn).toBeEnabled({ timeout: 5000 });
 
   await page.screenshot({ path: `tests/e2e/results/${screenshotPrefix}-filled.png` });

@@ -42,7 +42,13 @@ type AssistantDetail = {
 
 type SkillRecord = {
   name: string;
+  source?: string;
+  is_auto_inject?: boolean;
 };
+
+function pickExplicitSkill(skills: SkillRecord[]): SkillRecord | undefined {
+  return skills.find((skill) => skill.source !== 'builtin' || skill.is_auto_inject !== true);
+}
 
 type McpRecord = {
   id: string;
@@ -103,14 +109,18 @@ type EnsuredAionrsModels = {
 async function openSettingsSelect(page: Page, testId: string): Promise<void> {
   await page.locator(`[data-testid="${testId}"]`).click();
   await page
-    .locator('.arco-select-option, .arco-trigger-popup button')
+    .locator('[role="option"]:visible, .arco-trigger-popup button:visible')
     .first()
     .waitFor({ state: 'visible', timeout: 5_000 });
 }
 
 async function findAssistantIdByName(page: Page, name: string): Promise<string | null> {
   for (const id of await getVisibleAssistantIds(page)) {
-    const cardText = await page.locator(`[data-testid="assistant-card-${id}"]`).textContent();
+    const cardText = await page
+      .locator(
+        `[data-testid="assistant-card-${id}"], [data-testid="enabled-assistant-row-${id}"], [data-testid="official-card-${id}"]`
+      )
+      .textContent();
     if (cardText?.includes(name)) {
       return id;
     }
@@ -216,8 +226,8 @@ function queryPreferencesByAssistantKey(dbPath: string, assistantKey: string): P
         'last_mcp_ids', json(last_mcp_ids)
       )
       FROM assistant_preferences p
-      JOIN assistant_definitions d ON d.definition_id = p.definition_id
-      WHERE d.assistant_key = '${key}'
+      JOIN assistant_definitions d ON d.id = p.assistant_definition_id
+      WHERE d.assistant_id = '${key}'
     `
   );
 }
@@ -237,8 +247,8 @@ function queryOptionalPreferencesByAssistantKey(dbPath: string, assistantKey: st
           'last_mcp_ids', json(last_mcp_ids)
         )
         FROM assistant_preferences p
-        JOIN assistant_definitions d ON d.definition_id = p.definition_id
-        WHERE d.assistant_key = '${key}'
+        JOIN assistant_definitions d ON d.id = p.assistant_definition_id
+        WHERE d.assistant_id = '${key}'
       `,
     ],
     { encoding: 'utf8' }
@@ -253,23 +263,23 @@ function queryOptionalPreferencesByAssistantKey(dbPath: string, assistantKey: st
 
 async function pickFirstFixedOption(page: Page, testId: string): Promise<void> {
   await openSettingsSelect(page, testId);
-  const options = page.locator('.arco-select-option');
-  const count = await options.count();
-  if (count < 2) {
+  const options = page.locator('[role="option"]:visible');
+  if ((await options.count()) < 2) {
     throw new Error(`No fixed option available for ${testId}`);
   }
-  await options.nth(1).click();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
 }
 
 async function selectFixedSkill(page: Page, skillName: string): Promise<void> {
   await openSettingsSelect(page, 'select-assistant-default-skills');
-  await page.locator('.arco-select-option').filter({ hasText: skillName }).first().click();
+  await page.locator('[role="option"]:visible').filter({ hasText: skillName }).first().click();
   await page.keyboard.press('Escape');
 }
 
 async function selectFixedMcp(page: Page, mcpName: string): Promise<void> {
   await openSettingsSelect(page, 'select-assistant-default-mcp');
-  await page.locator('.arco-select-option').filter({ hasText: mcpName }).first().click();
+  await page.locator('[role="option"]:visible').filter({ hasText: mcpName }).first().click();
   await page.keyboard.press('Escape');
 }
 
@@ -277,7 +287,13 @@ async function selectGuidAssistant(page: Page, assistantId: string): Promise<voi
   await resetGuidLastSelectedAgent(page);
   await goToGuid(page);
   await page.reload();
-  await page.locator(`[data-testid="preset-pill-${assistantId}"]`).click();
+  const visiblePill = page.locator(`[data-testid="preset-pill-${assistantId}"]`);
+  if (await visiblePill.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await visiblePill.click();
+  } else {
+    await page.locator('[data-testid="assistant-more-btn"]').click();
+    await page.locator(`[data-testid="assistant-overflow-${assistantId}"]`).click();
+  }
   // Assistant defaults are applied asynchronously after the preset pill flips
   // selected and the detail cache resolves. Give the Guid page one settle pass
   // before interacting with model/mode/skills/MCP controls.
@@ -376,7 +392,7 @@ async function sendGuidMessageCapturingCreateRequest(
   };
 }
 
-async function toggleGuidSkill(page: Page, skillName: string): Promise<void> {
+async function enableGuidSkill(page: Page, skillName: string): Promise<void> {
   await openGuidPlusDropdown(page);
   await page
     .getByText(/Skills \(\d+\/\d+\)|技能 \(\d+\/\d+\)/)
@@ -384,10 +400,17 @@ async function toggleGuidSkill(page: Page, skillName: string): Promise<void> {
     .hover();
   const checkbox = page.locator('.arco-checkbox').filter({ hasText: skillName }).first();
   await checkbox.waitFor({ state: 'visible', timeout: 5_000 });
-  await checkbox.click();
+  if (
+    !(await checkbox
+      .locator('input[type="checkbox"]')
+      .isChecked()
+      .catch(() => false))
+  ) {
+    await checkbox.click();
+  }
 }
 
-async function toggleGuidMcp(page: Page, mcpName: string): Promise<void> {
+async function enableGuidMcp(page: Page, mcpName: string): Promise<void> {
   await openGuidPlusDropdown(page);
   await page
     .getByText(/MCP \(\d+\/\d+\)/)
@@ -395,7 +418,14 @@ async function toggleGuidMcp(page: Page, mcpName: string): Promise<void> {
     .hover();
   const checkbox = page.locator('.arco-checkbox').filter({ hasText: mcpName }).first();
   await checkbox.waitFor({ state: 'visible', timeout: 5_000 });
-  await checkbox.click();
+  if (
+    !(await checkbox
+      .locator('input[type="checkbox"]')
+      .isChecked()
+      .catch(() => false))
+  ) {
+    await checkbox.click();
+  }
 }
 
 function normalizeUiText(value: string | null | undefined): string {
@@ -503,11 +533,14 @@ test.describe('Assistant Settings Conversation Defaults', () => {
 
   test('fixed defaults are written into conversation assistant snapshots on create', async ({ page, electronApp }) => {
     const assistantName = `Fixed Snapshot ${Date.now()}`;
+    const aionrsModels = await getAionrsTestModels(page);
+    test.skip(!aionrsModels?.modelA, 'No configured Aionrs model available for conversation creation');
+    if (!aionrsModels?.modelA) return;
 
     await goToAssistantSettings(page);
     const skills = await httpGet<SkillRecord[]>(page, '/api/skills');
     const mcps = await httpGet<McpRecord[]>(page, '/api/mcp/servers');
-    const firstSkill = skills[0];
+    const firstSkill = pickExplicitSkill(skills);
     const firstMcp = mcps.find((item) => item.enabled !== false) ?? mcps[0];
 
     test.skip(!firstSkill, 'No user skills available for fixed snapshot test');
@@ -526,6 +559,12 @@ test.describe('Assistant Settings Conversation Defaults', () => {
     const assistantId = await findAssistantIdByName(page, assistantName);
     test.skip(!assistantId, 'Created assistant not found');
     if (!assistantId) return;
+
+    await httpInvoke(page, 'PUT', `/api/assistants/${assistantId}`, {
+      id: assistantId,
+      preset_agent_type: 'aionrs',
+      defaults: { model: { mode: 'fixed', value: aionrsModels.modelA.useModel } },
+    });
 
     const detail = await httpGet<AssistantDetail>(page, `/api/assistants/${assistantId}?locale=en-US`);
     expect(detail.defaults.mcps.mode).toBe('fixed');
@@ -562,11 +601,14 @@ test.describe('Assistant Settings Conversation Defaults', () => {
     electronApp,
   }) => {
     const assistantName = `Auto Snapshot ${Date.now()}`;
+    const aionrsModels = await getAionrsTestModels(page);
+    test.skip(!aionrsModels?.modelA, 'No configured Aionrs model available for conversation creation');
+    if (!aionrsModels?.modelA) return;
 
     await goToAssistantSettings(page);
     const skills = await httpGet<SkillRecord[]>(page, '/api/skills');
     const mcps = await httpGet<McpRecord[]>(page, '/api/mcp/servers');
-    const firstSkill = skills[0];
+    const firstSkill = pickExplicitSkill(skills);
     const firstMcp = mcps.find((item) => item.enabled !== false) ?? mcps[0];
 
     test.skip(!firstSkill, 'No user skills available for auto snapshot test');
@@ -584,6 +626,7 @@ test.describe('Assistant Settings Conversation Defaults', () => {
 
     await httpInvoke(page, 'PUT', `/api/assistants/${assistantId}`, {
       id: assistantId,
+      preset_agent_type: 'aionrs',
       defaults: {
         skills: {
           mode: 'auto',
@@ -600,8 +643,8 @@ test.describe('Assistant Settings Conversation Defaults', () => {
     await openGuidPlusDropdown(page);
     await ensureGuidModelSelection(page);
     const selectedMode = await pickAlternateGuidMode(page);
-    await toggleGuidSkill(page, firstSkill.name);
-    await toggleGuidMcp(page, firstMcp.name);
+    await enableGuidSkill(page, firstSkill.name);
+    await enableGuidMcp(page, firstMcp.name);
 
     const { conversationId, payload } = await sendGuidMessageCapturingCreateRequest(page, 'auto defaults snapshot');
 
@@ -637,11 +680,14 @@ test.describe('Assistant Settings Conversation Defaults', () => {
 
   test('fixed defaults restore conversation snapshot after reopening history entry', async ({ page, electronApp }) => {
     const assistantName = `Fixed Reopen ${Date.now()}`;
+    const aionrsModels = await getAionrsTestModels(page);
+    test.skip(!aionrsModels?.modelA, 'No configured Aionrs model available for conversation creation');
+    if (!aionrsModels?.modelA) return;
 
     await goToAssistantSettings(page);
     const skills = await httpGet<SkillRecord[]>(page, '/api/skills');
     const mcps = await httpGet<McpRecord[]>(page, '/api/mcp/servers');
-    const firstSkill = skills[0];
+    const firstSkill = pickExplicitSkill(skills);
     const firstMcp = mcps.find((item) => item.enabled !== false) ?? mcps[0];
 
     test.skip(!firstSkill, 'No user skills available for fixed reopen test');
@@ -660,6 +706,12 @@ test.describe('Assistant Settings Conversation Defaults', () => {
     const assistantId = await findAssistantIdByName(page, assistantName);
     test.skip(!assistantId, 'Created assistant not found');
     if (!assistantId) return;
+
+    await httpInvoke(page, 'PUT', `/api/assistants/${assistantId}`, {
+      id: assistantId,
+      preset_agent_type: 'aionrs',
+      defaults: { model: { mode: 'fixed', value: aionrsModels.modelA.useModel } },
+    });
 
     await selectGuidAssistant(page, assistantId);
     const { conversationId } = await sendGuidMessageCapturingCreateRequest(page, 'fixed reopen baseline');
@@ -697,11 +749,14 @@ test.describe('Assistant Settings Conversation Defaults', () => {
 
   test('auto defaults restore conversation snapshot after reopening history entry', async ({ page, electronApp }) => {
     const assistantName = `Auto Reopen ${Date.now()}`;
+    const aionrsModels = await getAionrsTestModels(page);
+    test.skip(!aionrsModels?.modelA, 'No configured Aionrs model available for conversation creation');
+    if (!aionrsModels?.modelA) return;
 
     await goToAssistantSettings(page);
     const skills = await httpGet<SkillRecord[]>(page, '/api/skills');
     const mcps = await httpGet<McpRecord[]>(page, '/api/mcp/servers');
-    const firstSkill = skills[0];
+    const firstSkill = pickExplicitSkill(skills);
     const firstMcp = mcps.find((item) => item.enabled !== false) ?? mcps[0];
 
     test.skip(!firstSkill, 'No user skills available for auto reopen test');
@@ -719,6 +774,7 @@ test.describe('Assistant Settings Conversation Defaults', () => {
 
     await httpInvoke(page, 'PUT', `/api/assistants/${assistantId}`, {
       id: assistantId,
+      preset_agent_type: 'aionrs',
       defaults: {
         skills: {
           mode: 'auto',
@@ -735,8 +791,8 @@ test.describe('Assistant Settings Conversation Defaults', () => {
     await openGuidPlusDropdown(page);
     await ensureGuidModelSelection(page);
     await pickAlternateGuidMode(page);
-    await toggleGuidSkill(page, firstSkill.name);
-    await toggleGuidMcp(page, firstMcp.name);
+    await enableGuidSkill(page, firstSkill.name);
+    await enableGuidMcp(page, firstMcp.name);
 
     const { conversationId } = await sendGuidMessageCapturingCreateRequest(page, 'auto reopen baseline');
     await waitForAiReply(page);
@@ -785,7 +841,7 @@ test.describe('Assistant Settings Conversation Defaults', () => {
     await goToAssistantSettings(page);
     const skills = await httpGet<SkillRecord[]>(page, '/api/skills');
     const mcps = await httpGet<McpRecord[]>(page, '/api/mcp/servers');
-    const firstSkill = skills[0];
+    const firstSkill = pickExplicitSkill(skills);
     const firstMcp = mcps.find((item) => item.enabled !== false) ?? mcps[0];
 
     test.skip(!firstSkill, 'No user skills available for auto->fixed test');
@@ -818,11 +874,11 @@ test.describe('Assistant Settings Conversation Defaults', () => {
           },
           skills: {
             mode: 'fixed',
-            value: [],
+            value: [firstSkill.name],
           },
           mcps: {
             mode: 'fixed',
-            value: [],
+            value: [firstMcp.id],
           },
         },
       });
@@ -869,7 +925,7 @@ test.describe('Assistant Settings Conversation Defaults', () => {
     await goToAssistantSettings(page);
     const skills = await httpGet<SkillRecord[]>(page, '/api/skills');
     const mcps = await httpGet<McpRecord[]>(page, '/api/mcp/servers');
-    const firstSkill = skills[0];
+    const firstSkill = pickExplicitSkill(skills);
     const firstMcp = mcps.find((item) => item.enabled !== false) ?? mcps[0];
 
     test.skip(!firstSkill, 'No user skills available for fixed->auto test');
@@ -903,11 +959,11 @@ test.describe('Assistant Settings Conversation Defaults', () => {
           },
           skills: {
             mode: 'fixed',
-            value: [],
+            value: [firstSkill.name],
           },
           mcps: {
             mode: 'fixed',
-            value: [],
+            value: [firstMcp.id],
           },
         },
       });
@@ -945,8 +1001,8 @@ test.describe('Assistant Settings Conversation Defaults', () => {
       await selectGuidAssistant(page, assistantId);
       await ensureGuidModelSelection(page);
       const selectedMode = await pickAlternateGuidMode(page);
-      await toggleGuidSkill(page, firstSkill.name);
-      await toggleGuidMcp(page, firstMcp.name);
+      await enableGuidSkill(page, firstSkill.name);
+      await enableGuidMcp(page, firstMcp.name);
       const { conversationId: autoConversationId } = await sendGuidMessageCapturingCreateRequest(
         page,
         'auto should start from fresh remembered state'

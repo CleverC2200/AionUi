@@ -43,6 +43,7 @@ test.describe('Skills Hub - Path/Export (P1)', () => {
   // ============================================================================
 
   test('TC-S-14: should refresh external skills and show newly added skill', async ({ page }) => {
+    test.skip(true, 'External source tabs and refresh were replaced by direct import');
     // Setup: Create external source with 1 skill
     const tempSource = createTempExternalSource('tc-s-14');
     try {
@@ -103,6 +104,7 @@ test.describe('Skills Hub - Path/Export (P1)', () => {
   // ============================================================================
 
   test('TC-S-17: should show error when adding duplicate custom path', async ({ page }) => {
+    test.skip(true, 'Persistent external source paths are no longer part of Skills settings');
     // Setup: Create external source and add it as custom path
     const tempSource = createTempExternalSource('tc-s-17');
     try {
@@ -163,6 +165,7 @@ test.describe('Skills Hub - Path/Export (P1)', () => {
   // ============================================================================
 
   test('TC-S-18: should disable Confirm button when required fields are empty', async ({ page }) => {
+    test.skip(true, 'The removed external-path form no longer has a validation state');
     // Screenshot 01: Initial state
     await takeScreenshot(page, 'skills-hub/tc-s-18/01-initial-state.png');
 
@@ -222,6 +225,7 @@ test.describe('Skills Hub - Path/Export (P1)', () => {
   // ============================================================================
 
   test('TC-S-20: should show error when exporting to target with existing skill', async ({ page }) => {
+    test.skip(true, 'Export-to-external-source was removed from the current Skills settings');
     // Setup: Create skill and external target
     const tempSource = createTempExternalSource('tc-s-20-target');
     const skillTimestamp = Date.now();

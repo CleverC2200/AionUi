@@ -66,13 +66,9 @@ test.describe('Skills Hub - Refresh/Empty/Tabs (P1)', () => {
       // Screenshot 02: Before refresh (new skill not visible in UI yet)
       await takeScreenshot(page, 'skills-hub/tc-s-04/02-before-refresh.png');
 
-      // Step 3: Click refresh button
-      const refreshButton = page.locator('[data-testid="btn-refresh-my-skills"]');
-      await expect(refreshButton).toBeVisible();
-      await refreshButton.click();
-
-      // Wait for refresh to complete (loading state disappears)
-      await page.waitForTimeout(500);
+      // Step 3: Re-enter the page; the current header no longer exposes a
+      // dedicated refresh action and data is fetched on mount.
+      await refreshSkillsHub(page);
 
       // Screenshot 03: After refresh
       await takeScreenshot(page, 'skills-hub/tc-s-04/03-after-refresh.png');
@@ -131,6 +127,7 @@ test.describe('Skills Hub - Refresh/Empty/Tabs (P1)', () => {
   // ============================================================================
 
   test('TC-S-09: should switch tabs and show correct external skills', async ({ page }) => {
+    test.skip(true, 'External source tabs were replaced by direct folder/zip import');
     // Setup: Create 2 external sources with different skills
     const sourceA = createTempExternalSource('tc-s-09-a');
     const sourceB = createTempExternalSource('tc-s-09-b');
