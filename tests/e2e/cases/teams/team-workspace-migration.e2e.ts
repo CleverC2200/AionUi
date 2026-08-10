@@ -123,20 +123,9 @@ test.describe('Team Workspace Migration', () => {
       await workspaceToggle.click();
     }
     const workspacePanel = page.locator('.chat-layout-right-sider');
-    if (!(await workspacePanel.isVisible({ timeout: 2_000 }).catch(() => false))) {
-      await invokeBridge(page, 'team.remove', { id: teamId }).catch(() => {});
-      test.skip(true, 'Team workspace migration panel is unavailable in the current UI.');
-      return;
-    }
-    const changeBtn = workspacePanel
-      .locator('[data-testid="team-workspace-change"]')
-      .or(workspacePanel.locator('.workspace-toolbar-actions svg'))
-      .first();
-    if (!(await changeBtn.isVisible({ timeout: 2_000 }).catch(() => false))) {
-      await invokeBridge(page, 'team.remove', { id: teamId }).catch(() => {});
-      test.skip(true, 'Team workspace migration control is unavailable in the current UI.');
-      return;
-    }
+    await expect(workspacePanel).toBeVisible({ timeout: 10_000 });
+    const changeBtn = workspacePanel.locator('[data-testid="team-workspace-change"]');
+    await expect(changeBtn).toBeVisible({ timeout: 10_000 });
 
     // ── Step 2: Add member via leader (proves team is working) ──────────
 
