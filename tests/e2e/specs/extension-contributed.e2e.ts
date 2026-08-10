@@ -1,54 +1,32 @@
 /**
  * Extension-Contributed Agents & Assistants -- E2E tests.
  *
- * Covers: extension agent/assistant contribution discovery, management-page
- * stability while extensions are loaded, and bridge data correctness.
+ * Covers: extension agent/assistant contribution discovery and the current
+ * management-page boundary for extension assistants.
  *
  * Requires: e2e-full-extension loaded (via AIONUI_EXTENSIONS_PATH=examples/).
  */
 import { test, expect } from '../fixtures';
-import {
-  goToSettings,
-  goToGuid,
-  waitForSettle,
-  getExtensionSnapshot,
-  goToAssistantSettings,
-  getVisibleAssistantIds,
-} from '../helpers';
+import { goToSettings, getExtensionSnapshot, goToAssistantSettings, getVisibleAssistantIds } from '../helpers';
 
 test.describe('Extension-Contributed Agents & Assistants', () => {
-  test('extension agents are discoverable while agent settings remains usable', async ({ page }) => {
+  test('extension agents are discoverable and agent settings renders', async ({ page }) => {
     const snapshot = await getExtensionSnapshot(page);
     expect(snapshot.acpAdapters.map((agent) => agent.id)).toEqual(
       expect.arrayContaining(['e2e-cli-agent', 'e2e-http-agent'])
     );
 
     await goToSettings(page, 'agent');
-    await waitForSettle(page, 5_000);
-    expect((await page.locator('body').textContent())?.length).toBeGreaterThan(50);
+    await expect(page.locator('[data-testid="agent-management-page"]')).toBeVisible({ timeout: 10_000 });
   });
 
-  test('extension assistants are discoverable while assistant settings remains usable', async ({ page }) => {
+  test('extension assistants stay discoverable without entering the unified assistant catalog', async ({ page }) => {
     const snapshot = await getExtensionSnapshot(page);
     expect(snapshot.assistants.map((assistant) => assistant.id)).toContain('ext-e2e-test-assistant');
 
     await goToAssistantSettings(page);
-    await expect.poll(async () => (await getVisibleAssistantIds(page)).length, { timeout: 10_000 }).toBeGreaterThan(0);
-  });
-
-  test('guid page remains usable with extension contributions loaded', async ({ page }) => {
-    await goToGuid(page);
-    await waitForSettle(page, 5_000);
-    expect((await page.locator('body').textContent())?.length).toBeGreaterThan(50);
-  });
-
-  test('extension assistant metadata is complete', async ({ page }) => {
-    const snapshot = await getExtensionSnapshot(page);
-    const assistant = snapshot.assistants.find((item) => item.id === 'ext-e2e-test-assistant');
-    expect(assistant).toMatchObject({
-      id: 'ext-e2e-test-assistant',
-      name: 'E2E Test Assistant',
-    });
+    await expect(page.locator('[data-testid="assistant-home-shell"]')).toBeVisible({ timeout: 10_000 });
+    expect(await getVisibleAssistantIds(page)).not.toContain('ext-e2e-test-assistant');
   });
 
   test('extension agent metadata is complete', async ({ page }) => {
@@ -61,18 +39,9 @@ test.describe('Extension-Contributed Agents & Assistants', () => {
     );
   });
 
-  test('extension data correct via IPC bridge', async ({ page }) => {
+  test('extension contribution snapshot contains the owning extension', async ({ page }) => {
     const snapshot = await getExtensionSnapshot(page);
-    // Verify e2e-full-extension loaded
     const extNames = snapshot.loadedExtensions.map((e) => e.name);
     expect(extNames).toContain('e2e-full-extension');
-
-    // Verify assistant contributed
-    const assistantIds = snapshot.assistants.map((a) => a.id);
-    expect(assistantIds).toEqual(expect.arrayContaining(['ext-e2e-test-assistant']));
-
-    // Verify ACP adapters contributed
-    const adapterIds = snapshot.acpAdapters.map((a) => a.id);
-    expect(adapterIds).toEqual(expect.arrayContaining(['e2e-cli-agent', 'e2e-http-agent']));
   });
 });

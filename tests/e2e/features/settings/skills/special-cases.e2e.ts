@@ -4,7 +4,6 @@
  * Test Cases Covered:
  * - TC-S-24: Special characters in skill names (import scenario)
  * - TC-S-25: Large scale rendering (medium scale 20 skills)
- * - TC-S-26: Concurrent operations (rapid refresh clicks)
  */
 
 import { test, expect } from '../../../fixtures';
@@ -144,49 +143,5 @@ test.describe('Skills Hub - Special Cases (P2)', () => {
     } finally {
       tempSource.cleanup();
     }
-  });
-
-  // ============================================================================
-  // TC-S-26: Concurrent operations (rapid refresh clicks)
-  // ============================================================================
-
-  test('TC-S-26: should handle rapid refresh clicks without crashing', async ({ page }) => {
-    test.skip(true, 'The dedicated Skills refresh button was removed; data refreshes on page mount');
-    // Screenshot 01: Initial state
-    await takeScreenshot(page, 'skills-hub/tc-s-26/01-initial-state.png');
-
-    // Expected: Refresh button visible
-    const refreshButton = page.locator('[data-testid="btn-refresh-my-skills"]');
-    await expect(refreshButton).toBeVisible();
-
-    // Screenshot 02: Refresh button visible
-    await takeScreenshot(page, 'skills-hub/tc-s-26/02-refresh-button.png');
-
-    // Step 1: Click refresh button rapidly 3 times
-    console.log('[TC-S-26] Clicking refresh button rapidly...');
-    await refreshButton.click();
-    await page.waitForTimeout(50);
-    await refreshButton.click();
-    await page.waitForTimeout(50);
-    await refreshButton.click();
-
-    // Wait for all refresh operations to settle
-    await page.waitForTimeout(2000);
-
-    // Screenshot 03: After rapid clicks
-    await takeScreenshot(page, 'skills-hub/tc-s-26/03-after-rapid-clicks.png');
-
-    // Expected: Page should not crash, My Skills section still visible
-    const mySkillsSection = page.locator('[data-testid="my-skills-section"]');
-    await expect(mySkillsSection).toBeVisible();
-
-    // Screenshot 04: Page still functional
-    await takeScreenshot(page, 'skills-hub/tc-s-26/04-page-functional.png');
-
-    // Verify refresh button is still clickable
-    await expect(refreshButton).toBeEnabled();
-
-    // Screenshot 05: Final state
-    await takeScreenshot(page, 'skills-hub/tc-s-26/05-final-state.png');
   });
 });

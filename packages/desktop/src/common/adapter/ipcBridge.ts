@@ -1944,9 +1944,10 @@ export interface IExtensionSettingsTab {
 }
 
 export interface IExtensionWebuiContribution {
-  extensionName: string;
-  apiRoutes: Array<{ path: string; auth: boolean }>;
-  staticAssets: Array<{ urlPrefix: string; directory: string }>;
+  extension_name: string;
+  id: string;
+  directory: string;
+  routes?: Array<{ path: string; method: string; handler: string }>;
 }
 
 export type AgentActivityState = 'idle' | 'writing' | 'researching' | 'executing' | 'syncing' | 'error';

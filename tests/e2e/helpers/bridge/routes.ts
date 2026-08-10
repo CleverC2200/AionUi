@@ -29,7 +29,6 @@ export const HTTP_ROUTES: Record<string, HttpRoute> = {
   'extensions.get-webui-contributions': {
     method: 'GET',
     path: '/api/extensions/webui',
-    mapResponse: 'extensionWebui',
   },
   'extensions.get-permissions': { method: 'POST', path: '/api/extensions/permissions' },
   'extensions.get-risk-level': { method: 'POST', path: '/api/extensions/risk-level' },

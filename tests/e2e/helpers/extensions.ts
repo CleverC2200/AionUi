@@ -11,9 +11,10 @@ export type ExtensionSnapshot = {
   themes: Array<{ id: string; name: string; cover?: string }>;
   settingsTabs: Array<{ id: string; label: string; url: string; extensionName: string }>;
   webuiContributions: Array<{
-    extensionName: string;
-    apiRoutes: Array<{ path: string; auth: boolean }>;
-    staticAssets: Array<{ urlPrefix: string; directory: string }>;
+    extension_name: string;
+    id: string;
+    directory: string;
+    routes?: Array<{ path: string; method: string; handler: string }>;
   }>;
 };
 

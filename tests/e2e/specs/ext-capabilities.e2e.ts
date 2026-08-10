@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures';
 import { getChannelPluginStatus, getExtensionSnapshot, goToExtensionSettings, waitForSettle } from '../helpers';
+import path from 'node:path';
 
 test.describe('Extension: Complete Capabilities', () => {
   test('all extension contribution categories are loaded and queryable', async ({ page }) => {
@@ -45,12 +46,11 @@ test.describe('Extension: Complete Capabilities', () => {
     );
     expect(allEntryUrlsValid).toBeTruthy();
 
-    const feishuWebui = snapshot.webuiContributions.find((item) => item.extensionName === 'ext-feishu');
-    expect(feishuWebui).toBeTruthy();
-    const feishuApiPaths = feishuWebui?.apiRoutes.map((item) => item.path) || [];
+    const feishuWebui = snapshot.webuiContributions.filter((item) => item.extension_name === 'ext-feishu');
+    expect(feishuWebui.length).toBeGreaterThan(0);
+    const feishuApiPaths = feishuWebui.flatMap((item) => item.routes ?? []).map((item) => item.path);
     expect(feishuApiPaths).toEqual(expect.arrayContaining(['/ext-feishu/collect', '/ext-feishu/stats']));
-    const feishuAssetPrefixes = feishuWebui?.staticAssets.map((item) => item.urlPrefix) || [];
-    expect(feishuAssetPrefixes).toEqual(expect.arrayContaining(['/ext-feishu/assets']));
+    expect(feishuWebui.some((item) => path.basename(item.directory) === 'assets')).toBeTruthy();
   });
 
   test('all known extension settings tabs can be opened and rendered', async ({ page }) => {

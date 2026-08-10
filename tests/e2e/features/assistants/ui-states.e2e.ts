@@ -72,21 +72,12 @@ test.describe('Assistant Settings UI States (P1)', () => {
     await takeScreenshot(page, 'assistants/p1-3/01-action-menus.png');
   });
 
-  test('P1-4: extension assistant renders in My Assistants when present', async ({ page }) => {
+  test('P1-4: extension assistants stay outside the unified assistant catalog', async ({ page }) => {
     await goToAssistantSettings(page);
     await page.locator('[data-testid="settings-tab-mine"]').click();
 
-    const cards = page.locator('[data-testid^="assistant-card-ext-"]');
-    if ((await cards.count()) === 0) {
-      test.skip(true, 'No extension assistant available in this run');
-      return;
-    }
-
-    const extensionCard = cards.first();
-    await expect(extensionCard).toBeVisible();
-    const extensionId = ((await extensionCard.getAttribute('data-testid')) ?? '').replace('assistant-card-', '');
-    await expect(page.locator(`[data-testid="assistant-runtime-${extensionId}"]`)).toBeVisible();
-    await takeScreenshot(page, 'assistants/p1-4/01-extension-assistant.png');
+    await expect(page.locator('[data-testid^="assistant-card-ext-"]')).toHaveCount(0);
+    await takeScreenshot(page, 'assistants/p1-4/01-extension-assistant-excluded.png');
   });
 
   test('P1-5: official card opens the full-page editor and back closes it', async ({ page }) => {
