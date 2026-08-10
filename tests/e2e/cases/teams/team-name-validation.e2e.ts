@@ -5,6 +5,7 @@
  * correctly without crashing the app or submitting invalid data.
  */
 import { test, expect } from '../../fixtures';
+import { closeTeamCreateModal, openTeamCreateModal } from '../../helpers';
 
 type ModalHandles = {
   modal: import('@playwright/test').Locator;
@@ -13,12 +14,7 @@ type ModalHandles = {
 };
 
 async function openCreateModal(page: import('@playwright/test').Page): Promise<ModalHandles> {
-  const createBtn = page.locator('[data-testid="team-create-btn"]').first();
-  await expect(createBtn).toBeVisible({ timeout: 10_000 });
-  await createBtn.click();
-
-  const modal = page.locator('.team-create-modal');
-  await expect(modal).toBeVisible({ timeout: 5_000 });
+  const modal = await openTeamCreateModal(page);
 
   const nameInput = modal.locator('[data-testid="team-create-name-input"]');
   await expect(nameInput).toBeVisible({ timeout: 5_000 });
@@ -28,21 +24,9 @@ async function openCreateModal(page: import('@playwright/test').Page): Promise<M
   return { modal, nameInput, createBtn: submitBtn };
 }
 
-async function closeModal(page: import('@playwright/test').Page): Promise<void> {
-  const modal = page.locator('.team-create-modal');
-  const closeIcon = modal.locator('button[aria-label="Close"]').first();
-  const visible = await closeIcon.isVisible().catch(() => false);
-  if (visible) {
-    await closeIcon.click();
-  } else {
-    await page.keyboard.press('Escape');
-  }
-  await expect(modal).toBeHidden({ timeout: 5_000 });
-}
-
 test.describe('Team Name Validation', () => {
   test('empty name keeps create button disabled', async ({ page }) => {
-    const { nameInput, createBtn } = await openCreateModal(page);
+    const { modal, nameInput, createBtn } = await openCreateModal(page);
 
     // Ensure the name input is truly empty
     await expect(nameInput).toHaveValue('');
@@ -52,11 +36,11 @@ test.describe('Team Name Validation', () => {
 
     await page.screenshot({ path: 'tests/e2e/results/team-name-val-01.png' });
 
-    await closeModal(page);
+    await closeTeamCreateModal(modal);
   });
 
   test('whitespace-only name keeps create button disabled', async ({ page }) => {
-    const { nameInput, createBtn } = await openCreateModal(page);
+    const { modal, nameInput, createBtn } = await openCreateModal(page);
 
     // [action] Type only spaces into the name field
     await nameInput.fill('   ');
@@ -75,11 +59,11 @@ test.describe('Team Name Validation', () => {
 
     await page.screenshot({ path: 'tests/e2e/results/team-name-val-02.png' });
 
-    await closeModal(page);
+    await closeTeamCreateModal(modal);
   });
 
   test('very long name (200 chars) can be entered or is truncated', async ({ page }) => {
-    const { nameInput, createBtn } = await openCreateModal(page);
+    const { modal, nameInput, createBtn } = await openCreateModal(page);
 
     const longName = 'A'.repeat(200);
     await nameInput.fill(longName);
@@ -96,6 +80,6 @@ test.describe('Team Name Validation', () => {
 
     await page.screenshot({ path: 'tests/e2e/results/team-name-val-03.png' });
 
-    await closeModal(page);
+    await closeTeamCreateModal(modal);
   });
 });

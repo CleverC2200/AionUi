@@ -13,7 +13,12 @@
  * afterwards because the Electron window is shared across specs.
  */
 import { test, expect } from '../../fixtures';
-import { TEAM_SUPPORTED_BACKENDS, cleanupTeamsByName } from '../../helpers';
+import {
+  TEAM_SUPPORTED_BACKENDS,
+  cleanupTeamsByName,
+  closeTeamCreateModal,
+  pickTeamCreateAssistantOption,
+} from '../../helpers';
 
 const MOBILE_WIDTH = 430;
 const MOBILE_HEIGHT = 900;
@@ -43,27 +48,10 @@ test.describe('Team Create - mobile (narrow screen)', () => {
     await setWindowContentSize(electronApp, DESKTOP_WIDTH, DESKTOP_HEIGHT);
   });
 
-  test.afterEach(async ({ electronApp, page }) => {
-    const modal = page.locator('.team-create-modal');
-    if (await modal.isVisible().catch(() => false)) {
-      await modal
-        .locator('button[aria-label="Close"]')
-        .first()
-        .click({ force: true })
-        .catch(() => {});
-      await expect(modal).toBeHidden({ timeout: 5_000 });
-    }
-    // Restore a known desktop size. The launch size may itself be narrow when
-    // Electron restores window state, and that must not leak into later specs.
+  test.afterEach(async ({ electronApp }) => {
+    // The Electron window is shared across specs. Always leave a known desktop
+    // viewport instead of restoring a possibly narrow launch default.
     await setWindowContentSize(electronApp, DESKTOP_WIDTH, DESKTOP_HEIGHT);
-    const createButton = page.locator('[data-testid="team-create-btn"]').first();
-    if (!(await createButton.isVisible().catch(() => false))) {
-      const expandSider = page.getByRole('button', { name: /Expand sidebar|展开侧边栏|展开/i }).first();
-      if (await expandSider.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        await expandSider.click();
-        await expect(createButton).toBeVisible({ timeout: 5_000 });
-      }
-    }
   });
 
   test('shows single-column layout and adds a member via the bottom sheet', async ({ electronApp, page }) => {
@@ -72,10 +60,9 @@ test.describe('Team Create - mobile (narrow screen)', () => {
     await expect(createBtn).toBeVisible({ timeout: 15_000 });
     await createBtn.click();
 
-    const modal = page.locator('.team-create-modal');
-    await expect(modal.getByRole('heading', { name: /Create Team|创建团队|New Team|新建团队/i })).toBeVisible({
-      timeout: 5_000,
-    });
+    await expect(
+      page.locator('.arco-modal h3').filter({ hasText: /Create Team|创建团队|New Team|新建团队/ })
+    ).toBeVisible({ timeout: 5_000 });
 
     // Shrink below the breakpoint — the open modal re-renders into its mobile layout.
     await setWindowContentSize(electronApp, MOBILE_WIDTH, MOBILE_HEIGHT);
@@ -98,22 +85,23 @@ test.describe('Team Create - mobile (narrow screen)', () => {
     // The dropdown reveals the reused picker (search + options).
     await expect(page.locator('[data-testid="team-create-agent-search"]')).toBeVisible({ timeout: 5_000 });
 
-    const firstOption = page.locator('[data-testid^="team-create-agent-option-"]').first();
-    const hasOption = await firstOption.isVisible({ timeout: 3_000 }).catch(() => false);
+    const modal = page.locator('.team-create-modal').last();
+    // The narrow-screen picker is rendered in a portal outside the modal DOM.
+    const firstOption = await pickTeamCreateAssistantOption(page);
+    const hasOption = firstOption ? await firstOption.isVisible({ timeout: 3_000 }).catch(() => false) : false;
 
     await page.screenshot({ path: 'tests/e2e/results/team-mobile-02-dropdown.png' });
 
     if (!hasOption || TEAM_SUPPORTED_BACKENDS.size === 0) {
-      await modal.locator('button[aria-label="Close"]').first().click({ force: true });
-      await expect(modal).toBeHidden({ timeout: 5_000 });
       console.log('[E2E] No supported assistant available — skipping mobile create flow');
+      await closeTeamCreateModal(modal);
       test.skip();
       return;
     }
 
     // Select an assistant — select-and-close: the dropdown collapses and the
     // member appears in the list below (the "added successfully" feedback).
-    await firstOption.click();
+    await firstOption!.click();
     await expect(page.locator('[data-testid="team-create-agent-search"]')).toBeHidden({ timeout: 5_000 });
 
     const memberRow = page.locator('[data-testid^="team-create-member-draft-"]').first();
@@ -122,7 +110,7 @@ test.describe('Team Create - mobile (narrow screen)', () => {
     const nameInput = page.locator('[data-testid="team-create-name-input"]');
     await nameInput.fill('E2E Mobile Team');
 
-    const confirmBtn = modal.locator('.arco-btn-primary');
+    const confirmBtn = page.locator('.arco-modal .arco-btn-primary');
     await expect(confirmBtn).toBeEnabled({ timeout: 5_000 });
 
     await page.screenshot({ path: 'tests/e2e/results/team-mobile-03-filled.png' });

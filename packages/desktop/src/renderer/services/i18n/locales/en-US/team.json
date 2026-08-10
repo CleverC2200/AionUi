@@ -104,6 +104,87 @@
     "single": "Single",
     "board": "Board"
   },
+  "controlBoard": {
+    "title": "Team Control Board",
+    "sequence": "Authoritative state · event {{sequence}}",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "loadFailed": "Unable to load Team Work state.",
+    "empty": "No Team Work tasks yet",
+    "noAttention": "No action needs your attention",
+    "currentWork": "Current work",
+    "noCurrentWork": "No assistant is working on a task",
+    "nextAction": "Next",
+    "version": "Version {{version}}",
+    "dependencies": "Dependencies",
+    "attempts": "Attempt history",
+    "none": "None",
+    "actionRequired": "Action required",
+    "reasonPlaceholder": "Add context or a reason",
+    "defaultReason": "Confirmed in Team Control Board",
+    "receiptSuccess": "Action receipt recorded",
+    "actionFailed": "Action failed. Refresh and try again.",
+    "receipt": "Receipt · event {{sequence}} · {{replayed}}",
+    "replayed": "replayed safely",
+    "applied": "applied",
+    "checks": "Verification {{passed}}/{{total}} passed",
+    "risk": "Remaining risk",
+    "tabs": { "overview": "Overview", "kanban": "Kanban", "attention": "Attention", "activity": "Activity" },
+    "metrics": {
+      "total": "Tasks",
+      "running": "In progress",
+      "queued": "Capacity queue",
+      "attention": "Needs attention",
+      "done": "Done"
+    },
+    "lanes": {
+      "backlog": "Backlog",
+      "ready": "Ready",
+      "running": "Running",
+      "attention": "Attention",
+      "review": "Review",
+      "done": "Done"
+    },
+    "owner": { "agent": "Assistant", "human": "You", "reviewer": "Reviewer", "system": "System" },
+    "actions": {
+      "provide_input": "Provide input",
+      "approve": "Approve",
+      "reject": "Reject",
+      "accept_review": "Accept",
+      "return_for_changes": "Return for changes",
+      "retry": "Retry",
+      "reassign": "Reassign"
+    },
+    "status": {
+      "backlog": "Backlog",
+      "ready": "Ready",
+      "claimed": "Claimed",
+      "running": "Running",
+      "needs_input": "Needs input",
+      "needs_approval": "Needs approval",
+      "blocked": "Blocked",
+      "in_review": "In review",
+      "done": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "queueReason": {
+      "team_capacity": "Team capacity",
+      "agent_capacity": "Assistant capacity",
+      "profile_capacity": "Profile capacity",
+      "workspace_locked": "Workspace locked"
+    },
+    "runStatus": {
+      "queued": "Queued",
+      "starting": "Starting",
+      "running": "Running",
+      "paused": "Paused",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "stale": "Stale"
+    }
+  },
   "warmup": {
     "title": "Waking up the team…",
     "subtitle": "Getting members ready",

@@ -14,17 +14,23 @@
  *   7. Cleanup: delete team + temp directory
  */
 import { test, expect } from '../../fixtures';
-import { invokeBridge, TEAM_SUPPORTED_BACKENDS } from '../../helpers';
+import {
+  closeTeamCreateModal,
+  invokeBridge,
+  openTeamCreateModal,
+  pickTeamCreateAssistantOption,
+  TEAM_SUPPORTED_BACKENDS,
+} from '../../helpers';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
 const TEAM_NAME = `E2E Migration ${Date.now()}`;
-const LEADER_BACKEND = [...TEAM_SUPPORTED_BACKENDS][0] ?? 'claude';
+const LEADER_BACKEND = [...TEAM_SUPPORTED_BACKENDS][0] ?? 'codex';
 
 test.describe('Team Workspace Migration', () => {
   let targetWorkspace: string;
-  let team_id: string | undefined;
+  let teamId: string | undefined;
 
   test.beforeAll(async () => {
     targetWorkspace = fs.mkdtempSync(path.join(os.tmpdir(), 'aionui-target-'));
@@ -51,12 +57,10 @@ test.describe('Team Workspace Migration', () => {
     // ── Helpers ──────────────────────────────────────────────────────────
 
     const tabBar = page.locator('[data-testid="team-tab-bar"]');
+    const leaderTab = tabBar.locator('[data-team-tab-role="leader"]');
 
     const waitForLeaderIdle = async () => {
-      const badge = tabBar
-        .locator('span')
-        .filter({ hasText: 'Leader' })
-        .locator('xpath=following-sibling::span[@aria-label="active"]');
+      const badge = leaderTab.locator('[aria-label="active"]');
       await expect(badge).not.toBeVisible({ timeout: 90_000 });
     };
 
@@ -79,30 +83,20 @@ test.describe('Team Workspace Migration', () => {
 
     // ── Step 1: Create team via sidebar UI ──────────────────────────────
 
-    const teamSection = page.locator('text=Teams').or(page.locator('text=团队'));
-    await expect(teamSection.first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-testid="team-section-toggle"]')).toBeVisible({ timeout: 15_000 });
+    const modal = await openTeamCreateModal(page);
 
-    const createBtn = page.locator('[data-testid="team-create-btn"]').first();
-    await expect(createBtn).toBeVisible({ timeout: 10_000 });
-    await createBtn.click();
-
-    const modal = page.locator('.team-create-modal');
-    await expect(modal).toBeVisible({ timeout: 10_000 });
-
-    const nameInput = modal.locator('input').first();
+    const nameInput = modal.locator('[data-testid="team-create-name-input"]');
     await nameInput.fill(TEAM_NAME);
 
-    const agentOption = modal.locator('[data-testid^="team-create-agent-option-"]').first();
-    if (!(await agentOption.isVisible().catch(() => false))) {
-      await modal.locator('button[aria-label="Close"]').first().click({ force: true });
-      await expect(modal).toBeHidden({ timeout: 5_000 });
+    const agentOption = await pickTeamCreateAssistantOption(modal, LEADER_BACKEND);
+    if (!agentOption) {
+      await closeTeamCreateModal(modal);
       test.skip(true, 'No supported agents available');
       return;
     }
     await agentOption.click();
-    await expect(modal.locator('[data-testid^="team-create-member-draft-"]').first()).toBeVisible({
-      timeout: 3_000,
-    });
+    await expect(modal.locator('[data-testid^="team-create-member-draft-"]').first()).toBeVisible({ timeout: 3_000 });
 
     const createConfirmBtn = modal.locator('.arco-btn-primary');
     await expect(createConfirmBtn).toBeEnabled({ timeout: 5_000 });
@@ -123,6 +117,16 @@ test.describe('Team Workspace Migration', () => {
 
     await page.screenshot({ path: 'tests/e2e/results/team-migration-01-created.png' });
 
+    const workspaceToggle = page.locator('[data-testid="workspace-toggle"]');
+    await expect(workspaceToggle).toBeVisible({ timeout: 10_000 });
+    if ((await workspaceToggle.getAttribute('data-collapsed')) === 'true') {
+      await workspaceToggle.click();
+    }
+    const workspacePanel = page.locator('.chat-layout-right-sider');
+    await expect(workspacePanel).toBeVisible({ timeout: 10_000 });
+    const changeBtn = workspacePanel.locator('[data-testid="team-workspace-change"]');
+    await expect(changeBtn).toBeVisible({ timeout: 10_000 });
+
     // ── Step 2: Add member via leader (proves team is working) ──────────
 
     const memberName = `E2E-ws-member-${Date.now()}`;
@@ -139,7 +143,7 @@ test.describe('Team Workspace Migration', () => {
     await expect(memberActiveBadge).not.toBeVisible({ timeout: 60_000 });
 
     // Switch back to leader tab and handle MCP dialogs
-    await tabBar.locator('span').filter({ hasText: 'Leader' }).first().click();
+    await leaderTab.click();
     await autoApproveMcpDialogs();
     await waitForLeaderIdle();
 
@@ -147,7 +151,7 @@ test.describe('Team Workspace Migration', () => {
 
     // ── Step 3: Wait for workspace panel with "临时空间" label ───────────
 
-    const workspaceTitle = page.locator('text=工作空间').or(page.locator('text=Workspace'));
+    const workspaceTitle = workspacePanel.getByText(/工作空间|Workspace/);
     await expect(workspaceTitle.first()).toBeVisible({ timeout: 20_000 });
 
     const tempLabel = page.locator('.workspace-title-label').filter({ hasText: /临时空间|Temporary/ });
@@ -161,7 +165,6 @@ test.describe('Team Workspace Migration', () => {
       dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [target] });
     }, targetWorkspace);
 
-    const changeBtn = page.locator('.workspace-toolbar-actions svg').first();
     await expect(changeBtn).toBeVisible({ timeout: 5_000 });
     await changeBtn.click();
 
@@ -198,7 +201,7 @@ test.describe('Team Workspace Migration', () => {
     expect(labelText).not.toMatch(/临时空间|Temporary/);
 
     // 5c. UI: leader and member tabs still visible
-    await expect(tabBar.locator('text=Leader').first()).toBeVisible({ timeout: 10_000 });
+    await expect(leaderTab).toBeVisible({ timeout: 10_000 });
     await expect(tabBar.locator(`text=${memberName}`).first()).toBeVisible({ timeout: 10_000 });
 
     // 5d. Backend: team workspace updated
@@ -226,7 +229,7 @@ test.describe('Team Workspace Migration', () => {
     // ── Step 6: Verify team still functional after migration ────────────
     // Send a task via leader → leader should respond (proves session still works)
 
-    await tabBar.locator('span').filter({ hasText: 'Leader' }).first().click();
+    await leaderTab.click();
     await page.waitForTimeout(500);
 
     // Wait for any in-flight leader processing to complete first

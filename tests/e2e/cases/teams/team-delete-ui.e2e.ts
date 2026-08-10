@@ -6,7 +6,7 @@
  * No mocks, no UI shortcuts.
  */
 import { test, expect } from '../../fixtures';
-import { invokeBridge, navigateTo, cleanupTeamsByName, createTeam } from '../../helpers';
+import { invokeBridge, navigateTo, cleanupTeamsByName, createTeam, expandTeamSection } from '../../helpers';
 
 const TEAM_NAME = 'E2E Case5 Delete Team';
 
@@ -29,14 +29,11 @@ test.describe('Team Delete - Full UI Flow', () => {
   });
 
   test('delete team via sidebar context menu', async ({ page }) => {
+    await expandTeamSection(page);
     await page.screenshot({ path: 'tests/e2e/results/case5-01-before-delete.png' });
 
     // Step 1: Locate the team row in the Sider
-    const teamRow = page
-      .locator('div.group')
-      .filter({ has: page.locator('[data-testid="sider-item-menu-trigger"]') })
-      .filter({ has: page.getByText(TEAM_NAME, { exact: true }) })
-      .first();
+    const teamRow = page.locator('[data-testid^="team-sider-item-"]').filter({ hasText: TEAM_NAME }).first();
     await teamRow.waitFor({ state: 'visible', timeout: 10_000 });
 
     // Step 2: Hover to reveal the three-dot menu trigger, then click it

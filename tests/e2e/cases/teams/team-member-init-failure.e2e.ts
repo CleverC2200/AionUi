@@ -5,7 +5,14 @@
  * and remove affordance with stable slot-level selectors.
  */
 import { test, expect } from '../../fixtures';
-import { invokeBridge, navigateTo, createTeam, deleteTeam, findAssistantIdForBackend } from '../../helpers';
+import {
+  invokeBridge,
+  navigateTo,
+  createTeam,
+  deleteTeam,
+  findAssistantIdForBackend,
+  TEAM_SUPPORTED_BACKENDS,
+} from '../../helpers';
 
 type AgentPayload = {
   name: string;
@@ -30,9 +37,10 @@ test.describe('Team Member Slot UI', () => {
       return;
     }
 
-    const failedAssistantId = await findAssistantIdForBackend(page, 'claude');
+    const memberBackend = TEAM_SUPPORTED_BACKENDS.has('codex') ? 'codex' : [...TEAM_SUPPORTED_BACKENDS][0];
+    const failedAssistantId = memberBackend ? await findAssistantIdForBackend(page, memberBackend) : null;
     if (!failedAssistantId) {
-      console.log('[E2E] No assistant found for claude backend — skipping member-init-failure test');
+      console.log('[E2E] No configured assistant found — skipping member-init-failure test');
       await deleteTeam(page, teamId);
       test.skip();
       return;
@@ -44,7 +52,7 @@ test.describe('Team Member Slot UI', () => {
       name: 'FailedMember',
       role: 'teammate',
       assistant_id: failedAssistantId,
-      model: 'claude',
+      model: memberBackend,
     };
 
     const addResult = await invokeBridge<TeamAgentResult | { __bridgeError: true; message: string }>(

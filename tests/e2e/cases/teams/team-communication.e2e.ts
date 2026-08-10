@@ -4,16 +4,24 @@
  * Scenario 4: Leader communication — user types in UI input and sends via UI button
  */
 import { test, expect } from '../../fixtures';
-import { ensureTeam, invokeBridge, navigateTo } from '../../helpers';
+import { ensureTeam, invokeBridge, navigateTo, TEAM_SUPPORTED_BACKENDS } from '../../helpers';
 
 test.describe('Team Communication', () => {
   test('scenario 4: send message to leader via UI input', async ({ page }) => {
     test.setTimeout(120_000);
+    const leaderType = TEAM_SUPPORTED_BACKENDS.has('codex') ? 'codex' : [...TEAM_SUPPORTED_BACKENDS][0];
+    if (!leaderType) {
+      test.skip(true, 'No configured Team backend is available');
+      return;
+    }
     let teamId: string;
     try {
-      teamId = await ensureTeam(page, 'E2E Test Team', 'gemini');
+      teamId = await ensureTeam(page, 'E2E Test Team', leaderType);
     } catch (error) {
-      test.skip(true, `Could not create the E2E Test Team with a gemini assistant leader: ${(error as Error).message}`);
+      test.skip(
+        true,
+        `Could not create the E2E Test Team with a ${leaderType} assistant leader: ${(error as Error).message}`
+      );
       return;
     }
     expect(teamId).toBeTruthy();
