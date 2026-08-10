@@ -1,11 +1,20 @@
 import { test, expect } from '../../fixtures';
-import { cleanupTeamsByName, createTeam } from '../../helpers';
+import fs from 'fs';
+import {
+  cleanupTeamsByName,
+  closeTeamCreateModal,
+  createTeam,
+  navigateTo,
+  openTeamCreateModal,
+  pickTeamCreateAssistantOption,
+} from '../../helpers';
 
 const TEAM_COLLAPSED = 'E2E Collapsed Team';
 const TEAM_WORKSPACE = 'E2E Workspace Team';
 
 test.describe('Team UI Details', () => {
-  test('collapsed sidebar shows team icon and navigates on click', async ({ page }) => {
+  test('sidebar toggle hides and restores team navigation', async ({ page }) => {
+    test.setTimeout(120_000);
     await cleanupTeamsByName(page, TEAM_COLLAPSED);
 
     let teamId: string;
@@ -15,25 +24,31 @@ test.describe('Team UI Details', () => {
       test.skip();
       return;
     }
+    await navigateTo(page, '#/');
 
-    const collapseBtn = page.locator('button[aria-label="Collapse sidebar"], button[aria-label="折叠侧边栏"]');
-    const expandBtn = page.locator('button[aria-label="Expand sidebar"], button[aria-label="展开侧边栏"]');
+    const siderToggle = page.locator('[data-testid="sider-toggle"]');
 
-    await collapseBtn.click({ timeout: 5_000 });
+    await expect(siderToggle).toHaveAttribute('aria-label', /Collapse sidebar|折叠侧边栏|收起/, { timeout: 5_000 });
+    await siderToggle.click();
+    await page.waitForTimeout(300);
 
-    const collapsedItem = page.locator(`[data-testid="collapsed-team-item-${teamId}"]`);
-    await expect(collapsedItem).toBeVisible({ timeout: 5_000 });
+    const expandedItem = page.locator(`[data-testid="team-sider-item-${teamId}"]`);
+    await expect(expandedItem).toBeHidden({ timeout: 5_000 });
 
-    const collapsedIcon = page.locator(`[data-testid="collapsed-team-icon-${teamId}"]`);
-    await expect(collapsedIcon).toBeVisible();
+    await expect(siderToggle).toHaveAttribute('aria-label', /Expand sidebar|展开侧边栏|展开/, { timeout: 5_000 });
+    await siderToggle.click();
+    const teamSectionToggle = page.locator('[data-testid="team-section-toggle"]');
+    await expect(teamSectionToggle).toBeVisible({ timeout: 5_000 });
+    if ((await teamSectionToggle.getAttribute('aria-expanded')) !== 'true') {
+      await teamSectionToggle.click();
+    }
+    await expect(expandedItem).toBeVisible({ timeout: 5_000 });
 
-    await collapsedItem.click();
+    await expandedItem.click();
     await page.waitForURL(new RegExp(`/team/${teamId}`), { timeout: 10_000 });
 
     const hash = await page.evaluate(() => window.location.hash);
     expect(hash).toContain(`/team/${teamId}`);
-
-    await expandBtn.click({ timeout: 5_000 });
 
     await cleanupTeamsByName(page, TEAM_COLLAPSED);
   });
@@ -42,36 +57,23 @@ test.describe('Team UI Details', () => {
     await cleanupTeamsByName(page, TEAM_WORKSPACE);
 
     const tmpDir = `/tmp/e2e-workspace-${Date.now()}`;
-    await electronApp.evaluate(async ({ dialog }, dir) => {
-      const fs = await import('fs');
-      fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(tmpDir, { recursive: true });
+    await electronApp.evaluate(({ dialog }, dir) => {
       dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [dir] });
     }, tmpDir);
 
-    const createBtn = page.locator('[data-testid="team-create-btn"]').first();
-    await expect(createBtn).toBeVisible({ timeout: 10_000 });
-    await createBtn.click();
+    const modal = await openTeamCreateModal(page);
 
-    const modal = page.locator('.arco-modal').last();
-    await modal.waitFor({ state: 'visible', timeout: 5_000 });
-
-    const nameInput = modal.getByRole('textbox').first();
+    const nameInput = modal.locator('[data-testid="team-create-name-input"]');
     await nameInput.fill(TEAM_WORKSPACE);
 
-    const leaderSelect = modal.locator('[data-testid="team-create-leader-select"]');
-    const hasSelect = await leaderSelect.isVisible({ timeout: 3_000 }).catch(() => false);
-    if (!hasSelect) {
-      await modal
-        .locator('.arco-btn')
-        .filter({ hasText: /Cancel|取消/i })
-        .first()
-        .click({ force: true });
+    const firstOption = await pickTeamCreateAssistantOption(modal);
+    if (!firstOption) {
+      await closeTeamCreateModal(modal);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
       test.skip();
       return;
     }
-    await leaderSelect.click();
-
-    const firstOption = page.locator('[data-testid^="team-create-agent-option-"]').first();
     await expect(firstOption).toBeVisible({ timeout: 5_000 });
     await firstOption.click();
 
@@ -103,11 +105,6 @@ test.describe('Team UI Details', () => {
 
     await cleanupTeamsByName(page, TEAM_WORKSPACE);
 
-    await electronApp.evaluate(async (_ctx, dir) => {
-      const fs = await import('fs');
-      try {
-        fs.rmSync(dir, { recursive: true, force: true });
-      } catch {}
-    }, tmpDir);
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 });

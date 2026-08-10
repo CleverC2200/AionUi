@@ -7,6 +7,7 @@ type TeamRecord = { id: string; name: string; agents: TeamAgent[] };
 
 /** UI label patterns for each backend leader type. */
 const BACKEND_UI_PATTERN: Record<string, RegExp> = {
+  aionrs: /Aion CLI/i,
   claude: /Claude Code/i,
   codex: /Codex/i,
   gemini: /Gemini/i,
@@ -32,19 +33,14 @@ export async function createTeam(page: Page, name: string, leaderType?: string):
   });
   await page.waitForFunction(() => window.location.hash === '#/team', { timeout: 10_000 }).catch(() => {});
 
-  const createBtn = page.locator('[data-testid="team-create-btn"]').first();
-  await createBtn.waitFor({ state: 'visible', timeout: 10_000 });
-  await createBtn.click();
+  const modal = await openTeamCreateModal(page);
 
-  const modal = page.locator('.arco-modal').last();
-  await modal.waitFor({ state: 'visible', timeout: 5_000 });
-
-  const nameInput = modal.getByRole('textbox').first();
+  const nameInput = modal.locator('[data-testid="team-create-name-input"]');
   await nameInput.fill(name);
 
-  const option = await pickLeaderOption(page, leaderType);
+  const option = await pickTeamCreateAssistantOption(modal, leaderType);
   if (!option) {
-    await closeModal(page, modal);
+    await closeTeamCreateModal(modal);
     throw new Error(`No assistant option matched leader type "${leaderType ?? 'any'}" — skip this test`);
   }
   await option.click();
@@ -63,8 +59,51 @@ export async function createTeam(page: Page, name: string, leaderType?: string):
   return match[1];
 }
 
-async function pickLeaderOption(page: Page, leaderType?: string): Promise<Locator | null> {
-  const options = page.locator('.team-create-modal [data-testid^="team-create-agent-option-"]');
+export async function openTeamCreateModal(page: Page): Promise<Locator> {
+  const existingModal = page.locator('.team-create-modal:visible').last();
+  if ((await existingModal.count()) > 0) {
+    await closeTeamCreateModal(existingModal);
+  }
+
+  await expandMainSidebar(page);
+
+  const createBtn = page.locator('[data-testid="team-create-btn"]').first();
+  await createBtn.waitFor({ state: 'visible', timeout: 10_000 });
+  await createBtn.click();
+
+  const modal = page.locator('.team-create-modal').last();
+  await modal.waitFor({ state: 'visible', timeout: 5_000 });
+  return modal;
+}
+
+export async function expandMainSidebar(page: Page): Promise<void> {
+  const teamSection = page.locator('[data-testid="team-section-toggle"]');
+  if (await teamSection.isVisible({ timeout: 1_000 }).catch(() => false)) return;
+
+  const toggle = page.locator('[data-testid="sider-toggle"]');
+  await toggle.waitFor({ state: 'visible', timeout: 10_000 });
+  const label = (await toggle.getAttribute('aria-label')) ?? '';
+  if (/Expand sidebar|展开侧边栏|展开/i.test(label)) {
+    await toggle.click();
+  }
+  await teamSection.waitFor({ state: 'visible', timeout: 10_000 });
+}
+
+export async function expandTeamSection(page: Page): Promise<void> {
+  await expandMainSidebar(page);
+  const toggle = page.locator('[data-testid="team-section-toggle"]');
+  await toggle.waitFor({ state: 'visible', timeout: 10_000 });
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  }
+}
+
+export async function pickTeamCreateAssistantOption(
+  root: Locator | Page,
+  leaderType?: string
+): Promise<Locator | null> {
+  const options = root.locator('[data-testid^="team-create-agent-option-"]');
   await options
     .first()
     .waitFor({ state: 'visible', timeout: 5_000 })
@@ -72,10 +111,15 @@ async function pickLeaderOption(page: Page, leaderType?: string): Promise<Locato
 
   if (!leaderType) {
     const count = await options.count().catch(() => 0);
+    const patterns = [...TEAM_SUPPORTED_BACKENDS].map(
+      (backend) => BACKEND_UI_PATTERN[backend] ?? new RegExp(backend, 'i')
+    );
     for (let i = 0; i < count; i++) {
       const option = options.nth(i);
       const classes = (await option.getAttribute('class').catch(() => '')) ?? '';
-      if (!classes.includes('cursor-not-allowed')) return option;
+      if (classes.includes('cursor-not-allowed')) continue;
+      const text = await option.textContent().catch(() => '');
+      if (patterns.some((pattern) => pattern.test(text ?? ''))) return option;
     }
     return null;
   }
@@ -92,19 +136,17 @@ async function pickLeaderOption(page: Page, leaderType?: string): Promise<Locato
   return null;
 }
 
-async function closeModal(page: Page, modal: Locator): Promise<void> {
+export async function closeTeamCreateModal(modal: Locator): Promise<void> {
   const cancel = modal
     .locator('.arco-btn')
     .filter({ hasText: /Cancel|取消/i })
     .first();
-  if ((await cancel.count().catch(() => 0)) > 0) {
-    await cancel.click({ force: true }).catch(() => {});
+  if (await cancel.isVisible().catch(() => false)) {
+    await cancel.click({ force: true });
+  } else {
+    await modal.locator('button[aria-label="Close"]').click({ force: true });
   }
-  await page
-    .locator('.arco-modal')
-    .last()
-    .waitFor({ state: 'hidden', timeout: 5_000 })
-    .catch(() => {});
+  await modal.waitFor({ state: 'hidden', timeout: 5_000 });
 }
 
 /**

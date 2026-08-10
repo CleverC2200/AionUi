@@ -162,6 +162,7 @@ const TeamSiderSection: React.FC<TeamSiderSectionProps> = ({
           <div
             className='group/label sider-section-label flex items-center px-12px h-28px select-none sticky top-0 z-10 mt-8px cursor-pointer'
             data-testid='team-section-toggle'
+            aria-expanded={expanded}
             onClick={() => setExpanded((v) => !v)}
           >
             <span className='text-14px text-t-tertiary sider-section-title group-hover/label:text-t-primary transition-colors font-[500] leading-none'>
@@ -220,7 +221,7 @@ const TeamSiderSection: React.FC<TeamSiderSectionProps> = ({
               const teamBadge = teamBadgeCounts.get(team.id) ?? 0;
               const isRunning = isTeamRunning(team.id);
               return (
-                <div key={team.id} className='relative group'>
+                <div key={team.id} className='relative group' data-testid={`team-sider-item-${team.id}`}>
                   <SiderItem
                     icon={
                       isRunning ? (

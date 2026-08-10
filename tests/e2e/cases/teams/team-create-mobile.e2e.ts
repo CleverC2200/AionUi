@@ -13,7 +13,12 @@
  * afterwards because the Electron window is shared across specs.
  */
 import { test, expect } from '../../fixtures';
-import { TEAM_SUPPORTED_BACKENDS, cleanupTeamsByName } from '../../helpers';
+import {
+  TEAM_SUPPORTED_BACKENDS,
+  cleanupTeamsByName,
+  closeTeamCreateModal,
+  pickTeamCreateAssistantOption,
+} from '../../helpers';
 
 const MOBILE_WIDTH = 430;
 const MOBILE_HEIGHT = 900;
@@ -37,25 +42,16 @@ async function setWindowContentSize(
 }
 
 test.describe('Team Create - mobile (narrow screen)', () => {
-  let originalSize: { width: number; height: number } | null = null;
-
   test.beforeEach(async ({ electronApp }) => {
-    // Remember the current content size so we can restore it afterwards.
-    originalSize = await electronApp.evaluate(async ({ BrowserWindow }) => {
-      const win = BrowserWindow.getAllWindows().find((w) => !w.webContents.getURL().startsWith('devtools://'));
-      const [width, height] = win?.getContentSize() ?? [1200, 900];
-      return { width, height };
-    });
     // Force a known desktop width regardless of prior state (the window is shared
     // across specs; a previous run may have left it narrow).
     await setWindowContentSize(electronApp, DESKTOP_WIDTH, DESKTOP_HEIGHT);
   });
 
   test.afterEach(async ({ electronApp }) => {
-    // Restore the original size — the Electron window is shared across specs.
-    if (originalSize) {
-      await setWindowContentSize(electronApp, originalSize.width, originalSize.height);
-    }
+    // The Electron window is shared across specs. Always leave a known desktop
+    // viewport instead of restoring a possibly narrow launch default.
+    await setWindowContentSize(electronApp, DESKTOP_WIDTH, DESKTOP_HEIGHT);
   });
 
   test('shows single-column layout and adds a member via the bottom sheet', async ({ electronApp, page }) => {
@@ -89,20 +85,23 @@ test.describe('Team Create - mobile (narrow screen)', () => {
     // The dropdown reveals the reused picker (search + options).
     await expect(page.locator('[data-testid="team-create-agent-search"]')).toBeVisible({ timeout: 5_000 });
 
-    const firstOption = page.locator('[data-testid^="team-create-agent-option-"]').first();
-    const hasOption = await firstOption.isVisible({ timeout: 3_000 }).catch(() => false);
+    const modal = page.locator('.team-create-modal').last();
+    // The narrow-screen picker is rendered in a portal outside the modal DOM.
+    const firstOption = await pickTeamCreateAssistantOption(page);
+    const hasOption = firstOption ? await firstOption.isVisible({ timeout: 3_000 }).catch(() => false) : false;
 
     await page.screenshot({ path: 'tests/e2e/results/team-mobile-02-dropdown.png' });
 
     if (!hasOption || TEAM_SUPPORTED_BACKENDS.size === 0) {
       console.log('[E2E] No supported assistant available — skipping mobile create flow');
+      await closeTeamCreateModal(modal);
       test.skip();
       return;
     }
 
     // Select an assistant — select-and-close: the dropdown collapses and the
     // member appears in the list below (the "added successfully" feedback).
-    await firstOption.click();
+    await firstOption!.click();
     await expect(page.locator('[data-testid="team-create-agent-search"]')).toBeHidden({ timeout: 5_000 });
 
     const memberRow = page.locator('[data-testid^="team-create-member-draft-"]').first();

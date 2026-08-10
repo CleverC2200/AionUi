@@ -5,7 +5,7 @@
  * is reflected both in the UI (data-current-mode attribute) and in the persisted
  * team record (team.get → session_mode field).
  *
- * Only ACP-type backends (claude, codex) show the mode selector in team mode.
+ * Codex shows the ACP mode selector in the configured Team E2E matrix.
  * The test skips when no qualifying backend is available.
  */
 import { test, expect } from '../../fixtures';
@@ -14,7 +14,7 @@ import { ensureTeam, invokeBridge, navigateTo, TEAM_SUPPORTED_BACKENDS, MODE_SEL
 const TEAM_NAME = 'E2E Session Mode Team';
 
 /** ACP-capable backends that render the mode selector in team send-box. */
-const ACP_BACKENDS = ['claude', 'codex'] as const;
+const ACP_BACKENDS = ['codex'] as const;
 
 type TeamRecord = {
   id: string;
@@ -38,7 +38,7 @@ test.describe('Team Session Mode Propagation', () => {
     // [setup] Resolve an ACP-capable backend that is also installed/supported.
     const leaderBackend = ACP_BACKENDS.find((b) => TEAM_SUPPORTED_BACKENDS.has(b));
     if (!leaderBackend) {
-      test.skip(true, 'No ACP backend (claude/codex) available — skipping session mode test');
+      test.skip(true, 'No configured Codex backend available — skipping session mode test');
       return;
     }
 

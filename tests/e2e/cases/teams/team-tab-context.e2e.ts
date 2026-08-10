@@ -62,8 +62,8 @@ test.describe('Team Tab Context Persistence', () => {
   test('switching tabs and back preserves leader conversation history', async ({ page }) => {
     test.setTimeout(300_000);
 
-    // [setup] Resolve leader backend — prefer gemini
-    const leaderType = TEAM_SUPPORTED_BACKENDS.has('gemini') ? 'gemini' : [...TEAM_SUPPORTED_BACKENDS][0];
+    // [setup] Resolve a configured leader backend — prefer Codex for ACP messaging.
+    const leaderType = TEAM_SUPPORTED_BACKENDS.has('codex') ? 'codex' : [...TEAM_SUPPORTED_BACKENDS][0];
 
     if (!leaderType) {
       test.skip(true, 'No supported backend available — skipping tab context test');
@@ -112,9 +112,9 @@ test.describe('Team Tab Context Persistence', () => {
     // [setup] Add a member tab deterministically; this test verifies tab
     // context persistence, not the leader's tool-calling path.
     const memberName = `E2E-tab-member-${Date.now()}`;
-    const memberAssistantId = await findAssistantIdForBackend(page, 'claude');
+    const memberAssistantId = await findAssistantIdForBackend(page, leaderType);
     if (!memberAssistantId) {
-      test.skip(true, 'No assistant found for claude backend');
+      test.skip(true, `No assistant found for ${leaderType} backend`);
       return;
     }
     const addResult = await invokeBridge<{ slot_id: string } | null>(page, 'team.add-agent', {
@@ -123,7 +123,7 @@ test.describe('Team Tab Context Persistence', () => {
         name: memberName,
         role: 'teammate',
         assistant_id: memberAssistantId,
-        model: 'claude',
+        model: leaderType,
       },
     }).catch(() => null);
     if (!addResult?.slot_id) {

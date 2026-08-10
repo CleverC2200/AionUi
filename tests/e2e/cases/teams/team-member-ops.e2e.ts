@@ -2,7 +2,14 @@
  * E2E: Team member operations — rename leader tab, remove member.
  */
 import { test, expect } from '../../fixtures';
-import { cleanupTeamsByName, createTeam, findAssistantIdForBackend, invokeBridge, navigateTo } from '../../helpers';
+import {
+  cleanupTeamsByName,
+  createTeam,
+  findAssistantIdForBackend,
+  invokeBridge,
+  navigateTo,
+  TEAM_SUPPORTED_BACKENDS,
+} from '../../helpers';
 
 const TEAM_NAME = 'E2E-Member-Ops';
 
@@ -76,9 +83,10 @@ test.describe('Team Member Ops', () => {
     }
     expect(teamId).toBeTruthy();
 
-    const memberAssistantId = await findAssistantIdForBackend(page, 'claude');
+    const memberBackend = TEAM_SUPPORTED_BACKENDS.has('codex') ? 'codex' : [...TEAM_SUPPORTED_BACKENDS][0];
+    const memberAssistantId = memberBackend ? await findAssistantIdForBackend(page, memberBackend) : null;
     if (!memberAssistantId) {
-      console.log('[E2E] No assistant found for claude backend — skipping member remove flow.');
+      console.log('[E2E] No configured assistant found — skipping member remove flow.');
       test.skip();
       return;
     }
@@ -91,7 +99,7 @@ test.describe('Team Member Ops', () => {
         name: memberName,
         role: 'teammate',
         assistant_id: memberAssistantId,
-        model: 'claude',
+        model: memberBackend,
       },
     }).catch(() => null);
 

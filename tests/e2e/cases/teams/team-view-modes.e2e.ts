@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures';
-import { cleanupTeamsByName, createTeam } from '../../helpers';
+import { cleanupTeamsByName, createTeam, findAssistantIdForBackend } from '../../helpers';
 
 const TEAM_FULLSCREEN = 'E2E Fullscreen Team';
 const TEAM_MODEL = 'E2E Model Selector Team';
@@ -16,11 +16,11 @@ test.describe('Team View Modes', () => {
     }
 
     // Wait for the leader agent panel header to render
-    const agentHeader = page.locator('.border-b .flex.items-center.justify-between').first();
+    const leaderSlot = page.locator('[data-role="leader"]');
+    const agentHeader = leaderSlot.locator('[data-testid="team-agent-header"]');
     await expect(agentHeader).toBeVisible({ timeout: 15_000 });
 
-    // Locate the FullScreen icon button (icon-park renders .i-icon-full-screen)
-    const fullscreenBtn = page.locator('.i-icon-full-screen').first();
+    const fullscreenBtn = leaderSlot.locator('[data-testid="team-agent-fullscreen-toggle"]');
     await expect(fullscreenBtn).toBeVisible({ timeout: 10_000 });
 
     // Count agent slot containers before fullscreen
@@ -29,20 +29,17 @@ test.describe('Team View Modes', () => {
     await fullscreenBtn.click();
 
     // After entering fullscreen the OffScreen icon should appear
-    const offscreenBtn = page.locator('.i-icon-off-screen').first();
+    const singleViewSlot = page.locator('[data-testid="team-agent-header"]');
+    const offscreenBtn = singleViewSlot.locator('[data-testid="team-agent-fullscreen-toggle"]');
     await expect(offscreenBtn).toBeVisible({ timeout: 5_000 });
-
-    // In fullscreen mode, FullScreen icon should not be present
-    await expect(page.locator('.i-icon-full-screen')).toHaveCount(0, { timeout: 3_000 });
+    await expect(offscreenBtn).toHaveAttribute('data-fullscreen', 'true');
 
     // Exit fullscreen
     await offscreenBtn.click();
 
-    // FullScreen icon should reappear
-    await expect(page.locator('.i-icon-full-screen').first()).toBeVisible({ timeout: 5_000 });
-
-    // OffScreen icon should disappear (no slot is fullscreened)
-    await expect(page.locator('.i-icon-off-screen')).toHaveCount(0, { timeout: 3_000 });
+    const restoredFullscreenBtn = leaderSlot.locator('[data-testid="team-agent-fullscreen-toggle"]');
+    await expect(restoredFullscreenBtn).toBeVisible({ timeout: 5_000 });
+    await expect(restoredFullscreenBtn).toHaveAttribute('data-fullscreen', 'false');
 
     // Slot count should be restored (at least as many as before)
     const slotsAfterCount = await page.locator('[data-role="leader"], [data-role="member"]').count();
@@ -54,24 +51,26 @@ test.describe('Team View Modes', () => {
   test('model selector dropdown shows available models for ACP agent', async ({ page }) => {
     await cleanupTeamsByName(page, TEAM_MODEL);
 
+    const backend = (await findAssistantIdForBackend(page, 'codex', { requireAvailable: true })) ? 'codex' : null;
+    if (!backend) {
+      test.skip();
+      return;
+    }
+
     try {
-      await createTeam(page, TEAM_MODEL, 'claude');
+      await createTeam(page, TEAM_MODEL, backend);
     } catch {
-      // claude not installed — try codex
-      try {
-        await createTeam(page, TEAM_MODEL, 'codex');
-      } catch {
-        test.skip();
-        return;
-      }
+      test.skip();
+      return;
     }
 
     // Wait for leader agent panel to load
-    const agentHeader = page.locator('.border-b .flex.items-center.justify-between').first();
+    const leaderSlot = page.locator('[data-role="leader"]');
+    const agentHeader = leaderSlot.locator('[data-testid="team-agent-header"]');
     await expect(agentHeader).toBeVisible({ timeout: 15_000 });
 
     // Find the model selector button (AcpModelSelector renders with class header-model-btn)
-    const modelBtn = page.locator('.header-model-btn').first();
+    const modelBtn = leaderSlot.locator('.header-model-btn').first();
     await expect(modelBtn).toBeVisible({ timeout: 15_000 });
 
     await modelBtn.click();

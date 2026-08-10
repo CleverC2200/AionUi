@@ -341,6 +341,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
             className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
             onClick={handleSiderToggle}
             aria-label={siderTooltip}
+            data-testid='sider-toggle'
           >
             <SidebarIcon size={iconSize} strokeWidth={desktopIconStroke} />
           </button>
@@ -438,6 +439,8 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
             className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
             onClick={handleWorkspaceToggle}
             aria-label={workspaceTooltip}
+            data-testid='workspace-toggle'
+            data-collapsed={workspaceCollapsed ? 'true' : 'false'}
           >
             {workspaceCollapsed ? (
               <ExpandRight theme='outline' size={iconSize} fill='currentColor' />
