@@ -200,10 +200,11 @@ test('floats above the composer and reveals long-task details on hover', async (
       entries.map((entry) => ({ content: entry.content, status: 'completed' }))
     );
     await expect(plan).toHaveCount(0);
-    await scroller.evaluate((element) => {
-      element.scrollTop = 0;
-      element.dispatchEvent(new Event('scroll'));
-    });
+    await scroller.hover();
+    await page.mouse.wheel(0, -2_000);
+    await expect
+      .poll(() => scroller.evaluate((element) => element.scrollHeight - element.clientHeight - element.scrollTop))
+      .toBeGreaterThan(100);
     await expect(page.getByTestId('message-list-scroll-to-bottom')).toBeVisible();
   } finally {
     if (conversationId) {

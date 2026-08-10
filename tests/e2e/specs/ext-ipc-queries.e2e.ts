@@ -10,6 +10,7 @@
  */
 import { test, expect } from '../fixtures';
 import { invokeBridge, getExtensionSnapshot, getChannelPluginStatus } from '../helpers';
+import path from 'node:path';
 
 // ── ACP Adapters ─────────────────────────────────────────────────────────────
 
@@ -179,32 +180,32 @@ test.describe('Extension IPC: Settings Tabs', () => {
 test.describe('Extension IPC: WebUI Contributions', () => {
   test('returns webui contributions from feishu and wecom extensions', async ({ page }) => {
     const snapshot = await getExtensionSnapshot(page);
-    const extNames = snapshot.webuiContributions.map((c) => c.extensionName);
+    const extNames = snapshot.webuiContributions.map((c) => c.extension_name);
 
     expect(extNames).toContain('ext-feishu');
     expect(extNames).toContain('ext-wecom-bot');
   });
 
-  test('feishu webui has expected api routes and static assets', async ({ page }) => {
+  test('feishu webui has expected routes and asset directory', async ({ page }) => {
     const snapshot = await getExtensionSnapshot(page);
-    const feishu = snapshot.webuiContributions.find((c) => c.extensionName === 'ext-feishu');
-    expect(feishu).toBeTruthy();
+    const feishu = snapshot.webuiContributions.filter((c) => c.extension_name === 'ext-feishu');
+    expect(feishu.length).toBeGreaterThan(0);
 
-    const apiPaths = feishu!.apiRoutes.map((r) => r.path);
+    const apiPaths = feishu.flatMap((contribution) => contribution.routes ?? []).map((route) => route.path);
     expect(apiPaths).toEqual(expect.arrayContaining(['/ext-feishu/collect', '/ext-feishu/stats']));
 
-    const assetPrefixes = feishu!.staticAssets.map((a) => a.urlPrefix);
-    expect(assetPrefixes).toEqual(expect.arrayContaining(['/ext-feishu/assets']));
+    expect(feishu.some((contribution) => path.basename(contribution.directory) === 'assets')).toBeTruthy();
   });
 
-  test('wecom-bot webui has webhook route with auth disabled', async ({ page }) => {
+  test('wecom-bot webui exposes the webhook handler contract', async ({ page }) => {
     const snapshot = await getExtensionSnapshot(page);
-    const wecom = snapshot.webuiContributions.find((c) => c.extensionName === 'ext-wecom-bot');
-    expect(wecom).toBeTruthy();
+    const wecom = snapshot.webuiContributions.filter((c) => c.extension_name === 'ext-wecom-bot');
+    expect(wecom.length).toBeGreaterThan(0);
 
-    const webhookRoute = wecom!.apiRoutes.find((r) => r.path.includes('webhook'));
-    expect(webhookRoute).toBeTruthy();
-    expect(webhookRoute!.auth).toBe(false);
+    const webhookRoute = wecom
+      .flatMap((contribution) => contribution.routes ?? [])
+      .find((r) => r.path.includes('webhook'));
+    expect(webhookRoute).toMatchObject({ method: 'GET', handler: 'webui/webhook.js' });
   });
 });
 

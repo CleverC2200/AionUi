@@ -28,7 +28,7 @@ test.describe('Extension: Lifecycle – Enable / Disable', () => {
 
     // Verify contributions are removed
     const after = await getExtensionSnapshot(page);
-    const feishuWebui = after.webuiContributions.find((c) => c.extensionName === TARGET_EXT);
+    const feishuWebui = after.webuiContributions.find((c) => c.extension_name === TARGET_EXT);
     expect(feishuWebui).toBeFalsy();
   });
 
@@ -41,9 +41,9 @@ test.describe('Extension: Lifecycle – Enable / Disable', () => {
 
     // Verify contributions are restored
     const snapshot = await getExtensionSnapshot(page);
-    const feishuWebui = snapshot.webuiContributions.find((c) => c.extensionName === TARGET_EXT);
-    expect(feishuWebui).toBeTruthy();
-    expect(feishuWebui!.apiRoutes.length).toBeGreaterThan(0);
+    const feishuWebui = snapshot.webuiContributions.filter((c) => c.extension_name === TARGET_EXT);
+    expect(feishuWebui.length).toBeGreaterThan(0);
+    expect(feishuWebui.flatMap((contribution) => contribution.routes ?? []).length).toBeGreaterThan(0);
   });
 
   test('disabling one extension does not affect others', async ({ page }) => {
@@ -68,7 +68,7 @@ test.describe('Extension: Lifecycle – Enable / Disable', () => {
 
     // Verify it's no longer contributing
     const snapshot = await getExtensionSnapshot(page);
-    const feishuChannels = snapshot.webuiContributions.filter((c) => c.extensionName === TARGET_EXT);
+    const feishuChannels = snapshot.webuiContributions.filter((c) => c.extension_name === TARGET_EXT);
     expect(feishuChannels.length).toBe(0);
 
     // Re-enable
@@ -76,7 +76,7 @@ test.describe('Extension: Lifecycle – Enable / Disable', () => {
 
     // Verify contributions are back
     const restored = await getExtensionSnapshot(page);
-    const feishuRestored = restored.webuiContributions.find((c) => c.extensionName === TARGET_EXT);
+    const feishuRestored = restored.webuiContributions.find((c) => c.extension_name === TARGET_EXT);
     expect(feishuRestored).toBeTruthy();
   });
 });

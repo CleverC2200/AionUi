@@ -6,7 +6,12 @@
  * they're unit-testable and don't require a browser context.
  */
 
-export type ResponseMapperKey = 'dirOrFileTree' | 'flatFileList' | 'snapshotCompare' | 'conversation';
+export type ResponseMapperKey =
+  | 'dirOrFileTree'
+  | 'flatFileList'
+  | 'snapshotCompare'
+  | 'conversation'
+  | 'channelPlugins';
 
 type DirOrFileRaw = {
   name: string;
@@ -95,6 +100,26 @@ function mapConversation(data: unknown): unknown {
   };
 }
 
+function mapChannelPlugins(data: unknown): unknown {
+  if (!Array.isArray(data)) return data;
+
+  return data.map((entry) => {
+    if (!entry || typeof entry !== 'object') return entry;
+    const plugin = entry as Record<string, unknown>;
+    return {
+      ...plugin,
+      id: plugin.plugin_id ?? plugin.id,
+      type: plugin.type ?? plugin.plugin_type,
+      connected: plugin.connected ?? false,
+      activeUsers: plugin.active_users ?? plugin.activeUsers ?? 0,
+      botUsername: plugin.bot_username ?? plugin.botUsername,
+      hasToken: plugin.has_token ?? plugin.hasToken ?? false,
+      isExtension: plugin.is_extension ?? plugin.isExtension,
+      extensionMeta: plugin.extension_meta ?? plugin.extensionMeta,
+    };
+  });
+}
+
 export const RESPONSE_MAPPERS: Record<ResponseMapperKey, (data: unknown) => unknown> = {
   dirOrFileTree: (data) => (Array.isArray(data) ? data.map(mapDirOrFile) : data),
   flatFileList: (data) => (Array.isArray(data) ? data.map((e) => mapFlatFile(e as Record<string, unknown>)) : data),
@@ -107,4 +132,5 @@ export const RESPONSE_MAPPERS: Record<ResponseMapperKey, (data: unknown) => unkn
     };
   },
   conversation: (data) => mapConversation(data),
+  channelPlugins: (data) => mapChannelPlugins(data),
 };

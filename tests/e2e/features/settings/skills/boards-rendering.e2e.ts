@@ -7,12 +7,15 @@
  */
 
 import { test, expect } from '../../../fixtures';
-import { goToSkillsHub, cleanupTestSkills, getAutoSkills } from '../../../helpers/skillsHub';
+import { goToSkillsHub, cleanupTestSkills, getAutoSkills, getMySkills } from '../../../helpers/skillsHub';
 import { takeScreenshot } from '../../../helpers/screenshots';
 
 test.describe('Skills Hub - Boards Rendering (P1)', () => {
   test.beforeEach(async ({ page }) => {
     await goToSkillsHub(page);
+    const officialTab = page.getByTestId('settings-tab-official');
+    await officialTab.click();
+    await expect(officialTab).toHaveAttribute('aria-selected', 'true');
   });
 
   test.afterEach(async ({ page }) => {
@@ -24,6 +27,9 @@ test.describe('Skills Hub - Boards Rendering (P1)', () => {
   // ============================================================================
 
   test('TC-S-27: should render Extension Skills board with correct structure', async ({ page }) => {
+    const skills = await getMySkills(page);
+    test.skip(!skills.some((skill) => skill.source === 'extension'), 'No extension skills registered');
+
     // Screenshot 01: Initial state
     await takeScreenshot(page, 'skills-hub/tc-s-27/01-initial-state.png');
 
@@ -42,12 +48,8 @@ test.describe('Skills Hub - Boards Rendering (P1)', () => {
     // Screenshot 03: Section structure verified
     await takeScreenshot(page, 'skills-hub/tc-s-27/03-structure-verified.png');
 
-    // Additional verification: If extension skills exist, verify cards have Extension badge
-    const extensionCards = page.locator('[data-testid^="my-skill-card-"]').filter({
-      has: page.locator('text=/Extension/i'),
-    });
-    const cardCount = await extensionCards.count();
-    console.log(`[TC-S-27] Extension skills found: ${cardCount}`);
+    // The current read-only board renders one card per extension skill.
+    await expect(extensionSection.locator(':scope > div').last().locator(':scope > div').first()).toBeVisible();
 
     // Screenshot 04: Final state
     await takeScreenshot(page, 'skills-hub/tc-s-27/04-final-state.png');
@@ -58,6 +60,9 @@ test.describe('Skills Hub - Boards Rendering (P1)', () => {
   // ============================================================================
 
   test('TC-S-28: should render Auto-injected Skills board with correct structure', async ({ page }) => {
+    const autoSkills = await getAutoSkills(page);
+    test.skip(autoSkills.length === 0, 'No auto-injected builtin skills registered');
+
     // Screenshot 01: Initial state
     await takeScreenshot(page, 'skills-hub/tc-s-28/01-initial-state.png');
 
@@ -77,15 +82,11 @@ test.describe('Skills Hub - Boards Rendering (P1)', () => {
     await takeScreenshot(page, 'skills-hub/tc-s-28/03-structure-verified.png');
 
     // Additional verification via Bridge: Query builtin auto skills list
-    const autoSkills = await getAutoSkills(page);
     console.log(`[TC-S-28] Bridge returned ${autoSkills.length} auto skills`);
 
-    // Expected: If auto skills exist, verify cards have Auto badge
-    const autoCards = page.locator('[data-testid^="my-skill-card-"]').filter({
-      has: page.locator('text=/Auto/i'),
-    });
-    const cardCount = await autoCards.count();
-    console.log(`[TC-S-28] Auto skill cards found: ${cardCount}`);
+    if (autoSkills.length > 0) {
+      await expect(autoSection.locator(':scope > div').last().locator(':scope > div').first()).toBeVisible();
+    }
 
     // Screenshot 04: Final state
     await takeScreenshot(page, 'skills-hub/tc-s-28/04-final-state.png');

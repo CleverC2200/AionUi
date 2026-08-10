@@ -12,13 +12,15 @@ import { channelItemById, webuiTabByKey } from './selectors';
 export const ROUTES = {
   guid: '#/guid',
   settings: {
-    gemini: '#/settings/gemini',
+    /** Legacy test aliases kept while older specs migrate to the consolidated tabs. */
+    gemini: '#/settings/agent',
+    capabilities: '#/settings/skills',
     model: '#/settings/model',
     agent: '#/settings/agent',
-    assistants: '#/settings/assistants',
+    assistants: '#/assistants',
     skills: '#/settings/skills',
     tools: '#/settings/tools',
-    display: '#/settings/display',
+    display: '#/settings/appearance',
     webui: '#/settings/webui',
     system: '#/settings/system',
     about: '#/settings/about',
@@ -97,15 +99,6 @@ export async function navigateTo(page: Page, hash: string): Promise<void> {
 
   if (!targetIsSettings) {
     // Target is non-settings (guid, conversation, etc.)
-    if (isOnSettings) {
-      // The authenticated fork keeps Settings inside the account menu; the
-      // unauthenticated/plain footer still exposes a direct button.
-      await clickSettingsEntry(page);
-      // Wait for hash to change away from settings
-      await page
-        .waitForFunction(() => !window.location.hash.includes('/settings/'), { timeout: 10_000 })
-        .catch(() => {});
-    }
     // Programmatic navigation for non-settings targets.
     // Always navigate when not already at the target (e.g. conversation → guid).
     if (!isAlreadyAt(page, hash)) {
@@ -131,6 +124,9 @@ export async function navigateTo(page: Page, hash: string): Promise<void> {
     if (!isAlreadyAt(page, hash)) {
       const navItem = page.locator(`[data-settings-path="${settingsPath}"]`);
       await navItem.waitFor({ state: 'visible', timeout: 10_000 });
+      await navItem.evaluate((element) => {
+        element.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
       await navItem.click();
       await page
         .waitForFunction((h) => window.location.hash.includes(h), `/settings/${settingsPath}`, { timeout: 10_000 })
@@ -188,14 +184,29 @@ export async function goToSettings(page: Page, tab: SettingsTab): Promise<void> 
 export async function goToAssistantSettings(page: Page): Promise<void> {
   await goToSettings(page, 'assistants');
   await page
-    .locator('[data-testid="assistant-list-shell"], [data-testid="assistant-editor-page"]')
+    .locator('[data-testid="assistant-home-shell"], [data-testid="assistant-editor-page"]')
     .first()
     .waitFor({ state: 'visible', timeout: 10_000 });
 }
 
 /** Navigate to an extension-contributed settings tab by its ID. */
-export async function goToExtensionSettings(page: Page, tabId: string): Promise<void> {
-  await navigateWithRetry(page, ROUTES.extensionSettings(tabId));
+export async function goToExtensionSettings(
+  page: Page,
+  tabId: string,
+  options: { allowMissingNavItem?: boolean } = {}
+): Promise<void> {
+  const hash = ROUTES.extensionSettings(tabId);
+  if (!options.allowMissingNavItem) {
+    await navigateWithRetry(page, hash);
+    return;
+  }
+
+  await ensureRendererReady(page);
+  if (!(await page.evaluate(() => window.location.hash.includes('/settings/')))) {
+    await goToSettings(page, 'agent');
+  }
+  await page.evaluate((targetHash) => window.location.assign(targetHash), hash);
+  await page.waitForFunction((targetHash) => window.location.hash === targetHash, hash, { timeout: 10_000 });
 }
 
 /** Track whether we have already navigated to the channels tab in this session. */

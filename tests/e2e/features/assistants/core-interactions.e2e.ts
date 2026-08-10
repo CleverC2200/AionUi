@@ -32,6 +32,7 @@ test.describe('Assistant Settings Core Interactions (P0)', () => {
     await saveAssistant(page);
     await waitForAssistantEditorClose(page);
 
+    await page.locator('[data-testid="settings-tab-mine"]').click();
     await expect(page.locator('[data-testid^="assistant-card-"]').filter({ hasText: name }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -43,9 +44,10 @@ test.describe('Assistant Settings Core Interactions (P0)', () => {
   }) => {
     await goToAssistantSettings(page);
 
-    const firstCard = page.locator('[data-testid^="assistant-card-"]').first();
+    await page.locator('[data-testid="settings-tab-official"]').click();
+    const firstCard = page.locator('[data-testid^="official-card-"]').first();
     await expect(firstCard).toBeVisible({ timeout: 10_000 });
-    const firstId = ((await firstCard.getAttribute('data-testid')) ?? '').replace('assistant-card-', '');
+    const firstId = ((await firstCard.getAttribute('data-testid')) ?? '').replace('official-card-', '');
 
     await firstCard.click();
     await expect(page.locator('[data-testid="assistant-editor-page"]')).toBeVisible({ timeout: 5_000 });
@@ -61,12 +63,9 @@ test.describe('Assistant Settings Core Interactions (P0)', () => {
     }
     await takeScreenshot(page, 'assistants/p0-2/02-switch-stays-in-list.png');
 
-    const builtinCard = page
-      .locator('[data-testid^="assistant-card-"]')
-      .filter({ hasText: /官方|Official/i })
-      .first();
+    const builtinCard = page.locator('[data-testid^="official-card-"]').first();
     await expect(builtinCard).toBeVisible({ timeout: 10_000 });
-    const builtinId = ((await builtinCard.getAttribute('data-testid')) ?? '').replace('assistant-card-', '');
+    const builtinId = ((await builtinCard.getAttribute('data-testid')) ?? '').replace('official-card-', '');
     await duplicateAssistant(page, builtinId);
     await expect(page.locator('[data-testid="btn-save-assistant"]')).toContainText(/Create|创建/i);
     await takeScreenshot(page, 'assistants/p0-2/03-builtin-duplicate-opens-create.png');
@@ -83,6 +82,7 @@ test.describe('Assistant Settings Core Interactions (P0)', () => {
     await saveAssistant(page);
     await waitForAssistantEditorClose(page);
 
+    await page.locator('[data-testid="settings-tab-mine"]').click();
     const targetCard = page.locator('[data-testid^="assistant-card-"]').filter({ hasText: name }).first();
     const targetId = ((await targetCard.getAttribute('data-testid')) ?? '').replace('assistant-card-', '');
     await openAssistantEditor(page, targetId);
@@ -99,29 +99,29 @@ test.describe('Assistant Settings Core Interactions (P0)', () => {
     await takeScreenshot(page, 'assistants/p0-3/02-deleted.png');
   });
 
-  test('P0-4: highlight query parameter still highlights and clears', async ({ page }) => {
+  test('P0-4: assistant navigation intent opens the requested editor', async ({ page }) => {
     await goToAssistantSettings(page);
 
-    const firstCard = page.locator('[data-testid^="assistant-card-"]').first();
+    await page.locator('[data-testid="settings-tab-official"]').click();
+    const firstCard = page.locator('[data-testid^="official-card-"]').first();
     await expect(firstCard).toBeVisible({ timeout: 10_000 });
-    const targetId = ((await firstCard.getAttribute('data-testid')) ?? '').replace('assistant-card-', '');
+    const targetId = ((await firstCard.getAttribute('data-testid')) ?? '').replace('official-card-', '');
 
     await page.evaluate((id) => {
-      window.location.hash = `/settings/assistants?highlight=${id}`;
+      sessionStorage.setItem(
+        'guid.openAssistantEditorIntent',
+        JSON.stringify({ assistantId: id, openAssistantEditor: true })
+      );
+      window.location.hash = '/guid';
     }, targetId);
+    await page.waitForURL(/#\/guid/, { timeout: 5_000 });
+    await page.evaluate(() => {
+      window.location.hash = '/assistants';
+    });
 
-    const targetCard = page.locator(`[data-testid="assistant-card-${targetId}"]`);
-    await expect(targetCard).toBeVisible({ timeout: 10_000 });
-    await page.waitForTimeout(500);
-
-    const highlightedClasses = await targetCard.getAttribute('class');
-    expect(highlightedClasses).toContain('border-primary-5');
-    expect(highlightedClasses).toContain('bg-primary-1');
-
-    await page.waitForTimeout(2200);
-    const clearedClasses = await targetCard.getAttribute('class');
-    expect(clearedClasses).not.toContain('border-primary-5');
-    expect(page.url()).not.toContain('highlight=');
-    await takeScreenshot(page, 'assistants/p0-4/01-highlight-cleared.png');
+    await expect(page.locator('[data-testid="assistant-editor-page"]')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[data-testid="input-assistant-name"]')).toBeVisible();
+    expect(await page.evaluate(() => sessionStorage.getItem('guid.openAssistantEditorIntent'))).toBeNull();
+    await takeScreenshot(page, 'assistants/p0-4/01-navigation-intent-opened.png');
   });
 });

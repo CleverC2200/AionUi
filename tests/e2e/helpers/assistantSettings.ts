@@ -31,8 +31,19 @@ export async function goToAssistantSettings(page: Page): Promise<void> {
 
 /** Open the assistant editor surface by clicking on an assistant card. */
 export async function openAssistantEditor(page: Page, assistant_id: string): Promise<void> {
-  const card = page.locator(`[data-testid="assistant-card-${assistant_id}"]`);
+  const card = page.locator(
+    `[data-testid="assistant-card-${assistant_id}"], [data-testid="enabled-assistant-row-${assistant_id}"], [data-testid="official-card-${assistant_id}"]`
+  );
   const detailResponse = waitForAssistantDetailResponse(page, assistant_id);
+  if (!(await card.isVisible().catch(() => false))) {
+    for (const tab of ['official', 'mine', 'enabled']) {
+      const tabButton = page.locator(`[data-testid="settings-tab-${tab}"]`);
+      if (await tabButton.isVisible().catch(() => false)) {
+        await tabButton.click();
+        if (await card.isVisible().catch(() => false)) break;
+      }
+    }
+  }
   await expect(card).toBeVisible({ timeout: 8_000 });
   const editButton = page.locator(`[data-testid="btn-edit-${assistant_id}"]`).first();
   if (await editButton.isVisible().catch(() => false)) {
@@ -53,7 +64,17 @@ export async function clickCreateAssistant(page: Page): Promise<void> {
     await editor.waitFor({ state: 'hidden', timeout: 3_000 }).catch(() => {});
   }
   await page.locator('[data-testid="btn-create-assistant"]').click();
+  await page.locator('[data-testid="btn-create-assistant-manual"]').click();
   await editor.waitFor({ state: 'visible', timeout: 5_000 });
+
+  const agentSelect = page.locator('[data-testid="select-assistant-agent"]');
+  const selectedAgent = ((await agentSelect.textContent().catch(() => '')) ?? '').trim();
+  if (!selectedAgent) {
+    await agentSelect.click();
+    const firstAgent = page.locator('.arco-select-option:not(.arco-select-option-disabled)').first();
+    await firstAgent.waitFor({ state: 'visible', timeout: 5_000 });
+    await firstAgent.click();
+  }
 }
 
 // ── CRUD helpers ────────────────────────────────────────────────────────────
@@ -101,9 +122,26 @@ export async function deleteAssistant(page: Page): Promise<void> {
 
 /** Click the Duplicate link for an assistant. */
 export async function duplicateAssistant(page: Page, assistant_id: string): Promise<void> {
-  const dupBtn = page.locator(`[data-testid="btn-duplicate-${assistant_id}"]`);
   const detailResponse = waitForAssistantDetailResponse(page, assistant_id);
-  await dupBtn.click();
+  const legacyButton = page.locator(`[data-testid="btn-duplicate-${assistant_id}"]`);
+  const moreButton = page.locator(`[data-testid="btn-assistant-more-${assistant_id}"]`);
+  if (!(await legacyButton.isVisible().catch(() => false)) && !(await moreButton.isVisible().catch(() => false))) {
+    for (const tab of ['official', 'mine', 'enabled']) {
+      const tabButton = page.locator(`[data-testid="settings-tab-${tab}"]`);
+      if (await tabButton.isVisible().catch(() => false)) {
+        await tabButton.click();
+        if ((await legacyButton.isVisible().catch(() => false)) || (await moreButton.isVisible().catch(() => false))) {
+          break;
+        }
+      }
+    }
+  }
+  if (await legacyButton.isVisible().catch(() => false)) {
+    await legacyButton.click();
+  } else {
+    await moreButton.click();
+    await page.locator(`[data-testid="menu-duplicate-${assistant_id}"]`).click();
+  }
   await page.locator(ASSISTANT_EDITOR).waitFor({ state: 'visible', timeout: 5_000 });
   await detailResponse;
   await page.locator('[data-testid="input-assistant-name"]').waitFor({ state: 'visible', timeout: 5_000 });
@@ -112,6 +150,15 @@ export async function duplicateAssistant(page: Page, assistant_id: string): Prom
 /** Toggle the enabled/disabled switch for an assistant. */
 export async function toggleAssistantEnabled(page: Page, assistant_id: string): Promise<void> {
   const sw = page.locator(`[data-testid="switch-enabled-${assistant_id}"]`);
+  if (!(await sw.isVisible().catch(() => false))) {
+    for (const tab of ['official', 'mine', 'enabled']) {
+      const tabButton = page.locator(`[data-testid="settings-tab-${tab}"]`);
+      if (await tabButton.isVisible().catch(() => false)) {
+        await tabButton.click();
+        if (await sw.isVisible().catch(() => false)) break;
+      }
+    }
+  }
   const checkedBefore = await sw.getAttribute('aria-checked').catch(() => null);
   await sw.click();
   if (checkedBefore !== null) {
@@ -127,6 +174,13 @@ export async function toggleAssistantEnabled(page: Page, assistant_id: string): 
 
 /** Expand search and type a query. */
 export async function searchAssistants(page: Page, query: string): Promise<void> {
+  const currentSearchInput = page.locator('[data-testid="input-search-assistants"]');
+  if (await currentSearchInput.isVisible().catch(() => false)) {
+    await currentSearchInput.clear();
+    await currentSearchInput.fill(query);
+    return;
+  }
+
   const searchToggle = page.locator('[data-testid="btn-search-toggle"]');
   const searchInput = page.locator('[data-testid="input-search-assistant"]');
   // If search input not visible, toggle it open
@@ -140,6 +194,12 @@ export async function searchAssistants(page: Page, query: string): Promise<void>
 
 /** Clear search by clicking the toggle button (closes search). */
 export async function clearSearch(page: Page): Promise<void> {
+  const currentSearchInput = page.locator('[data-testid="input-search-assistants"]');
+  if (await currentSearchInput.isVisible().catch(() => false)) {
+    await currentSearchInput.clear();
+    return;
+  }
+
   const searchToggle = page.locator('[data-testid="btn-search-toggle"]');
   await searchToggle.click();
 }
@@ -165,23 +225,33 @@ export async function selectFilterTab(page: Page, tabText: string): Promise<void
 
 /** Get all visible assistant card IDs. */
 export async function getVisibleAssistantIds(page: Page): Promise<string[]> {
-  const cards = page.locator('[data-testid^="assistant-card-"]');
+  const cards = page.locator(
+    '[data-testid^="assistant-card-"], [data-testid^="enabled-assistant-row-"], [data-testid^="official-card-"]'
+  );
   const count = await cards.count();
   const ids: string[] = [];
   for (let i = 0; i < count; i++) {
     const testid = await cards.nth(i).getAttribute('data-testid');
-    if (testid) ids.push(testid.replace('assistant-card-', ''));
+    if (testid) ids.push(testid.replace(/^(assistant-card-|enabled-assistant-row-|official-card-)/, ''));
   }
   return ids;
 }
 
 /** Get all visible assistant names from cards. */
 export async function getVisibleAssistantNames(page: Page): Promise<string[]> {
-  const cards = page.locator('[data-testid^="assistant-card-"]');
+  const cards = page.locator(
+    '[data-testid^="assistant-card-"], [data-testid^="enabled-assistant-row-"], [data-testid^="official-card-"]'
+  );
   const count = await cards.count();
   const names: string[] = [];
   for (let i = 0; i < count; i++) {
-    const text = await cards.nth(i).locator('.font-medium.text-t-primary span.truncate').first().textContent();
+    const text = await cards
+      .nth(i)
+      .locator(
+        '.truncate.text-t-primary, .font-medium.text-t-primary span.truncate, .truncate.font-medium.text-t-primary'
+      )
+      .first()
+      .textContent();
     if (text) names.push(text.trim());
   }
   return names;

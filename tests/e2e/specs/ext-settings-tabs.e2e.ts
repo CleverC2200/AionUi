@@ -71,7 +71,7 @@ test.describe('Extension: Settings Tabs Position Anchoring', () => {
 
     const siderItemIds = await getSiderItemIds(page);
 
-    const capabilitiesIdx = siderItemIds.indexOf('capabilities');
+    const capabilitiesIdx = siderItemIds.indexOf('skills');
     const e2eIdx = siderItemIds.indexOf(EXT_E2E_SETTINGS_ID);
 
     expect(capabilitiesIdx).toBeGreaterThanOrEqual(0);
@@ -99,7 +99,7 @@ test.describe('Extension: Settings Tabs Position Anchoring', () => {
 
     const siderItemIds = await getSiderItemIds(page);
 
-    const displayIdx = siderItemIds.indexOf('display');
+    const displayIdx = siderItemIds.indexOf('appearance');
     const helloIdx = siderItemIds.indexOf(EXT_HELLO_SETTINGS_ID);
 
     expect(displayIdx).toBeGreaterThanOrEqual(0);
@@ -182,7 +182,7 @@ test.describe('Extension: Settings Tabs Stability', () => {
   });
 
   test('navigating to nonexistent extension tab shows error gracefully', async ({ page }) => {
-    await goToExtensionSettings(page, 'ext-nonexistent-tab');
+    await goToExtensionSettings(page, 'ext-nonexistent-tab', { allowMissingNavItem: true });
     await waitForSettle(page);
 
     const body = await page.locator('body').textContent();

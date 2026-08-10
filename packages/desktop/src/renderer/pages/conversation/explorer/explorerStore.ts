@@ -95,11 +95,36 @@ const loadUi = (id: string): PersistedUi => {
   }
 };
 
-const persistUi = (): void => {
+/**
+ * Persist this project's UI state (expanded set + selection) to localStorage.
+ *
+ * `guardEmptyOverwrite` scopes the ③ anti-clobber to the ONE unsafe caller —
+ * openProject's leave-persist. There, under a project-switch race, the in-memory
+ * `expanded` can be transiently empty while `projectId` still points at a project
+ * whose saved state is populated; writing that empty set would permanently
+ * destroy the stored expansion (observed LS 4 → 0, a collapse the user never
+ * asked for), so it keeps the richer stored expansion (selection still updates).
+ * Every user-driven caller (setExpanded / setExpandedKeys / reveal / select)
+ * omits the flag, so a genuine collapse-all persists empty normally — and because
+ * that user path writes the empty first, a later leave-persist reads an already
+ * empty record and has nothing to guard, leaving no stale-expansion residue.
+ */
+const persistUi = (opts?: { guardEmptyOverwrite?: boolean }): void => {
   const ls = getLocalStorage();
   if (!ls || !projectId) return;
   const data: PersistedUi = { expanded: [...expanded] };
   if (selected) data.selected = selected;
+  if (opts?.guardEmptyOverwrite && data.expanded.length === 0) {
+    try {
+      const raw = ls.getItem(uiStorageKey(projectId));
+      const prev = raw ? (JSON.parse(raw) as Partial<PersistedUi>) : null;
+      if (prev && Array.isArray(prev.expanded) && prev.expanded.length > 0) {
+        data.expanded = prev.expanded;
+      }
+    } catch {
+      /* corrupt/absent record — fall through and write what we have */
+    }
+  }
   try {
     ls.setItem(uiStorageKey(projectId), JSON.stringify(data));
   } catch {
@@ -145,8 +170,18 @@ const runReconcile = (): void => {
         if (changed) commit();
       })
       .catch(() => {
-        // Offline / reconnect: current already advanced; the reconnect path
-        // resets current and re-declares, so no gap is left behind.
+        // Subscribe failed (offline, or the socket not yet ready right after a
+        // reconnect). Roll the just-declared keys back out of `current`: leaving
+        // them there would strand them as permanently-but-falsely declared, so
+        // reconcileDiff would see them as already-current and never re-add them —
+        // the directory would keep its stale cache and receive no more updates,
+        // an invisible failure (it looks identically "expanded with contents").
+        // Rolled back, they re-enter `toAdd` on the next reconcile — the reconnect
+        // re-declare, or any user expand/collapse — which retries the subscribe.
+        // We deliberately do NOT reschedule here: retrying immediately against a
+        // still-dead socket would hammer it every round-trip; the next reconcile
+        // trigger is the retry.
+        for (const key of toAdd) current.delete(key);
       });
   }
 };
@@ -260,7 +295,10 @@ export const openProject = (id: string, projectRoots: RootRef[]): void => {
     commit();
     return;
   }
-  if (projectId) persistUi();
+  // Leave-persist for the outgoing project. This is the ONLY empty-write source
+  // from a switch race, so it is the only caller that guards against clobbering a
+  // populated record with a transiently-empty expanded set (see persistUi).
+  if (projectId) persistUi({ guardEmptyOverwrite: true });
   projectId = id;
   roots = projectRoots;
   cache = new Map();

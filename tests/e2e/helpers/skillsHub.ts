@@ -57,9 +57,14 @@ export async function goToSkillsHub(page: Page): Promise<void> {
   // Wait a bit for React Router to settle
   await page.waitForTimeout(500);
 
-  // Wait for tab content to load. Dev-mode cold boot needs ~6-15s after
-  // navigation before SkillsHub's unconditional `my-skills-section` div
-  // finishes layout (Vite dev + Arco Tabs + initial skill list render).
+  // Wait for the page shell, then normalize each test to the Custom tab. The
+  // shared Electron page preserves React state between tests, so the previous
+  // test may have left the Official tab active even though the route is unchanged.
+  await page.locator('[data-testid="skills-header"]').waitFor({ state: 'visible', timeout: 15_000 });
+  const customTab = page.locator('[data-testid="settings-tab-custom"]');
+  if ((await customTab.getAttribute('aria-selected')) !== 'true') {
+    await customTab.click();
+  }
   const section = page.locator('[data-testid="my-skills-section"]');
   await section.waitFor({ state: 'visible', timeout: 15_000 });
 

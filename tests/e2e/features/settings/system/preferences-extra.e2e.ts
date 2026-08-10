@@ -19,8 +19,8 @@ test.describe('System Preferences — Extra', () => {
 
   // TC-PREF-05: Save-upload-to-workspace toggle
   test('TC-PREF-05: should toggle saveUploadToWorkspace switch', async ({ page }) => {
-    const allSwitches = page.locator(`.divide-y ${ARCO_SWITCH}`);
-    const saveSwitch = allSwitches.nth(2);
+    const saveLabel = page.getByText(/Save Uploads to Project Folder|上传文件保存到项目文件夹/).first();
+    const saveSwitch = saveLabel.locator('xpath=../..').locator(ARCO_SWITCH);
     await expect(saveSwitch).toBeVisible();
 
     const wasChecked = await saveSwitch.evaluate((el) => el.classList.contains('arco-switch-checked'));
@@ -39,7 +39,10 @@ test.describe('System Preferences — Extra', () => {
 
   // TC-PREF-06: Cron-notification sub-switch inside Collapse
   test('TC-PREF-06: should toggle cronNotification switch when notifications are on', async ({ page }) => {
-    const collapseHeader = page.locator('.arco-collapse-item-header');
+    const collapseHeader = page
+      .locator('.arco-collapse-item-header')
+      .filter({ has: page.locator(ARCO_SWITCH) })
+      .first();
     await expect(collapseHeader).toBeVisible();
     const notifSwitch = collapseHeader.locator(ARCO_SWITCH);
 
@@ -49,7 +52,7 @@ test.describe('System Preferences — Extra', () => {
       await waitForClassChange(notifSwitch);
     }
 
-    const collapseContent = page.locator('.arco-collapse-item-content');
+    const collapseContent = collapseHeader.locator('xpath=..').locator('.arco-collapse-item-content');
     await expect(collapseContent).toBeVisible();
 
     const cronSwitch = collapseContent.locator(ARCO_SWITCH);

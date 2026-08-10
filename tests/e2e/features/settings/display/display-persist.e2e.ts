@@ -59,14 +59,15 @@ test.describe('Display settings persistence across reload', () => {
   });
 
   test('theme persists after reload', async ({ page }) => {
-    const themeGroup = page.locator('[role="radiogroup"]');
-    await themeGroup.waitFor({ state: 'visible', timeout: 10_000 });
-
     const initialTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     expect(initialTheme).toBeTruthy();
+    const initialCard = page.locator('[data-testid^="theme-card-"][data-active="true"]').first();
+    await expect(initialCard).toBeVisible({ timeout: 10_000 });
+    const initialCardTestId = await initialCard.getAttribute('data-testid');
+    expect(initialCardTestId).toBeTruthy();
 
     const targetTheme = initialTheme === 'light' ? 'dark' : 'light';
-    const targetButton = themeGroup.locator('[role="radio"][aria-checked="false"]');
+    const targetButton = page.getByTestId(`theme-card-${targetTheme}`);
     await targetButton.click();
 
     await page.waitForFunction(
@@ -79,11 +80,10 @@ test.describe('Display settings persistence across reload', () => {
 
     const afterReload = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     expect(afterReload).toBe(targetTheme);
+    await expect(targetButton).toHaveAttribute('data-active', 'true');
 
     // Restore original theme
-    const revertGroup = page.locator('[role="radiogroup"]');
-    await revertGroup.waitFor({ state: 'visible', timeout: 10_000 });
-    const revertButton = revertGroup.locator('[role="radio"][aria-checked="false"]');
+    const revertButton = page.getByTestId(initialCardTestId!);
     await revertButton.click();
     await page.waitForFunction(
       (expected) => document.documentElement.getAttribute('data-theme') === expected,

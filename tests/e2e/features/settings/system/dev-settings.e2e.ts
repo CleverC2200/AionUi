@@ -94,7 +94,7 @@ test.describe('DevSettings', () => {
     }
 
     await expect(portText).toBeVisible();
-    const urlRow = portText.locator('xpath=ancestor::div[contains(@class,"flex")]').first();
+    const urlRow = portText.locator('xpath=../..');
     const btnCount = await urlRow.locator('button').count();
     expect(btnCount).toBe(2);
     await takeScreenshot(page, 'dev-settings/tc-dev-03/01-url-and-buttons.png');

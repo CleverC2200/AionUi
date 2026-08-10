@@ -31,6 +31,19 @@ async function findAssistantIdByName(page: import('@playwright/test').Page, name
   return null;
 }
 
+async function selectGuidAssistant(page: import('@playwright/test').Page, assistantId: string): Promise<void> {
+  const visiblePill = page.locator(`[data-testid="preset-pill-${assistantId}"]`);
+  if (await visiblePill.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await visiblePill.click();
+    return;
+  }
+
+  await page.locator('[data-testid="assistant-more-btn"]').click();
+  const overflowPill = page.locator(`[data-testid="assistant-overflow-${assistantId}"]`);
+  await expect(overflowPill).toBeVisible({ timeout: 5_000 });
+  await overflowPill.click();
+}
+
 test.describe('Assistant Settings Recommended Prompts', () => {
   test.setTimeout(90_000);
 
@@ -61,7 +74,7 @@ test.describe('Assistant Settings Recommended Prompts', () => {
     await resetGuidLastSelectedAgent(page);
     await goToGuid(page);
     await page.reload();
-    await page.locator(`[data-testid="preset-pill-${assistantId}"]`).click();
+    await selectGuidAssistant(page, assistantId);
     await expect(page.locator(`text=${promptText}`)).toBeVisible();
 
     await page.locator(`text=${promptText}`).click();
@@ -107,8 +120,8 @@ test.describe('Assistant Settings Recommended Prompts', () => {
     await resetGuidLastSelectedAgent(page);
     await goToGuid(page);
     await page.reload();
+    await selectGuidAssistant(page, assistantId);
     await expect(page.locator(`[data-testid="preset-pill-${assistantId}"]`)).toContainText(updatedName);
-    await page.locator(`[data-testid="preset-pill-${assistantId}"]`).click();
     await expect(page.locator(`text=${updatedPrompt}`)).toBeVisible();
     await expect(page.locator(`text=${originalPrompt}`)).toHaveCount(0);
   });

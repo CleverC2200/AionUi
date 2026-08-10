@@ -34,7 +34,7 @@ async function openSelect(page: import('@playwright/test').Page, testId: string)
   const select = page.locator(`[data-testid="${testId}"]`);
   await select.click();
   await page
-    .locator('.arco-select-option, .arco-trigger-popup button')
+    .locator('[role="option"]:visible, .arco-trigger-popup button:visible')
     .first()
     .waitFor({ state: 'visible', timeout: 5_000 });
 }
@@ -106,7 +106,7 @@ test.describe('Assistant Settings Skills / MCP', () => {
     await fillAssistantName(page, assistantName);
 
     await openSelect(page, 'select-assistant-default-skills');
-    const options = page.locator('.arco-select-option');
+    const options = page.locator('[role="option"]:visible');
     const optionCount = await options.count();
     if (optionCount === 0) {
       await closeAssistantEditor(page);
