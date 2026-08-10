@@ -5,16 +5,11 @@
  *       confirm modal -> assert navigation away + IPC confirms removal.
  */
 import { test, expect } from '../../fixtures';
-import { invokeBridge, navigateTo, createTeam, cleanupTeamsByName } from '../../helpers';
+import { invokeBridge, navigateTo, createTeam, cleanupTeamsByName, expandTeamSection } from '../../helpers';
 
 async function deleteTeamBySiderMenu(page: Parameters<typeof createTeam>[0], teamName: string) {
-  // Scope to the sidebar team row: a `.group` ancestor that contains the three-dot trigger AND
-  // the exact team-name text. Exactness avoids "E2E Delete Team" matching "E2E Delete Sidebar Team".
-  const teamRow = page
-    .locator('div.group')
-    .filter({ has: page.locator('[data-testid="sider-item-menu-trigger"]') })
-    .filter({ has: page.getByText(teamName, { exact: true }) })
-    .first();
+  await expandTeamSection(page);
+  const teamRow = page.locator('[data-testid^="team-sider-item-"]').filter({ hasText: teamName }).first();
   await teamRow.waitFor({ state: 'visible', timeout: 10_000 });
   await teamRow.hover();
 

@@ -269,6 +269,195 @@ export type ITeamTaskItem = {
   updated_at: number;
 };
 
+export type TeamWorkTaskStatus =
+  | 'backlog'
+  | 'ready'
+  | 'claimed'
+  | 'running'
+  | 'needs_input'
+  | 'needs_approval'
+  | 'blocked'
+  | 'in_review'
+  | 'done'
+  | 'failed'
+  | 'cancelled';
+
+export type TeamWorkRunStatus =
+  | 'queued'
+  | 'starting'
+  | 'running'
+  | 'paused'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'stale';
+export type TeamWorkPriority = 'urgent' | 'high' | 'normal' | 'low';
+export type TeamWorkNextActionOwner = 'agent' | 'human' | 'reviewer' | 'system';
+export type TeamWorkApprovalState = 'none' | 'pending' | 'approved' | 'rejected';
+export type TeamWorkQueueReason = 'team_capacity' | 'agent_capacity' | 'profile_capacity' | 'workspace_locked';
+export type TeamWorkActorKind = 'agent' | 'human' | 'reviewer' | 'system';
+
+export type ITeamWorkActor = { kind: TeamWorkActorKind; id: string };
+export type ITeamWorkLease = { holder: string; expires_at: number; heartbeat_at: number };
+export type ITeamWorkVerificationReceipt = {
+  checks: Array<{ command?: string; result: string; passed: boolean }>;
+  artifacts: string[];
+  remaining_risks: string[];
+};
+export type ITeamWorkRunError = { code: string; message: string; retryable: boolean };
+
+export type ITeamWorkTask = {
+  id: string;
+  team_id: string;
+  parent_id?: string;
+  subject: string;
+  description?: string;
+  acceptance_criteria: string[];
+  status: TeamWorkTaskStatus;
+  priority: TeamWorkPriority;
+  owner_slot_id?: string;
+  next_action_owner: TeamWorkNextActionOwner;
+  blocked_by: string[];
+  blocks: string[];
+  current_run_id?: string;
+  lease?: ITeamWorkLease;
+  progress_summary?: string;
+  artifact_refs: string[];
+  approval_state: TeamWorkApprovalState;
+  queue_reason?: TeamWorkQueueReason;
+  workspace_key?: string;
+  exclusive_workspace: boolean;
+  version: number;
+  created_at: number;
+  updated_at: number;
+};
+
+export type ITeamWorkRun = {
+  id: string;
+  team_id: string;
+  task_id: string;
+  attempt: number;
+  slot_id: string;
+  agent_backend: string;
+  model?: string;
+  status: TeamWorkRunStatus;
+  queued_at: number;
+  started_at?: number;
+  heartbeat_at?: number;
+  ended_at?: number;
+  retry_of?: string;
+  resume_ref?: string;
+  output_summary?: string;
+  verification_receipt?: ITeamWorkVerificationReceipt;
+  usage?: { input_tokens?: number; output_tokens?: number; cost?: number };
+  error?: ITeamWorkRunError;
+};
+
+export type ITeamWorkAttentionItem = {
+  task_id: string;
+  status: TeamWorkTaskStatus;
+  next_action_owner: TeamWorkNextActionOwner;
+  reason: string;
+  allowed_actions: Array<
+    'provide_input' | 'approve' | 'reject' | 'accept_review' | 'return_for_changes' | 'retry' | 'reassign'
+  >;
+  requested_at: number;
+};
+
+export type ITeamWorkSnapshot = {
+  team_id: string;
+  sequence: number;
+  generated_at: number;
+  tasks: ITeamWorkTask[];
+  runs: ITeamWorkRun[];
+  attention: ITeamWorkAttentionItem[];
+};
+
+export type ITeamWorkEvent = {
+  sequence: number;
+  event_id: string;
+  team_id: string;
+  task_id: string;
+  run_id?: string;
+  name: string;
+  task_version: number;
+  payload: unknown;
+  created_at: number;
+};
+
+export type ITeamWorkEventBatch = {
+  team_id: string;
+  after_sequence: number;
+  latest_sequence: number;
+  gap: boolean;
+  events: ITeamWorkEvent[];
+};
+
+export type TeamWorkCommand =
+  | {
+      kind: 'claim';
+      payload: { slot_id: string; agent_backend: string; model?: string; lease_duration_ms: number };
+    }
+  | { kind: 'start' }
+  | { kind: 'heartbeat'; payload: { lease_duration_ms: number } }
+  | { kind: 'update_progress'; payload: { summary: string } }
+  | { kind: 'request_input'; payload: { reason: string } }
+  | { kind: 'provide_input'; payload: { summary: string } }
+  | { kind: 'request_approval'; payload: { reason: string } }
+  | { kind: 'approve'; payload: { reason: string } }
+  | { kind: 'reject'; payload: { reason: string } }
+  | { kind: 'block'; payload: { reason: string; next_action_owner: TeamWorkNextActionOwner } }
+  | { kind: 'unblock'; payload: { reason: string } }
+  | {
+      kind: 'submit_for_review';
+      payload: { output_summary: string; receipt: ITeamWorkVerificationReceipt };
+    }
+  | { kind: 'accept_review'; payload: { reason: string } }
+  | { kind: 'return_for_changes'; payload: { reason: string } }
+  | { kind: 'fail_attempt'; payload: { error: ITeamWorkRunError } }
+  | { kind: 'mark_stale'; payload: { reason: string } }
+  | { kind: 'activate_queued_claim'; payload: { lease_duration_ms: number } }
+  | { kind: 'cancel'; payload: { reason: string } }
+  | {
+      kind: 'reclaim';
+      payload: {
+        slot_id: string;
+        agent_backend: string;
+        model?: string;
+        lease_duration_ms: number;
+        resume_ref?: string;
+      };
+    };
+
+export type ITeamWorkCommandEnvelope = {
+  expected_version: number;
+  idempotency_key: string;
+  actor: ITeamWorkActor;
+  command: TeamWorkCommand;
+};
+
+export type ICreateTeamWorkTaskRequest = {
+  id?: string;
+  parent_id?: string;
+  subject: string;
+  description?: string;
+  acceptance_criteria?: string[];
+  priority?: TeamWorkPriority;
+  blocked_by?: string[];
+  workspace_key?: string;
+  exclusive_workspace?: boolean;
+};
+
+export type ITeamWorkCommandReceipt = {
+  idempotency_key: string;
+  applied: boolean;
+  replayed: boolean;
+  event_sequence: number;
+  task: ITeamWorkTask;
+  run?: ITeamWorkRun;
+  queue_reason?: TeamWorkQueueReason;
+};
+
 /** One entry of the unified team activity feed (matches backend TeamActivityItemResponse). */
 export type ITeamActivityItem =
   | { kind: 'message'; created_at: number; id: string; message: ITeamMailboxMessage }

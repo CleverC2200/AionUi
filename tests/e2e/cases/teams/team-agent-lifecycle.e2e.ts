@@ -40,7 +40,8 @@ async function pickTeamMemberAssistant(page: import('@playwright/test').Page): P
   assistantId: string;
   backend: string;
 } | null> {
-  for (const backend of ['claude', 'codex', 'gemini', 'aionrs']) {
+  for (const backend of ['codex', 'aionrs', 'claude', 'gemini']) {
+    if (!TEAM_SUPPORTED_BACKENDS.has(backend)) continue;
     const assistantId = await findAssistantIdForBackend(page, backend).catch(() => null);
     if (assistantId) {
       return { assistantId, backend };

@@ -67,7 +67,17 @@ export {
 } from './conversation';
 export { startAutoApprovePermissionMessages, waitForPermissionMessageCard } from './permissions';
 export { TEAM_SUPPORTED_BACKENDS } from './teamConfig';
-export { createTeam, ensureTeam, deleteTeam, cleanupTeamsByName } from './teamHelpers';
+export {
+  createTeam,
+  ensureTeam,
+  deleteTeam,
+  cleanupTeamsByName,
+  openTeamCreateModal,
+  expandMainSidebar,
+  expandTeamSection,
+  closeTeamCreateModal,
+  pickTeamCreateAssistantOption,
+} from './teamHelpers';
 export {
   goToAssistantSettings,
   openAssistantEditor,

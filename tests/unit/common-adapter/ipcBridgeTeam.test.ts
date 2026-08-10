@@ -123,4 +123,35 @@ describe('ipcBridge team adapter', () => {
     });
     expect(JSON.stringify(httpBridgeMocks.calls.at(-1)?.body)).not.toContain('assistants');
   });
+
+  it('routes Team Work snapshot, events, commands, and stale reconciliation through HTTP', async () => {
+    const { team } = await import('@/common/adapter/ipcBridge');
+
+    await team.getWorkSnapshot.invoke({ team_id: 'team-1' });
+    await team.listWorkEvents.invoke({ team_id: 'team-1', after_sequence: 7, limit: 20 });
+    await team.applyWorkCommand.invoke({
+      team_id: 'team-1',
+      task_id: 'task-1',
+      envelope: {
+        expected_version: 2,
+        idempotency_key: 'approve-1',
+        actor: { kind: 'human', id: 'user-1' },
+        command: { kind: 'approve', payload: { reason: 'approved' } },
+      },
+    });
+    await team.reconcileStaleWork.invoke({ team_id: 'team-1' });
+
+    expect(httpBridgeMocks.calls).toEqual(
+      expect.arrayContaining([
+        { method: 'GET', path: '/api/teams/team-1/work/snapshot', body: undefined },
+        { method: 'GET', path: '/api/teams/team-1/work/events?after_sequence=7&limit=20', body: undefined },
+        {
+          method: 'POST',
+          path: '/api/teams/team-1/work/tasks/task-1/commands',
+          body: expect.objectContaining({ idempotency_key: 'approve-1' }),
+        },
+        { method: 'POST', path: '/api/teams/team-1/work/reconcile-stale', body: undefined },
+      ])
+    );
+  });
 });

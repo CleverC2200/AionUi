@@ -22,7 +22,7 @@ import TeamTabs from './components/TeamTabs';
 import TeamChatView from './components/TeamChatView';
 import TeamAgentIdentity from './components/TeamAgentIdentity';
 import TeamViewToggle from './components/TeamViewToggle';
-import TeamActivityView from './activity/TeamActivityView';
+import TeamControlBoard from './control-board/TeamControlBoard';
 import TeamWarmupOverlay from './components/TeamWarmupOverlay';
 import { useTeamViewMode } from './hooks/useTeamViewMode';
 import { useTeamWarmup, type TeamWarmupMemberState, type TeamWarmupPhase } from './hooks/useTeamWarmup';
@@ -165,7 +165,10 @@ const AssistantChatSlot: React.FC<{
   // 列身体保留极淡身份色底作弱提示，不影响气泡阅读。
   return (
     <div className='flex flex-col h-full' style={{ background: `color-mix(in srgb, ${color} 4%, var(--bg-base))` }}>
-      <div className='flex items-center justify-between gap-8px px-12px h-40px shrink-0 border-b border-solid border-[color:var(--border-base)] relative z-10 bg-1'>
+      <div
+        className='flex items-center justify-between gap-8px px-12px h-40px shrink-0 border-b border-solid border-[color:var(--border-base)] relative z-10 bg-1'
+        data-testid='team-agent-header'
+      >
         <TeamAgentIdentity
           assistant_name={assistant.assistant_name}
           assistant_backend={assistant.assistant_backend}
@@ -204,6 +207,8 @@ const AssistantChatSlot: React.FC<{
           <div
             className='shrink-0 flex items-center justify-center leading-none cursor-pointer hover:bg-[var(--fill-3)] p-4px rd-4px text-[color:var(--color-text-3)] hover:text-[color:var(--color-text-1)] transition-colors'
             onClick={() => onToggleFullscreen?.()}
+            data-testid='team-agent-fullscreen-toggle'
+            data-fullscreen={isFullscreen ? 'true' : 'false'}
           >
             {isFullscreen ? <OffScreen size='16' fill='currentColor' /> : <FullScreen size='16' fill='currentColor' />}
           </div>
@@ -516,7 +521,7 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
             {viewMode === 'board' ? (
               // 看板视图：只读展现全队 mailbox 与 task-board。
               <div className='flex-1 h-full min-w-0'>
-                <TeamActivityView team={team} />
+                <TeamControlBoard team={team} />
               </div>
             ) : isSingleView ? (
               // 单聊视图：全屏显示当前选中成员（activeSlotId），找不到时回退到 Leader。
