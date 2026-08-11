@@ -131,4 +131,16 @@ describe('ipcBridge assistant adapter', () => {
       },
     });
   });
+
+  it('loads structured conversation records from AionCore', async () => {
+    const { conversationRecords } = await import('@/common/adapter/ipcBridge');
+    await expect(conversationRecords.get.invoke({ conversation_id: 'conversation/1' })).rejects.toThrow(
+      'CONVERSATION_RECORD_INVALID'
+    );
+    expect(httpBridgeMocks.calls).toContainEqual({
+      method: 'GET',
+      path: '/api/conversations/conversation%2F1/records',
+      body: undefined,
+    });
+  });
 });

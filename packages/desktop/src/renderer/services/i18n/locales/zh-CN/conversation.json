@@ -627,6 +627,10 @@
   },
   "resources": {
     "tooltip": "来源与产出物",
+    "inspector": "工作记录",
+    "inferred": "从历史推断",
+    "deliverables": "交付物",
+    "receipts": "结果与验证",
     "outputs": "产出物",
     "sources": "来源",
     "emptyOutputs": "暂无产出物",

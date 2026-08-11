@@ -47,6 +47,8 @@ import {
   InteractionRequestReceipt,
   parseInteractionRequestList,
 } from '../types/interactionRequest';
+import type { ConversationRecordEvent, ConversationRecordSnapshot } from '../types/conversationRecord';
+import { parseConversationRecordSnapshot } from '../types/conversationRecord';
 import type {
   EnsureConversationRuntimeResponse,
   GetConfigOptionsResponse,
@@ -508,6 +510,16 @@ export const interactionRequest = {
     ({ request_id: _requestId, ...command }) => command
   ),
   changed: wsEmitter<{ revision: string }>('interaction_request.changed'),
+};
+
+export const conversationRecords = {
+  get: withResponseMap(
+    httpGet<ConversationRecordSnapshot, { conversation_id: string }>(
+      (p) => `/api/conversations/${encodeURIComponent(p.conversation_id)}/records`
+    ),
+    parseConversationRecordSnapshot
+  ),
+  changed: wsEmitter<ConversationRecordEvent>('conversation.record'),
 };
 
 export const runtime = {

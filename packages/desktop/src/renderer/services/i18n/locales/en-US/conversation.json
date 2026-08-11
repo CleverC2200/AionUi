@@ -627,6 +627,10 @@
   },
   "resources": {
     "tooltip": "Sources and outputs",
+    "inspector": "Work record",
+    "inferred": "Inferred from history",
+    "deliverables": "Deliverables",
+    "receipts": "Results and verification",
     "outputs": "Outputs",
     "sources": "Sources",
     "emptyOutputs": "No outputs yet",
