@@ -157,6 +157,7 @@ describe('TeamPage teammate warmup wiring', () => {
     for (const key of Object.keys(teamEventHandlers)) delete teamEventHandlers[key];
     getConversationOrNullMock.mockImplementation(async (id: string) => conversation({ id, name: id }));
     localStorage.clear();
+    localStorage.setItem('team-view-mode-team-1', 'parallel');
   });
 
   it('withholds the trigger while the team is warming (isWarmingUp)', async () => {

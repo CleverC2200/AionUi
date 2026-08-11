@@ -32,9 +32,10 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
     (request: InteractionRequest) => {
       setVisible(false);
       onNavigate?.();
-      void navigate(`/conversation/${request.conversation_id}`, {
+      void navigate(request.team_id ? `/team/${request.team_id}` : `/conversation/${request.conversation_id}`, {
         state: {
           targetMessageId: request.message_id,
+          targetSlotId: request.slot_id,
           interactionRequestId: request.id,
           returnFocus: 'attention-inbox',
         },

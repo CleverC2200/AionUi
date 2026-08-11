@@ -30,6 +30,15 @@
     "sessionStopped": "The team session has stopped.",
     "retryStart": "Retry start"
   },
+  "memberWork": {
+    "attention": "Needs input",
+    "blocked": "Blocked",
+    "stale": "Paused",
+    "working": "Working",
+    "review": "In review",
+    "waiting": "Waiting",
+    "done": "Done"
+  },
   "sendBox": {
     "placeholder": "Message the team leader assistant..."
   },

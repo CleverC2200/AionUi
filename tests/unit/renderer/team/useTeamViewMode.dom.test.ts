@@ -9,6 +9,11 @@ import { useTeamViewMode } from '@/renderer/pages/team/hooks/useTeamViewMode';
 
 beforeEach(() => localStorage.clear());
 
+test('defaults to a focused member conversation instead of the control surface', () => {
+  const { result } = renderHook(() => useTeamViewMode('t1'));
+  expect(result.current[0]).toBe('single');
+});
+
 test('migrates legacy "flow" stored value to "board"', () => {
   localStorage.setItem('team-view-mode-t1', 'flow');
   const { result } = renderHook(() => useTeamViewMode('t1'));

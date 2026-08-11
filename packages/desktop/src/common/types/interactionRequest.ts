@@ -15,6 +15,8 @@ export const InteractionRequestSchema = z.object({
     label: z.string().optional(),
   }),
   conversation_id: identifier,
+  team_id: identifier.optional(),
+  slot_id: identifier.optional(),
   turn_id: identifier.optional(),
   message_id: identifier.optional(),
   expires_at: z.string().datetime({ offset: true }).optional(),

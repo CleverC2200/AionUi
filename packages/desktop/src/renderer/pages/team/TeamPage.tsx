@@ -39,6 +39,9 @@ import { previewScopeKey } from '@/renderer/pages/conversation/Preview/context/p
 import { setCurrentProject } from '@/renderer/pages/conversation/explorer/currentProjectStore';
 import { setCurrentConversation } from '@/renderer/pages/conversation/explorer/currentConversationStore';
 import { getSnapshotConversationProjectId } from '@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync';
+import { useTeamWorkSnapshot } from './control-board/useTeamWorkSnapshot';
+import { summarizeTeamMembers } from './memberWorkSummary';
+import { useLocation } from 'react-router-dom';
 
 type Props = {
   team: TTeam;
@@ -264,6 +267,16 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
   const activeAssistant = assistants.find((assistant) => assistant.slot_id === activeSlotId);
   const leadAssistant = assistants.find((assistant) => assistant.role === 'leader');
   const teamRun = useTeamRunView(team.id);
+  const { snapshot: teamWorkSnapshot } = useTeamWorkSnapshot(team.id);
+  const memberWorkSummaries = useMemo(() => summarizeTeamMembers(teamWorkSnapshot), [teamWorkSnapshot]);
+  const location = useLocation();
+
+  useEffect(() => {
+    const targetSlotId = (location.state as { targetSlotId?: string } | null)?.targetSlotId;
+    if (!targetSlotId || !assistants.some((assistant) => assistant.slot_id === targetSlotId)) return;
+    switchTab(targetSlotId);
+    setViewMode('single');
+  }, [assistants, location.key, location.state, setViewMode, switchTab]);
 
   // 进团队 warmup：以团队会话整体就绪为闸门（ensureSession resolve = 全员成功）。遮罩覆盖对话区。
   // runtimeStatus 是各成员逐个的真实唤醒信号，用于遮罩头像的「唤醒中→点亮」及失败态定位。
@@ -484,11 +497,12 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
       <TeamTabs
         onTabClick={handleTabClick}
         pendingCounts={slotPendingCounts}
+        workSummaries={memberWorkSummaries}
         warmingUp={isWarmingUp}
         failedSlotIds={warmupFailedSlotIds}
       />
     ),
-    [handleTabClick, slotPendingCounts, isWarmingUp, warmupFailedSlotIds]
+    [handleTabClick, slotPendingCounts, memberWorkSummaries, isWarmingUp, warmupFailedSlotIds]
   );
 
   return (

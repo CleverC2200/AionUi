@@ -161,6 +161,7 @@ describe('TeamPage cron job manager', () => {
     vi.mocked(ipcBridge.cron.removeJob.invoke).mockResolvedValue(undefined);
     vi.mocked(ipcBridge.team.removeAgent.invoke).mockResolvedValue(undefined);
     localStorage.clear();
+    localStorage.setItem('team-view-mode-team-1', 'parallel');
   });
 
   it('renders CronJobManager in the team member header when the member conversation has a cron job', async () => {

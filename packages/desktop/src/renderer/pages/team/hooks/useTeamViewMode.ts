@@ -8,8 +8,8 @@ import { useCallback, useState } from 'react';
 
 /**
  * 团队协作视图模式 —— 团队整体属性，按团队记忆（localStorage）。
- * - parallel：所有成员对话列并排（默认）。
- * - single：全屏显示当前选中的成员。
+ * - single：全屏显示当前选中的成员（默认，把协作收敛到会话主线）。
+ * - parallel：按需并排检查所有成员对话。
  * - board：只读的「消息 & 任务」看板视图。
  */
 export type TeamViewMode = 'parallel' | 'single' | 'board';
@@ -20,10 +20,11 @@ const readViewMode = (team_id: string): TeamViewMode => {
   try {
     const stored = localStorage.getItem(storageKey(team_id));
     if (stored === 'single') return 'single';
+    if (stored === 'parallel') return 'parallel';
     if (stored === 'board' || stored === 'flow') return 'board'; // migrate legacy 'flow'
-    return 'parallel';
+    return 'single';
   } catch {
-    return 'parallel';
+    return 'single';
   }
 };
 
