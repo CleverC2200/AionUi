@@ -55,6 +55,8 @@ AionUi Renderer 不直接访问 GEA。AionCore 负责身份、租户上下文、
 GET  /api/assistants
 GET  /api/assistants/{assistant_id}
 POST /api/assistants/{assistant_id}/extensions
+POST /api/conversations/prepare
+POST /api/conversations
 ```
 
 前两个接口在企业助手上返回 `source = managed` 和 `managed` 元数据；标准 AionUi 助手响应保持不变。扩展保存请求体严格等于 `EnterpriseAssistantExtensionRequest`，路径中的 `assistant_id` 不重复进入请求体。
@@ -66,6 +68,27 @@ POST /api/assistants/{assistant_id}/extensions
 3. 服务端只接受稳定 Skill/MCP ID，不接收本地路径、环境变量、凭据或完整 MCP 配置。
 4. `accepted` 后将结果写回 Assignment 的 `extensions`；模板升级时重新校验并保留合法项，冲突项以 `status = attention` 和 `violations` 返回。
 5. `unknown_external_write` 不可自动重试；客户端保留草稿并提示核验。
+
+## 原子会话准备与运行快照
+
+`POST /api/conversations/prepare` 接收 `ConversationPreparationRequest`。AionCore 在同一权限上下文中解析 Assignment、模板、用户增量、Agent、Skill、MCP 授权和运行策略；只有全部通过时才返回带有效期的 opaque `preparation_id + revision` 以及完整 `ConversationConfigurationSnapshot`。任何必需依赖失败只返回 `blocked + issues`，不得发布部分配置。
+
+客户端随后向 `POST /api/conversations` 仅提交 `{ preparation: { id, revision } }`，不得自行回传或重组快照。AionCore 必须在一次原子事务中消费仍有效且属于当前身份的 preparation、创建会话并把同一份快照写入会话记录；过期、身份变化或 revision 不一致均拒绝创建。相同 `idempotency_key` 的准备请求必须返回相同结果，创建操作重复消费同一 preparation 时也不得产生第二个会话。
+
+标准助手通过客户端同一个 `ConversationPreparation` 接口进入 ready 状态；没有企业目录时不发额外网络请求，创建请求与现状等价。
+
+每个新 Turn 仍通过既有消息发送入口执行。AionCore 在开始执行前对会话绑定的配置做轻量有效性复核：
+
+1. 已开始和历史 Turn 永远按其绑定的快照解释，模板升级不得回写历史事实。
+2. 新配置可原子发布为新的 snapshot revision；下一个尚未开始的 Turn 才可绑定新 revision。
+3. 身份、Assignment、策略或必需能力失效时，新 Turn 返回稳定阻断码和修复动作，不得降级成部分启用执行。
+4. 快照只保存稳定引用、版本、来源、授权状态和策略，不保存 token、Cookie、环境变量或完整 MCP 配置。
+
+可执行事实源位于：
+
+- `packages/desktop/src/common/types/conversationConfiguration.ts`
+- `packages/desktop/src/common/adapter/conversation/preparation.ts`
+- `tests/fixtures/conversationConfiguration.ts`
 
 ## 客户端验收 Fixture
 

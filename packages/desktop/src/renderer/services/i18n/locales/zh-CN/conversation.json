@@ -765,6 +765,24 @@
     "pathCopied": "已复制路径",
     "copyFailed": "复制路径失败"
   },
+  "configurationPreparation": {
+    "preparing": "正在准备助手、Skill、MCP 和权限…",
+    "blockedTitle": "当前还不能开始这个会话",
+    "openSkills": "打开 Skill",
+    "openMcp": "打开 MCP 设置",
+    "openUpdate": "检查更新",
+    "issue": {
+      "ASSIGNMENT_INACTIVE": "此企业助手当前不可用。",
+      "CLIENT_TOO_OLD": "请先更新客户端，再使用此助手。",
+      "EXTENSION_REJECTED": "部分本地扩展与企业策略冲突。",
+      "IDENTITY_CHANGED": "当前登录身份已变化，请重新登录后重试。",
+      "MCP_AUTH_REQUIRED": "有 MCP 需要先完成授权，才能开始会话。",
+      "MISSING_SKILL": "客户端缺少企业必需的 Skill。",
+      "OFFLINE_CACHE_EXPIRED": "离线企业配置已过期，不能开始新的工作。",
+      "POLICY_CHANGED": "准备会话期间企业策略发生了变化。",
+      "STALE_REVISION": "企业助手配置已更新，请重新加载后重试。"
+    }
+  },
   "terminal": {
     "running": "运行中",
     "stopped": "已停止",

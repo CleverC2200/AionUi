@@ -154,6 +154,18 @@ describe('apiModelMapper', () => {
       expect('model' in body).toBe(false);
     });
 
+    it('forwards only the opaque preparation identity for atomic create', () => {
+      const body = buildCreateConversationBody({
+        name: 'hello',
+        assistant: { id: 'enterprise-finance' },
+        preparation: { id: 'preparation-1', revision: 'preparation-r1' },
+        extra: {},
+      });
+
+      expect(body.preparation).toEqual({ id: 'preparation-1', revision: 'preparation-r1' });
+      expect(body).not.toHaveProperty('configuration_snapshot');
+    });
+
     it('strips legacy type when assistant identity is present', () => {
       const body = buildCreateConversationBody({
         type: 'acp',

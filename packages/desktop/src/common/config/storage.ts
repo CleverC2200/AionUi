@@ -5,6 +5,7 @@
  */
 
 import type { SpeechToTextConfig } from '@/common/types/provider/speech';
+import type { ConversationConfigurationSnapshot } from '@/common/types/conversationConfiguration';
 import type { Theme } from '@/common/theme/types';
 import { buildStorage } from '@/common/platform/storage';
 
@@ -154,6 +155,8 @@ interface IChatConversation<T, Extra> {
   channel_chat_id?: string;
   /** Explicit assistant identity for assistant-led conversations */
   assistant?: TConversationAssistantIdentity;
+  /** Immutable runtime facts published atomically before the first turn. */
+  configuration_snapshot?: ConversationConfigurationSnapshot;
   /**
    * Owning Project id (top-level, from `ConversationResponse.project_id`, stage3
    * contract). Drives Project-scoped Explorer mounting + preview isolation.
@@ -599,10 +602,7 @@ export interface IMcpServerTransportStreamableHTTP {
 }
 
 export type IMcpServerTransport =
-  | IMcpServerTransportStdio
-  | IMcpServerTransportSSE
-  | IMcpServerTransportHTTP
-  | IMcpServerTransportStreamableHTTP;
+  IMcpServerTransportStdio | IMcpServerTransportSSE | IMcpServerTransportHTTP | IMcpServerTransportStreamableHTTP;
 
 export interface IMcpServer {
   id: string;

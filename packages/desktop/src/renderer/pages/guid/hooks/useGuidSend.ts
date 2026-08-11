@@ -5,13 +5,16 @@
  */
 
 import { ipcBridge } from '@/common';
+import { ConversationPreparation, createAionCoreConversationPreparationAdapter } from '@/common/adapter/conversation';
 import { type ChatFileRef, chatFileRefPath } from '@/common/types/chatFile';
 import type { IMcpServer, TProviderWithModel } from '@/common/config/storage';
+import type { Assistant } from '@/common/types/agent/assistantTypes';
+import type { ConversationPreparationIssue } from '@/common/types/conversationConfiguration';
 import { toSessionMcpServer } from '@/renderer/hooks/mcp/catalog';
 import { emitter } from '@/renderer/utils/emitter';
 import { updateWorkspaceTime } from '@/renderer/utils/workspace/workspaceHistory';
 import { Message } from '@arco-design/web-react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { type TFunction } from 'i18next';
 import type { NavigateFunction } from 'react-router-dom';
 import { mutate as swrMutate } from 'swr';
@@ -31,6 +34,7 @@ export type GuidSendDeps = {
 
   // Assistant state
   selectedAssistantId: string | null;
+  selectedAssistant?: Assistant;
   selectedAssistantBackend: string;
   selectedMode: string;
   selectedAcpModel: string | null;
@@ -63,7 +67,21 @@ export type GuidSendResult = {
   handleSend: () => Promise<void>;
   sendMessageHandler: () => void;
   isButtonDisabled: boolean;
+  preparationState: 'blocked' | 'idle' | 'preparing' | 'ready';
+  preparationIssues: ConversationPreparationIssue[];
 };
+
+class ConversationPreparationBlockedError extends Error {
+  constructor(readonly issues: ConversationPreparationIssue[]) {
+    super(issues[0]?.message || issues[0]?.code || 'CONVERSATION_PREPARATION_BLOCKED');
+    this.name = 'ConversationPreparationBlockedError';
+  }
+}
+
+const createPreparationIdempotencyKey = (): string =>
+  globalThis.crypto?.randomUUID?.() ?? `conversation-preparation-${Date.now()}`;
+
+const preparationFingerprint = (value: unknown): string => JSON.stringify(value);
 
 /**
  * Hook that manages the send logic for ACP and Aion CLI conversations.
@@ -79,6 +97,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     setLoading,
     loading,
     selectedAssistantId,
+    selectedAssistant,
     selectedAssistantBackend,
     selectedMode,
     selectedAcpModel,
@@ -101,6 +120,16 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     localeKey,
   } = deps;
   const sendingRef = useRef(false);
+  const preparationIdempotencyRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  const conversationPreparationRef = useRef(
+    new ConversationPreparation(
+      createAionCoreConversationPreparationAdapter((request) =>
+        ipcBridge.conversation.prepareConfiguration.invoke(request)
+      )
+    )
+  );
+  const [preparationState, setPreparationState] = useState<GuidSendResult['preparationState']>('idle');
+  const [preparationIssues, setPreparationIssues] = useState<ConversationPreparationIssue[]>([]);
 
   const handleSend = useCallback(async () => {
     if (!selectedAssistantId) {
@@ -165,12 +194,44 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       disabled_builtin_skill_ids: excludeBuiltinSkills,
       mcp_ids: assistantOverrideMcpIds,
     };
+    if (assistantBackend === 'aionrs' && !current_model) {
+      setPreparationState('idle');
+      setPreparationIssues([]);
+      Message.warning(t('conversation.noModelConfigured'));
+      return;
+    }
+    const fingerprint = preparationFingerprint({
+      assistant_id: assistantConversationId,
+      managed: selectedAssistant?.managed,
+      locale: localeKey,
+      workspace: finalWorkspace || undefined,
+      overrides: assistantOverrides,
+    });
+    if (preparationIdempotencyRef.current?.fingerprint !== fingerprint) {
+      preparationIdempotencyRef.current = { fingerprint, key: createPreparationIdempotencyKey() };
+    }
+    setPreparationState('preparing');
+    setPreparationIssues([]);
+    const preparationResult = await conversationPreparationRef.current.prepare({
+      assistant: selectedAssistant ?? { id: assistantConversationId, source: 'user' },
+      locale: localeKey,
+      idempotencyKey: preparationIdempotencyRef.current.key,
+      workspace: finalWorkspace || undefined,
+      overrides: assistantOverrides,
+    });
+    if (preparationResult.status === 'cancelled') {
+      setPreparationState('idle');
+      throw new Error('CONVERSATION_PREPARATION_CANCELLED');
+    }
+    if (preparationResult.status === 'blocked') {
+      setPreparationState('blocked');
+      setPreparationIssues(preparationResult.issues);
+      throw new ConversationPreparationBlockedError(preparationResult.issues);
+    }
+    setPreparationState('ready');
+    const preparation = preparationResult.preparation ?? undefined;
 
     if (assistantBackend === 'aionrs') {
-      if (!current_model) {
-        Message.warning(t('conversation.noModelConfigured'));
-        return;
-      }
       try {
         const conversation = await ipcBridge.conversation.create.invoke({
           name: input,
@@ -180,6 +241,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             locale: localeKey,
             conversation_overrides: assistantOverrides,
           },
+          preparation,
           extra: {
             default_files: files.map(chatFileRefPath),
             workspace: finalWorkspace,
@@ -213,6 +275,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         };
         sessionStorage.setItem(`aionrs_initial_message_${conversation.id}`, JSON.stringify(initialMessage));
 
+        preparationIdempotencyRef.current = null;
         await navigate(`/conversation/${conversation.id}`);
       } catch (error: unknown) {
         console.error('Failed to create Aion CLI conversation:', error);
@@ -229,6 +292,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           locale: localeKey,
           conversation_overrides: assistantOverrides,
         },
+        preparation,
         extra: {
           workspace: finalWorkspace,
           custom_workspace: isCustomWorkspace,
@@ -262,6 +326,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       };
       sessionStorage.setItem(`acp_initial_message_${conversation.id}`, JSON.stringify(initialMessage));
 
+      preparationIdempotencyRef.current = null;
       await navigate(`/conversation/${conversation.id}`);
     } catch (error: unknown) {
       console.error('Failed to create ACP conversation:', error);
@@ -272,6 +337,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     files,
     dir,
     selectedAssistantId,
+    selectedAssistant,
     selectedAssistantBackend,
     selectedMode,
     selectedAcpModel,
@@ -333,5 +399,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     handleSend,
     sendMessageHandler,
     isButtonDisabled,
+    preparationState,
+    preparationIssues,
   };
 };

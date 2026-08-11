@@ -38,6 +38,10 @@ import type {
 import type { EnterpriseAssistantExtensionResult } from '../types/agent/enterpriseAssistantCatalog';
 import type { ManagedAssistantExtensionSaveParams } from './assistant/extensions';
 import type {
+  ConversationPreparationRequest,
+  ConversationPreparationResponse,
+} from '../types/conversationConfiguration';
+import type {
   EnsureConversationRuntimeResponse,
   GetConfigOptionsResponse,
   SetConfigOptionRequest,
@@ -257,6 +261,9 @@ export const assistants = {
 // ---------------------------------------------------------------------------
 
 export const conversation = {
+  prepareConfiguration: httpPost<ConversationPreparationResponse, ConversationPreparationRequest>(
+    '/api/conversations/prepare'
+  ),
   create: withResponseMap(
     httpPost<TChatConversation, ICreateConversationParams>('/api/conversations', (p) => buildCreateConversationBody(p)),
     fromApiConversation
@@ -1830,6 +1837,10 @@ export interface ICreateConversationParams {
       mcp_ids?: string[];
     };
   };
+  preparation?: {
+    id: string;
+    revision: string;
+  };
   extra: {
     workspace?: string;
     custom_workspace?: boolean;
@@ -1964,13 +1975,7 @@ export interface IConversationTurnCompletedEvent {
   turn_id: string;
   status: 'pending' | 'running' | 'finished';
   state:
-    | 'ai_generating'
-    | 'ai_waiting_input'
-    | 'ai_waiting_confirmation'
-    | 'initializing'
-    | 'stopped'
-    | 'error'
-    | 'unknown';
+    'ai_generating' | 'ai_waiting_input' | 'ai_waiting_confirmation' | 'initializing' | 'stopped' | 'error' | 'unknown';
   detail: string;
   can_send_message: boolean;
   runtime: {

@@ -87,4 +87,28 @@ describe('ipcBridge assistant adapter', () => {
       },
     });
   });
+
+  it('routes configuration preparation through AionCore', async () => {
+    const { conversation } = await import('@/common/adapter/ipcBridge');
+    await conversation.prepareConfiguration.invoke({
+      assistant: {
+        id: 'enterprise-finance',
+        source: 'managed',
+        assignment_id: 'assignment-finance',
+        template_version: '1.0.0',
+        catalog_revision: 'catalog-r1',
+        extension_revision: 'extension-r1',
+      },
+      locale: 'zh-CN',
+      idempotency_key: 'prepare-1',
+      workspace: '/workspace',
+      overrides: { skill_ids: ['finance-close'], mcp_ids: ['finance-production'] },
+    });
+
+    expect(httpBridgeMocks.calls).toContainEqual({
+      method: 'POST',
+      path: '/api/conversations/prepare',
+      body: undefined,
+    });
+  });
 });
