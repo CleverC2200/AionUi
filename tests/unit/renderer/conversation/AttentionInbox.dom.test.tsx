@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { AttentionInbox } from '@/renderer/pages/conversation/attention/AttentionInbox';
@@ -112,5 +112,24 @@ describe('AttentionInbox', () => {
 
     expect(screen.getByTestId('location')).toHaveTextContent('"pathname":"/team/team-1"');
     expect(screen.getByTestId('location')).toHaveTextContent('"targetSlotId":"worker-slot"');
+  });
+
+  it('shows a recoverable load error instead of an empty inbox', async () => {
+    listInvoke
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ revision: 'attention-r2', items: [] });
+    render(
+      <SWRConfig value={{ provider: () => new Map(), shouldRetryOnError: false }}>
+        <MemoryRouter>
+          <AttentionInbox />
+        </MemoryRouter>
+      </SWRConfig>
+    );
+
+    fireEvent.click(await screen.findByTestId('attention-inbox-trigger'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('conversation.attention.loadFailed');
+    fireEvent.click(screen.getByText('common.retry'));
+    await waitFor(() => expect(listInvoke).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('conversation.attention.empty')).toBeInTheDocument();
   });
 });

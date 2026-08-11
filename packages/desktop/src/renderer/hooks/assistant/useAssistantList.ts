@@ -25,25 +25,33 @@ export const useAssistantList = () => {
   const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [catalogView, setCatalogView] = useState<AssistantCatalogView | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const catalogRequestIdRef = useRef(0);
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null);
   const localeKey = resolveLocaleKey(i18n.language);
   const previousLocaleKeyRef = useRef(localeKey);
   const { assistantOrder, setAssistantOrder } = useAssistantOrder();
 
   const loadAssistants = useCallback(async () => {
+    const requestId = ++catalogRequestIdRef.current;
+    setCatalogLoading(true);
     try {
       const view = await assistantCatalogRef.current.load(localeKey);
+      if (requestId !== catalogRequestIdRef.current) return;
       const list = view.assistants;
       setCatalogView(view);
-      setCatalogError(null);
+      setCatalogError(view.error_code ?? null);
       setAssistants(list);
       setActiveAssistantId((prev) => {
         if (prev && list.some((a) => a.id === prev)) return prev;
         return list[0]?.id ?? null;
       });
     } catch (error) {
+      if (requestId !== catalogRequestIdRef.current) return;
       console.error('Failed to load assistants:', error);
       setCatalogError(error instanceof Error ? error.message : 'ASSISTANT_CATALOG_LOAD_FAILED');
+    } finally {
+      if (requestId === catalogRequestIdRef.current) setCatalogLoading(false);
     }
   }, [localeKey]);
 
@@ -93,5 +101,6 @@ export const useAssistantList = () => {
     localeKey,
     catalogView,
     catalogError,
+    catalogLoading,
   };
 };

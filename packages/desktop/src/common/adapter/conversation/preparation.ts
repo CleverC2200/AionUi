@@ -45,15 +45,19 @@ export type ConversationPreparationResult =
 export class ConversationPreparation {
   private generation = 0;
   private lastGoodSnapshot: ConversationConfigurationSnapshot | null = null;
+  private cancelPending: (() => void) | null = null;
 
   constructor(private readonly adapter: ConversationPreparationAdapter) {}
 
   cancel(): void {
     this.generation += 1;
+    this.cancelPending?.();
+    this.cancelPending = null;
   }
 
   async prepare(input: ConversationPreparationInput): Promise<ConversationPreparationResult> {
-    const currentGeneration = ++this.generation;
+    this.cancel();
+    const currentGeneration = this.generation;
     if (input.assistant.source !== 'managed') {
       return currentGeneration === this.generation
         ? { status: 'ready', mode: 'standard', preparation: null, snapshot: null }
@@ -78,8 +82,14 @@ export class ConversationPreparation {
       workspace: input.workspace,
       overrides: input.overrides,
     });
-    const response = parseConversationPreparationResponse(await this.adapter.prepare(request));
-    if (currentGeneration !== this.generation) return { status: 'cancelled' };
+    const pending = this.adapter.prepare(request).then((value) => ({ kind: 'response' as const, value }));
+    const cancelled = new Promise<{ kind: 'cancelled' }>((resolve) => {
+      this.cancelPending = () => resolve({ kind: 'cancelled' });
+    });
+    const outcome = await Promise.race([pending, cancelled]);
+    if (currentGeneration === this.generation) this.cancelPending = null;
+    if (outcome.kind === 'cancelled' || currentGeneration !== this.generation) return { status: 'cancelled' };
+    const response = parseConversationPreparationResponse(outcome.value);
     if (response.status === 'blocked') {
       return {
         status: 'blocked',

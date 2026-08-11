@@ -1,6 +1,6 @@
 import { ipcBridge } from '@/common';
 import type { InteractionRequest } from '@/common/types/interactionRequest';
-import { Badge, Button, Drawer, Empty, Spin, Typography } from '@arco-design/web-react';
+import { Alert, Badge, Button, Drawer, Empty, Spin, Typography } from '@arco-design/web-react';
 import { Attention, Right } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,7 +16,7 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
   const navigate = useNavigate();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [visible, setVisible] = useState(false);
-  const { data, isLoading, mutate } = useSWR('interaction-requests.pending', () =>
+  const { data, error, isLoading, isValidating, mutate } = useSWR('interaction-requests.pending', () =>
     ipcBridge.interactionRequest.list.invoke()
   );
   const items = data?.items ?? [];
@@ -63,7 +63,7 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
         </Badge>
       </div>
       <Drawer
-        width={420}
+        width='min(420px, 100vw)'
         title={t('conversation.attention.title')}
         visible={visible}
         onCancel={close}
@@ -74,8 +74,21 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
       >
         {isLoading ? (
           <div className='py-48px flex-center'>
-            <Spin />
+            <Spin aria-label={t('common.loading', { defaultValue: 'Loading…' })} />
           </div>
+        ) : error ? (
+          <Alert
+            type='error'
+            showIcon
+            content={
+              <div className='flex flex-wrap items-center justify-between gap-8px'>
+                <span>{t('conversation.attention.loadFailed')}</span>
+                <Button size='mini' loading={isValidating} onClick={() => void mutate()}>
+                  {t('common.retry', { defaultValue: 'Retry' })}
+                </Button>
+              </div>
+            }
+          />
         ) : items.length === 0 ? (
           <Empty description={t('conversation.attention.empty')} />
         ) : (

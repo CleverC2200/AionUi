@@ -189,6 +189,27 @@ describe('useAssistantList', () => {
     consoleErrorSpy.mockRestore();
   });
 
+  it('keeps the latest catalog when overlapping reloads resolve out of order', async () => {
+    let resolveFirst!: (value: Assistant[]) => void;
+    vi.mocked(ipcBridge.assistants.list.invoke)
+      .mockReturnValueOnce(
+        new Promise<Assistant[]>((resolve) => {
+          resolveFirst = resolve;
+        })
+      )
+      .mockResolvedValueOnce([{ id: 'latest', name: 'Latest', sort_order: 1, source: 'user', enabled: true }]);
+
+    const { result } = renderHook(() => useAssistantList());
+    await act(async () => {
+      await result.current.loadAssistants();
+    });
+    expect(result.current.assistants.map((assistant) => assistant.id)).toEqual(['latest']);
+
+    resolveFirst([{ id: 'stale', name: 'Stale', sort_order: 1, source: 'user', enabled: true }]);
+    await act(async () => await Promise.resolve());
+    expect(result.current.assistants.map((assistant) => assistant.id)).toEqual(['latest']);
+  });
+
   it('reorders only enabled assistants through the shared preference', async () => {
     assistantOrderConfigMock.state.value = ['cli', 'custom', 'official'];
     const initialList: Assistant[] = [

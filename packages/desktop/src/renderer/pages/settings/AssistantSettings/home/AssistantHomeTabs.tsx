@@ -20,6 +20,7 @@ type AssistantHomeTabsProps = {
   assistants: AssistantListItem[];
   catalogView: AssistantCatalogView | null;
   catalogError: string | null;
+  catalogLoading: boolean;
   assistantOrder: readonly string[];
   localeKey: string;
   onOpenDetail: (assistant: AssistantListItem) => void;
@@ -30,6 +31,7 @@ type AssistantHomeTabsProps = {
   onToggleEnabled: (assistant: AssistantListItem, checked: boolean) => void;
   onReorderEnabled: (activeId: string, overId: string) => void | Promise<void>;
   onStartChat: (assistant: AssistantListItem) => void;
+  onReloadCatalog: () => void | Promise<void>;
   /** Tab to show on mount (e.g. return to Official after editing a builtin). */
   initialTab?: 'enabled' | 'mine' | 'official';
   /** Notified whenever the active tab changes, so the parent can remember it. */
@@ -42,6 +44,7 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
   assistants,
   catalogView,
   catalogError,
+  catalogLoading,
   assistantOrder,
   localeKey,
   onOpenDetail,
@@ -52,6 +55,7 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
   onToggleEnabled,
   onReorderEnabled,
   onStartChat,
+  onReloadCatalog,
   initialTab = 'enabled',
   onTabChange,
 }) => {
@@ -195,11 +199,13 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
               catalogMode={managedMode ? 'managed' : 'official'}
               catalogSyncStatus={catalogView?.sync_status}
               catalogError={catalogError ?? catalogView?.error_code}
+              catalogLoading={catalogLoading}
               localeKey={localeKey}
               onOpenSettings={onOpenSettings}
               onDuplicate={onDuplicate}
               onToggleEnabled={onToggleEnabled}
               onStartChat={onStartChat}
+              onRetry={onReloadCatalog}
               searchActive={Boolean(normalizedSearchQuery)}
             />
           )}

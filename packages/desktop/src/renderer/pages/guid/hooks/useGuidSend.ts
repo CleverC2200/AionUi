@@ -69,6 +69,7 @@ export type GuidSendResult = {
   isButtonDisabled: boolean;
   preparationState: 'blocked' | 'idle' | 'preparing' | 'ready';
   preparationIssues: ConversationPreparationIssue[];
+  cancelPreparation: () => void;
 };
 
 class ConversationPreparationBlockedError extends Error {
@@ -130,6 +131,12 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
   );
   const [preparationState, setPreparationState] = useState<GuidSendResult['preparationState']>('idle');
   const [preparationIssues, setPreparationIssues] = useState<ConversationPreparationIssue[]>([]);
+
+  const cancelPreparation = useCallback(() => {
+    conversationPreparationRef.current.cancel();
+    setPreparationState('idle');
+    setPreparationIssues([]);
+  }, []);
 
   const handleSend = useCallback(async () => {
     if (!selectedAssistantId) {
@@ -372,7 +379,9 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       })
       .catch((error) => {
         console.error('Failed to send message:', error);
-        Message.error(getConversationCreateErrorMessage(error, t));
+        if (!(error instanceof Error && error.message === 'CONVERSATION_PREPARATION_CANCELLED')) {
+          Message.error(getConversationCreateErrorMessage(error, t));
+        }
       })
       .finally(() => {
         sendingRef.current = false;
@@ -401,5 +410,6 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     isButtonDisabled,
     preparationState,
     preparationIssues,
+    cancelPreparation,
   };
 };

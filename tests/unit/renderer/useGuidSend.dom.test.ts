@@ -166,6 +166,49 @@ describe('useGuidSend', () => {
     expect(createConversationInvokeMock).not.toHaveBeenCalled();
   });
 
+  it('cancels a managed preparation immediately and ignores its late response', async () => {
+    let resolvePreparation!: (value: unknown) => void;
+    prepareConfigurationInvokeMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePreparation = resolve;
+      })
+    );
+    const deps = createDeps();
+    deps.selectedAssistant = {
+      id: 'enterprise-finance',
+      source: 'managed',
+      managed: {
+        assignment_id: 'assignment-finance',
+        template_id: 'finance-close',
+        template_version: '1.0.0',
+        catalog_revision: 'catalog-r1',
+        activation: 'required',
+        state: 'active',
+        minimum_client_version: '2.1.53',
+        sync_status: 'fresh',
+        required_skill_ids: [],
+        required_mcp_ids: [],
+        user_extensions: { mode: 'none', allow_skills: false, allow_mcps: false },
+        extensions: { revision: 'extension-r1', skill_ids: [], mcp_ids: [], status: 'active', violations: [] },
+      },
+    } as Assistant;
+    deps.selectedAssistantId = deps.selectedAssistant.id;
+
+    const { result } = renderHook(() => useGuidSend(deps));
+    let sending!: Promise<void>;
+    act(() => {
+      sending = result.current.handleSend();
+    });
+    act(() => result.current.cancelPreparation());
+
+    await act(async () => {
+      await expect(sending).rejects.toThrow('CONVERSATION_PREPARATION_CANCELLED');
+    });
+    expect(result.current.preparationState).toBe('idle');
+    expect(createConversationInvokeMock).not.toHaveBeenCalled();
+    resolvePreparation(managedConversationReady);
+  });
+
   it('passes selected mode into assistant conversation overrides when creating a preset ACP conversation', async () => {
     const deps = createDeps();
     deps.selectedThoughtLevelValue = 'high';

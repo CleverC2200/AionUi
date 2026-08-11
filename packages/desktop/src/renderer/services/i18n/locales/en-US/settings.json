@@ -183,6 +183,8 @@
   "officialAssistantsHintShort": "Official assistants built into GEAUi, maintained and updated with each release; duplicate as \"My Assistant\" to customize freely.",
   "enterpriseAssistantsHintShort": "Managed by your enterprise; core capabilities stay protected while allowed local extensions remain available.",
   "enterpriseAssistantsLoadFailed": "Enterprise assistants could not be loaded. Check your connection and try again.",
+  "enterpriseAssistantsShowingLastGood": "Showing the last synced enterprise catalog. New conversations may be restricted until it refreshes.",
+  "assistantToggleEnabled": "Enable {{name}}",
   "enterpriseManagedBadge": "Enterprise managed",
   "enterpriseRequiredBadge": "Required",
   "enterpriseSuspendedBadge": "Suspended",

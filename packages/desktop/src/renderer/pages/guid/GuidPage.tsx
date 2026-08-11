@@ -732,14 +732,20 @@ const GuidPage: React.FC = () => {
 
           {send.preparationState === 'preparing' ? (
             <div
-              className='mt-10px flex w-full items-center gap-8px rounded-10px border border-border-2 bg-fill-1 px-12px py-9px text-12px text-t-secondary'
+              className='mt-10px flex w-full flex-wrap items-center gap-8px rounded-10px border border-border-2 bg-fill-1 px-12px py-9px text-12px text-t-secondary'
               role='status'
+              aria-live='polite'
               data-testid='conversation-preparation-status'
             >
-              <span className='h-7px w-7px animate-pulse rounded-full bg-primary-6' />
-              {t('conversation.configurationPreparation.preparing', {
-                defaultValue: 'Preparing the assistant, Skills, MCP servers, and permissions…',
-              })}
+              <span className='h-7px w-7px animate-pulse rounded-full bg-primary-6' aria-hidden='true' />
+              <span className='min-w-0 flex-1'>
+                {t('conversation.configurationPreparation.preparing', {
+                  defaultValue: 'Preparing the assistant, Skills, MCP servers, and permissions…',
+                })}
+              </span>
+              <Button size='mini' onClick={send.cancelPreparation} data-testid='conversation-preparation-cancel'>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
             </div>
           ) : null}
 

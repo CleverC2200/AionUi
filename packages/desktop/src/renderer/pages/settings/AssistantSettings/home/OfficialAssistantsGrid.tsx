@@ -9,7 +9,7 @@ import type { AssistantCatalogSyncStatus } from '@/common/adapter/assistant';
 import { type AssistantEnabledFilter, filterByEnabled } from '../assistantUtils';
 import AssistantAvatar from '../AssistantAvatar';
 import RuntimeBadge from './RuntimeBadge';
-import { Alert, Button, Dropdown, Menu, Switch, Tag } from '@arco-design/web-react';
+import { Alert, Button, Dropdown, Menu, Spin, Switch, Tag } from '@arco-design/web-react';
 import { AllApplication, Down, MoreOne } from '@icon-park/react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,11 +19,13 @@ type OfficialAssistantsGridProps = {
   catalogMode: 'managed' | 'official';
   catalogSyncStatus?: AssistantCatalogSyncStatus;
   catalogError?: string;
+  catalogLoading?: boolean;
   localeKey: string;
   onOpenSettings: (assistant: AssistantListItem) => void;
   onDuplicate: (assistant: AssistantListItem) => void;
   onToggleEnabled: (assistant: AssistantListItem, checked: boolean) => void;
   onStartChat: (assistant: AssistantListItem) => void;
+  onRetry: () => void | Promise<void>;
   searchActive?: boolean;
 };
 
@@ -39,11 +41,13 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
   catalogMode,
   catalogSyncStatus,
   catalogError,
+  catalogLoading = false,
   localeKey,
   onOpenSettings,
   onDuplicate,
   onToggleEnabled,
   onStartChat,
+  onRetry,
   searchActive = false,
 }) => {
   const { t } = useTranslation();
@@ -70,14 +74,27 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
 
   return (
     <div data-testid='official-assistants-pane'>
-      {catalogError && catalogAssistants.length === 0 ? (
+      {catalogError ? (
         <Alert
           className='mb-14px'
-          type='error'
+          type={catalogAssistants.length > 0 ? 'warning' : 'error'}
           showIcon
-          content={t('settings.enterpriseAssistantsLoadFailed', {
-            defaultValue: 'Enterprise assistants could not be loaded. Check your connection and try again.',
-          })}
+          content={
+            <div className='flex flex-wrap items-center justify-between gap-8px'>
+              <span>
+                {catalogAssistants.length > 0
+                  ? t('settings.enterpriseAssistantsShowingLastGood', {
+                      defaultValue: 'Showing the last synced enterprise catalog. New conversations may be restricted.',
+                    })
+                  : t('settings.enterpriseAssistantsLoadFailed', {
+                      defaultValue: 'Enterprise assistants could not be loaded. Check your connection and try again.',
+                    })}
+              </span>
+              <Button size='mini' loading={catalogLoading} onClick={() => void onRetry()} data-testid='catalog-retry'>
+                {t('common.retry', { defaultValue: 'Retry' })}
+              </Button>
+            </div>
+          }
         />
       ) : null}
       {/* Compact toolbar: quiet one-line hint (full text on hover) + filter. */}
@@ -116,8 +133,13 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
         </Dropdown>
       </div>
 
-      <div className='grid grid-cols-1 gap-14px sm:grid-cols-2 lg:grid-cols-3'>
-        {catalogAssistants.length === 0 ? (
+      <div className='grid grid-cols-1 gap-14px sm:grid-cols-2 lg:grid-cols-3' aria-busy={catalogLoading}>
+        {catalogLoading && catalogAssistants.length === 0 ? (
+          <div className='col-span-full py-40px flex-center' role='status' aria-live='polite'>
+            <Spin tip={t('common.loading', { defaultValue: 'Loading…' })} />
+          </div>
+        ) : null}
+        {!catalogLoading && catalogAssistants.length === 0 ? (
           <div className='col-span-full rounded-14px border border-dashed border-border-2 bg-fill-1/40 px-20px py-28px text-center text-13px text-t-secondary'>
             {searchActive
               ? t('settings.assistantNoMatch', { defaultValue: 'No assistants match the current filters.' })
@@ -155,8 +177,17 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
             <div
               key={assistant.id}
               data-testid={`official-card-${assistant.id}`}
-              className='group flex cursor-pointer flex-col rounded-14px border border-solid border-transparent bg-base p-16px transition-all duration-180 hover:border-border-2'
+              className='group flex cursor-pointer flex-col rounded-14px border border-solid border-transparent bg-base p-16px transition-all duration-180 hover:border-border-2 focus-visible:border-primary-6 focus-visible:outline-none'
               onClick={() => onOpenSettings(assistant)}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                onOpenSettings(assistant);
+              }}
+              role='button'
+              tabIndex={0}
+              aria-label={assistant.name_i18n?.[localeKey] || assistant.name}
             >
               {/* Header row: avatar on the left, enable switch on the right. */}
               <div className='flex items-start justify-between'>
@@ -170,6 +201,10 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
                     checked={enabled}
                     disabled={toggleLocked}
                     onChange={(checked) => onToggleEnabled(assistant, checked)}
+                    aria-label={t('settings.assistantToggleEnabled', {
+                      defaultValue: 'Enable {{name}}',
+                      name: assistant.name_i18n?.[localeKey] || assistant.name,
+                    })}
                   />
                 </span>
               </div>
@@ -210,7 +245,7 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
                       type='text'
                       size='small'
                       data-testid={`btn-chat-${assistant.id}`}
-                      className='!inline-flex !h-28px !items-center !justify-center !rounded-9px !bg-fill-2 !px-12px !leading-none !text-t-secondary !opacity-0 transition-all hover:!bg-primary-6 hover:!text-white group-hover:!opacity-100'
+                      className='!inline-flex !h-28px !items-center !justify-center !rounded-9px !bg-fill-2 !px-12px !leading-none !text-t-secondary !opacity-0 transition-all hover:!bg-primary-6 hover:!text-white focus:!opacity-100 group-hover:!opacity-100 group-focus-within:!opacity-100'
                       onClick={() => onStartChat(assistant)}
                     >
                       {t('settings.assistantGoChat', { defaultValue: 'Chat' })}

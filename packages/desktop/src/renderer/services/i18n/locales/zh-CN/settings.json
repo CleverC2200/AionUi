@@ -183,6 +183,8 @@
   "officialAssistantsHintShort": "GEAUi 内置的官方助手，由官方持续维护、随版本更新；可复制为「我的助手」后自由修改。",
   "enterpriseAssistantsHintShort": "由企业统一管理，核心能力受保护；仍可按策略添加本地辅助能力。",
   "enterpriseAssistantsLoadFailed": "企业助手加载失败，请检查网络后重试。",
+  "enterpriseAssistantsShowingLastGood": "当前展示上次成功同步的企业目录；完成刷新前，新会话可能受到限制。",
+  "assistantToggleEnabled": "启用 {{name}}",
   "enterpriseManagedBadge": "企业管理",
   "enterpriseRequiredBadge": "企业必需",
   "enterpriseSuspendedBadge": "已暂停",

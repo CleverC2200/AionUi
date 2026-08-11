@@ -68,6 +68,7 @@ const AssistantSettings: React.FC = () => {
     localeKey,
     catalogView,
     catalogError,
+    catalogLoading,
   } = useAssistantList();
   const managedAgentRuntimeCatalog = useManagedAgentRuntimeCatalog();
   const builtinAvatarOptions = useMemo(
@@ -242,6 +243,7 @@ const AssistantSettings: React.FC = () => {
               assistants={assistants}
               catalogView={catalogView}
               catalogError={catalogError}
+              catalogLoading={catalogLoading}
               assistantOrder={assistantOrder}
               localeKey={localeKey}
               initialTab={homeTab}
@@ -274,6 +276,7 @@ const AssistantSettings: React.FC = () => {
                 }
               }}
               onStartChat={handleStartChat}
+              onReloadCatalog={loadAssistants}
             />
           )}
 

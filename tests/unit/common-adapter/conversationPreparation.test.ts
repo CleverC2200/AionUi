@@ -127,8 +127,8 @@ describe('ConversationPreparation', () => {
     const module = new ConversationPreparation({ prepare: vi.fn().mockReturnValue(pending.promise) });
     const result = module.prepare(input(managedAssistant));
     module.cancel();
-    pending.resolve(managedConversationReady);
     await expect(result).resolves.toEqual({ status: 'cancelled' });
+    pending.resolve(managedConversationReady);
   });
 
   it('rejects secret-bearing snapshots at the adapter boundary', async () => {

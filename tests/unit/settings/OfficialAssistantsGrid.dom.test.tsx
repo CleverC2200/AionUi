@@ -74,6 +74,7 @@ const renderGrid = (assistant = managedAssistant) => {
     onDuplicate: vi.fn(),
     onToggleEnabled: vi.fn(),
     onStartChat: vi.fn(),
+    onRetry: vi.fn(),
   };
   render(
     <OfficialAssistantsGrid
@@ -104,6 +105,12 @@ describe('OfficialAssistantsGrid managed mode', () => {
     expect(onDuplicate).not.toHaveBeenCalled();
   });
 
+  it('supports opening a governed assistant with the keyboard', () => {
+    const { onOpenSettings } = renderGrid();
+    fireEvent.keyDown(screen.getByTestId('official-card-enterprise-finance'), { key: 'Enter' });
+    expect(onOpenSettings).toHaveBeenCalledWith(expect.objectContaining({ id: 'enterprise-finance' }));
+  });
+
   it('disables chat and activation for a suspended assignment', () => {
     renderGrid({
       ...managedAssistant,
@@ -114,5 +121,27 @@ describe('OfficialAssistantsGrid managed mode', () => {
     expect(screen.getByText('Suspended')).toBeInTheDocument();
     expect(screen.queryByTestId('btn-chat-enterprise-finance')).not.toBeInTheDocument();
     expect(screen.getByTestId('switch-enabled-enterprise-finance')).toBeDisabled();
+  });
+
+  it('shows last-good status inline and retries in place', () => {
+    const onRetry = vi.fn();
+    render(
+      <OfficialAssistantsGrid
+        assistants={[managedAssistant]}
+        catalogMode='managed'
+        catalogSyncStatus='stale'
+        catalogError='CATALOG_OFFLINE'
+        localeKey='zh-CN'
+        onOpenSettings={vi.fn()}
+        onDuplicate={vi.fn()}
+        onToggleEnabled={vi.fn()}
+        onStartChat={vi.fn()}
+        onRetry={onRetry}
+      />
+    );
+
+    expect(screen.getByText(/Showing the last synced enterprise catalog/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('catalog-retry'));
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });
