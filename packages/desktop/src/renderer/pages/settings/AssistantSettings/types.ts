@@ -1,4 +1,5 @@
-import type { Assistant } from '@/common/types/agent/assistantTypes';
+import type { Assistant, ManagedAssistantMetadata } from '@/common/types/agent/assistantTypes';
+import type { EnterpriseAssistantExtensionViolation } from '@/common/types/agent/enterpriseAssistantCatalog';
 import type { IMcpServer } from '@/common/config/storage';
 
 // Skill info type
@@ -63,6 +64,12 @@ export type AvailableBackend = {
 
 export type AssistantEditorViewModel = {
   isCreating: boolean;
+  managed: {
+    metadata: ManagedAssistantMetadata;
+    violations: EnterpriseAssistantExtensionViolation[];
+    error: string | null;
+    saving: boolean;
+  } | null;
   profile: {
     name: string;
     setName: (value: string) => void;

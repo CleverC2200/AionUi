@@ -1,6 +1,17 @@
 import { ipcBridge } from '@/common';
+import {
+  ManagedAssistantExtensions,
+  createAionCoreManagedAssistantExtensionAdapter,
+  managedAssistantExtensionDraft,
+} from '@/common/adapter/assistant';
 import type { IMcpServer } from '@/common/config/storage';
-import type { Assistant, CreateAssistantRequest, UpdateAssistantRequest } from '@/common/types/agent/assistantTypes';
+import type {
+  Assistant,
+  CreateAssistantRequest,
+  ManagedAssistantMetadata,
+  UpdateAssistantRequest,
+} from '@/common/types/agent/assistantTypes';
+import type { EnterpriseAssistantExtensionViolation } from '@/common/types/agent/enterpriseAssistantCatalog';
 import type { Message } from '@arco-design/web-react';
 import type {
   AssistantListItem,
@@ -33,6 +44,10 @@ type AssistantMcpDefaultMode = 'auto' | 'fixed';
 
 const isBuiltinAssistant = (assistant: Assistant | null | undefined): boolean => assistant?.source === 'builtin';
 const isGeneratedAssistant = (assistant: Assistant | null | undefined): boolean => assistant?.source === 'generated';
+const isManagedAssistant = (assistant: Assistant | null | undefined): boolean => assistant?.source === 'managed';
+
+const createExtensionIdempotencyKey = (): string =>
+  globalThis.crypto?.randomUUID?.() ?? `assistant-extension-${Date.now()}`;
 
 const resolveLocalizedRecommendedPrompts = (
   detail: Awaited<ReturnType<typeof ipcBridge.assistants.get.invoke>>,
@@ -77,6 +92,11 @@ export const useAssistantEditor = ({
 }: UseAssistantEditorParams) => {
   const { t } = useTranslation();
   const previousLocaleKeyRef = useRef(localeKey);
+  const managedAssistantExtensionsRef = useRef(
+    new ManagedAssistantExtensions(
+      createAionCoreManagedAssistantExtensionAdapter((request) => ipcBridge.assistants.saveExtensions.invoke(request))
+    )
+  );
 
   const [editVisible, setEditVisible] = useState(false);
   const [editName, setEditName] = useState('');
@@ -109,6 +129,12 @@ export const useAssistantEditor = ({
 
   const [builtinAutoSkills, setBuiltinAutoSkills] = useState<BuiltinAutoSkill[]>([]);
   const [disabledBuiltinSkills, setDisabledBuiltinSkills] = useState<string[]>([]);
+  const [managedMetadata, setManagedMetadata] = useState<ManagedAssistantMetadata | null>(null);
+  const [managedExtensionViolations, setManagedExtensionViolations] = useState<EnterpriseAssistantExtensionViolation[]>(
+    []
+  );
+  const [managedExtensionError, setManagedExtensionError] = useState<string | null>(null);
+  const [managedExtensionSaving, setManagedExtensionSaving] = useState(false);
 
   const loadAssistantDetail = useCallback(
     async (assistantId: string) => ipcBridge.assistants.get.invoke({ id: assistantId, locale: localeKey }),
@@ -228,7 +254,7 @@ export const useAssistantEditor = ({
     setIsCreating(false);
     setActiveAssistantId(assistant.id);
     setEditVisible(true);
-    setPromptViewMode(isBuiltinAssistant(assistant) ? 'preview' : 'edit');
+    setPromptViewMode(isBuiltinAssistant(assistant) || isManagedAssistant(assistant) ? 'preview' : 'edit');
     setEditName(assistant.name || '');
     setEditDescription(assistant.description || '');
     setEditAvatar(assistant.avatar || '');
@@ -236,6 +262,9 @@ export const useAssistantEditor = ({
     setEditAgent(assistant.agent_id || '');
     resetDefaultConfigState();
     resetSkillEditorState();
+    setManagedMetadata(assistant.managed ?? null);
+    setManagedExtensionViolations(assistant.managed?.extensions.violations ?? []);
+    setManagedExtensionError(null);
 
     try {
       const { detail, skillsList, autoSkills, mcpServers } = await loadEditorResources(assistant.id);
@@ -263,11 +292,15 @@ export const useAssistantEditor = ({
       setDefaultThoughtLevelValue(detail.defaults.thought_level.value || '');
       setDefaultSkillsMode(detail.defaults.skills.mode === 'auto' ? 'auto' : 'fixed');
       setDefaultMcpMode(detail.defaults.mcps.mode === 'fixed' ? 'fixed' : 'auto');
-      setSelectedMcpIds(detail.defaults.mcps.value ?? []);
       setAvailableSkills(skillsList);
       setBuiltinAutoSkills(autoSkills);
       setAvailableMcpServers(mcpServers);
-      setSelectedSkills(detail.capabilities.default_skill_ids ?? []);
+      const nextManagedMetadata = detail.managed ?? assistant.managed ?? null;
+      setManagedMetadata(nextManagedMetadata);
+      setManagedExtensionViolations(nextManagedMetadata?.extensions.violations ?? []);
+      const managedDraft = nextManagedMetadata ? managedAssistantExtensionDraft(nextManagedMetadata) : null;
+      setSelectedMcpIds(managedDraft?.mcps ?? detail.defaults.mcps.value ?? []);
+      setSelectedSkills(managedDraft?.skills ?? detail.capabilities.default_skill_ids ?? []);
       setCustomSkills(isBuiltinAssistant(assistant) ? [] : (detail.capabilities.custom_skill_names ?? []));
       setDisabledBuiltinSkills(detail.capabilities.default_disabled_builtin_skill_ids ?? []);
     } catch (error) {
@@ -294,6 +327,9 @@ export const useAssistantEditor = ({
     setEditAgent('');
     resetDefaultConfigState();
     resetSkillEditorState();
+    setManagedMetadata(null);
+    setManagedExtensionViolations([]);
+    setManagedExtensionError(null);
 
     try {
       const [skillsList, mcpServers] = await Promise.all([
@@ -312,6 +348,14 @@ export const useAssistantEditor = ({
   };
 
   const handleDuplicate = async (assistant: AssistantListItem) => {
+    if (isManagedAssistant(assistant)) {
+      message.warning(
+        t('settings.assistantManagedCannotDuplicate', {
+          defaultValue: 'Enterprise assistants cannot be duplicated to bypass managed capabilities.',
+        })
+      );
+      return;
+    }
     setIsCreating(true);
     setActiveAssistantId(null);
     setEditVisible(true);
@@ -323,6 +367,9 @@ export const useAssistantEditor = ({
     setEditAgent(assistant.agent_id || '');
     resetDefaultConfigState();
     resetSkillEditorState();
+    setManagedMetadata(null);
+    setManagedExtensionViolations([]);
+    setManagedExtensionError(null);
 
     try {
       const { detail, skillsList, autoSkills, mcpServers } = await loadEditorResources(assistant.id);
@@ -373,6 +420,55 @@ export const useAssistantEditor = ({
 
   const handleSave = async () => {
     try {
+      if (activeAssistant?.source === 'managed') {
+        const metadata = managedMetadata ?? activeAssistant.managed;
+        if (!metadata) throw new Error('ASSISTANT_MANAGED_METADATA_MISSING');
+
+        setManagedExtensionSaving(true);
+        setManagedExtensionError(null);
+        const result = await managedAssistantExtensionsRef.current.save(
+          activeAssistant.id,
+          metadata,
+          { skills: selectedSkills, mcps: selectedMcpIds },
+          createExtensionIdempotencyKey()
+        );
+        if (result.status === 'rejected') {
+          setManagedExtensionViolations(result.violations);
+          message.error(
+            t('settings.assistantManagedExtensionRejected', {
+              defaultValue: 'Some auxiliary capabilities conflict with enterprise policy. Your draft was kept.',
+            })
+          );
+          return;
+        }
+        if (result.status === 'error') {
+          setManagedExtensionError(result.error.code);
+          message.error(
+            t('settings.assistantManagedExtensionSaveFailed', {
+              defaultValue: 'Enterprise validation could not complete. Your draft was kept.',
+            })
+          );
+          return;
+        }
+
+        setManagedMetadata({
+          ...metadata,
+          extensions: {
+            revision: result.revision,
+            skill_ids: result.skills,
+            mcp_ids: result.mcps,
+            status: 'active',
+            violations: [],
+          },
+        });
+        setManagedExtensionViolations([]);
+        await refreshAssistantCatalog();
+        await refreshAssistantDetailCaches(activeAssistant.id);
+        message.success(t('common.saveSuccess', { defaultValue: 'Saved successfully' }));
+        setEditVisible(false);
+        return;
+      }
+
       if (!editName.trim()) {
         message.error(t('settings.assistantNameRequired', { defaultValue: 'Assistant name is required' }));
         return;
@@ -530,7 +626,12 @@ export const useAssistantEditor = ({
       setPendingSkills([]);
     } catch (error) {
       console.error('Failed to save assistant:', error);
+      if (activeAssistant?.source === 'managed') {
+        setManagedExtensionError(error instanceof Error ? error.message : 'ASSISTANT_EXTENSION_SAVE_FAILED');
+      }
       message.error(t('common.failed', { defaultValue: 'Failed' }));
+    } finally {
+      setManagedExtensionSaving(false);
     }
   };
 
@@ -662,6 +763,10 @@ export const useAssistantEditor = ({
     builtinAutoSkills,
     disabledBuiltinSkills,
     setDisabledBuiltinSkills,
+    managedMetadata,
+    managedExtensionViolations,
+    managedExtensionError,
+    managedExtensionSaving,
     handleEdit,
     handleCreate,
     handleDuplicate,

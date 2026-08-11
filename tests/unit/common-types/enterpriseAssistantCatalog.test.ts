@@ -3,6 +3,7 @@ import {
   EnterpriseAssistantContractError,
   findEnterpriseAssistantSensitiveFields,
   parseEnterpriseAssistantCatalogResponse,
+  parseEnterpriseAssistantExtensionRequest,
   parseEnterpriseAssistantExtensionResult,
   validateEnterpriseAssistantCatalogTransition,
 } from '@/common/types/agent/enterpriseAssistantCatalog';
@@ -30,7 +31,9 @@ describe('enterprise assistant catalog contract', () => {
         'empty-directory',
         'extension-allowed',
         'extension-conflict',
+        'extension-needs-attention-after-upgrade',
         'extension-rejected',
+        'extension-survives-template-upgrade',
         'first-load',
         'identity-policy-change',
         'mcp-auth-required',
@@ -54,6 +57,17 @@ describe('enterprise assistant catalog contract', () => {
     };
     expect(findEnterpriseAssistantSensitiveFields(unsafe)).toEqual(['access_token']);
     expect(() => parseEnterpriseAssistantCatalogResponse(unsafe)).toThrowError(EnterpriseAssistantContractError);
+    expect(() =>
+      parseEnterpriseAssistantExtensionRequest({
+        assignment_id: 'assignment-1',
+        template_version: '1.0.0',
+        expected_revision: 'catalog-r1',
+        idempotency_key: 'request-1',
+        skills: [],
+        mcps: [],
+        api_token: 'must-not-sync',
+      })
+    ).toThrowError(EnterpriseAssistantContractError);
   });
 
   it('ignores harmless unknown fields for forward compatibility', () => {

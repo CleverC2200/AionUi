@@ -194,6 +194,42 @@ export const enterpriseAssistantFixtureScenarios: EnterpriseAssistantFixtureScen
     expected_state: 'extension-rejected',
   },
   {
+    id: 'extension-survives-template-upgrade',
+    catalog_response: {
+      status: 'ok',
+      snapshot: catalogWith('catalog-extension-r2', {
+        ...optionalAssignment,
+        manifest: { ...baseManifest, template_version: '1.1.0' },
+        extensions: {
+          revision: 'extension-r1',
+          skills: ['spreadsheet-helper'],
+          mcps: ['local-files-readonly'],
+          status: 'active',
+          violations: [],
+        },
+      }),
+    },
+    expected_state: 'extension-preserved',
+  },
+  {
+    id: 'extension-needs-attention-after-upgrade',
+    catalog_response: {
+      status: 'ok',
+      snapshot: catalogWith('catalog-extension-conflict-r2', {
+        ...optionalAssignment,
+        manifest: { ...baseManifest, template_version: '1.1.0' },
+        extensions: {
+          revision: 'extension-r1',
+          skills: ['spreadsheet-helper'],
+          mcps: ['local-files-readonly'],
+          status: 'attention',
+          violations: [{ code: 'CAPABILITY_CONFLICT', capability_id: 'local-files-readonly' }],
+        },
+      }),
+    },
+    expected_state: 'extension-attention',
+  },
+  {
     id: 'suspended',
     catalog_response: {
       status: 'ok',

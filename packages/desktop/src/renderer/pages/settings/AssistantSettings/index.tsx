@@ -109,6 +109,14 @@ const AssistantSettings: React.FC = () => {
   const showEditor = editor.editVisible && (editor.isCreating || activeAssistantId !== null);
   const editorViewModel: AssistantEditorViewModel = {
     isCreating: editor.isCreating,
+    managed: editor.managedMetadata
+      ? {
+          metadata: editor.managedMetadata,
+          violations: editor.managedExtensionViolations,
+          error: editor.managedExtensionError,
+          saving: editor.managedExtensionSaving,
+        }
+      : null,
     profile: {
       name: editor.editName,
       setName: editor.setEditName,

@@ -106,6 +106,7 @@ const renderWithProviders = (ui: React.ReactElement) =>
 const createEditor = (overrides: Partial<AssistantEditorViewModel> = {}): AssistantEditorViewModel => {
   const base: AssistantEditorViewModel = {
     isCreating: true,
+    managed: null,
     profile: {
       name: 'Writer',
       setName: vi.fn(),
@@ -254,6 +255,116 @@ describe('AssistantEditorSections', () => {
         'Remember last used only takes effect after this assistant has recorded a previous selection.'
       )
     ).toBeInTheDocument();
+  });
+
+  it('locks enterprise core fields while keeping allowed auxiliary capabilities editable', () => {
+    const setSelectedSkills = vi.fn();
+    const setSelectedMcpIds = vi.fn();
+    const managed = {
+      metadata: {
+        assignment_id: 'assignment-finance',
+        template_id: 'finance-close',
+        template_version: '1.0.0',
+        catalog_revision: 'catalog-r1',
+        activation: 'required' as const,
+        state: 'active' as const,
+        minimum_client_version: '2.1.53',
+        sync_status: 'fresh' as const,
+        required_skill_ids: ['finance-close'],
+        required_mcp_ids: ['finance-production'],
+        user_extensions: { mode: 'additive' as const, allow_skills: true, allow_mcps: true },
+        extensions: {
+          revision: 'extension-r1',
+          skill_ids: ['spreadsheet-helper'],
+          mcp_ids: ['local-files-readonly'],
+          status: 'attention' as const,
+          violations: [{ code: 'CAPABILITY_CONFLICT' as const, capability_id: 'local-files-readonly' }],
+        },
+      },
+      violations: [{ code: 'CAPABILITY_CONFLICT' as const, capability_id: 'local-files-readonly' }],
+      error: null,
+      saving: false,
+    };
+    renderWithProviders(
+      <AssistantEditorSections
+        editor={createEditor({
+          isCreating: false,
+          managed,
+          agent: {
+            value: 'finance-agent',
+            setValue: vi.fn(),
+            availableBackends: [backendOption('finance-agent', 'aionrs', 'Finance Agent')],
+          },
+          defaults: {
+            mcps: {
+              mode: 'fixed',
+              setMode: vi.fn(),
+              availableServers: [
+                { id: 'finance-production', name: 'Finance Production', enabled: true } as any,
+                { id: 'local-files-readonly', name: 'Local Files', enabled: true } as any,
+              ],
+              selectedIds: ['local-files-readonly'],
+              setSelectedIds: setSelectedMcpIds,
+            },
+          },
+          skills: {
+            availableSkills: [
+              {
+                name: 'finance-close',
+                description: 'Core',
+                location: '',
+                is_custom: false,
+                is_auto_inject: false,
+                source: 'builtin',
+              },
+              {
+                name: 'spreadsheet-helper',
+                description: 'Helper',
+                location: '',
+                is_custom: true,
+                is_auto_inject: false,
+                source: 'custom',
+              },
+            ],
+            selectedSkills: ['spreadsheet-helper'],
+            setSelectedSkills,
+            pendingSkills: [],
+            setDeletePendingSkillName: vi.fn(),
+            setDeleteCustomSkillName: vi.fn(),
+            builtinAutoSkills: [],
+            disabledBuiltinSkills: [],
+            setDisabledBuiltinSkills: vi.fn(),
+          },
+        })}
+        activeAssistant={
+          {
+            id: 'enterprise-finance',
+            source: 'managed',
+            name: 'Finance Close',
+            enabled: true,
+            sort_order: 1,
+            managed: managed.metadata,
+          } as any
+        }
+      />
+    );
+
+    expect(screen.getByTestId('assistant-managed-governance-banner')).toHaveTextContent(
+      'Enterprise configuration is protected'
+    );
+    expect(screen.getByTestId('assistant-managed-extension-attention')).toBeInTheDocument();
+    expect(screen.getByTestId('select-assistant-agent').className).toContain('arco-select-disabled');
+    expect(screen.getByTestId('select-assistant-default-model').className).toContain('arco-select-disabled');
+    expect(screen.getByTestId('managed-skill-editor')).toHaveTextContent('finance-close');
+    expect(screen.getByTestId('managed-mcp-editor')).toHaveTextContent('Finance Production');
+    expect(screen.getByTestId('select-assistant-managed-skill-extensions').className).not.toContain(
+      'arco-select-disabled'
+    );
+    expect(screen.getByTestId('select-assistant-managed-mcp-extensions').className).not.toContain(
+      'arco-select-disabled'
+    );
+    expect(screen.getByTestId('managed-mcp-violations')).toHaveTextContent('local-files-readonly');
+    expect(screen.queryByTestId('managed-skill-violations')).not.toBeInTheDocument();
   });
 
   it('renders auto defaults consistently for model, permission, skills, and MCP', () => {

@@ -22,6 +22,7 @@
 - GEA 管理模板身份、系统指令、Agent、默认模型/权限、必需 Skill/MCP 和分配状态。
 - 客户端不得修改、删除、降级或遮蔽企业配置。
 - 用户只可提交 `user_extensions` 允许的辅助 Skill/MCP；GEA 返回最终接受或逐项拒绝结果。
+- Assignment 的可选 `extensions` 是已接受增量的服务端投影，只包含 Skill/MCP 稳定 ID、版本和冲突状态；模板升级不得静默删除该状态。
 - 客户端本地 Schema 只做快速反馈，不代表企业授权。
 
 ## 安全要求
@@ -45,6 +46,26 @@ POST /aidata/assistant-catalog/my/extensions/validate
 ```
 
 请求沿用现有飞书登录的 `X-Access-Token` 与租户上下文。具体 URL 可调整，但响应必须通过可执行 Schema。
+
+## AionCore 客户端接缝
+
+AionUi Renderer 不直接访问 GEA。AionCore 负责身份、租户上下文、GEA 调用和目录投影，并沿用现有助手 API：
+
+```text
+GET  /api/assistants
+GET  /api/assistants/{assistant_id}
+POST /api/assistants/{assistant_id}/extensions
+```
+
+前两个接口在企业助手上返回 `source = managed` 和 `managed` 元数据；标准 AionUi 助手响应保持不变。扩展保存请求体严格等于 `EnterpriseAssistantExtensionRequest`，路径中的 `assistant_id` 不重复进入请求体。
+
+扩展写入必须满足：
+
+1. `expected_revision` 和 `template_version` 同时参与乐观并发校验。
+2. `idempotency_key` 在同一租户和 Assignment 内唯一；相同 key 重放必须返回相同结果。
+3. 服务端只接受稳定 Skill/MCP ID，不接收本地路径、环境变量、凭据或完整 MCP 配置。
+4. `accepted` 后将结果写回 Assignment 的 `extensions`；模板升级时重新校验并保留合法项，冲突项以 `status = attention` 和 `violations` 返回。
+5. `unknown_external_write` 不可自动重试；客户端保留草稿并提示核验。
 
 ## 客户端验收 Fixture
 

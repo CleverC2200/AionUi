@@ -15,7 +15,14 @@ const AssistantEditorPage: React.FC<AssistantEditorPageProps> = ({ editor, activ
   const { t } = useTranslation();
   const { isCreating, actions, profile } = editor;
   const canDelete = !isCreating && activeAssistant?.source === 'user';
-  const canSave = isCreating || Boolean(activeAssistant);
+  const managedEditable =
+    activeAssistant?.source !== 'managed' ||
+    Boolean(
+      editor.managed &&
+      editor.managed.metadata.state === 'active' &&
+      editor.managed.metadata.user_extensions.mode === 'additive'
+    );
+  const canSave = (isCreating || Boolean(activeAssistant)) && managedEditable;
 
   return (
     <div data-testid='assistant-editor-page' className='flex h-full min-h-0 flex-col overflow-hidden bg-transparent'>
@@ -61,6 +68,7 @@ const AssistantEditorPage: React.FC<AssistantEditorPageProps> = ({ editor, activ
             data-testid='btn-save-assistant'
             className='!rounded-8px'
             disabled={!canSave}
+            loading={editor.managed?.saving}
           >
             {isCreating ? t('common.create', { defaultValue: 'Create' }) : t('common.save', { defaultValue: 'Save' })}
           </Button>

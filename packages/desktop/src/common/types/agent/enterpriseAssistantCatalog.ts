@@ -32,6 +32,29 @@ export const EnterpriseAssistantMcpRefSchema = z.object({
   production_write: z.boolean(),
 });
 
+export const EnterpriseAssistantExtensionViolationSchema = z.object({
+  code: z.enum([
+    'EXTENSIONS_DISABLED',
+    'SKILL_NOT_ALLOWED',
+    'MCP_NOT_ALLOWED',
+    'CAPABILITY_CONFLICT',
+    'PERMISSION_EXPANSION',
+    'BUSINESS_MCP_REPLACEMENT',
+    'ASSIGNMENT_INACTIVE',
+    'STALE_REVISION',
+  ]),
+  capability_id: z.string().optional(),
+  message: z.string().optional(),
+});
+
+export const EnterpriseAssistantExtensionStateSchema = z.object({
+  revision: identifier,
+  skills: uniqueIdentifiers,
+  mcps: uniqueIdentifiers,
+  status: z.enum(['active', 'attention']),
+  violations: z.array(EnterpriseAssistantExtensionViolationSchema),
+});
+
 export const EnterpriseAssistantManifestSchema = z.object({
   template_id: identifier,
   template_version: semanticVersion,
@@ -74,6 +97,7 @@ export const EnterpriseAssistantAssignmentSchema = z.object({
   minimum_client_version: semanticVersion,
   updated_at: z.string().datetime({ offset: true }),
   manifest: EnterpriseAssistantManifestSchema,
+  extensions: EnterpriseAssistantExtensionStateSchema.optional(),
 });
 
 export const EnterpriseAssistantCatalogSnapshotSchema = z.object({
@@ -121,21 +145,6 @@ export const EnterpriseAssistantExtensionRequestSchema = z.object({
   mcps: uniqueIdentifiers,
 });
 
-const EnterpriseAssistantExtensionViolationSchema = z.object({
-  code: z.enum([
-    'EXTENSIONS_DISABLED',
-    'SKILL_NOT_ALLOWED',
-    'MCP_NOT_ALLOWED',
-    'CAPABILITY_CONFLICT',
-    'PERMISSION_EXPANSION',
-    'BUSINESS_MCP_REPLACEMENT',
-    'ASSIGNMENT_INACTIVE',
-    'STALE_REVISION',
-  ]),
-  capability_id: z.string().optional(),
-  message: z.string().optional(),
-});
-
 export const EnterpriseAssistantExtensionResultSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('accepted'),
@@ -159,6 +168,8 @@ export type EnterpriseAssistantAssignment = z.infer<typeof EnterpriseAssistantAs
 export type EnterpriseAssistantCatalogSnapshot = z.infer<typeof EnterpriseAssistantCatalogSnapshotSchema>;
 export type EnterpriseAssistantCatalogResponse = z.infer<typeof EnterpriseAssistantCatalogResponseSchema>;
 export type EnterpriseAssistantError = z.infer<typeof EnterpriseAssistantErrorSchema>;
+export type EnterpriseAssistantExtensionState = z.infer<typeof EnterpriseAssistantExtensionStateSchema>;
+export type EnterpriseAssistantExtensionViolation = z.infer<typeof EnterpriseAssistantExtensionViolationSchema>;
 export type EnterpriseAssistantExtensionRequest = z.infer<typeof EnterpriseAssistantExtensionRequestSchema>;
 export type EnterpriseAssistantExtensionResult = z.infer<typeof EnterpriseAssistantExtensionResultSchema>;
 
@@ -210,6 +221,10 @@ export function parseEnterpriseAssistantCatalogResponse(value: unknown): Enterpr
 
 export function parseEnterpriseAssistantExtensionResult(value: unknown): EnterpriseAssistantExtensionResult {
   return parseWithSensitiveFieldGuard(EnterpriseAssistantExtensionResultSchema, value);
+}
+
+export function parseEnterpriseAssistantExtensionRequest(value: unknown): EnterpriseAssistantExtensionRequest {
+  return parseWithSensitiveFieldGuard(EnterpriseAssistantExtensionRequestSchema, value);
 }
 
 export type EnterpriseAssistantTransitionIssue = {

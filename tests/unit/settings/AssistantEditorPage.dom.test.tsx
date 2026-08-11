@@ -24,6 +24,7 @@ vi.mock('@/renderer/pages/settings/AssistantSettings/AssistantEditorSections', (
 describe('AssistantEditorPage', () => {
   const createEditor = (): AssistantEditorViewModel => ({
     isCreating: true,
+    managed: null,
     profile: {
       name: '',
       setName: vi.fn(),
@@ -160,5 +161,42 @@ describe('AssistantEditorPage', () => {
 
     expect(screen.queryByTestId('btn-delete-assistant')).not.toBeInTheDocument();
     expect(screen.getByTestId('btn-save-assistant')).not.toBeDisabled();
+  });
+
+  it('prevents an inactive managed assignment from being saved locally', () => {
+    const editor = createEditor();
+    editor.isCreating = false;
+    editor.managed = {
+      metadata: {
+        assignment_id: 'assignment-1',
+        template_id: 'template-1',
+        template_version: '1.0.0',
+        catalog_revision: 'catalog-r1',
+        activation: 'required',
+        state: 'suspended',
+        minimum_client_version: '2.1.53',
+        sync_status: 'fresh',
+        required_skill_ids: [],
+        required_mcp_ids: [],
+        user_extensions: { mode: 'additive', allow_skills: true, allow_mcps: true },
+        extensions: { revision: 'extension-r1', skill_ids: [], mcp_ids: [], status: 'active', violations: [] },
+      },
+      violations: [],
+      error: null,
+      saving: false,
+    };
+
+    render(
+      <ConfigProvider>
+        <AssistantEditorPage
+          editor={editor}
+          activeAssistant={{ id: 'managed-1', source: 'managed', name: 'Managed' } as any}
+          onBack={vi.fn()}
+        />
+      </ConfigProvider>
+    );
+
+    expect(screen.getByTestId('btn-save-assistant')).toBeDisabled();
+    expect(screen.queryByTestId('btn-delete-assistant')).not.toBeInTheDocument();
   });
 });

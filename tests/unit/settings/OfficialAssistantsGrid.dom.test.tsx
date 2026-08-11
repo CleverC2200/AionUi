@@ -64,6 +64,7 @@ const managedAssistant: AssistantListItem = {
     required_skill_ids: ['finance-close'],
     required_mcp_ids: ['finance-production'],
     user_extensions: { mode: 'additive', allow_skills: true, allow_mcps: true },
+    extensions: { revision: 'catalog-r1', skill_ids: [], mcp_ids: [], status: 'active', violations: [] },
   },
 };
 

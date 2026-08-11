@@ -157,6 +157,13 @@ export function projectEnterpriseAssistantAssignment(
         allow_skills: manifest.user_extensions.allow_skills ?? false,
         allow_mcps: manifest.user_extensions.allow_mcps ?? false,
       },
+      extensions: {
+        revision: assignment.extensions?.revision ?? catalogRevision,
+        skill_ids: assignment.extensions?.skills ?? [],
+        mcp_ids: assignment.extensions?.mcps ?? [],
+        status: assignment.extensions?.status ?? 'active',
+        violations: assignment.extensions?.violations ?? [],
+      },
     },
   };
 }

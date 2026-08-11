@@ -35,6 +35,8 @@ import type {
   SetAssistantStateRequest,
   UpdateAssistantRequest,
 } from '../types/agent/assistantTypes';
+import type { EnterpriseAssistantExtensionResult } from '../types/agent/enterpriseAssistantCatalog';
+import type { ManagedAssistantExtensionSaveParams } from './assistant/extensions';
 import type {
   EnsureConversationRuntimeResponse,
   GetConfigOptionsResponse,
@@ -244,6 +246,10 @@ export const assistants = {
     }
   ),
   import: httpPost<ImportAssistantsResult, ImportAssistantsRequest>('/api/assistants/import'),
+  saveExtensions: httpPost<EnterpriseAssistantExtensionResult, ManagedAssistantExtensionSaveParams>(
+    (p) => `/api/assistants/${encodeURIComponent(p.assistant_id)}/extensions`,
+    ({ assistant_id: _assistantId, ...request }) => request
+  ),
 };
 
 // ---------------------------------------------------------------------------

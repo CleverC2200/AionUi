@@ -19,6 +19,7 @@ vi.mock('@/common', () => ({
       update: { invoke: vi.fn() },
       delete: { invoke: vi.fn() },
       setState: { invoke: vi.fn() },
+      saveExtensions: { invoke: vi.fn() },
     },
     mcpService: {
       listServers: { invoke: vi.fn() },
@@ -55,6 +56,7 @@ vi.mock('@/renderer/hooks/mcp/catalog', () => ({
 
 import { useAssistantEditor } from '@/renderer/hooks/assistant/useAssistantEditor';
 import { ipcBridge } from '@/common';
+import type { ManagedAssistantMetadata } from '@/common/types/agent/assistantTypes';
 import type { AssistantListItem } from '@/renderer/pages/settings/AssistantSettings/types';
 import { mutate as swrMutate } from 'swr';
 
@@ -125,6 +127,28 @@ describe('useAssistantEditor', () => {
     message: mockMessage,
   };
 
+  const managedMetadata = (overrides: Partial<ManagedAssistantMetadata> = {}): ManagedAssistantMetadata => ({
+    assignment_id: 'assignment-finance',
+    template_id: 'finance-close',
+    template_version: '1.0.0',
+    catalog_revision: 'catalog-r1',
+    activation: 'optional',
+    state: 'active',
+    minimum_client_version: '2.1.53',
+    sync_status: 'fresh',
+    required_skill_ids: ['finance-close'],
+    required_mcp_ids: ['finance-production'],
+    user_extensions: { mode: 'additive', allow_skills: true, allow_mcps: true },
+    extensions: {
+      revision: 'extension-r0',
+      skill_ids: ['existing-helper'],
+      mcp_ids: [],
+      status: 'active',
+      violations: [],
+    },
+    ...overrides,
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     (ipcBridge.assistants.get.invoke as any).mockResolvedValue(mockAssistantDetail);
@@ -147,6 +171,93 @@ describe('useAssistantEditor', () => {
     expect(result.current.defaultPermissionMode).toBe('auto');
     expect((result.current as any).defaultThoughtLevelMode).toBe('auto');
     expect(result.current.defaultMcpMode).toBe('auto');
+  });
+
+  it('loads managed core as read-only metadata and saves only auxiliary ids', async () => {
+    const metadata = managedMetadata();
+    const assistant = {
+      id: 'enterprise-finance',
+      name: 'Finance Close',
+      source: 'managed',
+      sort_order: 1,
+      enabled: true,
+      managed: metadata,
+    } as AssistantListItem;
+    (ipcBridge.assistants.get.invoke as any).mockResolvedValue({
+      ...mockAssistantDetail,
+      id: assistant.id,
+      source: 'managed',
+      managed: metadata,
+    });
+    (ipcBridge.assistants.saveExtensions.invoke as any).mockResolvedValue({
+      status: 'accepted',
+      assignment_id: metadata.assignment_id,
+      template_version: metadata.template_version,
+      revision: 'extension-r1',
+      skills: ['existing-helper', 'spreadsheet-helper'],
+      mcps: ['local-files-readonly'],
+    });
+
+    const { result } = renderHook(() =>
+      useAssistantEditor({ ...defaultParams, activeAssistant: assistant, assistants: [assistant] })
+    );
+    await act(async () => result.current.handleEdit(assistant));
+    expect(result.current.selectedSkills).toEqual(['existing-helper']);
+    expect(result.current.managedMetadata).toEqual(metadata);
+
+    act(() => {
+      result.current.setSelectedSkills(['existing-helper', 'spreadsheet-helper']);
+      result.current.setSelectedMcpIds(['local-files-readonly']);
+    });
+    await act(async () => result.current.handleSave());
+
+    expect(ipcBridge.assistants.saveExtensions.invoke).toHaveBeenCalledWith({
+      assistant_id: assistant.id,
+      assignment_id: metadata.assignment_id,
+      template_version: metadata.template_version,
+      expected_revision: metadata.catalog_revision,
+      idempotency_key: expect.any(String),
+      skills: ['existing-helper', 'spreadsheet-helper'],
+      mcps: ['local-files-readonly'],
+    });
+    expect(ipcBridge.assistants.update.invoke).not.toHaveBeenCalled();
+    expect(ipcBridge.fs.writeAssistantRule.invoke).not.toHaveBeenCalled();
+    expect(result.current.editVisible).toBe(false);
+  });
+
+  it('keeps a managed extension draft visible when enterprise validation rejects it', async () => {
+    const metadata = managedMetadata();
+    const assistant = {
+      id: 'enterprise-finance',
+      name: 'Finance Close',
+      source: 'managed',
+      sort_order: 1,
+      enabled: true,
+      managed: metadata,
+    } as AssistantListItem;
+    (ipcBridge.assistants.get.invoke as any).mockResolvedValue({
+      ...mockAssistantDetail,
+      id: assistant.id,
+      source: 'managed',
+      managed: metadata,
+    });
+    (ipcBridge.assistants.saveExtensions.invoke as any).mockResolvedValue({
+      status: 'rejected',
+      assignment_id: metadata.assignment_id,
+      revision: metadata.catalog_revision,
+      violations: [{ code: 'PERMISSION_EXPANSION', capability_id: 'admin-shell' }],
+    });
+
+    const { result } = renderHook(() => useAssistantEditor({ ...defaultParams, activeAssistant: assistant }));
+    await act(async () => result.current.handleEdit(assistant));
+    act(() => result.current.setSelectedSkills(['admin-shell']));
+    await act(async () => result.current.handleSave());
+
+    expect(result.current.editVisible).toBe(true);
+    expect(result.current.selectedSkills).toEqual(['admin-shell']);
+    expect(result.current.managedExtensionViolations).toEqual([
+      { code: 'PERMISSION_EXPANSION', capability_id: 'admin-shell' },
+    ]);
   });
 
   it('handles handleEdit to populate form from active assistant', async () => {

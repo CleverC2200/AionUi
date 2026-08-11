@@ -7,6 +7,8 @@
 // Mirror of aionui-api-types/src/assistant.rs.
 // Any shape change on either side requires a same-PR update on the other.
 
+import type { EnterpriseAssistantExtensionViolation } from './enterpriseAssistantCatalog';
+
 export type AssistantSource = 'builtin' | 'generated' | 'managed' | 'user';
 export type AssistantAgentStatus = 'missing' | 'online' | 'offline' | 'unchecked';
 export type AssistantAgentSource = 'internal' | 'builtin' | 'extension' | 'custom';
@@ -36,6 +38,13 @@ export interface ManagedAssistantMetadata {
     mode: 'none' | 'additive';
     allow_skills: boolean;
     allow_mcps: boolean;
+  };
+  extensions: {
+    revision: string;
+    skill_ids: string[];
+    mcp_ids: string[];
+    status: 'active' | 'attention';
+    violations: EnterpriseAssistantExtensionViolation[];
   };
 }
 
