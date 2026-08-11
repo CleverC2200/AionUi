@@ -1,6 +1,11 @@
 import { ipcBridge } from '@/common';
 import { resolveLocaleKey } from '@/common/utils';
 import type { Assistant } from '@/common/types/agent/assistantTypes';
+import {
+  AssistantCatalog,
+  createAionCoreAssistantCatalogAdapter,
+  type AssistantCatalogView,
+} from '@/common/adapter/assistant';
 import { reorderAssistantList } from '@/renderer/pages/settings/AssistantSettings/assistantUtils';
 import { selectableAssistants } from '@/renderer/utils/model/assistantSelection';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -14,7 +19,12 @@ import { useAssistantOrder } from './useAssistantOrder';
  */
 export const useAssistantList = () => {
   const { i18n } = useTranslation();
+  const assistantCatalogRef = useRef(
+    new AssistantCatalog(createAionCoreAssistantCatalogAdapter(() => ipcBridge.assistants.list.invoke()))
+  );
   const [assistants, setAssistants] = useState<Assistant[]>([]);
+  const [catalogView, setCatalogView] = useState<AssistantCatalogView | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null);
   const localeKey = resolveLocaleKey(i18n.language);
   const previousLocaleKeyRef = useRef(localeKey);
@@ -22,7 +32,10 @@ export const useAssistantList = () => {
 
   const loadAssistants = useCallback(async () => {
     try {
-      const list = await ipcBridge.assistants.list.invoke();
+      const view = await assistantCatalogRef.current.load(localeKey);
+      const list = view.assistants;
+      setCatalogView(view);
+      setCatalogError(null);
       setAssistants(list);
       setActiveAssistantId((prev) => {
         if (prev && list.some((a) => a.id === prev)) return prev;
@@ -30,8 +43,9 @@ export const useAssistantList = () => {
       });
     } catch (error) {
       console.error('Failed to load assistants:', error);
+      setCatalogError(error instanceof Error ? error.message : 'ASSISTANT_CATALOG_LOAD_FAILED');
     }
-  }, []);
+  }, [localeKey]);
 
   const reorderEnabledAssistants = useCallback(
     async (activeId: string, overId: string) => {
@@ -77,5 +91,7 @@ export const useAssistantList = () => {
     assistantOrder,
     setAssistantOrder,
     localeKey,
+    catalogView,
+    catalogError,
   };
 };

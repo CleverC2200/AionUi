@@ -66,6 +66,8 @@ const AssistantSettings: React.FC = () => {
     assistantOrder,
     setAssistantOrder,
     localeKey,
+    catalogView,
+    catalogError,
   } = useAssistantList();
   const managedAgentRuntimeCatalog = useManagedAgentRuntimeCatalog();
   const builtinAvatarOptions = useMemo(
@@ -230,6 +232,8 @@ const AssistantSettings: React.FC = () => {
           ) : (
             <AssistantHomeTabs
               assistants={assistants}
+              catalogView={catalogView}
+              catalogError={catalogError}
               assistantOrder={assistantOrder}
               localeKey={localeKey}
               initialTab={homeTab}

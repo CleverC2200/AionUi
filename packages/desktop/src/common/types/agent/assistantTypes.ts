@@ -7,7 +7,7 @@
 // Mirror of aionui-api-types/src/assistant.rs.
 // Any shape change on either side requires a same-PR update on the other.
 
-export type AssistantSource = 'builtin' | 'generated' | 'user';
+export type AssistantSource = 'builtin' | 'generated' | 'managed' | 'user';
 export type AssistantAgentStatus = 'missing' | 'online' | 'offline' | 'unchecked';
 export type AssistantAgentSource = 'internal' | 'builtin' | 'extension' | 'custom';
 
@@ -16,6 +16,28 @@ export type AssistantAgent = {
   source: AssistantAgentSource;
   acp_backend?: string;
 };
+
+export type ManagedAssistantSyncStatus = 'blocked' | 'fresh' | 'offline' | 'stale';
+
+export interface ManagedAssistantMetadata {
+  assignment_id: string;
+  template_id: string;
+  template_version: string;
+  catalog_revision: string;
+  activation: 'optional' | 'required';
+  state: 'active' | 'suspended' | 'withdrawn';
+  state_reason?: string;
+  minimum_client_version: string;
+  sync_status: ManagedAssistantSyncStatus;
+  sync_error?: string;
+  required_skill_ids: string[];
+  required_mcp_ids: string[];
+  user_extensions: {
+    mode: 'none' | 'additive';
+    allow_skills: boolean;
+    allow_mcps: boolean;
+  };
+}
 
 export function assistantRuntimeKey(assistant?: Pick<Assistant, 'agent'> | null): string {
   return assistant?.agent?.acp_backend || assistant?.agent?.type || '';
@@ -51,6 +73,7 @@ export interface Assistant {
   team_selectable: boolean;
   team_block_reason?: string;
   deletable: boolean;
+  managed?: ManagedAssistantMetadata;
 }
 
 export interface AssistantProfile {
@@ -139,6 +162,7 @@ export interface AssistantDetail {
   defaults: AssistantDefaults;
   capabilities: AssistantCapabilities;
   preferences: AssistantPreferences;
+  managed?: ManagedAssistantMetadata;
 }
 
 export interface CreateAssistantRequest {

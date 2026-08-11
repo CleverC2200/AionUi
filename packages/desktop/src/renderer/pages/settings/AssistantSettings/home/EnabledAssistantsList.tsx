@@ -66,11 +66,13 @@ const EnabledAssistantRow: React.FC<EnabledAssistantRowProps> = ({
   const name = assistant.name_i18n?.[localeKey] || assistant.name;
   const sourceTag = resolveAssistantSourceTag(assistant.source);
   const sourceLabel =
-    sourceTag === 'builtin'
-      ? t('settings.assistantSourceOfficial', { defaultValue: 'Official' })
-      : sourceTag === 'cli'
-        ? t('settings.assistantSourceCli', { defaultValue: 'CLI' })
-        : t('settings.assistantSourceCustom', { defaultValue: 'Custom' });
+    sourceTag === 'managed'
+      ? t('settings.assistantSourceEnterprise', { defaultValue: 'Enterprise' })
+      : sourceTag === 'builtin'
+        ? t('settings.assistantSourceOfficial', { defaultValue: 'Official' })
+        : sourceTag === 'cli'
+          ? t('settings.assistantSourceCli', { defaultValue: 'CLI' })
+          : t('settings.assistantSourceCustom', { defaultValue: 'Custom' });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -135,6 +137,10 @@ const EnabledAssistantRow: React.FC<EnabledAssistantRowProps> = ({
           size='small'
           data-testid={`switch-enabled-${assistant.id}`}
           checked={assistant.enabled !== false}
+          disabled={
+            Boolean(assistant.managed) &&
+            (assistant.managed?.activation === 'required' || assistant.managed?.state !== 'active')
+          }
           onChange={(checked) => onToggleEnabled(assistant, checked)}
         />
       </div>

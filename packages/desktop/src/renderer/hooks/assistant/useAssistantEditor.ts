@@ -572,6 +572,8 @@ export const useAssistantEditor = ({
   };
 
   const handleToggleEnabled = async (assistant: AssistantListItem, enabled: boolean) => {
+    if (assistant.managed && (assistant.managed.activation === 'required' || assistant.managed.state !== 'active'))
+      return;
     const previousOrder = selectableAssistants(assistants, assistantOrder).map((item) => item.id);
     const nextOrder = assistantOrderAfterToggle(assistants, assistantOrder, assistant.id, enabled);
     let orderPersisted = false;

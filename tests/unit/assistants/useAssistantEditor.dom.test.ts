@@ -600,6 +600,25 @@ describe('useAssistantEditor', () => {
     expect(swrMutate).toHaveBeenCalledWith('guid.assistant.detail.builtin-1.en');
   });
 
+  it('does not mutate required managed assistant activation', async () => {
+    const assistant = {
+      id: 'enterprise-required',
+      name: 'Finance Close',
+      sort_order: 1,
+      source: 'managed',
+      enabled: true,
+      managed: { activation: 'required', state: 'active' },
+    } as AssistantListItem;
+
+    const { result } = renderHook(() => useAssistantEditor(defaultParams));
+    await act(async () => {
+      await result.current.handleToggleEnabled(assistant, false);
+    });
+
+    expect(ipcBridge.assistants.setState.invoke).not.toHaveBeenCalled();
+    expect(swrMutate).not.toHaveBeenCalledWith('assistants.list', expect.any(Function), expect.anything());
+  });
+
   it('appends a re-enabled assistant to the shared enabled order', async () => {
     const cli = {
       id: 'cli',

@@ -298,6 +298,37 @@ describe('AssistantSettings', () => {
     expect(onOpenDetail).not.toHaveBeenCalled();
   });
 
+  it('labels managed assistants as enterprise and locks required activation', () => {
+    const assistants = [
+      {
+        id: 'enterprise-required',
+        name: 'Finance Close',
+        sort_order: 1,
+        source: 'managed',
+        enabled: true,
+        managed: { activation: 'required', state: 'active' },
+      },
+    ] as AssistantListItem[];
+
+    render(
+      <ConfigProvider>
+        <EnabledAssistantsList
+          assistants={assistants}
+          assistantOrder={[]}
+          localeKey='en-US'
+          searchActive={false}
+          onOpenDetail={vi.fn()}
+          onToggleEnabled={vi.fn()}
+          onReorder={vi.fn()}
+          onStartChat={vi.fn()}
+        />
+      </ConfigProvider>
+    );
+
+    expect(screen.getByText('Enterprise')).toBeInTheDocument();
+    expect(screen.getByTestId('switch-enabled-enterprise-required')).toBeDisabled();
+  });
+
   it('uses the homepage avatar treatment without cropping runtime logos', () => {
     const assistants = [
       {

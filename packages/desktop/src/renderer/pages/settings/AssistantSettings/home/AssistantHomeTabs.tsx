@@ -5,6 +5,7 @@
  */
 
 import type { AssistantListItem } from '../types';
+import type { AssistantCatalogView } from '@/common/adapter/assistant';
 import EnabledAssistantsList from './EnabledAssistantsList';
 import MyAssistantsList from './MyAssistantsList';
 import OfficialAssistantsGrid from './OfficialAssistantsGrid';
@@ -17,6 +18,8 @@ import { useTranslation } from 'react-i18next';
 
 type AssistantHomeTabsProps = {
   assistants: AssistantListItem[];
+  catalogView: AssistantCatalogView | null;
+  catalogError: string | null;
   assistantOrder: readonly string[];
   localeKey: string;
   onOpenDetail: (assistant: AssistantListItem) => void;
@@ -37,6 +40,8 @@ type HomeTab = 'enabled' | 'mine' | 'official';
 
 const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
   assistants,
+  catalogView,
+  catalogError,
   assistantOrder,
   localeKey,
   onOpenDetail,
@@ -55,6 +60,7 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
   const isMobile = layout?.isMobile ?? false;
   const [tab, setTab] = useState<HomeTab>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
+  const managedMode = catalogView?.mode === 'managed' || assistants.some((assistant) => assistant.source === 'managed');
 
   const selectTab = (next: HomeTab) => {
     setTab(next);
@@ -67,11 +73,11 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
     let official = 0;
     for (const assistant of assistants) {
       if (assistant.enabled !== false) enabled += 1;
-      if (assistant.source === 'builtin') official += 1;
-      else mine += 1;
+      if (managedMode ? assistant.source === 'managed' : assistant.source === 'builtin') official += 1;
+      else if (assistant.source !== 'builtin' && assistant.source !== 'managed') mine += 1;
     }
     return { enabled, mine, official };
-  }, [assistants]);
+  }, [assistants, managedMode]);
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const filteredAssistants = useMemo(() => {
@@ -144,7 +150,9 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
               },
               {
                 key: 'official',
-                label: t('settings.assistantTabOfficial', { defaultValue: 'Official' }),
+                label: managedMode
+                  ? t('settings.assistantTabEnterprise', { defaultValue: 'Enterprise' })
+                  : t('settings.assistantTabOfficial', { defaultValue: 'Official' }),
                 count: counts.official,
               },
             ]}
@@ -184,6 +192,9 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
           ) : (
             <OfficialAssistantsGrid
               assistants={filteredAssistants}
+              catalogMode={managedMode ? 'managed' : 'official'}
+              catalogSyncStatus={catalogView?.sync_status}
+              catalogError={catalogError ?? catalogView?.error_code}
               localeKey={localeKey}
               onOpenSettings={onOpenSettings}
               onDuplicate={onDuplicate}
