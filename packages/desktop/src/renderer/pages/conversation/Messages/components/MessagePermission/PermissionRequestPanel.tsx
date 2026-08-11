@@ -47,7 +47,7 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
   const optionsIdentity = getPermissionOptionsIdentity(options);
   const [isResponding, setIsResponding] = useState(false);
   const [hasResponded, setHasResponded] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [errorKind, setErrorKind] = useState<'changed' | 'ordinary' | 'verification' | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const respondingRef = useRef(false);
   const requestEpochRef = useRef(0);
@@ -59,13 +59,13 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
     respondingRef.current = false;
     setIsResponding(false);
     setHasResponded(false);
-    setHasError(false);
+    setErrorKind(null);
     setSubmittingId(null);
   }, [requestKey]);
 
   useEffect(() => {
     optionsEpochRef.current += 1;
-    setHasError(false);
+    setErrorKind(null);
     setHasResponded(false);
   }, [optionsIdentity]);
 
@@ -83,16 +83,23 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
       respondingRef.current = true;
       setIsResponding(true);
       setSubmittingId(option.id);
-      setHasError(false);
+      setErrorKind(null);
 
       try {
         await onConfirm(option.value);
         if (requestEpochRef.current === requestEpoch && optionsEpochRef.current === optionsEpoch) {
           setHasResponded(true);
         }
-      } catch {
+      } catch (error) {
         if (requestEpochRef.current === requestEpoch && optionsEpochRef.current === optionsEpoch) {
-          setHasError(true);
+          const message = error instanceof Error ? error.message : String(error);
+          setErrorKind(
+            message.includes('UNKNOWN_EXTERNAL_WRITE')
+              ? 'verification'
+              : message.includes('CONFLICT') || message.includes('EXPIRED') || message.includes('FORBIDDEN')
+                ? 'changed'
+                : 'ordinary'
+          );
         }
       } finally {
         if (requestEpochRef.current === requestEpoch) {
@@ -157,7 +164,7 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
               )}
             </fieldset>
 
-            {hasError && (
+            {errorKind && (
               <div
                 className={classNames(styles.feedback, styles.error)}
                 role='alert'
@@ -165,7 +172,15 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
                 data-testid={`${testIdPrefix}-error`}
               >
                 <Attention theme='outline' size='16' aria-hidden='true' />
-                <span>{t('messages.permissionResponseFailed')}</span>
+                <span>
+                  {t(
+                    errorKind === 'verification'
+                      ? 'messages.interactionVerificationRequired'
+                      : errorKind === 'changed'
+                        ? 'messages.interactionRequestChanged'
+                        : 'messages.permissionResponseFailed'
+                  )}
+                </span>
               </div>
             )}
           </>

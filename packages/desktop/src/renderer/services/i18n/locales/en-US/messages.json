@@ -72,6 +72,8 @@
   },
   "responseSentSuccessfully": "Response sent successfully",
   "permissionResponseFailed": "Could not send the response. Please try again.",
+  "interactionVerificationRequired": "The outcome could not be confirmed. Verify it in the source system before trying again.",
+  "interactionRequestChanged": "This request changed or was handled elsewhere. Refresh to view the authoritative result.",
   "confirmation": {
     "applyChange": "Apply this change?",
     "allowExecution": "Allow execution?",

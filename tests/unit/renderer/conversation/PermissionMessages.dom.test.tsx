@@ -11,13 +11,15 @@ import type { IMessageAcpPermission, IMessagePermission } from '@/common/chat/ch
 import MessageAcpPermission from '@/renderer/pages/conversation/Messages/acp/MessageAcpPermission';
 import MessagePermission from '@/renderer/pages/conversation/Messages/components/MessagePermission';
 
-const { genericInvoke, acpInvoke } = vi.hoisted(() => ({
+const { genericInvoke, acpInvoke, interactionInvoke } = vi.hoisted(() => ({
   genericInvoke: vi.fn(),
   acpInvoke: vi.fn(),
+  interactionInvoke: vi.fn(),
 }));
 
 vi.mock('@/common', () => ({
   ipcBridge: {
+    interactionRequest: { act: { invoke: interactionInvoke } },
     conversation: {
       confirmation: {
         confirm: {
@@ -89,6 +91,30 @@ describe('permission message adapters', () => {
     vi.clearAllMocks();
     genericInvoke.mockResolvedValue(undefined);
     acpInvoke.mockResolvedValue(undefined);
+    interactionInvoke.mockResolvedValue({
+      receipt_id: 'receipt-1',
+      request_id: 'request-1',
+      version: 'v2',
+      status: 'accepted',
+      resolved_at: '2026-08-12T00:00:00.000Z',
+    });
+  });
+
+  it('uses the versioned source-authoritative action path when a unified request is present', async () => {
+    const message = makeGenericMessage();
+    message.content.interaction_request = { id: 'request-1', version: 'v1' };
+    render(<MessagePermission message={message} />);
+
+    fireEvent.click(screen.getByTestId('message-permission-option-proceed_once'));
+
+    expect(interactionInvoke).toHaveBeenCalledWith({
+      request_id: 'request-1',
+      expected_version: 'v1',
+      idempotency_key: 'interaction:request-1:v1:proceed_once',
+      action_id: 'proceed_once',
+    });
+    expect(genericInvoke).not.toHaveBeenCalled();
+    expect(await screen.findByTestId('message-permission-status')).toBeInTheDocument();
   });
 
   it('keeps the generic payload exact and defaults confirmation to proceed_once', async () => {

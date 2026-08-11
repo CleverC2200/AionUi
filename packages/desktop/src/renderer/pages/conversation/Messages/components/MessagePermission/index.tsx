@@ -8,6 +8,10 @@ import { ipcBridge } from '@/common';
 import type { IMessagePermission } from '@/common/chat/chatLib';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  interactionRequestActions,
+  requireAcceptedInteractionReceipt,
+} from '@/renderer/services/interactionRequestActions';
 import { PermissionRequestPanel } from './PermissionRequestPanel';
 import {
   classifyLegacyPermission,
@@ -45,15 +49,24 @@ const MessagePermission: React.FC<MessagePermissionProps> = React.memo(({ messag
 
   const handleConfirm = useCallback(
     async (selectedValue: string) => {
-      await ipcBridge.conversation.confirmation.confirm.invoke({
-        conversation_id: message.conversation_id,
-        call_id,
-        msg_id: message.msg_id || '',
-        data: { value: selectedValue },
-        always_allow: selectedValue === 'proceed_always',
-      });
+      if (content.interaction_request) {
+        const receipt = await interactionRequestActions.submit({
+          request_id: content.interaction_request.id,
+          expected_version: content.interaction_request.version,
+          action_id: selectedValue,
+        });
+        requireAcceptedInteractionReceipt(receipt);
+      } else {
+        await ipcBridge.conversation.confirmation.confirm.invoke({
+          conversation_id: message.conversation_id,
+          call_id,
+          msg_id: message.msg_id || '',
+          data: { value: selectedValue },
+          always_allow: selectedValue === 'proceed_always',
+        });
+      }
     },
-    [call_id, message.conversation_id, message.msg_id]
+    [call_id, content.interaction_request, message.conversation_id, message.msg_id]
   );
 
   return (

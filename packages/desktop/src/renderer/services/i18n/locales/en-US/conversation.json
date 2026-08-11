@@ -1,4 +1,15 @@
 {
+  "attention": {
+    "title": "Needs attention",
+    "open": "Open {{count}} pending requests",
+    "empty": "No pending requests",
+    "source": {
+      "agent": "Assistant",
+      "team_agent": "Team member",
+      "aioncore": "AionCore",
+      "business_system": "Business system"
+    }
+  },
   "welcome": {
     "title": "Hi, what's your plan for today?",
     "placeholder": "Send a message, upload files, open a folder, create a scheduled task, or type / for commands...",

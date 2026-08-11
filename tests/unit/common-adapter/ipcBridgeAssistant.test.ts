@@ -111,4 +111,24 @@ describe('ipcBridge assistant adapter', () => {
       body: undefined,
     });
   });
+
+  it('submits an interaction action without duplicating the request id in the body', async () => {
+    const { interactionRequest } = await import('@/common/adapter/ipcBridge');
+    await interactionRequest.act.invoke({
+      request_id: 'request/1',
+      expected_version: 'v1',
+      idempotency_key: 'interaction:request/1:v1:approve',
+      action_id: 'approve',
+    });
+
+    expect(httpBridgeMocks.calls).toContainEqual({
+      method: 'POST',
+      path: '/api/interaction-requests/request%2F1/actions',
+      body: {
+        expected_version: 'v1',
+        idempotency_key: 'interaction:request/1:v1:approve',
+        action_id: 'approve',
+      },
+    });
+  });
 });

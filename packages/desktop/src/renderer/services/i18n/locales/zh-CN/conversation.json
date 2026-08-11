@@ -1,4 +1,15 @@
 {
+  "attention": {
+    "title": "待处理",
+    "open": "打开 {{count}} 个待处理请求",
+    "empty": "暂无待处理请求",
+    "source": {
+      "agent": "助手",
+      "team_agent": "团队成员",
+      "aioncore": "AionCore",
+      "business_system": "业务系统"
+    }
+  },
   "welcome": {
     "title": "Hi，今天有什么安排？",
     "placeholder": "发消息、上传文件、打开文件夹、创建定时任务，或输入 / 唤起命令...",

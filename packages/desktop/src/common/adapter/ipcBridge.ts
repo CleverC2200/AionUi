@@ -41,6 +41,12 @@ import type {
   ConversationPreparationRequest,
   ConversationPreparationResponse,
 } from '../types/conversationConfiguration';
+import {
+  InteractionRequestActionCommand,
+  InteractionRequestList,
+  InteractionRequestReceipt,
+  parseInteractionRequestList,
+} from '../types/interactionRequest';
 import type {
   EnsureConversationRuntimeResponse,
   GetConfigOptionsResponse,
@@ -490,6 +496,18 @@ export const conversation = {
         `/api/conversations/${p.conversation_id}/approvals/check?action=${encodeURIComponent(p.action)}${p.command_type ? `&command_type=${encodeURIComponent(p.command_type)}` : ''}`
     ),
   },
+};
+
+export const interactionRequest = {
+  list: withResponseMap(
+    httpGet<InteractionRequestList, void>('/api/interaction-requests?status=pending'),
+    parseInteractionRequestList
+  ),
+  act: httpPost<InteractionRequestReceipt, InteractionRequestActionCommand>(
+    (p) => `/api/interaction-requests/${encodeURIComponent(p.request_id)}/actions`,
+    ({ request_id: _requestId, ...command }) => command
+  ),
+  changed: wsEmitter<{ revision: string }>('interaction_request.changed'),
 };
 
 export const runtime = {
