@@ -39,6 +39,9 @@
     "detailUsedByTitle": "Використовується",
     "detailUsedByEmpty": "Цю навичку поки не використовує жоден асистент.",
     "detailBuiltinAssistant": "Вбудований",
+    "detailManagedAssistant": "Керується компанією",
+    "detailEnableBundled": "Увімкнути для асистента",
+    "detailDisableBundled": "Вимкнути",
     "detailFilesTitle": "Файли навички",
     "detailFilesError": "Не вдалося завантажити файли цієї навички.",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "Немає доступних офіційних навичок.",
     "noSearchResults": "Немає відповідних навичок.",
     "customHint": "Імпортуйте теку навички, батьківську теку або zip; до {{maxFileSize}} на файл і {{maxTotalSize}} на навичку; імпорт з тією самою назвою перезаписує наявну навичку.",
+    "bundledTitle": "Постачається з програмою",
+    "bundledHint": "Встановлюється разом із клієнтом і ввімкнена за замовчуванням. Її можна вимкнути для редагованих асистентів, але не можна видалити.",
     "officialHint": "Офіційні навички, що постачаються з GEAUi, — готові до використання, лише для читання та оновлюються з кожним випуском.",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },

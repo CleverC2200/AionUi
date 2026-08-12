@@ -39,6 +39,9 @@
     "detailUsedByTitle": "Usada por",
     "detailUsedByEmpty": "Ningún asistente usa esta habilidad todavía.",
     "detailBuiltinAssistant": "Integrado",
+    "detailManagedAssistant": "Gestionado por la empresa",
+    "detailEnableBundled": "Activar para el asistente",
+    "detailDisableBundled": "Desactivar",
     "detailFilesTitle": "Archivos de la habilidad",
     "detailFilesError": "No se pudieron cargar los archivos de esta habilidad.",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "No hay habilidades oficiales disponibles.",
     "noSearchResults": "No hay habilidades coincidentes.",
     "customHint": "Importa una carpeta de habilidad, carpeta superior o zip; hasta {{maxFileSize}} por archivo y {{maxTotalSize}} por habilidad; importar el mismo nombre sobrescribe la habilidad existente.",
+    "bundledTitle": "Incluido con la aplicación",
+    "bundledHint": "Se instala con el cliente y está activado de forma predeterminada. Puede desactivarse para asistentes editables, pero no eliminarse.",
     "officialHint": "Habilidades oficiales incluidas en GEAUi: listas para usar, de solo lectura y actualizadas con cada versión.",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },

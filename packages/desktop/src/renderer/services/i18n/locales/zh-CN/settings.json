@@ -39,6 +39,9 @@
     "detailUsedByTitle": "使用中的助手",
     "detailUsedByEmpty": "还没有助手使用这个技能。",
     "detailBuiltinAssistant": "内置",
+    "detailManagedAssistant": "企业受管",
+    "detailEnableBundled": "为助手启用",
+    "detailDisableBundled": "关闭",
     "detailFilesTitle": "技能文件",
     "detailFilesError": "无法加载此技能的文件。",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "暂无官方技能。",
     "noSearchResults": "没有匹配的技能。",
     "customHint": "支持技能目录、父目录或 zip 导入；单文件上限 {{maxFileSize}}、单技能上限 {{maxTotalSize}}；同名导入会覆盖现有技能。",
+    "bundledTitle": "安装自带",
+    "bundledHint": "随客户端安装并默认启用；可对用户可编辑助手关闭或重新启用，但不能删除。",
     "officialHint": "GEAUi 官方内置的技能，开箱即用、只读，随版本更新维护。",
     "deleteAffectsNewOnlyHint": "删除仅影响新会话：历史会话中已选用的技能仍可继续使用。"
   },

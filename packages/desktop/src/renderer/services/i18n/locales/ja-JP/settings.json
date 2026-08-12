@@ -39,6 +39,9 @@
     "detailUsedByTitle": "使用中のアシスタント",
     "detailUsedByEmpty": "このスキルを使用しているアシスタントはまだありません。",
     "detailBuiltinAssistant": "組み込み",
+    "detailManagedAssistant": "企業管理",
+    "detailEnableBundled": "アシスタントで有効化",
+    "detailDisableBundled": "無効化",
     "detailFilesTitle": "スキルファイル",
     "detailFilesError": "このスキルのファイルを読み込めませんでした。",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "利用可能な公式スキルがありません。",
     "noSearchResults": "一致するスキルがありません。",
     "customHint": "スキルフォルダ、親フォルダ、または zip をインポートできます。1 ファイルあたり最大 {{maxFileSize}}、1 スキルあたり最大 {{maxTotalSize}}。同名でインポートすると既存のスキルを上書きします。",
+    "bundledTitle": "アプリ同梱",
+    "bundledHint": "クライアントと共にインストールされ、既定で有効です。編集可能なアシスタントでは無効化できますが、削除はできません。",
     "officialHint": "GEAUi に同梱される公式スキル。すぐに使え、読み取り専用で、リリースごとに更新されます。",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },

@@ -39,6 +39,9 @@
     "detailUsedByTitle": "Kullananlar",
     "detailUsedByEmpty": "Bu beceriyi henüz hiçbir asistan kullanmıyor.",
     "detailBuiltinAssistant": "Yerleşik",
+    "detailManagedAssistant": "Kurumsal yönetimli",
+    "detailEnableBundled": "Asistan için etkinleştir",
+    "detailDisableBundled": "Devre dışı bırak",
     "detailFilesTitle": "Beceri dosyaları",
     "detailFilesError": "Bu becerinin dosyaları yüklenemedi.",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "Kullanılabilir resmi beceri yok.",
     "noSearchResults": "Eşleşen beceri yok.",
     "customHint": "Bir beceri klasörü, üst klasör veya zip içe aktarın; dosya başına en fazla {{maxFileSize}} ve beceri başına {{maxTotalSize}}; aynı adla içe aktarma mevcut beceriyi değiştirir.",
+    "bundledTitle": "Uygulamayla birlikte gelir",
+    "bundledHint": "İstemciyle birlikte yüklenir ve varsayılan olarak etkindir. Düzenlenebilir asistanlarda devre dışı bırakılabilir ancak silinemez.",
     "officialHint": "GEAUi ile birlikte gelen resmi beceriler — kullanıma hazır, salt okunur ve her sürümde güncellenir.",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },

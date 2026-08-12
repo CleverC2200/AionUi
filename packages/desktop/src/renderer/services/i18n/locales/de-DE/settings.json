@@ -39,6 +39,9 @@
     "detailUsedByTitle": "Verwendet von",
     "detailUsedByEmpty": "Noch kein Assistent verwendet diesen Skill.",
     "detailBuiltinAssistant": "Integriert",
+    "detailManagedAssistant": "Vom Unternehmen verwaltet",
+    "detailEnableBundled": "Für Assistent aktivieren",
+    "detailDisableBundled": "Deaktivieren",
     "detailFilesTitle": "Skill-Dateien",
     "detailFilesError": "Die Dateien dieses Skills konnten nicht geladen werden.",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "Keine offiziellen Skills verfügbar.",
     "noSearchResults": "Keine passenden Skills.",
     "customHint": "Importiere einen Skill-Ordner, übergeordneten Ordner oder eine Zip-Datei; max. {{maxFileSize}} pro Datei und {{maxTotalSize}} pro Skill; ein gleichnamiger Import überschreibt den vorhandenen Skill.",
+    "bundledTitle": "In der App enthalten",
+    "bundledHint": "Wird mit dem Client installiert und ist standardmäßig aktiviert. Für bearbeitbare Assistenten kann der Skill deaktiviert, aber nicht gelöscht werden.",
     "officialHint": "Offizielle, mit GEAUi gebündelte Skills – sofort einsatzbereit, schreibgeschützt und mit jedem Release aktualisiert.",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },

@@ -168,10 +168,10 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     [activeTab, navigate]
   );
 
-  // "Custom" tab: only user-imported skills.
-  const mySkills = useMemo(() => availableSkills.filter((s) => s.source === 'custom'), [availableSkills]);
-  // "Official" tab: built-in non-auto-injected skills shown as the primary list,
-  // with extension skills and auto-injected skills kept as separate read-only sections.
+  // "My Skills" contains user imports plus the system-required skills bundled
+  // with the installation. Bundled skills stay outside delete/batch actions.
+  const customSkills = useMemo(() => availableSkills.filter((s) => s.source === 'custom'), [availableSkills]);
+  // "Official" remains the browse-only catalog for optional built-in skills.
   const officialSkills = useMemo(
     () => availableSkills.filter((s) => s.source === 'builtin' && !s.is_auto_inject),
     [availableSkills]
@@ -193,7 +193,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     [search_query]
   );
 
-  const filteredSkills = useMemo(() => matchesQuery(mySkills), [matchesQuery, mySkills]);
+  const filteredSkills = useMemo(() => matchesQuery(customSkills), [matchesQuery, customSkills]);
   const filteredOfficialSkills = useMemo(() => matchesQuery(officialSkills), [matchesQuery, officialSkills]);
   const filteredExtensionSkills = useMemo(() => matchesQuery(extensionSkills), [matchesQuery, extensionSkills]);
   const filteredAutoSkills = useMemo(() => matchesQuery(builtinAutoSkills), [matchesQuery, builtinAutoSkills]);
@@ -227,7 +227,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     if (!highlightName || loading) return;
     const target = availableSkills.find((s) => s.name === highlightName);
     if (target) {
-      setActiveTab(target.source === 'custom' ? 'custom' : 'official');
+      setActiveTab(target.source === 'custom' || isAutoInjectedBuiltinSkill(target) ? 'custom' : 'official');
     }
   }, [highlightName, loading, availableSkills]);
 
@@ -649,7 +649,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     return (
       <div
         key={skill.name}
-        data-testid={testId}
+        data-testid={testId ?? (isAuto ? `bundled-skill-card-${normalizeTestId(skill.name)}` : undefined)}
         ref={(el) => {
           skillRefs.current[skill.name] = el;
         }}
@@ -684,7 +684,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           )}
         </div>
         <div className='shrink-0 sm:self-center flex items-center justify-end pl-4px'>
-          <SkillUsedByStack assistants={getAssistantsUsingSkill(skill.name, assistantCatalog ?? [])} />
+          <SkillUsedByStack assistants={getAssistantsUsingSkill(skill.name, assistantCatalog ?? [], isAuto)} />
         </div>
       </div>
     );
@@ -764,7 +764,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
               'Import a skill folder, parent folder, or zip; up to {{maxFileSize}} per file and {{maxTotalSize}} per skill; importing the same name overwrites the existing skill.',
           })}
         </p>
-        {mySkills.length > 0 && (
+        {customSkills.length > 0 && (
           <div className='flex shrink-0 items-center gap-8px'>
             {batchMode ? (
               <>
@@ -805,7 +805,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           </div>
         )}
       </div>
-      {batchMode && mySkills.length > 0 && (
+      {batchMode && customSkills.length > 0 && (
         <div className='flex items-center justify-between gap-12px text-12px text-t-secondary'>
           <Checkbox
             data-testid='checkbox-select-all-skills'
@@ -824,7 +824,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           </span>
         </div>
       )}
-      {mySkills.length > 0 ? (
+      {customSkills.length > 0 ? (
         <div className='flex flex-col gap-8px rounded-12px border border-border-2 bg-2 p-8px md:rounded-16px md:p-10px'>
           {filteredSkills.length === 0 && (
             <div className='text-center text-t-secondary text-13px py-32px bg-fill-1 rd-12px border border-border-2 border-dashed'>
@@ -909,7 +909,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
             </div>
           ))}
         </div>
-      ) : (
+      ) : builtinAutoSkills.length === 0 ? (
         <div className='text-center text-t-secondary text-13px py-40px bg-fill-1 rd-12px border border-border-2 border-dashed'>
           {loading
             ? t('common.loading', { defaultValue: 'Please wait...' })
@@ -917,11 +917,26 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
                 defaultValue: 'No skills found. Import some to get started.',
               })}
         </div>
-      )}
+      ) : null}
+
+      {builtinAutoSkills.length > 0 &&
+        readonlySection(
+          'auto-skills-section',
+          <Lightning theme='filled' size={18} fill='var(--color-success-6)' />,
+          t('settings.skillsHub.bundledTitle', { defaultValue: 'Bundled with installation' }),
+          builtinAutoSkills.length,
+          'bg-[rgba(var(--success-6),0.08)] text-[rgb(var(--success-6))]',
+          filteredAutoSkills,
+          'auto',
+          t('settings.skillsHub.bundledHint', {
+            defaultValue:
+              'Installed with the client and enabled by default. They may be disabled for editable assistants, but cannot be deleted.',
+          })
+        )}
     </div>
   );
 
-  // ======== Official tab (official builtin list + extension + auto-injected sections) ========
+  // ======== Official tab (optional builtin list + extension section) ========
   const officialPane = (
     <div className='flex flex-col gap-24px'>
       <div data-testid='official-skills-section'>
@@ -959,21 +974,6 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           'bg-[rgba(var(--primary-6),0.08)] text-primary-6',
           filteredExtensionSkills,
           'extension'
-        )}
-
-      {builtinAutoSkills.length > 0 &&
-        readonlySection(
-          'auto-skills-section',
-          <Lightning theme='filled' size={18} fill='var(--color-success-6)' />,
-          t('settings.autoInjectedSkills'),
-          builtinAutoSkills.length,
-          'bg-[rgba(var(--success-6),0.08)] text-[rgb(var(--success-6))]',
-          filteredAutoSkills,
-          'auto',
-          t('settings.autoInjectedSkillsHint', {
-            defaultValue:
-              'Loaded automatically into every conversation — no need to enable them; the agent decides when to use them.',
-          })
         )}
     </div>
   );
@@ -1017,12 +1017,12 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           {
             key: 'custom',
             label: t('settings.skillsHub.tabCustom', { defaultValue: 'Custom' }),
-            count: mySkills.length,
+            count: customSkills.length + builtinAutoSkills.length,
           },
           {
             key: 'official',
             label: t('settings.skillsHub.tabOfficial', { defaultValue: 'Official' }),
-            count: officialSkills.length + extensionSkills.length + builtinAutoSkills.length,
+            count: officialSkills.length + extensionSkills.length,
           },
         ]}
         activeTab={activeTab}

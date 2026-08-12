@@ -39,6 +39,9 @@
     "detailUsedByTitle": "Used by",
     "detailUsedByEmpty": "No assistants are using this skill yet.",
     "detailBuiltinAssistant": "Built-in",
+    "detailManagedAssistant": "Enterprise managed",
+    "detailEnableBundled": "Enable for assistant",
+    "detailDisableBundled": "Disable",
     "detailFilesTitle": "Skill files",
     "detailFilesError": "Could not load this skill's files.",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "No official skills available.",
     "noSearchResults": "No matching skills.",
     "customHint": "Import a skill folder, parent folder, or zip; up to {{maxFileSize}} per file and {{maxTotalSize}} per skill; importing the same name overwrites the existing skill.",
+    "bundledTitle": "Bundled with installation",
+    "bundledHint": "Installed with the client and enabled by default. They may be disabled for editable assistants, but cannot be deleted.",
     "officialHint": "Official skills bundled with GEAUi — ready to use out of the box, read-only, and updated with each release.",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },

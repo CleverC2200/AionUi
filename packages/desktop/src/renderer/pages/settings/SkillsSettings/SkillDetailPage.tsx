@@ -91,14 +91,21 @@ const SkillDetailPage: React.FC = () => {
   } = useSWR<Assistant[]>('assistants.list', () => ipcBridge.assistants.list.invoke());
 
   const skill = useMemo(() => (skills ?? []).find((s) => s.name === decodedName), [skills, decodedName]);
+  const isBundledSkill = skill?.source === 'builtin' && skill.is_auto_inject;
   const usingAssistants = useMemo(
-    () => getAssistantsUsingSkill(decodedName, assistants ?? []),
-    [assistants, decodedName]
+    () => getAssistantsUsingSkill(decodedName, assistants ?? [], isBundledSkill),
+    [assistants, decodedName, isBundledSkill]
   );
-  // Attachment editing covers user + generated assistants; builtin assistants'
-  // update endpoint only accepts agent_id/defaults (see useAssistantEditor).
-  const editableAssistants = useMemo(() => (assistants ?? []).filter((a) => a.source !== 'builtin'), [assistants]);
-  const readonlyUsers = useMemo(() => usingAssistants.filter((a) => a.source === 'builtin'), [usingAssistants]);
+  // Attachment editing covers user + generated assistants. Built-in and
+  // enterprise-managed assistants keep their server-owned capability policy.
+  const editableAssistants = useMemo(
+    () => (assistants ?? []).filter((a) => a.source !== 'builtin' && a.source !== 'managed'),
+    [assistants]
+  );
+  const readonlyUsers = useMemo(
+    () => usingAssistants.filter((a) => a.source === 'builtin' || a.source === 'managed'),
+    [usingAssistants]
+  );
 
   const assistantLabel = useCallback(
     (assistant: Assistant): string => assistant.name_i18n?.[localeKey] || assistant.name,
@@ -137,7 +144,7 @@ const SkillDetailPage: React.FC = () => {
   const sourceLabel = (s: SkillInfo): string => {
     if (s.source === 'custom') return t('settings.skillsHub.tabCustom', { defaultValue: 'Custom' });
     if (s.source === 'extension') return t('settings.extensionSkills', { defaultValue: 'Extension Skills' });
-    if (s.is_auto_inject) return t('settings.autoInjectedSkills', { defaultValue: 'Auto-injected Skills' });
+    if (s.is_auto_inject) return t('settings.skillsHub.bundledTitle', { defaultValue: 'Bundled with installation' });
     return t('settings.skillsHub.tabOfficial', { defaultValue: 'Official' });
   };
 
@@ -146,12 +153,19 @@ const SkillDetailPage: React.FC = () => {
     async (assistant: Assistant, attach: boolean) => {
       setSaving(true);
       try {
-        const update: UpdateAssistantRequest = {
-          id: assistant.id,
-          enabled_skills: attach
-            ? Array.from(new Set([...(assistant.enabled_skills ?? []), decodedName]))
-            : (assistant.enabled_skills ?? []).filter((n) => n !== decodedName),
-        };
+        const update: UpdateAssistantRequest = isBundledSkill
+          ? {
+              id: assistant.id,
+              disabled_builtin_skills: attach
+                ? (assistant.disabled_builtin_skills ?? []).filter((name) => name !== decodedName)
+                : Array.from(new Set([...(assistant.disabled_builtin_skills ?? []), decodedName])),
+            }
+          : {
+              id: assistant.id,
+              enabled_skills: attach
+                ? Array.from(new Set([...(assistant.enabled_skills ?? []), decodedName]))
+                : (assistant.enabled_skills ?? []).filter((name) => name !== decodedName),
+            };
         await ipcBridge.assistants.update.invoke(update);
         Message.success(t('settings.skillsHub.detailAttachSuccess', { defaultValue: 'Assistants updated' }));
         await Promise.all([mutateAssistants(), swrMutate('agents.boundAssistants.list')]);
@@ -162,7 +176,7 @@ const SkillDetailPage: React.FC = () => {
         setSaving(false);
       }
     },
-    [decodedName, mutateAssistants, t]
+    [decodedName, isBundledSkill, mutateAssistants, t]
   );
 
   // Assistants that can still be added: editable and not yet using the skill.
@@ -263,7 +277,9 @@ const SkillDetailPage: React.FC = () => {
                     data-testid='btn-add-assistant'
                     className='!h-24px !px-8px !text-12px !text-t-secondary hover:!text-t-primary'
                   >
-                    {t('settings.skillsHub.detailAddAssistant', { defaultValue: 'Attach to assistant' })}
+                    {isBundledSkill
+                      ? t('settings.skillsHub.detailEnableBundled', { defaultValue: 'Enable for assistant' })
+                      : t('settings.skillsHub.detailAddAssistant', { defaultValue: 'Attach to assistant' })}
                   </Button>
                 </Dropdown>
               }
@@ -294,7 +310,9 @@ const SkillDetailPage: React.FC = () => {
                         </Typography.Text>
                         {isReadonly ? (
                           <span className='rounded-4px border border-border-2 bg-fill-1 px-6px py-1px text-11px text-t-tertiary'>
-                            {t('settings.skillsHub.detailBuiltinAssistant', { defaultValue: 'Built-in' })}
+                            {assistant.source === 'managed'
+                              ? t('settings.skillsHub.detailManagedAssistant', { defaultValue: 'Enterprise managed' })
+                              : t('settings.skillsHub.detailBuiltinAssistant', { defaultValue: 'Built-in' })}
                           </span>
                         ) : (
                           <Button
@@ -302,13 +320,17 @@ const SkillDetailPage: React.FC = () => {
                             type='text'
                             icon={<Close size={13} />}
                             data-testid={`btn-detach-${assistant.id}`}
-                            className='!h-22px !px-6px !text-12px !text-t-tertiary hover:!text-danger-6 opacity-0 group-hover:opacity-100 transition-opacity'
+                            className={`!h-22px !px-6px !text-12px !text-t-tertiary hover:!text-danger-6 transition-opacity ${
+                              isBundledSkill ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                            }`}
                             onClick={(e) => {
                               e.stopPropagation();
                               void setAttachment(assistant, false);
                             }}
                           >
-                            {t('settings.skillsHub.detailDetach', { defaultValue: 'Remove' })}
+                            {isBundledSkill
+                              ? t('settings.skillsHub.detailDisableBundled', { defaultValue: 'Disable' })
+                              : t('settings.skillsHub.detailDetach', { defaultValue: 'Remove' })}
                           </Button>
                         )}
                         <span className='flex items-center gap-2px text-12px text-t-tertiary group-hover:text-t-secondary'>
@@ -326,15 +348,17 @@ const SkillDetailPage: React.FC = () => {
               title={t('settings.skillsHub.detailFilesTitle', { defaultValue: 'Skill files' })}
               data-testid='skill-detail-files'
               extra={
-                <Button
-                  size='mini'
-                  type='text'
-                  data-testid='btn-edit-skill-via-chat'
-                  onClick={editViaChat}
-                  className='!h-24px !px-8px !text-12px !text-t-secondary hover:!text-t-primary'
-                >
-                  {t('settings.skillsHub.editViaChat.buttonLabel', { defaultValue: 'Edit via chat' })}
-                </Button>
+                !isBundledSkill ? (
+                  <Button
+                    size='mini'
+                    type='text'
+                    data-testid='btn-edit-skill-via-chat'
+                    onClick={editViaChat}
+                    className='!h-24px !px-8px !text-12px !text-t-secondary hover:!text-t-primary'
+                  >
+                    {t('settings.skillsHub.editViaChat.buttonLabel', { defaultValue: 'Edit via chat' })}
+                  </Button>
+                ) : undefined
               }
             >
               <SkillFileBrowser skill={skill} />

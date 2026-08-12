@@ -39,6 +39,9 @@
     "detailUsedByTitle": "使用中的助手",
     "detailUsedByEmpty": "還沒有助手使用這個技能。",
     "detailBuiltinAssistant": "內建",
+    "detailManagedAssistant": "企業受管",
+    "detailEnableBundled": "為助手啟用",
+    "detailDisableBundled": "關閉",
     "detailFilesTitle": "技能檔案",
     "detailFilesError": "無法載入此技能的檔案。",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "暫無官方技能。",
     "noSearchResults": "沒有符合的技能。",
     "customHint": "支援技能目錄、父目錄或 zip 匯入；單檔上限 {{maxFileSize}}、單技能上限 {{maxTotalSize}}；同名匯入會覆蓋現有技能。",
+    "bundledTitle": "安裝內建",
+    "bundledHint": "隨客戶端安裝並預設啟用；可對可編輯助手關閉或重新啟用，但不能刪除。",
     "officialHint": "GEAUi 官方內建的技能，開箱即用、唯讀，隨版本更新維護。",
     "deleteAffectsNewOnlyHint": "刪除僅影響新會話：歷史會話中已選用的技能仍可繼續使用。"
   },

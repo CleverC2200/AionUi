@@ -67,6 +67,13 @@ AionUi Renderer 不直接访问 GEA。AionCore 负责：
 - 对明显违规做本地快速反馈，但不冒充企业授权。
 - `unknown_external_write` 时保留草稿并要求核验，不自动重试。
 
+### 2.4 客户端安装自带 Skill 与 GEA Skill 必须分源
+
+- AionUi 随安装包提供且 `source=builtin`、`is_auto_inject=true` 的系统必需 Skill，在“我的技能 / 安装自带”展示；默认启用，用户只能对可编辑助手关闭或重新启用，不能删除或修改内容。
+- 普通 `source=builtin` Skill 继续在“官方技能”中作为只读目录展示，不混入用户导入技能。
+- GEA 同步的 Skill 必须使用企业稳定 `skill_id` 和受管来源，不能伪装成本地 `builtin`，也不能覆盖客户端安装自带 Skill。
+- 企业助手的必需 Skill 是否可用仍由 GEA/AionCore 在保存增量和 `prepare` 时裁决；AionUi 不对受管助手开放本地关闭入口。
+
 ## 3. 必须统一的标识和版本规则
 
 所有跨端对象都必须使用稳定 ID，不得使用显示名称、本地路径或 URL 作为关联键。
