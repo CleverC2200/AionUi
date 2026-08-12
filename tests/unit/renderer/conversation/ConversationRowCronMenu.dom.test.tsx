@@ -101,3 +101,55 @@ describe('conversation scheduled-task menu item', () => {
     expect(screen.queryByText('conversation.history.createCronTask')).not.toBeInTheDocument();
   });
 });
+
+describe('conversation task status', () => {
+  it.each([
+    {
+      runtime: {
+        state: 'running',
+        task_status: 'running',
+        has_task: true,
+        pending_confirmations: 0,
+      },
+      label: 'team.memberWork.working',
+    },
+    {
+      runtime: {
+        state: 'waiting_confirmation',
+        task_status: 'running',
+        has_task: true,
+        pending_confirmations: 1,
+      },
+      label: 'team.memberWork.attention',
+    },
+    {
+      runtime: {
+        state: 'idle',
+        task_status: 'finished',
+        has_task: true,
+        pending_confirmations: 0,
+      },
+      label: 'team.memberWork.done',
+    },
+  ] as const)('projects the authoritative runtime as $label', ({ runtime, label }) => {
+    const taskConversation = { ...conversation, runtime } as TChatConversation;
+    render(<ConversationRow {...makeProps({ conversation: taskConversation })} />);
+
+    expect(screen.getByTestId(`conversation-task-status-${conversation.id}`)).toHaveTextContent(label);
+  });
+
+  it('does not invent a task status when the backend runtime has no task', () => {
+    const chatConversation = {
+      ...conversation,
+      runtime: {
+        state: 'idle',
+        task_status: null,
+        has_task: false,
+        pending_confirmations: 0,
+      },
+    } as TChatConversation;
+    render(<ConversationRow {...makeProps({ conversation: chatConversation })} />);
+
+    expect(screen.queryByTestId(`conversation-task-status-${conversation.id}`)).not.toBeInTheDocument();
+  });
+});

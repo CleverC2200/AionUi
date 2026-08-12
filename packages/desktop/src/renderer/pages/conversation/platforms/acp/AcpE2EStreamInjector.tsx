@@ -353,6 +353,10 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
           },
           true
         );
+        dispatchE2EWsEvent('conversation.listChanged', {
+          action: 'updated',
+          conversation_id: conversationId,
+        });
 
         await new Promise<void>((resolve) => {
           window.setTimeout(resolve, STREAM_TICK_MS);
@@ -411,6 +415,10 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
         );
 
         dispatchE2EWsEvent('interaction_request.changed', { revision: `e2e:${requestId}:${version}` });
+        dispatchE2EWsEvent('conversation.listChanged', {
+          action: 'updated',
+          conversation_id: conversationId,
+        });
 
         await new Promise<void>((resolve) => {
           window.setTimeout(resolve, STREAM_TICK_MS);
@@ -452,6 +460,10 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
         );
 
         dispatchE2EWsEvent('interaction_request.changed', { revision: `e2e:${requestId}:${version}` });
+        dispatchE2EWsEvent('conversation.listChanged', {
+          action: 'updated',
+          conversation_id: conversationId,
+        });
 
         await new Promise<void>((resolve) => {
           window.setTimeout(resolve, STREAM_TICK_MS);

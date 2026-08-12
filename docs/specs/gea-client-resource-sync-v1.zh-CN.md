@@ -443,6 +443,7 @@ AionCore 必须原子消费仍有效且属于当前身份的 preparation，并�
 - 统一待处理交互：问题、权限、工具确认在刷新后可恢复，AionCore 是状态权威。
 - 会话结构化记录：计划、事实、交付物、验证证据和完成回执；无有效证据不得显示完成。
 - Team 工作区：Task、Run、Lease、Receipt、Attention 由 AionCore 权威管理。
+- 项目任务投影：左栏项目分组直接使用 `/api/sidebar` 会话 runtime 展示“进行中 / 待处理 / 已完成”，不在客户端新建第二套任务状态。
 - 恢复与无障碍：离线、陈旧目录、失效 Assignment、窄屏和键盘流程有明确降级状态。
 
 资源同步进入真实业务任务后的完整时序、状态链、业务系统待办和证据回执见
@@ -545,6 +546,7 @@ GEA 统一返回：
 - [ ] 待办处理 accepted 后 Agent 继续原 Task，不创建新会话或新 Task。
 - [ ] 生产系统结果未知时停在 `verification_required`，不自动重发。
 - [ ] completion receipt 必须引用通过的 verification evidence，后者必须引用产物或外部结果。
+- [ ] `/api/sidebar` 的项目任务 runtime 能随 pending request 和 completion receipt 更新，客户端不从消息文本猜测任务状态。
 
 ## 12. 推荐联调顺序
 

@@ -7,6 +7,8 @@ const CONVERSATION_ID = 'e2e-enterprise-payment-review';
 const QUESTION_REQUEST_ID = 'e2e-erp-cost-center';
 const PERMISSION_REQUEST_ID = 'e2e-oa-production-submit';
 const E2E_STREAM_KEY = 'aionui:e2e-message-stream-conversation-id';
+const PROJECT_ID = 'enterprise-payment-project';
+const PROJECT_NAME = '企业付款复核项目';
 
 type E2EStreamRegistry = {
   controllers: Record<
@@ -131,7 +133,7 @@ const managedMcp = {
 const conversation = {
   id: CONVERSATION_ID,
   type: 'acp' as const,
-  name: 'Enterprise payment review',
+  name: '付款申请 PAY-20260812-001',
   created_at: 1,
   updated_at: 1,
   extra: {
@@ -343,20 +345,6 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
       if (pathname === `/api/conversations/${CONVERSATION_ID}/messages`) {
         if (request.method() === 'POST') {
           lifecycleTrace.push('task:start');
-          pending.set(QUESTION_REQUEST_ID, {
-            id: QUESTION_REQUEST_ID,
-            version: 'v1',
-            kind: 'question',
-            status: 'pending',
-            title: '补充成本中心',
-            summary: 'ERP 缺少本次付款申请的成本中心，请补充后继续复核。',
-            source: { type: 'business_system', label: 'ERP 财务系统' },
-            conversation_id: CONVERSATION_ID,
-            turn_id: 'turn-payment-1',
-            message_id: `e2e-question-${QUESTION_REQUEST_ID}`,
-            allowed_actions: ['answer', 'decline'],
-            updated_at: '2026-08-12T10:00:10.000Z',
-          });
           await fulfillJson(route, {
             msg_id: 'payment-task-message-1',
             turn_id: 'turn-payment-1',
@@ -366,7 +354,7 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
               has_task: true,
               task_status: 'running',
               is_processing: true,
-              pending_confirmations: 1,
+              pending_confirmations: 0,
               turn_id: 'turn-payment-1',
             },
           });
@@ -489,6 +477,65 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
       await route.continue();
     };
 
+    const sidebarHandler = async (route: Route): Promise<void> => {
+      const pathname = new URL(route.request().url()).pathname;
+      if (pathname === '/api/sidebar/items') {
+        await fulfillJson(route, { items: [], has_more: false });
+        return;
+      }
+      const runtime = taskCompleted
+        ? {
+            state: 'idle',
+            can_send_message: true,
+            has_task: true,
+            task_status: 'finished',
+            is_processing: false,
+            pending_confirmations: 0,
+            turn_id: 'turn-payment-1',
+          }
+        : pending.size > 0
+          ? {
+              state: 'waiting_confirmation',
+              can_send_message: false,
+              has_task: true,
+              task_status: 'running',
+              is_processing: false,
+              pending_confirmations: pending.size,
+              turn_id: 'turn-payment-1',
+            }
+          : {
+              state: 'running',
+              can_send_message: false,
+              has_task: true,
+              task_status: 'running',
+              is_processing: true,
+              pending_confirmations: 0,
+              turn_id: 'turn-payment-1',
+            };
+      await fulfillJson(route, {
+        groups: [
+          { scope: { type: 'pinned' }, items: [], has_more: false },
+          {
+            scope: {
+              type: 'project',
+              project_id: PROJECT_ID,
+              name: PROJECT_NAME,
+              workspace: conversation.extra.workspace,
+            },
+            items: [
+              {
+                type: 'conversation',
+                conversation: { ...conversation, modified_at: Date.now(), runtime },
+              },
+            ],
+            has_more: false,
+          },
+          { scope: { type: 'chats' }, items: [], has_more: false },
+        ],
+        has_more_groups: false,
+      });
+    };
+
     const interactionHandler = async (route: Route): Promise<void> => {
       const request = route.request();
       const pathname = new URL(request.url()).pathname;
@@ -536,6 +583,7 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
     await page.route('**/api/assistants**', assistantHandler);
     await page.route('**/api/skills**', skillsHandler);
     await page.route('**/api/mcp/**', mcpHandler);
+    await page.route('**/api/sidebar**', sidebarHandler);
     await page.route('**/api/conversations**', conversationHandler);
     await page.route('**/api/interaction-requests**', interactionHandler);
 
@@ -586,8 +634,31 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
       );
       expect(createBody).toEqual({ preparation: { id: 'payment-preparation-1', revision: 'payment-preparation-r1' } });
       await waitForStreamController(page);
+      await expect(page.getByText(PROJECT_NAME, { exact: true })).toBeVisible();
+      const projectTaskStatus = page.getByTestId(`conversation-task-status-${CONVERSATION_ID}`);
+      const projectTaskRow = page.getByTestId(`conversation-row-${CONVERSATION_ID}`);
+      await expect(projectTaskStatus).toContainText(/进行中|Working/);
+      await takeScreenshot(page, 'enterprise-business-lifecycle/03-project-task-running.png');
+      await navigateTo(page, '#/guid');
+      await projectTaskRow.click();
+      await page.waitForURL(new RegExp(`/conversation/${CONVERSATION_ID}$`));
+      await waitForStreamController(page);
 
       const readsBeforeErpPush = pendingReads;
+      pending.set(QUESTION_REQUEST_ID, {
+        id: QUESTION_REQUEST_ID,
+        version: 'v1',
+        kind: 'question',
+        status: 'pending',
+        title: '补充成本中心',
+        summary: 'ERP 缺少本次付款申请的成本中心，请补充后继续复核。',
+        source: { type: 'business_system', label: 'ERP 财务系统' },
+        conversation_id: CONVERSATION_ID,
+        turn_id: 'turn-payment-1',
+        message_id: `e2e-question-${QUESTION_REQUEST_ID}`,
+        allowed_actions: ['answer', 'decline'],
+        updated_at: '2026-08-12T10:00:10.000Z',
+      });
       await emitStreamAction(page, 'question', QUESTION_REQUEST_ID, {
         header: '付款信息',
         question: '本次付款申请应归属哪个成本中心？',
@@ -597,6 +668,7 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
         ],
       });
       await expect.poll(() => pendingReads).toBeGreaterThan(readsBeforeErpPush);
+      await expect(projectTaskStatus).toContainText(/待处理|Needs input/);
       await page.getByTestId('attention-inbox-trigger').click();
       const attentionDrawer = page.getByTestId('attention-inbox-drawer');
       await waitForAttentionDrawer(page);
@@ -628,6 +700,7 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
         ],
       });
       await expect.poll(() => pendingReads).toBeGreaterThan(readsBeforeOaPush);
+      await expect(projectTaskStatus).toContainText(/待处理|Needs input/);
       await page.getByTestId('attention-inbox-trigger').click();
       const oaRequest = page.getByTestId(`attention-request-${PERMISSION_REQUEST_ID}`);
       await waitForAttentionDrawer(page);
@@ -644,6 +717,7 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
         assistant: 'OA 已受理付款申请，正在核验业务编号和交付物。',
       });
       await expect(page.getByText('OA 已受理付款申请，正在核验业务编号和交付物。')).toBeVisible();
+      await expect(projectTaskStatus).toContainText(/已完成|Done/);
 
       await page.reload();
       await expect(page.getByTestId('conversation-resources-trigger')).toBeVisible();
@@ -704,6 +778,7 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
       await page.unroute('**/api/assistants**', assistantHandler);
       await page.unroute('**/api/skills**', skillsHandler);
       await page.unroute('**/api/mcp/**', mcpHandler);
+      await page.unroute('**/api/sidebar**', sidebarHandler);
       await page.unroute('**/api/conversations**', conversationHandler);
       await page.unroute('**/api/interaction-requests**', interactionHandler);
       await page.evaluate((key) => sessionStorage.removeItem(key), E2E_STREAM_KEY);

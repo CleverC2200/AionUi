@@ -177,6 +177,7 @@
             <div class="step"><b>打开客户端</b><small>进入真实 Electron 客户端壳</small></div>
             <div class="step"><b>同步三类资源</b><small>助手、Skill、MCP 分页显式从 GEA 获取</small></div>
             <div class="step"><b>受管启动</b><small>prepare 汇总必需能力，create 仅携带 opaque preparation</small></div>
+            <div class="step"><b>项目任务</b><small>从左栏项目真实进入，状态由 runtime 投影</small></div>
             <div class="step"><b>ERP 待办</b><small>补充成本中心，返回原会话、原 Turn</small></div>
             <div class="step"><b>OA 权限</b><small>一次性确认受管生产写入，不开放替换 MCP</small></div>
             <div class="step"><b>证据完成</b><small>产物、外部结果、核验证据、完成回执形成引用链</small></div>
@@ -188,9 +189,11 @@
           <p class="chips">
             <a href="../../tests/e2e/screenshots/enterprise-business-lifecycle/01-client-open.png">打开客户端</a>
             <a href="../../tests/e2e/screenshots/enterprise-business-lifecycle/02-resources-synced.png">资源同步完成</a>
+            <a href="../../tests/e2e/screenshots/enterprise-business-lifecycle/03-project-task-running.png">项目任务进行中</a>
             <a href="../../tests/e2e/screenshots/enterprise-business-lifecycle/03-erp-attention.png">ERP 问题待办</a>
             <a href="../../tests/e2e/screenshots/enterprise-business-lifecycle/04-oa-production-attention.png">OA 生产权限</a>
             <a href="../../tests/e2e/screenshots/enterprise-business-lifecycle/05-task-completed.png">证据化完成</a>
+            <a href="../../tests/e2e/videos/enterprise-business-lifecycle/enterprise-business-lifecycle.webm">连续页面点击录像</a>
           </p>
         </section>
 
@@ -250,11 +253,11 @@
               <tr><td class="mono">bun run test:integration -- --reporter=dot</td><td class="pass">1 file、6 tests 通过；环境相关 1 file、4 tests 跳过</td></tr>
               <tr><td class="mono">bun run package</td><td class="pass">Main、preload、renderer 生产构建通过</td></tr>
               <tr><td class="mono">playwright unified-agent-journey.e2e.ts</td><td class="pass">4/4：标准目录→会话→交互、GEA 合法增量→准备取消/重试→原 Turn 恢复→交付回执、Team 成员请求→回原上下文→聚合记录，以及真实 Electron 窗口/抽屉边界</td></tr>
-              <tr><td class="mono">playwright enterprise-business-lifecycle.e2e.ts</td><td class="pass">1/1：打开客户端→同步助手/Skill/MCP→受管 prepare/create→ERP question→OA permission→原 Task 恢复→结构化完成回执；与既有 4 条统一旅程共同回归通过</td></tr>
+              <tr><td class="mono">playwright enterprise-business-lifecycle.e2e.ts</td><td class="pass">1/1：打开客户端→同步助手/Skill/MCP→受管 prepare/create→左栏项目任务→ERP question→OA permission→原 Task 恢复→结构化完成回执；逐步真实点击并保留连续 WebM</td></tr>
               <tr><td class="mono">playwright team-view-modes.e2e.ts</td><td class="limited">2 skipped：本机无可创建 Team 的可用助手；无失败</td></tr>
             </tbody>
           </table>
-          <div class="notice" style="margin-top: 14px">完整测试在本文件所在提交上执行。页面引用的 17 张 PNG 均随同一提交纳入版本控制，可在无网络环境独立复核。</div>
+          <div class="notice" style="margin-top: 14px">完整测试在本文件所在提交上执行。页面引用的 18 张 PNG 与 1 条 WebM 连续录像均随同一提交纳入版本控制，可在无网络环境独立复核。</div>
         </section>
 
         <section id="issues">

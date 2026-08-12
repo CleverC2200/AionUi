@@ -18,7 +18,7 @@
 | 结构化事件重复、乱序、gap | 较旧 revision 不覆盖新记录；gap 回源权威 snapshot | `conversationRecords.test.ts`、`teamWorkProjection.test.ts` |
 | 交付替换、证据缺失 | 按稳定 record ID/revision 替换；无证据不得宣称完成 | `conversationRecords.test.ts`、`ConversationResources.dom.test.tsx` |
 | Team lease 过期与待处理恢复 | 成员显示暂停而非运行；待处理回到原成员、原消息 | `memberWorkSummary.test.ts`、`AttentionInbox.dom.test.tsx` |
-| GEA 资源到企业业务任务闭环 | 三类资源逐页同步后才允许受管 prepare；ERP question、OA permission 均回到原 Turn；生产结果经有效证据链形成完成回执 | `enterprise-business-lifecycle.e2e.ts` |
+| GEA 资源到企业业务任务闭环 | 三类资源逐页同步后才允许受管 prepare；左栏项目任务按 AionCore runtime 展示“进行中 / 待处理 / 已完成”；ERP question、OA permission 均回到原 Turn；生产结果经有效证据链形成完成回执 | `enterprise-business-lifecycle.e2e.ts`、`ConversationRowCronMenu.dom.test.tsx` |
 | 键盘与焦点 | 目录卡片可用 Enter/Space；抽屉关闭恢复触发器；请求跳转聚焦原消息内首个操作 | `OfficialAssistantsGrid.dom.test.tsx`、`AttentionInbox.dom.test.tsx`、`focusMessageTarget.dom.test.ts` |
 
 ## E2E 视口矩阵

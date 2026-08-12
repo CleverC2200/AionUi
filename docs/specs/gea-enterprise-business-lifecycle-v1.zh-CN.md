@@ -187,6 +187,8 @@ context_evidence
 
 自动化断言不只看页面：它还固定检查三类同步请求顺序、受管 `prepare`、opaque create、两个 request action 的版本与动作、原 Turn 后续消息、空待办和最终结构化记录。
 
+页面验收还会从左栏“企业付款复核项目”真实点击付款任务，并断言同一任务依次显示“进行中 → 待处理 → 已完成”。连续交互录像位于 `tests/e2e/videos/enterprise-business-lifecycle/enterprise-business-lifecycle.webm`，与阶段截图一起保存在仓库内。
+
 ## 8. 联调边界
 
 本轮 Mock E2E 使用真实 Electron 客户端壳和真实 Renderer 交互，只在 AionCore/GEA/ERP/OA 系统边界返回固定数据。因此已经验证客户端状态链与契约组合，但不代表真实生产写入已执行。
