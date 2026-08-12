@@ -30,6 +30,7 @@ type PermissionRequestPanelProps = {
   detailLabelKey?: string;
   options: PermissionPanelOption[];
   onConfirm: (optionValue: string) => Promise<void>;
+  authorityBlocked?: boolean;
 };
 
 export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
@@ -42,6 +43,7 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
   detailLabelKey,
   options,
   onConfirm,
+  authorityBlocked = false,
 }) => {
   const { t } = useTranslation();
   const optionsIdentity = getPermissionOptionsIdentity(options);
@@ -76,7 +78,7 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
   // or the option set has changed underneath us.
   const submitOption = useCallback(
     async (option: PermissionPanelOption) => {
-      if (respondingRef.current || hasResponded || option.disabled) return;
+      if (respondingRef.current || hasResponded || authorityBlocked || option.disabled) return;
 
       const requestEpoch = requestEpochRef.current;
       const optionsEpoch = optionsEpochRef.current;
@@ -109,7 +111,7 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
         }
       }
     },
-    [hasResponded, onConfirm]
+    [authorityBlocked, hasResponded, onConfirm]
   );
 
   return (
@@ -134,7 +136,7 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
 
         {!hasResponded && (
           <>
-            <fieldset className={styles.optionsFieldset} disabled={isResponding}>
+            <fieldset className={styles.optionsFieldset} disabled={isResponding || authorityBlocked}>
               <legend id={optionsLabelId} className={styles.optionsLegend}>
                 {t('messages.chooseAction')}
               </legend>
@@ -150,8 +152,8 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
                       key={option.id}
                       className={styles.optionButton}
                       data-testid={option.testId}
-                      data-disabled={Boolean(option.disabled || isResponding)}
-                      disabled={option.disabled || isResponding}
+                      data-disabled={Boolean(option.disabled || isResponding || authorityBlocked)}
+                      disabled={option.disabled || isResponding || authorityBlocked}
                       loading={submittingId === option.id}
                       onClick={() => void submitOption(option)}
                     >

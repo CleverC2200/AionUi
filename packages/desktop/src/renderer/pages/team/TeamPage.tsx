@@ -24,6 +24,7 @@ import TeamAgentIdentity from './components/TeamAgentIdentity';
 import TeamViewToggle from './components/TeamViewToggle';
 import TeamControlBoard from './control-board/TeamControlBoard';
 import TeamWarmupOverlay from './components/TeamWarmupOverlay';
+import TeamConversationResources from './components/TeamConversationResources';
 import { resolveTeamViewMode, useTeamViewMode } from './hooks/useTeamViewMode';
 import { useTeamWarmup, type TeamWarmupMemberState, type TeamWarmupPhase } from './hooks/useTeamWarmup';
 import { TeamTabsProvider, useTeamTabs } from './hooks/TeamTabsContext';
@@ -539,6 +540,12 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
             </span>
           }
         >
+          <TeamConversationResources
+            members={assistants}
+            activeSlotId={activeSlotId}
+            activeConversationId={activeAssistant?.conversation_id}
+            workspace={effectiveWorkspace}
+          />
           <div className='relative flex h-full'>
             <TeamWarmupOverlay
               phase={warmupPhase}

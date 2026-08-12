@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpPermission, IMessagePermission } from '@/common/chat/chatLib';
 import MessageAcpPermission from '@/renderer/pages/conversation/Messages/acp/MessageAcpPermission';
@@ -115,6 +115,52 @@ describe('permission message adapters', () => {
     });
     expect(genericInvoke).not.toHaveBeenCalled();
     expect(await screen.findByTestId('message-permission-status')).toBeInTheDocument();
+  });
+
+  it('adopts the authoritative request version after a conflict before allowing a retry', async () => {
+    const message = makeGenericMessage('conflict-message');
+    message.content.interaction_request = { id: 'request-conflict', version: 'v1' };
+    interactionInvoke
+      .mockResolvedValueOnce({
+        receipt_id: 'receipt-conflict',
+        request_id: 'request-conflict',
+        version: 'v2',
+        status: 'conflict',
+        request: {
+          id: 'request-conflict',
+          version: 'v2',
+          kind: 'permission',
+          status: 'pending',
+          title: 'Run command',
+          source: { type: 'agent' },
+          conversation_id: 'conversation-1',
+          allowed_actions: ['proceed_once'],
+          updated_at: '2026-08-12T00:00:01.000Z',
+        },
+      })
+      .mockResolvedValueOnce({
+        receipt_id: 'receipt-accepted',
+        request_id: 'request-conflict',
+        version: 'v3',
+        status: 'accepted',
+        resolved_at: '2026-08-12T00:00:02.000Z',
+      });
+    render(<MessagePermission message={message} />);
+
+    fireEvent.click(screen.getByTestId('message-permission-option-proceed_once'));
+    await waitFor(() => expect(interactionInvoke).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId('message-permission-option-proceed_once')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('message-permission-option-proceed_once'));
+
+    expect(await screen.findByTestId('message-permission-status')).toBeInTheDocument();
+    expect(interactionInvoke).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ request_id: 'request-conflict', expected_version: 'v1' })
+    );
+    expect(interactionInvoke).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ request_id: 'request-conflict', expected_version: 'v2' })
+    );
   });
 
   it('keeps the generic payload exact and defaults confirmation to proceed_once', async () => {

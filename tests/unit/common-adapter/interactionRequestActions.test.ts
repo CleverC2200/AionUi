@@ -61,4 +61,17 @@ describe('InteractionRequestActions', () => {
     await expect(actions.submit(command)).resolves.toEqual(accepted);
     expect(submit.mock.calls[0][0].idempotency_key).toBe(submit.mock.calls[1][0].idempotency_key);
   });
+
+  it.each(['conflict', 'expired', 'forbidden'] as const)(
+    'does not resubmit a stale command after an authoritative %s receipt',
+    async (status) => {
+      const receipt = { ...accepted, status, resolved_at: undefined };
+      const submit = vi.fn().mockResolvedValue(receipt);
+      const actions = new InteractionRequestActions({ submit });
+
+      await expect(actions.submit(command)).resolves.toEqual(receipt);
+      await expect(actions.submit(command)).resolves.toEqual(receipt);
+      expect(submit).toHaveBeenCalledTimes(1);
+    }
+  );
 });

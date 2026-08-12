@@ -78,6 +78,19 @@ describe('AssistantCatalog', () => {
     });
   });
 
+  it('keeps a not-modified empty enterprise snapshot in managed mode', async () => {
+    const lastGood = { ...enterpriseAssistantCatalogV1, revision: 'catalog-empty', assignments: [] };
+    const catalog = new AssistantCatalog(
+      createEnterpriseAssistantFixtureAdapter({ status: 'not_modified', revision: 'catalog-empty' }, { lastGood })
+    );
+
+    await expect(catalog.load('en-US')).resolves.toMatchObject({
+      mode: 'managed',
+      revision: 'catalog-empty',
+      assistants: [],
+    });
+  });
+
   it('blocks a managed assistant when the client is below its minimum version', async () => {
     const catalog = new AssistantCatalog(
       createEnterpriseAssistantFixtureAdapter({ status: 'ok', snapshot: enterpriseAssistantCatalogV1 }),

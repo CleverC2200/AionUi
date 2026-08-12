@@ -24,6 +24,7 @@ import {
   conversationResourcesSlotId,
   isImageResource,
   type ConversationResourceItem,
+  type ConversationResourceProvenance,
 } from './model';
 
 const ResourceIcon: React.FC<{ item: ConversationResourceItem }> = ({ item }) =>
@@ -37,22 +38,32 @@ const ResourceIcon: React.FC<{ item: ConversationResourceItem }> = ({ item }) =>
 
 const resourceLocation = (item: ConversationResourceItem): string => (item.kind === 'url' ? item.url : item.path);
 
-type ConversationFactItem = {
+export type ConversationFactItem = {
   id: string;
   title: string;
   description?: string;
   status: 'danger' | 'neutral' | 'success' | 'warning';
   resource?: ConversationResourceItem;
+  provenance?: ConversationResourceProvenance;
 };
+
+const recordProvenance = (record: ConversationRecord): ConversationResourceProvenance => ({
+  recordId: record.id,
+  revision: record.revision,
+  producer: `${record.producer.type}:${record.producer.id}`,
+  turnId: record.turn_id,
+  taskId: record.task_id,
+  replacesRecordId: record.record_type === 'deliverable_revision' ? record.replaces_record_id : undefined,
+});
 
 const recordResource = (record: ConversationRecord): ConversationResourceItem | undefined => {
   if (!('resource' in record)) return undefined;
   return record.resource.kind === 'url' || /^https?:\/\//i.test(record.resource.uri)
-    ? { kind: 'url', url: record.resource.uri, name: record.resource.name }
-    : { kind: 'file', path: record.resource.uri, name: record.resource.name };
+    ? { kind: 'url', url: record.resource.uri, name: record.resource.name, provenance: recordProvenance(record) }
+    : { kind: 'file', path: record.resource.uri, name: record.resource.name, provenance: recordProvenance(record) };
 };
 
-const recordFacts = (records: ConversationRecord[]) => ({
+export const buildConversationRecordFacts = (records: ConversationRecord[]) => ({
   sources: records
     .filter((record) => record.record_type === 'context_evidence')
     .flatMap((record) => {
@@ -73,6 +84,7 @@ const recordFacts = (records: ConversationRecord[]) => ({
       description: `${record.status} · r${record.revision}`,
       status: record.status === 'ready' ? 'success' : record.status === 'withdrawn' ? 'danger' : 'neutral',
       resource: recordResource(record),
+      provenance: recordProvenance(record),
     })),
   receipts: records
     .filter(
@@ -88,6 +100,7 @@ const recordFacts = (records: ConversationRecord[]) => ({
           title: record.system,
           description: record.reference,
           status: record.outcome === 'success' ? 'success' : record.outcome === 'failure' ? 'danger' : 'warning',
+          provenance: recordProvenance(record),
         };
       }
       if (record.record_type === 'verification_evidence') {
@@ -95,6 +108,7 @@ const recordFacts = (records: ConversationRecord[]) => ({
           id: record.id,
           title: record.summary,
           status: record.outcome === 'pass' ? 'success' : record.outcome === 'fail' ? 'danger' : 'warning',
+          provenance: recordProvenance(record),
         };
       }
       return {
@@ -102,9 +116,29 @@ const recordFacts = (records: ConversationRecord[]) => ({
         title: record.definition,
         description: record.owner,
         status: record.status === 'verified' ? 'success' : 'danger',
+        provenance: recordProvenance(record),
       };
     }),
 });
+
+const ProvenanceText: React.FC<{ provenance?: ConversationResourceProvenance }> = ({ provenance }) => {
+  const { t } = useTranslation();
+  if (!provenance) return null;
+  return (
+    <Typography.Text className='block truncate text-11px text-t-quaternary'>
+      {t('conversation.resources.recordIdentity', {
+        id: provenance.recordId,
+        revision: provenance.revision,
+        producer: provenance.producer,
+      })}
+      {provenance.turnId ? ` · ${t('conversation.resources.recordTurn', { turn: provenance.turnId })}` : ''}
+      {provenance.taskId ? ` · ${t('conversation.resources.recordTask', { task: provenance.taskId })}` : ''}
+      {provenance.replacesRecordId
+        ? ` · ${t('conversation.resources.recordReplaces', { id: provenance.replacesRecordId })}`
+        : ''}
+    </Typography.Text>
+  );
+};
 
 const ResourceSection: React.FC<{
   title: string;
@@ -122,12 +156,15 @@ const ResourceSection: React.FC<{
             key={`${item.kind}:${resourceLocation(item)}`}
             type='text'
             long
-            className={`${styles.resourceButton} !h-34px !px-4px !text-t-primary hover:!bg-2 active:!bg-3`}
+            className={`${styles.resourceButton} !h-auto !min-h-34px !px-4px !py-5px !text-t-primary hover:!bg-2 active:!bg-3`}
             icon={<ResourceIcon item={item} />}
             onClick={() => onOpen(item)}
             title={resourceLocation(item)}
           >
-            <span className='min-w-0 flex-1 truncate text-left text-13px'>{item.name}</span>
+            <span className='min-w-0 flex-1 text-left'>
+              <Typography.Text className='block truncate text-13px'>{item.name}</Typography.Text>
+              <ProvenanceText provenance={item.provenance} />
+            </span>
           </Button>
         ))}
       </div>
@@ -173,6 +210,7 @@ const FactSection: React.FC<{
                     {item.description}
                   </Typography.Text>
                 ) : null}
+                <ProvenanceText provenance={item.provenance} />
               </span>
             </Button>
           ) : (
@@ -183,6 +221,7 @@ const FactSection: React.FC<{
                 {item.description ? (
                   <Typography.Text className='block text-12px text-t-tertiary'>{item.description}</Typography.Text>
                 ) : null}
+                <ProvenanceText provenance={item.provenance} />
               </span>
             </div>
           );
@@ -200,7 +239,17 @@ export const ConversationResourcesButton: React.FC<{
   inferred?: boolean;
   onOpen: (item: ConversationResourceItem) => void;
   onRequestOpen?: () => void;
-}> = ({ outputs, sources, deliverables = [], receipts = [], inferred = false, onOpen, onRequestOpen }) => {
+  scopeControls?: React.ReactNode;
+}> = ({
+  outputs,
+  sources,
+  deliverables = [],
+  receipts = [],
+  inferred = false,
+  onOpen,
+  onRequestOpen,
+  scopeControls,
+}) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
@@ -220,6 +269,7 @@ export const ConversationResourcesButton: React.FC<{
         </Typography.Text>
         {inferred ? <Tag size='small'>{t('conversation.resources.inferred')}</Tag> : null}
       </div>
+      {scopeControls}
       <FactSection title={t('conversation.resources.deliverables')} items={deliverables} onOpen={handleOpen} />
       <FactSection title={t('conversation.resources.receipts')} items={receipts} onOpen={handleOpen} />
       <ResourceSection
@@ -289,7 +339,7 @@ const ConversationResourcesPortal: React.FC<{ conversationId: string; workspace?
     () => collectConversationResources(resourceMessages, workspace),
     [resourceMessages, workspace]
   );
-  const structured = useMemo(() => recordFacts(records), [records]);
+  const structured = useMemo(() => buildConversationRecordFacts(records), [records]);
   const resources = recordMode === 'legacy' ? inferredResources : structured;
 
   useEffect(() => {

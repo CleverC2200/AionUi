@@ -635,7 +635,11 @@
     "outputs": "产出物",
     "sources": "来源",
     "emptyOutputs": "暂无产出物",
-    "emptySources": "暂无来源"
+    "emptySources": "暂无来源",
+    "recordIdentity": "记录 {{id}} · 版本 {{revision}} · {{producer}}",
+    "recordTurn": "轮次 {{turn}}",
+    "recordTask": "任务 {{task}}",
+    "recordReplaces": "替换 {{id}}"
   },
   "agentTip": {
     "codes": {

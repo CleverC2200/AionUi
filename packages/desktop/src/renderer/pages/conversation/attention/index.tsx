@@ -21,7 +21,17 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
   );
   const items = data?.items ?? [];
 
-  useEffect(() => ipcBridge.interactionRequest.changed.on(() => void mutate()), [mutate]);
+  useEffect(() => {
+    const refresh = (): void => {
+      void mutate();
+    };
+    const offChanged = ipcBridge.interactionRequest.changed.on(refresh);
+    const offReconnected = ipcBridge.realtime.reconnected.on(refresh);
+    return () => {
+      offChanged();
+      offReconnected();
+    };
+  }, [mutate]);
 
   const close = useCallback(() => {
     setVisible(false);

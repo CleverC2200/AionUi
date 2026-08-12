@@ -6,9 +6,10 @@
 
 import { conversation } from '@/common/adapter/ipcBridge';
 import type { IAskQuestion, IMessageAsk } from '@/common/chat/chatLib';
+import type { InteractionRequest } from '@/common/types/interactionRequest';
 import { Button, Card, Checkbox, Input, Radio } from '@arco-design/web-react';
 import { CheckOne } from '@icon-park/react';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   interactionRequestActions,
@@ -59,7 +60,14 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
   const [submitted, setSubmitted] = useState<'answered' | 'declined' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<'changed' | 'ordinary' | 'verification' | null>(null);
+  const [authoritativeRequest, setAuthoritativeRequest] = useState<InteractionRequest | null>(null);
+  const [authorityBlocked, setAuthorityBlocked] = useState(false);
   const submittingRef = useRef(false);
+
+  useEffect(() => {
+    setAuthoritativeRequest(null);
+    setAuthorityBlocked(false);
+  }, [content.interaction_request?.id, content.interaction_request?.version]);
 
   const updateDraft = useCallback((index: number, patch: Partial<Draft>) => {
     setDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
@@ -86,12 +94,21 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
     });
     try {
       if (content.interaction_request) {
+        const request = authoritativeRequest ?? content.interaction_request;
         const receipt = await interactionRequestActions.submit({
-          request_id: content.interaction_request.id,
-          expected_version: content.interaction_request.version,
+          request_id: request.id,
+          expected_version: request.version,
           action_id: 'answer',
           payload: { answers },
         });
+        if (receipt.request) {
+          setAuthoritativeRequest(receipt.request);
+          setAuthorityBlocked(
+            receipt.request.status !== 'pending' || !receipt.request.allowed_actions.includes('answer')
+          );
+        } else if (!['accepted', 'already_resolved'].includes(receipt.status)) {
+          setAuthorityBlocked(true);
+        }
         requireAcceptedInteractionReceipt(receipt);
       } else {
         await conversation.answerAsk.invoke({
@@ -114,7 +131,15 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
       submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [content.interaction_request, drafts, questions, message.conversation_id, requestId, submitted]);
+  }, [
+    authoritativeRequest,
+    content.interaction_request,
+    drafts,
+    questions,
+    message.conversation_id,
+    requestId,
+    submitted,
+  ]);
 
   const handleDecline = useCallback(async () => {
     if (submittingRef.current || submitted !== null) return;
@@ -123,11 +148,20 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
     setSubmissionError(null);
     try {
       if (content.interaction_request) {
+        const request = authoritativeRequest ?? content.interaction_request;
         const receipt = await interactionRequestActions.submit({
-          request_id: content.interaction_request.id,
-          expected_version: content.interaction_request.version,
+          request_id: request.id,
+          expected_version: request.version,
           action_id: 'decline',
         });
+        if (receipt.request) {
+          setAuthoritativeRequest(receipt.request);
+          setAuthorityBlocked(
+            receipt.request.status !== 'pending' || !receipt.request.allowed_actions.includes('decline')
+          );
+        } else if (!['accepted', 'already_resolved'].includes(receipt.status)) {
+          setAuthorityBlocked(true);
+        }
         requireAcceptedInteractionReceipt(receipt);
       } else {
         await conversation.answerAsk.invoke({
@@ -150,7 +184,7 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
       submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [content.interaction_request, message.conversation_id, requestId, submitted]);
+  }, [authoritativeRequest, content.interaction_request, message.conversation_id, requestId, submitted]);
 
   if (!questions.length) return null;
 
@@ -170,7 +204,7 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
                   className={own.optionList}
                   value={d.labels}
                   onChange={(labels) => updateDraft(qi, { labels: labels as string[] })}
-                  disabled={submitted !== null}
+                  disabled={submitted !== null || authorityBlocked}
                 >
                   {q.options.map((opt) => (
                     <Checkbox
@@ -195,7 +229,7 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
                       ? updateDraft(qi, { labels: [], otherSelected: true })
                       : updateDraft(qi, { labels: [value], otherSelected: false })
                   }
-                  disabled={submitted !== null}
+                  disabled={submitted !== null || authorityBlocked}
                 >
                   {q.options.map((opt) => (
                     <Radio
@@ -225,7 +259,7 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
                       placeholder={t('messages.askOtherPlaceholder')}
                       value={d.other}
                       onChange={(v) => updateDraft(qi, { other: v })}
-                      disabled={submitted !== null}
+                      disabled={submitted !== null || authorityBlocked}
                       data-testid={`message-question-other-input-${qi}`}
                     />
                   ) : null}
@@ -242,14 +276,19 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
             <Button
               type='primary'
               size='small'
-              disabled={!allAnswered}
+              disabled={!allAnswered || authorityBlocked}
               loading={submitting}
               onClick={handleSubmit}
               data-testid='message-question-submit'
             >
               {t('messages.askSubmit')}
             </Button>
-            <Button size='small' disabled={submitting} onClick={handleDecline} data-testid='message-question-decline'>
+            <Button
+              size='small'
+              disabled={submitting || authorityBlocked}
+              onClick={handleDecline}
+              data-testid='message-question-decline'
+            >
               {t('messages.askDecline')}
             </Button>
           </div>

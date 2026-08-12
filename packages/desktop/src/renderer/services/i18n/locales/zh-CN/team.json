@@ -113,6 +113,11 @@
     "single": "单聊",
     "board": "看板"
   },
+  "resources": {
+    "allMembers": "全部成员",
+    "filteredBy": "已筛选：{{name}}",
+    "structuredRecordsHint": "交付物请在会话资源检查器中查看。"
+  },
   "controlBoard": {
     "title": "团队控制看板",
     "sequence": "权威状态 · 事件 {{sequence}}",

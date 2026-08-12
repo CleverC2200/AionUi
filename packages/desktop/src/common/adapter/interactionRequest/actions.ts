@@ -27,8 +27,11 @@ export class InteractionRequestActions {
       .submit(command)
       .then(parseInteractionRequestReceipt)
       .then((receipt) => {
-        if (receipt.status === 'accepted' || receipt.status === 'already_resolved') current.terminal = receipt;
-        if (receipt.status === 'unknown_external_write') current.terminal = receipt;
+        // A receipt is authoritative for this exact request/version/action
+        // attempt. Cache every outcome so a stale card cannot submit the same
+        // command again; conflict receipts may carry a newer request version,
+        // which the renderer can use for a distinct follow-up command.
+        current.terminal = receipt;
         return receipt;
       })
       .finally(() => {

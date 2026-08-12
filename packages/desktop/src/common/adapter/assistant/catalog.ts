@@ -223,7 +223,7 @@ export function createEnterpriseAssistantFixtureAdapter(
       if (response.status === 'not_modified' && options.lastGood) {
         return {
           assistants: projectEnterpriseAssistantSnapshot(options.lastGood, locale),
-          mode: options.lastGood.assignments.length > 0 ? 'managed' : 'standard',
+          mode: 'managed',
           sync_status: 'fresh',
           revision: response.revision,
         };

@@ -1,13 +1,14 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { AttentionInbox } from '@/renderer/pages/conversation/attention';
 import { SWRConfig } from 'swr';
 
-const { listInvoke, changedOn } = vi.hoisted(() => ({
+const { listInvoke, changedOn, reconnectedOn } = vi.hoisted(() => ({
   listInvoke: vi.fn(),
   changedOn: vi.fn(() => vi.fn()),
+  reconnectedOn: vi.fn(() => vi.fn()),
 }));
 
 vi.mock('@/common', () => ({
@@ -16,6 +17,7 @@ vi.mock('@/common', () => ({
       list: { invoke: listInvoke },
       changed: { on: changedOn },
     },
+    realtime: { reconnected: { on: reconnectedOn } },
   },
 }));
 
@@ -131,5 +133,24 @@ describe('AttentionInbox', () => {
     fireEvent.click(screen.getByText('common.retry'));
     await waitFor(() => expect(listInvoke).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('conversation.attention.empty')).toBeInTheDocument();
+  });
+
+  it('reloads the authoritative pending list after realtime reconnect', async () => {
+    let reconnect: (() => void) | undefined;
+    reconnectedOn.mockImplementationOnce((listener: () => void) => {
+      reconnect = listener;
+      return vi.fn();
+    });
+    render(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <MemoryRouter>
+          <AttentionInbox />
+        </MemoryRouter>
+      </SWRConfig>
+    );
+
+    await screen.findByTestId('attention-inbox-trigger');
+    await act(async () => reconnect?.());
+    await waitFor(() => expect(listInvoke).toHaveBeenCalledTimes(2));
   });
 });

@@ -635,7 +635,11 @@
     "outputs": "Outputs",
     "sources": "Sources",
     "emptyOutputs": "No outputs yet",
-    "emptySources": "No sources yet"
+    "emptySources": "No sources yet",
+    "recordIdentity": "Record {{id}} · revision {{revision}} · {{producer}}",
+    "recordTurn": "Turn {{turn}}",
+    "recordTask": "Task {{task}}",
+    "recordReplaces": "replaces {{id}}"
   },
   "agentTip": {
     "codes": {
