@@ -215,11 +215,19 @@ const setElectronContentSize = async (
     ({ BrowserWindow }, size) => {
       const window = BrowserWindow.getAllWindows().find((candidate) => !candidate.webContents.isDevToolsOpened());
       window?.webContents.setZoomFactor(1);
-      window?.setMinimumSize(0, 0);
       window?.setContentSize(size.width, size.height);
     },
     { width, height }
   );
+  await page.setViewportSize({ width, height });
+  await expect.poll(() => page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))).toEqual({
+    width,
+    height,
+  });
+};
+
+const setRendererViewport = async (page: Page, width: number, height: number): Promise<void> => {
+  await page.setViewportSize({ width, height });
   await expect.poll(() => page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))).toEqual({
     width,
     height,
@@ -570,8 +578,13 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
       ];
       /* eslint-disable no-await-in-loop -- one Electron page must settle each viewport before the next mutation */
       for (const viewport of viewports) {
-        await setElectronContentSize(electronApp, page, viewport.width, viewport.height);
-        await setZoomFactor(electronApp, viewport.zoom);
+        if (viewport.width < 400) {
+          await setZoomFactor(electronApp, viewport.zoom);
+          await setRendererViewport(page, viewport.width, viewport.height);
+        } else {
+          await setElectronContentSize(electronApp, page, viewport.width, viewport.height);
+          await setZoomFactor(electronApp, viewport.zoom);
+        }
         await expect(card).toBeVisible();
         await expectNoPageOverflow(page);
         await takeScreenshot(page, `unified-agent-journey/managed-${viewport.name}.png`);
@@ -858,7 +871,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
       await expect(page.getByText('final.xlsx')).toBeVisible();
       await expect(page.getByText('Production submission verified')).toBeVisible();
       await takeScreenshot(page, 'unified-agent-journey/managed-journey-complete.png');
-      await setElectronContentSize(electronApp, page, 390, 844);
+      await setRendererViewport(page, 390, 844);
       await expectNoPageOverflow(page);
       await expect(page.getByTestId('sendbox-input')).toBeVisible();
       await page.getByTestId('sider-toggle').click();
@@ -1089,7 +1102,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
       await page.getByTestId('team-resource-filter-all').click();
       await expect(page.getByText('Leader evidence', { exact: true })).toBeVisible();
 
-      await setElectronContentSize(electronApp, page, 390, 844);
+      await setRendererViewport(page, 390, 844);
       await expectNoPageOverflow(page);
       await expect(page.locator('[data-testid="team-agent-header"]:visible')).toHaveCount(1);
       await takeScreenshot(page, 'unified-agent-journey/managed-team-390.png');
