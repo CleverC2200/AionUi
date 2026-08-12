@@ -5,6 +5,7 @@
  */
 
 import type { TMessage } from '@/common/chat/chatLib';
+import { dispatchE2EWsEvent } from '@/common/adapter/httpBridge';
 import { useAddOrUpdateMessage, useMergeLiveMessage } from '@/renderer/pages/conversation/Messages/hooks';
 import React, { useEffect } from 'react';
 
@@ -17,6 +18,25 @@ type RunScenarioOptions = {
   seedHistoryOnly?: boolean;
 };
 
+type InteractionQuestionFixture = {
+  header?: string;
+  question: string;
+  options: Array<{ label: string; description?: string }>;
+};
+
+type InteractionPermissionFixture = {
+  title: string;
+  description: string;
+  action?: string;
+  detail?: string;
+  options: Array<{ label: string; value: string }>;
+};
+
+type FollowUpFixture = {
+  user: string;
+  assistant: string;
+};
+
 type StreamController = {
   runScenario: (options?: RunScenarioOptions) => Promise<void>;
   emitPlan: (entries: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed' }>) => Promise<void>;
@@ -25,8 +45,13 @@ type StreamController = {
   emitToolError: (toolName: string, description: string) => Promise<void>;
   emitFileChange: (path: string, oldText: string, newText: string) => Promise<void>;
   emitAgentStatusError: (agentName: string) => Promise<void>;
-  emitFollowUpExchange: () => Promise<void>;
-  emitInteractionQuestion: (requestId: string, version?: string) => Promise<void>;
+  emitFollowUpExchange: (fixture?: FollowUpFixture) => Promise<void>;
+  emitInteractionQuestion: (requestId: string, version?: string, fixture?: InteractionQuestionFixture) => Promise<void>;
+  emitInteractionPermission: (
+    requestId: string,
+    version?: string,
+    fixture?: InteractionPermissionFixture
+  ) => Promise<void>;
 };
 
 type StreamRegistry = {
@@ -97,8 +122,10 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
   const mergeLiveMessage = useMergeLiveMessage();
 
   useEffect(() => {
-    const enabledConversationId =
-      typeof window !== 'undefined' ? window.sessionStorage.getItem(ENABLED_CONVERSATION_KEY) : null;
+    if (typeof window === 'undefined' || window.__aionuiE2ETest !== true) {
+      return;
+    }
+    const enabledConversationId = window.sessionStorage.getItem(ENABLED_CONVERSATION_KEY);
     if (enabledConversationId !== conversationId) {
       return;
     }
@@ -303,7 +330,11 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
           window.setTimeout(resolve, STREAM_TICK_MS);
         });
       },
-      emitFollowUpExchange: async () => {
+      emitFollowUpExchange: async (fixture?: FollowUpFixture) => {
+        const exchange = fixture ?? {
+          user: 'Please continue after the neutral info tip.',
+          assistant: 'Follow-up reply arrived after the neutral empty-turn tip.',
+        };
         const userMsgId = `e2e-follow-up-user-${Date.now()}`;
         const assistantMsgId = `e2e-follow-up-assistant-${Date.now()}`;
 
@@ -317,7 +348,7 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
             status: 'finish',
             created_at: Date.now(),
             content: {
-              content: 'Please continue after the neutral info tip.',
+              content: exchange.user,
             },
           },
           true
@@ -337,7 +368,7 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
             status: 'finish',
             created_at: Date.now() + 1,
             content: {
-              content: 'Follow-up reply arrived after the neutral empty-turn tip.',
+              content: exchange.assistant,
             },
           },
           true
@@ -347,7 +378,15 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
           window.setTimeout(resolve, STREAM_TICK_MS);
         });
       },
-      emitInteractionQuestion: async (requestId: string, version = 'v1') => {
+      emitInteractionQuestion: async (requestId: string, version = 'v1', fixture?: InteractionQuestionFixture) => {
+        const question = fixture ?? {
+          header: 'Approval',
+          question: 'Continue the governed workflow?',
+          options: [
+            { label: 'Continue', description: 'Resume the original managed turn.' },
+            { label: 'Stop', description: 'Leave the request unresolved.' },
+          ],
+        };
         addOrUpdateMessage(
           {
             id: `e2e-question-${requestId}`,
@@ -362,12 +401,7 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
               interaction_request: { id: requestId, version },
               questions: [
                 {
-                  header: 'Approval',
-                  question: 'Continue the governed workflow?',
-                  options: [
-                    { label: 'Continue', description: 'Resume the original managed turn.' },
-                    { label: 'Stop', description: 'Leave the request unresolved.' },
-                  ],
+                  ...question,
                   multi_select: false,
                 },
               ],
@@ -375,6 +409,49 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
           } as unknown as TMessage,
           true
         );
+
+        dispatchE2EWsEvent('interaction_request.changed', { revision: `e2e:${requestId}:${version}` });
+
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, STREAM_TICK_MS);
+        });
+      },
+      emitInteractionPermission: async (requestId: string, version = 'v1', fixture?: InteractionPermissionFixture) => {
+        const permission = fixture ?? {
+          title: 'Confirm production submission',
+          description: 'Submit the reviewed payment request to the governed production system.',
+          action: 'execute',
+          detail: 'OA-PAY-20260812-001',
+          options: [
+            { label: 'Allow once', value: 'proceed_once' },
+            { label: 'Reject', value: 'reject_once' },
+          ],
+        };
+        const msgId = `e2e-permission-${requestId}`;
+        addOrUpdateMessage(
+          {
+            id: msgId,
+            msg_id: msgId,
+            conversation_id: conversationId,
+            type: 'permission',
+            position: 'left',
+            status: 'work',
+            created_at: Date.now(),
+            content: {
+              id: requestId,
+              call_id: requestId,
+              title: permission.title,
+              description: permission.description,
+              action: permission.action ?? 'execute',
+              command_type: permission.detail,
+              interaction_request: { id: requestId, version },
+              options: permission.options,
+            },
+          } as unknown as TMessage,
+          true
+        );
+
+        dispatchE2EWsEvent('interaction_request.changed', { revision: `e2e:${requestId}:${version}` });
 
         await new Promise<void>((resolve) => {
           window.setTimeout(resolve, STREAM_TICK_MS);

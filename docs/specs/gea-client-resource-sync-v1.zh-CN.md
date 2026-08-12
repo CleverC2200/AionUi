@@ -445,6 +445,12 @@ AionCore 必须原子消费仍有效且属于当前身份的 preparation，并�
 - Team 工作区：Task、Run、Lease、Receipt、Attention 由 AionCore 权威管理。
 - 恢复与无障碍：离线、陈旧目录、失效 Assignment、窄屏和键盘流程有明确降级状态。
 
+资源同步进入真实业务任务后的完整时序、状态链、业务系统待办和证据回执见
+`docs/specs/gea-enterprise-business-lifecycle-v1.zh-CN.md`。该文档已由真实 Electron 壳加 Mock
+GEA/AionCore/ERP/OA 边界的 E2E 固定验证。关键原则是：资源同步成功只代表投影已刷新，
+最终能否执行仍由会话 `prepare` 裁决；业务系统待办属于原 Task 的暂停状态，处理后必须回到
+原会话、原 Turn；生产写入只有在外部结果和验证证据成立后才能发布完成回执。
+
 当前联调兼容边界：若随客户端运行的 AionCore 尚未提供 `/api/sidebar`，AionUi 仅使用既有
 `/api/conversations` 与 `/api/teams` 恢复旧版“团队 / 项目 / 对话”左栏；若尚未提供
 `/api/interaction-requests`，待处理入口显示空态而不报加载错误。只有明确的路由不存在
@@ -534,6 +540,11 @@ GEA 统一返回：
 - [ ] 同一 preparation 重复消费只创建一个会话。
 - [ ] 模板升级不修改历史会话快照，只影响尚未开始的新 Turn。
 - [ ] 所有目录、错误和增量响应经过敏感字段扫描。
+- [ ] ERP/其他业务系统产生的 question 待办能通过 `interaction_request.changed` 刷新并回到原 Turn。
+- [ ] 生产 MCP 的 permission 待办只允许服务端下发的动作，重复点击不产生第二次写入。
+- [ ] 待办处理 accepted 后 Agent 继续原 Task，不创建新会话或新 Task。
+- [ ] 生产系统结果未知时停在 `verification_required`，不自动重发。
+- [ ] completion receipt 必须引用通过的 verification evidence，后者必须引用产物或外部结果。
 
 ## 12. 推荐联调顺序
 
@@ -543,6 +554,10 @@ GEA 统一返回：
 4. 冻结 Skill/MCP/Agent 资源目录，AionCore 完成解析和本地状态合并。
 5. 打通会话 prepare 和 opaque 创建，验证所有阻断分支。
 6. 最后增加变更通知、缓存、灰度和运维审计。
+
+客户端已经提供一条可直接用于联调替换 Mock 的完整业务生命周期用例：
+`tests/e2e/features/assistants/enterprise-business-lifecycle.e2e.ts`。建议 GEA/AionCore 每打通一层，
+只替换对应系统边界，保留用例中的请求顺序、幂等、原 Turn 恢复和证据链断言。
 
 第一轮联调不需要接真实生产系统。建议 GEA 提供一个测试租户、三类测试助手（普通、生产写入、暂停）和可控错误注入，先把协议一致性及防呆边界跑通。
 

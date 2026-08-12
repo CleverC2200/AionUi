@@ -2,7 +2,7 @@
 
 ## 核心旅程
 
-正式产品只保留一条主旅程：助手目录 → 助手详情/本地辅助能力 → 会话准备 → 会话运行 → 待处理 → 恢复原 Turn → 结构化交付 → 完成回执。Team 复用同一旅程，只增加成员上下文，不另建任务与交付状态源。
+正式产品只保留一条主旅程：打开客户端 → 同步企业助手/Skill/MCP → 助手详情/本地辅助能力 → 会话准备 → 会话运行 → 业务系统待处理 → 恢复原 Turn → 结构化交付 → 完成回执。Team 复用同一旅程，只增加成员上下文，不另建任务与交付状态源。完整业务时序见 `gea-enterprise-business-lifecycle-v1.zh-CN.md`。
 
 ## 自动化证据
 
@@ -18,6 +18,7 @@
 | 结构化事件重复、乱序、gap | 较旧 revision 不覆盖新记录；gap 回源权威 snapshot | `conversationRecords.test.ts`、`teamWorkProjection.test.ts` |
 | 交付替换、证据缺失 | 按稳定 record ID/revision 替换；无证据不得宣称完成 | `conversationRecords.test.ts`、`ConversationResources.dom.test.tsx` |
 | Team lease 过期与待处理恢复 | 成员显示暂停而非运行；待处理回到原成员、原消息 | `memberWorkSummary.test.ts`、`AttentionInbox.dom.test.tsx` |
+| GEA 资源到企业业务任务闭环 | 三类资源逐页同步后才允许受管 prepare；ERP question、OA permission 均回到原 Turn；生产结果经有效证据链形成完成回执 | `enterprise-business-lifecycle.e2e.ts` |
 | 键盘与焦点 | 目录卡片可用 Enter/Space；抽屉关闭恢复触发器；请求跳转聚焦原消息内首个操作 | `OfficialAssistantsGrid.dom.test.tsx`、`AttentionInbox.dom.test.tsx`、`focusMessageTarget.dom.test.ts` |
 
 ## E2E 视口矩阵

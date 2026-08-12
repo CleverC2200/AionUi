@@ -362,6 +362,15 @@ function dispatchWsEvent(eventName: string, payload: unknown): void {
   }
 }
 
+/**
+ * Test-only realtime seam used by the real Electron E2E harness. Production
+ * callers receive events exclusively from the WebSocket above; the harness
+ * needs the same public subscription path without standing up a second server.
+ */
+export function dispatchE2EWsEvent(eventName: string, payload: unknown): void {
+  dispatchWsEvent(eventName, payload);
+}
+
 function ensureWs(): void {
   if (typeof window === 'undefined') {
     console.debug('[ensureWs] skipped: no window');
