@@ -190,7 +190,6 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
               onDelete={onDelete}
               onToggleEnabled={onToggleEnabled}
               onStartChat={onStartChat}
-              onGoOfficial={() => selectTab('official')}
               searchActive={Boolean(normalizedSearchQuery)}
             />
           ) : (

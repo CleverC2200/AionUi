@@ -11,6 +11,7 @@ import { ConfigProvider } from '@arco-design/web-react';
 import { MemoryRouter } from 'react-router-dom';
 import AssistantSettings from '@/renderer/pages/settings/AssistantSettings';
 import EnabledAssistantsList from '@/renderer/pages/settings/AssistantSettings/home/EnabledAssistantsList';
+import MyAssistantsList from '@/renderer/pages/settings/AssistantSettings/home/MyAssistantsList';
 import type { AssistantListItem } from '@/renderer/pages/settings/AssistantSettings/types';
 
 const useAssistantListMock = vi.fn();
@@ -231,6 +232,25 @@ describe('AssistantSettings', () => {
     // Each enabled row exposes an enable switch so users can disable in place.
     expect(screen.getByTestId('switch-enabled-official')).toBeInTheDocument();
     expect(screen.getByTestId('switch-enabled-cli')).toBeInTheDocument();
+  });
+
+  it('keeps assistant creation actions in the header instead of repeating them in the empty state', () => {
+    render(
+      <ConfigProvider>
+        <MyAssistantsList
+          assistants={[]}
+          localeKey='en-US'
+          onOpenDetail={vi.fn()}
+          onDelete={vi.fn()}
+          onToggleEnabled={vi.fn()}
+          onStartChat={vi.fn()}
+        />
+      </ConfigProvider>
+    );
+
+    expect(screen.getByTestId('created-empty')).toHaveTextContent('No custom assistants yet');
+    expect(screen.queryByTestId('created-empty-create')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('created-empty-official')).not.toBeInTheDocument();
   });
 
   it('disables enabled-assistant dragging while search is active', () => {
