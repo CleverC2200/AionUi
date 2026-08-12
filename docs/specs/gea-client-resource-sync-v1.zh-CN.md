@@ -329,6 +329,7 @@ GEA 同事不需要让客户端直连 GEA，但需要和 AionCore 同事一起�
 | `GET /api/skills` | 当前设备可用 Skill 投影 | 企业 Skill 使用稳定 ID，保留来源和可用状态 |
 | `GET /api/mcp/servers` | 当前设备 MCP 投影 | 不把 secret 返回 Renderer；区分认证和运行状态 |
 | `GET /api/agents/management` | Agent 运行目录 | GEA 元数据与本机安装、健康状态合并展示 |
+| `POST /api/client-resources/sync` | 用户显式从 GEA 获取资源 | 请求指定 `assistants / skills / mcps`，AionCore 拉取完整快照并返回同步摘要 |
 | `POST /api/conversations/prepare` | 原子准备会话 | 解析 Assignment、策略、Skill、MCP、Agent 和身份 |
 | `POST /api/conversations` | 创建会话 | 企业助手仅接受 opaque preparation |
 
@@ -344,6 +345,29 @@ GEA 同事不需要让客户端直连 GEA，但需要和 AionCore 同事一起�
 ```
 
 不能根据“数组中是否有 managed 助手”猜测企业模式，否则企业空目录会误显示官方助手。
+
+三个客户端管理页的“从 GEA 获取”统一调用：
+
+```http
+POST /api/client-resources/sync
+Content-Type: application/json
+
+{ "resources": ["assistants"] }
+```
+
+`resources` 只接受 `assistants | skills | mcps`；客户端每次只请求当前页面对应的一类资源。建议响应：
+
+```json
+{
+  "status": "completed",
+  "changed": 2,
+  "skipped": 0,
+  "failed": 0,
+  "revision": "resource-r20"
+}
+```
+
+`status` 为 `completed | notAuthenticated | partial | unavailable`。同步成功后客户端重新读取对应既有投影接口，不直接消费 GEA 原始对象；`404 + NOT_FOUND` 表示当前 AionCore 尚未实现该能力，客户端显示“当前服务尚不支持”，不伪造成功，也不回退为本地导入。AionCore 应合并同类并发同步请求，并保持资源目录的完整快照、last-good 和敏感字段约束。
 
 ## 6. 原子会话准备
 

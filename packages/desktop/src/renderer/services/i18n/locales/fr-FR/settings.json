@@ -1340,6 +1340,13 @@
   "personalModelFetchFailed": "Impossible de récupérer les modèles personnels depuis GEA. Réessayez plus tard ou contactez l'administrateur.",
   "personalModelLoginRequired": "Connectez-vous avant de récupérer les modèles personnels depuis GEA.",
   "personalModelNoneAvailable": "Aucune autorisation de modèle personnel n'est disponible à synchroniser depuis GEA.",
+  "geaResourceFetchFromGea": "Récupérer depuis GEA",
+  "geaResourceFetching": "Récupération depuis GEA…",
+  "geaResourceFetchSuccess": "{{count}} ressource(s) mise(s) à jour depuis GEA.",
+  "geaResourceNoChanges": "Les ressources GEA sont déjà à jour.",
+  "geaResourceLoginRequired": "Connectez-vous avant de récupérer des ressources depuis GEA.",
+  "geaResourceUnavailable": "La synchronisation des ressources GEA n'est pas disponible dans le service actuel.",
+  "geaResourceFetchFailed": "Impossible de récupérer les ressources depuis GEA. Réessayez plus tard ou contactez l'administrateur.",
   "autoInjectedSkillsHint": "Chargé automatiquement dans chaque conversation – pas besoin de les activer ; l'agent décide quand les utiliser.",
   "browserData": {
     "title": "Navigateur intégré",

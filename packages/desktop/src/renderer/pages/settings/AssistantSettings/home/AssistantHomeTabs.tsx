@@ -32,6 +32,8 @@ type AssistantHomeTabsProps = {
   onReorderEnabled: (activeId: string, overId: string) => void | Promise<void>;
   onStartChat: (assistant: AssistantListItem) => void;
   onReloadCatalog: () => void | Promise<void>;
+  catalogSyncing?: boolean;
+  onSyncFromGea: () => void | Promise<void>;
   /** Tab to show on mount (e.g. return to Official after editing a builtin). */
   initialTab?: 'enabled' | 'mine' | 'official';
   /** Notified whenever the active tab changes, so the parent can remember it. */
@@ -56,6 +58,8 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
   onReorderEnabled,
   onStartChat,
   onReloadCatalog,
+  catalogSyncing = false,
+  onSyncFromGea,
   initialTab = 'enabled',
   onTabChange,
 }) => {
@@ -130,8 +134,20 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
                 )}
                 <TalkToButlerButton
                   className='shrink-0'
-                  label={t('settings.createAssistant', { defaultValue: 'Create Assistant' })}
+                  label={
+                    catalogSyncing
+                      ? t('settings.geaResourceFetching')
+                      : t('settings.createAssistant', { defaultValue: 'Create Assistant' })
+                  }
+                  loading={catalogSyncing}
                   chatLabel={t('settings.talkToButler.createViaChat', { defaultValue: 'Create via chat' })}
+                  extraActions={[
+                    {
+                      key: 'gea',
+                      label: catalogSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea'),
+                      onClick: () => void onSyncFromGea(),
+                    },
+                  ]}
                   onManual={onCreate}
                   manualLabel={t('settings.talkToButler.createManually', { defaultValue: 'Create manually' })}
                   prompt={t('settings.talkToButler.prompt.createAssistant', {

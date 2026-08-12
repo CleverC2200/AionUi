@@ -1342,6 +1342,13 @@
   "personalModelFetchFailed": "GEA から個人モデルを取得できませんでした。後でもう一度試すか、管理者に連絡してください。",
   "personalModelLoginRequired": "ログインしてから GEA の個人モデルを取得してください。",
   "personalModelNoneAvailable": "GEA に同期可能な個人モデル認可がありません。",
+  "geaResourceFetchFromGea": "GEA から取得",
+  "geaResourceFetching": "GEA から取得中…",
+  "geaResourceFetchSuccess": "GEA から {{count}} 件のリソースを更新しました。",
+  "geaResourceNoChanges": "GEA リソースはすでに最新です。",
+  "geaResourceLoginRequired": "ログインしてから GEA のリソースを取得してください。",
+  "geaResourceUnavailable": "現在のサービスでは GEA リソース同期を利用できません。",
+  "geaResourceFetchFailed": "GEA からリソースを取得できませんでした。後でもう一度試すか、管理者に連絡してください。",
   "autoInjectedSkillsHint": "すべての会話に自動的に読み込まれます。有効化は不要で、エージェントが使用するタイミングを判断します。",
   "browserData": {
     "title": "アプリ内ブラウザー",

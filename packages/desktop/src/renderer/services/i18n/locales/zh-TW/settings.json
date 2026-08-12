@@ -1397,6 +1397,13 @@
   "personalModelFetchFailed": "從 GEA 取得個人模型失敗，請稍後重試或聯絡管理員。",
   "personalModelLoginRequired": "請先登入，再從 GEA 取得個人模型。",
   "personalModelNoneAvailable": "GEA 中沒有可同步的個人模型授權。",
+  "geaResourceFetchFromGea": "從 GEA 取得",
+  "geaResourceFetching": "正在從 GEA 取得…",
+  "geaResourceFetchSuccess": "已從 GEA 更新 {{count}} 項資源。",
+  "geaResourceNoChanges": "GEA 資源已是最新。",
+  "geaResourceLoginRequired": "請先登入，再從 GEA 取得資源。",
+  "geaResourceUnavailable": "目前服務尚未支援 GEA 資源同步。",
+  "geaResourceFetchFailed": "從 GEA 取得資源失敗，請稍後重試或聯絡管理員。",
   "autoInjectedSkillsHint": "每次對話都會自動載入，無需手動啟用；由智能體自行決定何時呼叫。",
   "browserData": {
     "title": "應用內瀏覽器",

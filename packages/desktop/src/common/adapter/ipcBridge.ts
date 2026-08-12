@@ -269,6 +269,26 @@ export const assistants = {
 };
 
 // ---------------------------------------------------------------------------
+// GEA client resources — AionCore remains the only gateway to GEA
+// ---------------------------------------------------------------------------
+
+export type GeaClientResourceKind = 'assistants' | 'skills' | 'mcps';
+
+export type GeaClientResourceSyncResult = {
+  changed: number;
+  failed: number;
+  revision?: string;
+  skipped: number;
+  status: 'completed' | 'notAuthenticated' | 'partial' | 'unavailable';
+};
+
+export const clientResources = {
+  syncFromGea: httpPost<GeaClientResourceSyncResult, { resources: GeaClientResourceKind[] }>(
+    '/api/client-resources/sync'
+  ),
+};
+
+// ---------------------------------------------------------------------------
 // Conversation — REST + WS
 // ---------------------------------------------------------------------------
 

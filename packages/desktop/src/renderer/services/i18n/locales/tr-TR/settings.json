@@ -1340,6 +1340,13 @@
   "personalModelFetchFailed": "Kişisel modeller GEA'dan alınamadı. Daha sonra tekrar deneyin veya yöneticinize başvurun.",
   "personalModelLoginRequired": "GEA'dan kişisel modelleri almadan önce oturum açın.",
   "personalModelNoneAvailable": "GEA'da eşitlenebilecek kişisel model yetkisi yok.",
+  "geaResourceFetchFromGea": "GEA'dan al",
+  "geaResourceFetching": "GEA'dan alınıyor…",
+  "geaResourceFetchSuccess": "GEA'dan {{count}} kaynak güncellendi.",
+  "geaResourceNoChanges": "GEA kaynakları zaten güncel.",
+  "geaResourceLoginRequired": "GEA'dan kaynak almadan önce oturum açın.",
+  "geaResourceUnavailable": "GEA kaynak eşitlemesi mevcut hizmette kullanılamıyor.",
+  "geaResourceFetchFailed": "Kaynaklar GEA'dan alınamadı. Daha sonra tekrar deneyin veya yöneticinize başvurun.",
   "autoInjectedSkillsHint": "Her sohbete otomatik olarak yüklenir — etkinleştirmeye gerek yoktur; aracı bunları ne zaman kullanacağına karar verir.",
   "browserData": {
     "title": "Uygulama içi tarayıcı",

@@ -13,6 +13,7 @@ import SettingsPageHeader from '../components/SettingsPageHeader';
 import TalkToButlerButton from '@/renderer/components/base/TalkToButlerButton';
 import { AionSearchInput } from '@/renderer/components/base';
 import { buildSkillImportNotice, getSkillImportErrorMessage } from './skillImportMessages';
+import { useGeaResourceSync } from '@/renderer/hooks/system/useGeaResourceSync';
 
 // Skill 信息类型 / Skill info type
 interface SkillInfo {
@@ -216,6 +217,12 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
       setLoading(false);
     }
   }, [t]);
+
+  const { syncing: geaSyncing, syncFromGea } = useGeaResourceSync({
+    message: Message,
+    refresh: fetchData,
+    resource: 'skills',
+  });
 
   useEffect(() => {
     void fetchData();
@@ -1002,8 +1009,20 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
               {t('settings.skillsHub.importHistoryTitle', { defaultValue: 'Import history' })}
             </Button>
             <TalkToButlerButton
-              label={t('settings.skillsHub.addSkill', { defaultValue: 'Add Skill' })}
+              label={
+                geaSyncing
+                  ? t('settings.geaResourceFetching')
+                  : t('settings.skillsHub.addSkill', { defaultValue: 'Add Skill' })
+              }
+              loading={geaSyncing}
               chatLabel={t('settings.talkToButler.addViaChat', { defaultValue: 'Add via chat' })}
+              extraActions={[
+                {
+                  key: 'gea',
+                  label: geaSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea'),
+                  onClick: () => void syncFromGea(),
+                },
+              ]}
               onManual={handleManualImport}
               manualLabel={t('settings.skillsHub.manualImport', { defaultValue: 'Import Skills' })}
               prompt={t('settings.talkToButler.prompt.addSkill', {

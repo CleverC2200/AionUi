@@ -1340,6 +1340,13 @@
   "personalModelFetchFailed": "دریافت مدل‌های شخصی از GEA ناموفق بود. بعداً دوباره تلاش کنید یا با مدیر تماس بگیرید.",
   "personalModelLoginRequired": "پیش از دریافت مدل‌های شخصی از GEA وارد شوید.",
   "personalModelNoneAvailable": "هیچ مجوز مدل شخصی برای همگام‌سازی از GEA موجود نیست.",
+  "geaResourceFetchFromGea": "دریافت از GEA",
+  "geaResourceFetching": "در حال دریافت از GEA…",
+  "geaResourceFetchSuccess": "{{count}} منبع از GEA به‌روزرسانی شد.",
+  "geaResourceNoChanges": "منابع GEA از قبل به‌روز هستند.",
+  "geaResourceLoginRequired": "پیش از دریافت منابع از GEA وارد شوید.",
+  "geaResourceUnavailable": "همگام‌سازی منابع GEA در سرویس فعلی در دسترس نیست.",
+  "geaResourceFetchFailed": "دریافت منابع از GEA ناموفق بود. بعداً دوباره تلاش کنید یا با مدیر تماس بگیرید.",
   "autoInjectedSkillsHint": "در هر گفتگو به‌طور خودکار بارگذاری می‌شوند — نیازی به فعال‌سازی نیست؛ عامل تصمیم می‌گیرد چه زمانی از آن‌ها استفاده کند.",
   "browserData": {
     "title": "مرورگر درون‌برنامه",

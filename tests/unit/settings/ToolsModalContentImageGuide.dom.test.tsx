@@ -13,6 +13,8 @@ const hooks = vi.hoisted(() => ({
   modelListWithImage: [] as unknown[],
   mcpServers: [] as unknown[],
   getClientBusinessSetting: vi.fn(() => Promise.resolve(undefined)),
+  refreshMcpServers: vi.fn(() => Promise.resolve([])),
+  syncFromGea: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -27,10 +29,6 @@ vi.mock('@/renderer/components/base/AionSelect', () => {
   const Select = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
   return { default: Object.assign(Select, { OptGroup: Select, Option: Select }) };
 });
-
-vi.mock('@/renderer/components/base/TalkToButlerButton', () => ({
-  default: () => <div>TalkToButlerButton</div>,
-}));
 
 vi.mock('@/renderer/pages/settings/components/AddMcpServerModal', () => ({
   default: () => null,
@@ -51,6 +49,7 @@ vi.mock('@/renderer/hooks/mcp', () => ({
     saveMcpServers: vi.fn(() => Promise.resolve()),
     setMcpServers: vi.fn(),
     isMcpServersLoading: false,
+    refreshMcpServers: hooks.refreshMcpServers,
   }),
   useMcpConnection: () => ({ testingServers: {}, handleTestMcpConnection: vi.fn(), handleTestMcpConnections: vi.fn() }),
   useMcpModal: () => ({
@@ -89,6 +88,12 @@ vi.mock('@/renderer/services/clientBusinessSettings', () => ({
   removeClientBusinessSetting: vi.fn(() => Promise.resolve()),
 }));
 
+vi.mock('@/common', () => ({
+  ipcBridge: {
+    clientResources: { syncFromGea: { invoke: hooks.syncFromGea } },
+  },
+}));
+
 vi.mock('@/common/adapter/ipcBridge', () => ({
   mcpService: {},
 }));
@@ -100,6 +105,9 @@ describe('ToolsModalContent image model guide', () => {
     hooks.modelListWithImage = [];
     hooks.mcpServers = [];
     hooks.getClientBusinessSetting.mockClear();
+    hooks.refreshMcpServers.mockClear();
+    hooks.syncFromGea.mockReset();
+    hooks.syncFromGea.mockResolvedValue({ status: 'completed', changed: 1, skipped: 0, failed: 0 });
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -144,5 +152,16 @@ describe('ToolsModalContent image model guide', () => {
       (a) => a.textContent === 'settings.goToModelSettings'
     );
     expect(links).toHaveLength(0);
+  });
+
+  it('fetches MCP resources from GEA from the add-server menu', async () => {
+    render(<ToolsModalContent />);
+
+    fireEvent.click(await screen.findByTestId('add-mcp-server-menu'));
+    const marker = await screen.findByTestId('add-mcp-server-menu-gea');
+    fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
+
+    await waitFor(() => expect(hooks.syncFromGea).toHaveBeenCalledWith({ resources: ['mcps'] }));
+    await waitFor(() => expect(hooks.refreshMcpServers).toHaveBeenCalledTimes(1));
   });
 });

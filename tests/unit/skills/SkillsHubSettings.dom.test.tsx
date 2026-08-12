@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   listSkillImportHistory: vi.fn(),
   importSkills: vi.fn(),
   deleteSkill: vi.fn(),
+  syncFromGea: vi.fn(),
   showOpen: vi.fn(),
   messageError: vi.fn(),
   messageSuccess: vi.fn(),
@@ -45,6 +46,9 @@ vi.mock('@/common', () => ({
     },
     dialog: {
       showOpen: { invoke: mocks.showOpen },
+    },
+    clientResources: {
+      syncFromGea: { invoke: mocks.syncFromGea },
     },
   },
 }));
@@ -115,6 +119,7 @@ describe('SkillsHubSettings', () => {
       max_total_bytes: 64 * 1024 * 1024,
     });
     mocks.listSkillImportHistory.mockResolvedValue([]);
+    mocks.syncFromGea.mockResolvedValue({ status: 'completed', changed: 1, skipped: 0, failed: 0 });
   });
 
   it('exports a component (smoke)', () => {
@@ -205,6 +210,19 @@ describe('SkillsHubSettings', () => {
 
     await waitFor(() => expect(screen.getByTestId('btn-open-import-history')).toBeInTheDocument());
     expect(screen.queryByText('No import records yet.')).not.toBeInTheDocument();
+  });
+
+  it('fetches skills from GEA from the add-skill menu and reloads the projection', async () => {
+    render(<SkillsHubSettings withWrapper={false} />);
+
+    await waitFor(() => expect(mocks.listAvailableSkills).toHaveBeenCalled());
+    const initialFetchCount = mocks.listAvailableSkills.mock.calls.length;
+    fireEvent.click(screen.getByTestId('btn-add-skill'));
+    const marker = await screen.findByTestId('btn-add-skill-gea');
+    fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
+
+    await waitFor(() => expect(mocks.syncFromGea).toHaveBeenCalledWith({ resources: ['skills'] }));
+    await waitFor(() => expect(mocks.listAvailableSkills.mock.calls.length).toBeGreaterThan(initialFetchCount));
   });
 
   it('renders import history as a secondary view without search or category filters', async () => {

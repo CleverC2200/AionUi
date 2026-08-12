@@ -20,6 +20,7 @@
 import { Message } from '@arco-design/web-react';
 import { useAssistantEditor, useAssistantList } from '@/renderer/hooks/assistant';
 import { useManagedAgentRuntimeCatalog } from '@/renderer/hooks/agent/useManagedAgents';
+import { useGeaResourceSync } from '@/renderer/hooks/system/useGeaResourceSync';
 import { buildAssistantEditorBackends, resolveAvatarImageSrc } from './assistantUtils';
 import AssistantEditorPage from './AssistantEditorPage';
 import AssistantHomeTabs from './home/AssistantHomeTabs';
@@ -71,6 +72,11 @@ const AssistantSettings: React.FC = () => {
     catalogLoading,
   } = useAssistantList();
   const managedAgentRuntimeCatalog = useManagedAgentRuntimeCatalog();
+  const { syncing: catalogSyncing, syncFromGea } = useGeaResourceSync({
+    message,
+    refresh: loadAssistants,
+    resource: 'assistants',
+  });
   const builtinAvatarOptions = useMemo(
     () =>
       assistants
@@ -278,6 +284,8 @@ const AssistantSettings: React.FC = () => {
               }}
               onStartChat={handleStartChat}
               onReloadCatalog={loadAssistants}
+              catalogSyncing={catalogSyncing}
+              onSyncFromGea={syncFromGea}
             />
           )}
 

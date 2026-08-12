@@ -1340,6 +1340,13 @@
   "personalModelFetchFailed": "Не удалось получить персональные модели из GEA. Повторите попытку позже или обратитесь к администратору.",
   "personalModelLoginRequired": "Войдите в систему перед получением персональных моделей из GEA.",
   "personalModelNoneAvailable": "В GEA нет доступных для синхронизации разрешений на персональные модели.",
+  "geaResourceFetchFromGea": "Получить из GEA",
+  "geaResourceFetching": "Получение из GEA…",
+  "geaResourceFetchSuccess": "Из GEA обновлено ресурсов: {{count}}.",
+  "geaResourceNoChanges": "Ресурсы GEA уже актуальны.",
+  "geaResourceLoginRequired": "Войдите в систему перед получением ресурсов из GEA.",
+  "geaResourceUnavailable": "Синхронизация ресурсов GEA недоступна в текущей службе.",
+  "geaResourceFetchFailed": "Не удалось получить ресурсы из GEA. Повторите попытку позже или обратитесь к администратору.",
   "autoInjectedSkillsHint": "Автоматически загружаются в каждый диалог — включать не нужно; агент сам решает, когда их использовать.",
   "browserData": {
     "title": "Встроенный браузер",

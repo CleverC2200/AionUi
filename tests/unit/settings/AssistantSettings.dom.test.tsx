@@ -12,6 +12,7 @@ import { MemoryRouter } from 'react-router-dom';
 import AssistantSettings from '@/renderer/pages/settings/AssistantSettings';
 import EnabledAssistantsList from '@/renderer/pages/settings/AssistantSettings/home/EnabledAssistantsList';
 import MyAssistantsList from '@/renderer/pages/settings/AssistantSettings/home/MyAssistantsList';
+import AssistantHomeTabs from '@/renderer/pages/settings/AssistantSettings/home/AssistantHomeTabs';
 import type { AssistantListItem } from '@/renderer/pages/settings/AssistantSettings/types';
 
 const useAssistantListMock = vi.fn();
@@ -251,6 +252,38 @@ describe('AssistantSettings', () => {
     expect(screen.getByTestId('created-empty')).toHaveTextContent('No custom assistants yet');
     expect(screen.queryByTestId('created-empty-create')).not.toBeInTheDocument();
     expect(screen.queryByTestId('created-empty-official')).not.toBeInTheDocument();
+  });
+
+  it('offers GEA sync from the assistant creation menu', async () => {
+    const onSyncFromGea = vi.fn();
+    render(
+      <ConfigProvider>
+        <AssistantHomeTabs
+          assistants={[]}
+          catalogView={null}
+          catalogError={null}
+          catalogLoading={false}
+          assistantOrder={[]}
+          localeKey='en-US'
+          onOpenDetail={vi.fn()}
+          onOpenSettings={vi.fn()}
+          onDuplicate={vi.fn()}
+          onDelete={vi.fn()}
+          onCreate={vi.fn()}
+          onToggleEnabled={vi.fn()}
+          onReorderEnabled={vi.fn()}
+          onStartChat={vi.fn()}
+          onReloadCatalog={vi.fn()}
+          onSyncFromGea={onSyncFromGea}
+        />
+      </ConfigProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('btn-create-assistant'));
+    const marker = await screen.findByTestId('btn-create-assistant-gea');
+    fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
+
+    expect(onSyncFromGea).toHaveBeenCalledTimes(1);
   });
 
   it('disables enabled-assistant dragging while search is active', () => {

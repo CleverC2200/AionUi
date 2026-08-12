@@ -1437,6 +1437,13 @@
   "personalModelFetchFailed": "Failed to fetch personal models from GEA. Try again later or contact your administrator.",
   "personalModelLoginRequired": "Sign in before fetching personal models from GEA.",
   "personalModelNoneAvailable": "No personal model authorization is available to sync from GEA.",
+  "geaResourceFetchFromGea": "Fetch from GEA",
+  "geaResourceFetching": "Fetching from GEA…",
+  "geaResourceFetchSuccess": "Updated {{count}} resource(s) from GEA.",
+  "geaResourceNoChanges": "GEA resources are already up to date.",
+  "geaResourceLoginRequired": "Sign in before fetching resources from GEA.",
+  "geaResourceUnavailable": "GEA resource sync is not available in the current service.",
+  "geaResourceFetchFailed": "Failed to fetch resources from GEA. Try again later or contact your administrator.",
   "autoInjectedSkillsHint": "Loaded automatically into every conversation — no need to enable them; the agent decides when to use them.",
   "browserData": {
     "title": "In-app browser",

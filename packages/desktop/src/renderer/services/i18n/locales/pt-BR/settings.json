@@ -1343,6 +1343,13 @@
   "personalModelFetchFailed": "Não foi possível buscar os modelos pessoais no GEA. Tente novamente mais tarde ou contate o administrador.",
   "personalModelLoginRequired": "Entre antes de buscar modelos pessoais no GEA.",
   "personalModelNoneAvailable": "Não há autorização de modelo pessoal disponível para sincronizar no GEA.",
+  "geaResourceFetchFromGea": "Buscar no GEA",
+  "geaResourceFetching": "Buscando no GEA…",
+  "geaResourceFetchSuccess": "{{count}} recurso(s) atualizado(s) pelo GEA.",
+  "geaResourceNoChanges": "Os recursos do GEA já estão atualizados.",
+  "geaResourceLoginRequired": "Entre antes de buscar recursos no GEA.",
+  "geaResourceUnavailable": "A sincronização de recursos do GEA não está disponível no serviço atual.",
+  "geaResourceFetchFailed": "Não foi possível buscar os recursos no GEA. Tente novamente mais tarde ou contate o administrador.",
   "autoInjectedSkillsHint": "Carregadas automaticamente em cada conversa — não é preciso ativá-las; o agente decide quando usá-las.",
   "browserData": {
     "title": "Navegador interno",
