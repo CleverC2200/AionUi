@@ -114,8 +114,8 @@
           <h2>AionUi / GEAUi 统一 Agent 体验</h2>
           <p class="lead">本次升级增强现有客户端主旅程，不引入第二套能力市场、任务状态源或交付面板。企业助手的核心配置由 GEA/AionCore 管理，客户端只允许策略许可的辅助 Skill 与 MCP 增量。</p>
           <div class="status-row">
-            <span class="badge ok">双路径 E2E 2/2</span>
-            <span class="badge ok">单元测试 4166 通过</span>
+            <span class="badge ok">统一旅程 E2E 4/4</span>
+            <span class="badge ok">单元测试 4168 通过</span>
             <span class="badge ok">生产构建通过</span>
             <span class="badge neutral">未推送</span>
           </div>
@@ -129,7 +129,7 @@
               <tr><th>官方 upstream HEAD</th><td class="mono">71c466a7e61d82621da02fc010e662d9abaa033b</td></tr>
               <tr><th>官方 merge-base</th><td class="mono">eeeb63b0f5a88edd983c85bbedcf646f0c9225f7</td></tr>
               <tr><th>官方集成提交</th><td class="mono">1a2aabaa2 · merge upstream main at 71c466a7e</td></tr>
-              <tr><th>已验实现与 E2E HEAD</th><td class="mono">11eabdf9dcfef730b1d1006f2ce2c30ae7b0d48a</td></tr>
+              <tr><th>验收提交</th><td>本文件所在 Git commit；离线复核时执行 <code>git rev-parse HEAD</code> 获取精确 SHA，避免文档自引用提交产生陈旧哈希。</td></tr>
               <tr><th>分支</th><td class="mono">codex/unified-agent-experience</td></tr>
               <tr><th>远端边界</th><td>origin = CleverC2200/AionUi；upstream = iOfficeAI/AionUi；未推送、未创建 PR。</td></tr>
             </tbody>
@@ -166,6 +166,7 @@
             <a href="../../tests/e2e/screenshots/unified-agent-journey/managed-wide-100.png">宽屏 100%</a>
             <a href="../../tests/e2e/screenshots/unified-agent-journey/managed-wide-125.png">宽屏 125%</a>
             <a href="../../tests/e2e/screenshots/unified-agent-journey/managed-detail-1440x900.png">受管详情</a>
+            <a href="../../tests/e2e/screenshots/unified-agent-journey/managed-journey-complete.png">主旅程完成</a>
           </p>
         </section>
 
@@ -177,6 +178,7 @@
             <div class="card"><h4>同一待处理协议</h4><p>Team 请求携带 team、slot、conversation、turn/message，顶层待处理入口返回原成员和原消息。</p></div>
             <div class="card"><h4>窄屏收敛</h4><p>窄屏强制单成员视图；不会从 localStorage 恢复并行布局，资源检查器按需展开且不遮挡发送区。</p></div>
           </div>
+          <p><a href="../../tests/e2e/screenshots/unified-agent-journey/managed-team-390.png">查看 390×844 Team 单成员与聚合记录验收截图</a></p>
         </section>
 
         <section id="recovery">
@@ -187,7 +189,7 @@
               <tr><td>目录首次失败 / 空目录</td><td>原位置错误或企业空状态；允许就地重试</td><td class="pass">不伪造能力</td></tr>
               <tr><td>目录离线</td><td>显示 last-good revision 与待同步状态</td><td class="pass">新会话仍由 AionCore 裁决</td></tr>
               <tr><td>准备取消 / 竞态</td><td>取消立即结束；晚到 generation 不创建会话</td><td class="pass">无半配置会话</td></tr>
-              <tr><td>conflict / expired / forbidden</td><td>采纳回执中的权威 request/version；旧命令不可再次提交</td><td class="pass">来源权威收敛</td></tr>
+              <tr><td>conflict / expired / forbidden</td><td>优先采纳回执中的权威 request/version；回执未携带 request 时重新 GET pending，旧命令不可再次提交</td><td class="pass">来源权威收敛</td></tr>
               <tr><td>WS 重连</td><td>重新 GET pending 与成员 records</td><td class="pass">未决请求可恢复</td></tr>
               <tr><td>unknown external write</td><td>保留草稿并锁定重试，要求先核验</td><td class="pass">防止重复生产写</td></tr>
               <tr><td>record gap / 无效证据链</td><td>停止应用增量并回源 snapshot；拒绝悬空/循环证据</td><td class="pass">无证据不宣称完成</td></tr>
@@ -205,6 +207,7 @@
               <tr><td>1024×768 · 150%</td><td>窄屏等效布局、状态不只依赖颜色</td><td><a href="../../tests/e2e/screenshots/unified-agent-journey/managed-narrow-150.png">PNG</a></td></tr>
               <tr><td>720×900 · 200%</td><td>高缩放无页面横向溢出</td><td><a href="../../tests/e2e/screenshots/unified-agent-journey/managed-high-zoom-200.png">PNG</a></td></tr>
               <tr><td>390×844</td><td>移动宽度目录与主操作可达</td><td><a href="../../tests/e2e/screenshots/unified-agent-journey/managed-mobile-390.png">PNG</a></td></tr>
+              <tr><td>Team · 390×844</td><td>强制单成员视图；全队记录筛选可恢复</td><td><a href="../../tests/e2e/screenshots/unified-agent-journey/managed-team-390.png">PNG</a></td></tr>
               <tr><td>键盘</td><td>卡片可用 Enter 打开；焦点环清晰；抽屉关闭恢复触发器</td><td class="pass">E2E + DOM 测试通过</td></tr>
             </tbody>
           </table>
@@ -217,14 +220,14 @@
             <tbody>
               <tr><td class="mono">bun run lint</td><td class="pass">退出 0；0 error（仓库既有 warnings 不阻断）</td></tr>
               <tr><td class="mono">bunx tsc --noEmit</td><td class="pass">通过</td></tr>
-              <tr><td class="mono">bun run test</td><td class="pass">476 files passed / 1 skipped；4166 tests passed / 5 skipped</td></tr>
+              <tr><td class="mono">bun run test</td><td class="pass">476 files passed / 1 skipped；4168 tests passed / 5 skipped</td></tr>
               <tr><td class="mono">bun run test:integration -- --reporter=dot</td><td class="pass">1 file、6 tests 通过；环境相关 1 file、4 tests 跳过</td></tr>
               <tr><td class="mono">bun run package</td><td class="pass">Main、preload、renderer 生产构建通过</td></tr>
-              <tr><td class="mono">playwright unified-agent-journey.e2e.ts</td><td class="pass">标准 + GEA 2/2 通过</td></tr>
+              <tr><td class="mono">playwright unified-agent-journey.e2e.ts</td><td class="pass">4/4：标准目录与详情、GEA 受管目录与视口、原子准备到交付回执、Team 聚合与窄屏；包含无 request 冲突恢复</td></tr>
               <tr><td class="mono">playwright team-view-modes.e2e.ts</td><td class="limited">2 skipped：本机无可创建 Team 的可用助手；无失败</td></tr>
             </tbody>
           </table>
-          <div class="notice" style="margin-top: 14px">完整测试在实现提交上执行。离线页自身只增加验收说明，不改变运行代码。</div>
+          <div class="notice" style="margin-top: 14px">完整测试在本文件所在提交上执行。页面引用的 10 张 PNG 均随同一提交纳入版本控制，可在无网络环境独立复核。</div>
         </section>
 
         <section id="issues">
@@ -258,7 +261,7 @@
           <div class="toolbar"><button id="print" type="button">打印 / 保存 PDF</button></div>
         </section>
 
-        <footer>本文件无外部 CSS、字体、脚本或网络请求。证据链接是可选的仓库内本地文件；即使不打开链接，全部验收路线、结果与边界仍可离线阅读。</footer>
+        <footer>本文件无外部 CSS、字体、脚本或网络请求。证据链接指向同一 Git 提交内的本地文件；即使不打开链接，全部验收路线、结果与边界仍可离线阅读。</footer>
       </main>
     </div>
     <script>

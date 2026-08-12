@@ -26,6 +26,7 @@ type StreamController = {
   emitFileChange: (path: string, oldText: string, newText: string) => Promise<void>;
   emitAgentStatusError: (agentName: string) => Promise<void>;
   emitFollowUpExchange: () => Promise<void>;
+  emitInteractionQuestion: (requestId: string, version?: string) => Promise<void>;
 };
 
 type StreamRegistry = {
@@ -339,6 +340,39 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
               content: 'Follow-up reply arrived after the neutral empty-turn tip.',
             },
           },
+          true
+        );
+
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, STREAM_TICK_MS);
+        });
+      },
+      emitInteractionQuestion: async (requestId: string, version = 'v1') => {
+        addOrUpdateMessage(
+          {
+            id: `e2e-question-${requestId}`,
+            msg_id: `e2e-question-${requestId}`,
+            conversation_id: conversationId,
+            type: 'ask',
+            position: 'left',
+            status: 'work',
+            created_at: Date.now(),
+            content: {
+              request_id: requestId,
+              interaction_request: { id: requestId, version },
+              questions: [
+                {
+                  header: 'Approval',
+                  question: 'Continue the governed workflow?',
+                  options: [
+                    { label: 'Continue', description: 'Resume the original managed turn.' },
+                    { label: 'Stop', description: 'Leave the request unresolved.' },
+                  ],
+                  multi_select: false,
+                },
+              ],
+            },
+          } as unknown as TMessage,
           true
         );
 
