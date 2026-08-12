@@ -74,4 +74,24 @@ describe('InteractionRequestActions', () => {
       expect(submit).toHaveBeenCalledTimes(1);
     }
   );
+
+  it('refreshes pending state when a conflict receipt omits the authoritative request', async () => {
+    const receipt = { ...accepted, status: 'conflict' as const, resolved_at: undefined };
+    const authoritativeRequest = {
+      id: 'request-1',
+      version: 'v2',
+      kind: 'permission' as const,
+      status: 'pending' as const,
+      title: 'Run command',
+      source: { type: 'agent' as const },
+      conversation_id: 'conversation-1',
+      allowed_actions: ['approve'],
+      updated_at: '2026-08-12T00:00:01.000Z',
+    };
+    const refreshPending = vi.fn().mockResolvedValue({ revision: 'pending-r2', items: [authoritativeRequest] });
+    const actions = new InteractionRequestActions({ submit: vi.fn().mockResolvedValue(receipt), refreshPending });
+
+    await expect(actions.submit(command)).resolves.toEqual({ ...receipt, request: authoritativeRequest });
+    expect(refreshPending).toHaveBeenCalledTimes(1);
+  });
 });

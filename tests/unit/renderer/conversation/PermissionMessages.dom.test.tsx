@@ -11,15 +11,16 @@ import type { IMessageAcpPermission, IMessagePermission } from '@/common/chat/ch
 import MessageAcpPermission from '@/renderer/pages/conversation/Messages/acp/MessageAcpPermission';
 import MessagePermission from '@/renderer/pages/conversation/Messages/components/MessagePermission';
 
-const { genericInvoke, acpInvoke, interactionInvoke } = vi.hoisted(() => ({
+const { genericInvoke, acpInvoke, interactionInvoke, interactionListInvoke } = vi.hoisted(() => ({
   genericInvoke: vi.fn(),
   acpInvoke: vi.fn(),
   interactionInvoke: vi.fn(),
+  interactionListInvoke: vi.fn(),
 }));
 
 vi.mock('@/common', () => ({
   ipcBridge: {
-    interactionRequest: { act: { invoke: interactionInvoke } },
+    interactionRequest: { act: { invoke: interactionInvoke }, list: { invoke: interactionListInvoke } },
     conversation: {
       confirmation: {
         confirm: {
@@ -98,6 +99,7 @@ describe('permission message adapters', () => {
       status: 'accepted',
       resolved_at: '2026-08-12T00:00:00.000Z',
     });
+    interactionListInvoke.mockResolvedValue({ revision: 'pending-r1', items: [] });
   });
 
   it('uses the versioned source-authoritative action path when a unified request is present', async () => {
@@ -160,6 +162,53 @@ describe('permission message adapters', () => {
     expect(interactionInvoke).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ request_id: 'request-conflict', expected_version: 'v2' })
+    );
+  });
+
+  it('refetches and adopts pending state when a conflict receipt omits request', async () => {
+    const message = makeGenericMessage('conflict-refresh-message');
+    message.content.interaction_request = { id: 'request-refresh', version: 'v1' };
+    interactionInvoke
+      .mockResolvedValueOnce({
+        receipt_id: 'receipt-conflict-refresh',
+        request_id: 'request-refresh',
+        version: 'v2',
+        status: 'conflict',
+      })
+      .mockResolvedValueOnce({
+        receipt_id: 'receipt-accepted-refresh',
+        request_id: 'request-refresh',
+        version: 'v3',
+        status: 'accepted',
+        resolved_at: '2026-08-12T00:00:02.000Z',
+      });
+    interactionListInvoke.mockResolvedValue({
+      revision: 'pending-r2',
+      items: [
+        {
+          id: 'request-refresh',
+          version: 'v2',
+          kind: 'permission',
+          status: 'pending',
+          title: 'Run command',
+          source: { type: 'agent' },
+          conversation_id: 'conversation-1',
+          allowed_actions: ['proceed_once'],
+          updated_at: '2026-08-12T00:00:01.000Z',
+        },
+      ],
+    });
+    render(<MessagePermission message={message} />);
+
+    fireEvent.click(screen.getByTestId('message-permission-option-proceed_once'));
+    await waitFor(() => expect(interactionListInvoke).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId('message-permission-option-proceed_once')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('message-permission-option-proceed_once'));
+
+    expect(await screen.findByTestId('message-permission-status')).toBeInTheDocument();
+    expect(interactionInvoke).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ request_id: 'request-refresh', expected_version: 'v2' })
     );
   });
 
