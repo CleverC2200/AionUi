@@ -17,18 +17,17 @@ export const useMcpServers = () => {
     try {
       const { allServers } = await ensureBackendMcpCatalog();
       setMcpServers(allServers);
-      return allServers;
+      return true;
     } catch (error) {
       console.error('[useMcpServers] Failed to load MCP catalog:', error);
-      setMcpServers([]);
-      throw error;
+      return false;
     } finally {
       setIsMcpServersLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void refreshMcpServers().catch((): void => undefined);
+    void refreshMcpServers();
 
     void ipcBridge.extensions.getMcpServers
       .invoke()

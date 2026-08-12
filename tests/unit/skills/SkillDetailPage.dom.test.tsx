@@ -254,6 +254,27 @@ describe('SkillDetailPage', () => {
     expect(screen.queryByTestId('btn-detach-b1')).not.toBeInTheDocument();
   });
 
+  it('does not offer the local edit flow for a GEA-managed skill', async () => {
+    mocks.listAvailableSkills.mockResolvedValue([
+      {
+        skill_id: 'skill-demo',
+        version: '1.0.0',
+        name: 'demo-skill',
+        description: 'Managed enterprise capability.',
+        location: '/managed/skills/demo-skill/SKILL.md',
+        is_auto_inject: false,
+        is_custom: false,
+        source: 'managed',
+        state: 'active',
+      },
+    ]);
+
+    renderDetail();
+
+    await waitFor(() => expect(screen.getByTestId('skill-detail-info')).toHaveTextContent('Enterprise managed'));
+    expect(screen.queryByTestId('btn-edit-skill-via-chat')).not.toBeInTheDocument();
+  });
+
   it('disables and re-enables a bundled skill through disabled_builtin_skills', async () => {
     const bundledSkills = [
       {

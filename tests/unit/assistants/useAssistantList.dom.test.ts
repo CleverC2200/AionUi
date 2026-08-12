@@ -124,6 +124,22 @@ describe('useAssistantList', () => {
     expect(result.current.activeAssistant).toBeNull();
   });
 
+  it('reports whether an explicit catalog reload succeeded', async () => {
+    (ipcBridge.assistants.list.invoke as any).mockResolvedValue([]);
+    const { result } = renderHook(() => useAssistantList());
+    await waitFor(() => expect(ipcBridge.assistants.list.invoke).toHaveBeenCalled());
+
+    (ipcBridge.assistants.list.invoke as any).mockRejectedValueOnce(new Error('catalog unavailable'));
+    let refreshed = true;
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await act(async () => {
+      refreshed = await result.current.loadAssistants();
+    });
+
+    expect(refreshed).toBe(false);
+    consoleErrorSpy.mockRestore();
+  });
+
   it('preserves active selection if still present after reload', async () => {
     const mockList: Assistant[] = [
       { id: '1', name: 'A', sort_order: 1, source: 'user', enabled: true },

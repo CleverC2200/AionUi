@@ -1,19 +1,12 @@
 import type { Assistant, ManagedAssistantMetadata } from '@/common/types/agent/assistantTypes';
 import type { EnterpriseAssistantExtensionViolation } from '@/common/types/agent/enterpriseAssistantCatalog';
 import type { IMcpServer } from '@/common/config/storage';
+import type { AvailableSkill, SkillSource } from '@/common/adapter/ipcBridge';
 
 // Skill info type
-export type SkillSource = 'builtin' | 'custom' | 'cron' | 'extension';
+export type { SkillSource };
 
-export type SkillInfo = {
-  name: string;
-  description: string;
-  location: string;
-  relative_location?: string;
-  is_auto_inject: boolean;
-  is_custom: boolean;
-  source: SkillSource;
-};
+export type SkillInfo = AvailableSkill;
 
 // External source type
 export type ExternalSource = {

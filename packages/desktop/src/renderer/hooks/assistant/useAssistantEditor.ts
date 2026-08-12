@@ -31,7 +31,7 @@ type UseAssistantEditorParams = {
   localeKey: string;
   activeAssistant: AssistantListItem | null;
   setActiveAssistantId: (id: string | null) => void;
-  loadAssistants: () => Promise<void>;
+  loadAssistants: () => Promise<boolean>;
   assistants: AssistantListItem[];
   assistantOrder: readonly string[];
   setAssistantOrder: (nextOrder: readonly string[]) => Promise<void>;

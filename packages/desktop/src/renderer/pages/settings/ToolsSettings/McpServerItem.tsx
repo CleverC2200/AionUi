@@ -13,6 +13,8 @@ interface McpServerItemProps {
   isLoggingIn?: boolean;
   /** Extension-contributed servers are read-only (no edit/delete) */
   isReadOnly?: boolean;
+  /** Server-owned configuration still permits local authentication and connection checks. */
+  isConfigurationReadOnly?: boolean;
   onToggleCollapse: () => void;
   onTestConnection: (server: IMcpServer) => void;
   onEditServer: (server: IMcpServer) => void;
@@ -27,6 +29,7 @@ const McpServerItem: React.FC<McpServerItemProps> = ({
   oauthStatus,
   isLoggingIn,
   isReadOnly,
+  isConfigurationReadOnly,
   onToggleCollapse,
   onTestConnection,
   onEditServer,
@@ -48,6 +51,7 @@ const McpServerItem: React.FC<McpServerItemProps> = ({
             oauthStatus={oauthStatus}
             isLoggingIn={isLoggingIn}
             isReadOnly={isReadOnly}
+            isConfigurationReadOnly={isConfigurationReadOnly}
             onTestConnection={onTestConnection}
             onEditServer={onEditServer}
             onDeleteServer={onDeleteServer}

@@ -59,6 +59,8 @@ AionUi Renderer 不直接访问 GEA。AionCore 负责：
 - 原子准备并消费会话配置。
 - 保留 last-good 快照，但明确标记陈旧状态。
 
+现有 GEA 登录凭据由 Electron Main 的认证服务持有时，AionCore 同步实现必须通过仅限回环地址、进程内存持有的受控委派通道复用该身份。不得把登录 token 放入 Renderer、`/api/client-resources/sync` 请求体、本地普通配置或日志。WebUI 模式应使用服务端已认证会话提供等价委派；客户端与 AionCore 联调前必须先验证这条身份链路。
+
 ### 2.3 AionUi 只负责交互和本地草稿
 
 - 展示目录、同步状态、阻断原因和修复动作。

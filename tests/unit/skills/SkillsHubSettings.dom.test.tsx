@@ -225,6 +225,29 @@ describe('SkillsHubSettings', () => {
     await waitFor(() => expect(mocks.listAvailableSkills.mock.calls.length).toBeGreaterThan(initialFetchCount));
   });
 
+  it('renders GEA-managed skills as a distinct read-only section', async () => {
+    mocks.listAvailableSkills.mockResolvedValue([
+      {
+        skill_id: 'skill-enterprise-report',
+        version: '1.0.0',
+        name: 'enterprise-report',
+        description: 'Managed reporting workflow',
+        location: '/managed/enterprise-report/SKILL.md',
+        is_auto_inject: false,
+        is_custom: false,
+        source: 'managed',
+        state: 'active',
+      },
+    ]);
+
+    render(<SkillsHubSettings withWrapper={false} />);
+
+    fireEvent.click(await screen.findByTestId('settings-tab-official'));
+    await waitFor(() => expect(screen.getByTestId('managed-skills-section')).toBeInTheDocument());
+    expect(screen.getByTestId('managed-skill-card-enterprise-report')).toBeInTheDocument();
+    expect(screen.queryByTestId('my-skill-card-enterprise-report')).not.toBeInTheDocument();
+  });
+
   it('renders import history as a secondary view without search or category filters', async () => {
     searchParamsMock.pathname = '/settings/skills/import-history';
     mocks.listSkillImportHistory.mockResolvedValue([

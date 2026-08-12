@@ -25,7 +25,7 @@ type OfficialAssistantsGridProps = {
   onDuplicate: (assistant: AssistantListItem) => void;
   onToggleEnabled: (assistant: AssistantListItem, checked: boolean) => void;
   onStartChat: (assistant: AssistantListItem) => void;
-  onRetry: () => void | Promise<void>;
+  onRetry: () => void | Promise<unknown>;
   searchActive?: boolean;
 };
 

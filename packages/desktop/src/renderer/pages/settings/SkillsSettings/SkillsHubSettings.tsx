@@ -14,22 +14,10 @@ import TalkToButlerButton from '@/renderer/components/base/TalkToButlerButton';
 import { AionSearchInput } from '@/renderer/components/base';
 import { buildSkillImportNotice, getSkillImportErrorMessage } from './skillImportMessages';
 import { useGeaResourceSync } from '@/renderer/hooks/system/useGeaResourceSync';
+import type { AvailableSkill } from '@/common/adapter/ipcBridge';
 
 // Skill 信息类型 / Skill info type
-interface SkillInfo {
-  name: string;
-  description: string;
-  location: string;
-  /**
-   * Relative location under the builtin-skills corpus (e.g.
-   * `auto-inject/cron/SKILL.md`). Present only for built-in sources; the
-   * export-to-external-source flow still uses absolute `location` paths.
-   */
-  relative_location?: string;
-  is_auto_inject: boolean;
-  is_custom: boolean;
-  source?: 'builtin' | 'custom' | 'cron' | 'extension';
-}
+type SkillInfo = AvailableSkill;
 
 const isAutoInjectedBuiltinSkill = (skill: SkillInfo) => skill.source === 'builtin' && skill.is_auto_inject;
 
@@ -179,6 +167,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
   );
   const builtinAutoSkills = useMemo(() => availableSkills.filter(isAutoInjectedBuiltinSkill), [availableSkills]);
   const extensionSkills = useMemo(() => availableSkills.filter((s) => s.source === 'extension'), [availableSkills]);
+  const managedSkills = useMemo(() => availableSkills.filter((s) => s.source === 'managed'), [availableSkills]);
   const importHistoryGroups = useMemo(() => buildImportHistoryGroups(importHistory), [importHistory]);
 
   const matchesQuery = useCallback(
@@ -199,28 +188,44 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
   const filteredExtensionSkills = useMemo(() => matchesQuery(extensionSkills), [matchesQuery, extensionSkills]);
   const filteredAutoSkills = useMemo(() => matchesQuery(builtinAutoSkills), [matchesQuery, builtinAutoSkills]);
 
+  const loadSkillsProjection = useCallback(async () => {
+    const skills = await ipcBridge.fs.listAvailableSkills.invoke();
+    setAvailableSkills(skills);
+  }, []);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const skills = await ipcBridge.fs.listAvailableSkills.invoke();
-      setAvailableSkills(skills);
+      await loadSkillsProjection();
 
       const history = await ipcBridge.fs.listSkillImportHistory.invoke();
       setImportHistory(history as SkillImportRecord[]);
 
       const limits = await ipcBridge.fs.getSkillImportLimits.invoke();
       setImportLimits(limits);
+      return true;
     } catch (error) {
       console.error('Failed to fetch skills:', error);
       Message.error(t('settings.skillsHub.fetchError', { defaultValue: 'Failed to fetch skills' }));
+      return false;
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [loadSkillsProjection, t]);
+
+  const refreshSkillsProjection = useCallback(async () => {
+    try {
+      await loadSkillsProjection();
+      return true;
+    } catch (error) {
+      console.error('Failed to refresh skills after GEA sync:', error);
+      return false;
+    }
+  }, [loadSkillsProjection]);
 
   const { syncing: geaSyncing, syncFromGea } = useGeaResourceSync({
     message: Message,
-    refresh: fetchData,
+    refresh: refreshSkillsProjection,
     resource: 'skills',
   });
 
@@ -649,14 +654,25 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
   );
 
   // Read-only skill card used by the Official / Extension / Auto-injected sections.
-  const renderReadonlySkillCard = (skill: SkillInfo, variant: 'official' | 'extension' | 'auto', testId?: string) => {
+  const renderReadonlySkillCard = (
+    skill: SkillInfo,
+    variant: 'official' | 'extension' | 'auto' | 'managed',
+    testId?: string
+  ) => {
     const isAuto = variant === 'auto';
     const isExtension = variant === 'extension';
     const accent = isAuto ? 'success' : 'primary';
     return (
       <div
         key={skill.name}
-        data-testid={testId ?? (isAuto ? `bundled-skill-card-${normalizeTestId(skill.name)}` : undefined)}
+        data-testid={
+          testId ??
+          (isAuto
+            ? `bundled-skill-card-${normalizeTestId(skill.name)}`
+            : variant === 'managed'
+              ? `managed-skill-card-${normalizeTestId(skill.name)}`
+              : undefined)
+        }
         ref={(el) => {
           skillRefs.current[skill.name] = el;
         }}
@@ -715,7 +731,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     count: number,
     countClass: string,
     skills: SkillInfo[],
-    variant: 'extension' | 'auto',
+    variant: 'extension' | 'auto' | 'managed',
     hint?: React.ReactNode
   ) => (
     <div data-testid={testId}>
@@ -982,6 +998,17 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           filteredExtensionSkills,
           'extension'
         )}
+
+      {managedSkills.length > 0 &&
+        readonlySection(
+          'managed-skills-section',
+          <Puzzle theme='filled' size={18} fill='var(--color-primary-6)' />,
+          t('settings.enterpriseManagedBadge', { defaultValue: 'Enterprise managed' }),
+          managedSkills.length,
+          'bg-[rgba(var(--primary-6),0.08)] text-primary-6',
+          matchesQuery(managedSkills),
+          'managed'
+        )}
     </div>
   );
 
@@ -1041,7 +1068,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           {
             key: 'official',
             label: t('settings.skillsHub.tabOfficial', { defaultValue: 'Official' }),
-            count: officialSkills.length + extensionSkills.length,
+            count: officialSkills.length + extensionSkills.length + managedSkills.length,
           },
         ]}
         activeTab={activeTab}

@@ -31,7 +31,7 @@ type AssistantHomeTabsProps = {
   onToggleEnabled: (assistant: AssistantListItem, checked: boolean) => void;
   onReorderEnabled: (activeId: string, overId: string) => void | Promise<void>;
   onStartChat: (assistant: AssistantListItem) => void;
-  onReloadCatalog: () => void | Promise<void>;
+  onReloadCatalog: () => void | Promise<unknown>;
   catalogSyncing?: boolean;
   onSyncFromGea: () => void | Promise<void>;
   /** Tab to show on mount (e.g. return to Official after editing a builtin). */

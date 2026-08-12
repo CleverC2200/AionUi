@@ -13,7 +13,7 @@ const hooks = vi.hoisted(() => ({
   modelListWithImage: [] as unknown[],
   mcpServers: [] as unknown[],
   getClientBusinessSetting: vi.fn(() => Promise.resolve(undefined)),
-  refreshMcpServers: vi.fn(() => Promise.resolve([])),
+  refreshMcpServers: vi.fn(() => Promise.resolve(true)),
   syncFromGea: vi.fn(),
 }));
 
@@ -35,7 +35,12 @@ vi.mock('@/renderer/pages/settings/components/AddMcpServerModal', () => ({
 }));
 
 vi.mock('@/renderer/pages/settings/ToolsSettings/McpServerItem', () => ({
-  default: () => null,
+  default: ({ server, isConfigurationReadOnly }: { server: { id: string }; isConfigurationReadOnly?: boolean }) => (
+    <div
+      data-testid={`mcp-server-${server.id}`}
+      data-configuration-readonly={isConfigurationReadOnly ? 'true' : 'false'}
+    />
+  ),
 }));
 
 vi.mock('@/renderer/hooks/agent/useConfigModelListWithImage', () => ({
@@ -163,5 +168,28 @@ describe('ToolsModalContent image model guide', () => {
 
     await waitFor(() => expect(hooks.syncFromGea).toHaveBeenCalledWith({ resources: ['mcps'] }));
     await waitFor(() => expect(hooks.refreshMcpServers).toHaveBeenCalledTimes(1));
+  });
+
+  it('renders GEA-managed MCP servers without local edit or delete controls', async () => {
+    hooks.mcpServers = [
+      {
+        id: 'mcp-oa-production',
+        name: 'OA Production',
+        enabled: true,
+        source: 'managed',
+        production_write: true,
+        transport: { type: 'http', url: 'https://managed.invalid/mcp' },
+        created_at: 1,
+        updated_at: 1,
+        original_json: '{}',
+      },
+    ];
+
+    render(<ToolsModalContent />);
+
+    expect(await screen.findByTestId('mcp-server-mcp-oa-production')).toHaveAttribute(
+      'data-configuration-readonly',
+      'true'
+    );
   });
 });

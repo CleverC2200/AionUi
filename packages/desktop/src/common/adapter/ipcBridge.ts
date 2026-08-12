@@ -274,6 +274,21 @@ export const assistants = {
 
 export type GeaClientResourceKind = 'assistants' | 'skills' | 'mcps';
 
+export type SkillSource = 'builtin' | 'custom' | 'cron' | 'extension' | 'managed';
+
+export type AvailableSkill = {
+  skill_id?: string;
+  version?: string;
+  name: string;
+  description: string;
+  location: string;
+  relative_location?: string;
+  is_auto_inject: boolean;
+  is_custom: boolean;
+  source: SkillSource;
+  state?: 'active' | 'suspended' | 'withdrawn' | 'incompatible';
+};
+
 export type GeaClientResourceSyncResult = {
   changed: number;
   failed: number;
@@ -939,18 +954,7 @@ export const fs = {
   deleteAssistantRule: httpDelete<boolean, { assistant_id: string }>(
     (p) => `/api/skills/assistant-rule/${p.assistant_id}`
   ),
-  listAvailableSkills: httpGet<
-    Array<{
-      name: string;
-      description: string;
-      location: string;
-      relative_location?: string;
-      is_auto_inject: boolean;
-      is_custom: boolean;
-      source: 'builtin' | 'custom' | 'cron' | 'extension';
-    }>,
-    void
-  >('/api/skills'),
+  listAvailableSkills: httpGet<AvailableSkill[], void>('/api/skills'),
   materializeSkillsForAgent: httpPost<
     { skills: Array<{ name: string; source_path: string }> },
     { conversation_id: string; skills: string[] }

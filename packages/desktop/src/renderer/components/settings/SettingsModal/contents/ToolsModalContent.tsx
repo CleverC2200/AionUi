@@ -51,7 +51,7 @@ const ModalMcpManagementSection: React.FC<{
   extensionMcpServers: IMcpServer[];
   setMcpServers: React.Dispatch<React.SetStateAction<IMcpServer[]>>;
   saveMcpServers: (serversOrUpdater: IMcpServer[] | ((prev: IMcpServer[]) => IMcpServer[])) => Promise<void>;
-  refreshMcpServers: () => Promise<IMcpServer[]>;
+  refreshMcpServers: () => Promise<boolean>;
   isPageMode?: boolean;
 }> = ({ message, mcpServers, extensionMcpServers, setMcpServers, saveMcpServers, refreshMcpServers, isPageMode }) => {
   const { t } = useTranslation();
@@ -231,6 +231,7 @@ const ModalMcpManagementSection: React.FC<{
                   onEditServer={showEditMcpModal}
                   onDeleteServer={showDeleteConfirm}
                   onOAuthLogin={handleOAuthLogin}
+                  isConfigurationReadOnly={server.source === 'managed'}
                 />
               ))}
               {extensionMcpServers.map((server) => (

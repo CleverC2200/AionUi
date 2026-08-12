@@ -602,7 +602,10 @@ export interface IMcpServerTransportStreamableHTTP {
 }
 
 export type IMcpServerTransport =
-  IMcpServerTransportStdio | IMcpServerTransportSSE | IMcpServerTransportHTTP | IMcpServerTransportStreamableHTTP;
+  | IMcpServerTransportStdio
+  | IMcpServerTransportSSE
+  | IMcpServerTransportHTTP
+  | IMcpServerTransportStreamableHTTP;
 
 export interface IMcpServer {
   id: string;
@@ -618,6 +621,12 @@ export interface IMcpServer {
   original_json: string; // 存储原始JSON配置，用于编辑时的准确显示
   /** Built-in MCP server managed by AionUi (hide edit/delete in UI) */
   builtin?: boolean;
+  /** Resource ownership from the AionCore projection. Managed configuration is server-owned. */
+  source?: 'local' | 'builtin' | 'extension' | 'managed';
+  version?: string;
+  state?: 'active' | 'suspended' | 'withdrawn' | 'incompatible';
+  auth_mode?: 'none' | 'local_secret' | 'user_oauth' | 'enterprise_delegation';
+  production_write?: boolean;
 }
 
 export type ISessionMcpServer = Pick<IMcpServer, 'id' | 'name' | 'transport'>;

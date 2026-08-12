@@ -45,7 +45,7 @@ export const useAssistantList = () => {
     setCatalogLoading(true);
     try {
       const view = await assistantCatalogRef.current.load(localeKey);
-      if (requestId !== catalogRequestIdRef.current) return;
+      if (requestId !== catalogRequestIdRef.current) return false;
       const list = view.assistants;
       setCatalogView(view);
       setCatalogError(view.error_code ?? null);
@@ -54,10 +54,12 @@ export const useAssistantList = () => {
         if (prev && list.some((a) => a.id === prev)) return prev;
         return list[0]?.id ?? null;
       });
+      return view.sync_status === 'fresh' && !view.error_code;
     } catch (error) {
-      if (requestId !== catalogRequestIdRef.current) return;
+      if (requestId !== catalogRequestIdRef.current) return false;
       console.error('Failed to load assistants:', error);
       setCatalogError(error instanceof Error ? error.message : 'ASSISTANT_CATALOG_LOAD_FAILED');
+      return false;
     } finally {
       if (requestId === catalogRequestIdRef.current) setCatalogLoading(false);
     }

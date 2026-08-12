@@ -29,15 +29,9 @@ import useSWR, { mutate as swrMutate } from 'swr';
 import SettingsPageWrapper from '../components/SettingsPageWrapper';
 import SkillFileBrowser from './SkillFileBrowser';
 import { getAssistantsUsingSkill } from './SkillUsedByStack';
+import type { AvailableSkill } from '@/common/adapter/ipcBridge';
 
-interface SkillInfo {
-  name: string;
-  description: string;
-  location: string;
-  is_auto_inject: boolean;
-  is_custom: boolean;
-  source?: 'builtin' | 'custom' | 'cron' | 'extension';
-}
+type SkillInfo = AvailableSkill;
 
 const getAvatarColorClass = (name: string) => {
   if (!name) return 'bg-[#165DFF] text-white';
@@ -92,6 +86,7 @@ const SkillDetailPage: React.FC = () => {
 
   const skill = useMemo(() => (skills ?? []).find((s) => s.name === decodedName), [skills, decodedName]);
   const isBundledSkill = skill?.source === 'builtin' && skill.is_auto_inject;
+  const isManagedSkill = skill?.source === 'managed';
   const usingAssistants = useMemo(
     () => getAssistantsUsingSkill(decodedName, assistants ?? [], isBundledSkill),
     [assistants, decodedName, isBundledSkill]
@@ -144,6 +139,7 @@ const SkillDetailPage: React.FC = () => {
   const sourceLabel = (s: SkillInfo): string => {
     if (s.source === 'custom') return t('settings.skillsHub.tabCustom', { defaultValue: 'Custom' });
     if (s.source === 'extension') return t('settings.extensionSkills', { defaultValue: 'Extension Skills' });
+    if (s.source === 'managed') return t('settings.enterpriseManagedBadge', { defaultValue: 'Enterprise managed' });
     if (s.is_auto_inject) return t('settings.skillsHub.bundledTitle', { defaultValue: 'Bundled with installation' });
     return t('settings.skillsHub.tabOfficial', { defaultValue: 'Official' });
   };
@@ -348,7 +344,7 @@ const SkillDetailPage: React.FC = () => {
               title={t('settings.skillsHub.detailFilesTitle', { defaultValue: 'Skill files' })}
               data-testid='skill-detail-files'
               extra={
-                !isBundledSkill ? (
+                !isBundledSkill && !isManagedSkill ? (
                   <Button
                     size='mini'
                     type='text'
