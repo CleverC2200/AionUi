@@ -106,8 +106,8 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
           setAuthorityBlocked(
             receipt.request.status !== 'pending' || !receipt.request.allowed_actions.includes('answer')
           );
-        } else if (!['accepted', 'already_resolved'].includes(receipt.status)) {
-          setAuthorityBlocked(true);
+        } else {
+          setAuthorityBlocked(receipt.status === 'unknown_external_write');
         }
         requireAcceptedInteractionReceipt(receipt);
       } else {
@@ -159,8 +159,8 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
           setAuthorityBlocked(
             receipt.request.status !== 'pending' || !receipt.request.allowed_actions.includes('decline')
           );
-        } else if (!['accepted', 'already_resolved'].includes(receipt.status)) {
-          setAuthorityBlocked(true);
+        } else {
+          setAuthorityBlocked(receipt.status === 'unknown_external_write');
         }
         requireAcceptedInteractionReceipt(receipt);
       } else {

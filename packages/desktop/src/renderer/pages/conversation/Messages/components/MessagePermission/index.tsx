@@ -70,8 +70,8 @@ const MessagePermission: React.FC<MessagePermissionProps> = React.memo(({ messag
         if (receipt.request) {
           setAuthoritativeRequest(receipt.request);
           setAuthorityBlocked(receipt.request.status !== 'pending');
-        } else if (!['accepted', 'already_resolved'].includes(receipt.status)) {
-          setAuthorityBlocked(true);
+        } else {
+          setAuthorityBlocked(receipt.status === 'unknown_external_write');
         }
         requireAcceptedInteractionReceipt(receipt);
       } else {

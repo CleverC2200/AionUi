@@ -115,7 +115,7 @@
           <p class="lead">本次升级增强现有客户端主旅程，不引入第二套能力市场、任务状态源或交付面板。企业助手的核心配置由 GEA/AionCore 管理，客户端只允许策略许可的辅助 Skill 与 MCP 增量。</p>
           <div class="status-row">
             <span class="badge ok">统一旅程 E2E 4/4</span>
-            <span class="badge ok">单元测试 4168 通过</span>
+            <span class="badge ok">单元测试 4170 通过</span>
             <span class="badge ok">生产构建通过</span>
             <span class="badge neutral">未推送</span>
           </div>
@@ -179,6 +179,7 @@
             <div class="card"><h4>窄屏收敛</h4><p>窄屏强制单成员视图；不会从 localStorage 恢复并行布局，资源检查器按需展开且不遮挡发送区。</p></div>
           </div>
           <p><a href="../../tests/e2e/screenshots/unified-agent-journey/managed-team-390.png">查看 390×844 Team 单成员与聚合记录验收截图</a></p>
+          <p><a href="../../tests/e2e/screenshots/unified-agent-journey/managed-team-1440.png">查看 1440×900 Team 双成员工作区</a> · <a href="../../tests/e2e/screenshots/unified-agent-journey/managed-team-attention-1440.png">查看贴合窗口右边界的待处理抽屉</a></p>
         </section>
 
         <section id="recovery">
@@ -208,6 +209,7 @@
               <tr><td>720×900 · 200%</td><td>高缩放无页面横向溢出</td><td><a href="../../tests/e2e/screenshots/unified-agent-journey/managed-high-zoom-200.png">PNG</a></td></tr>
               <tr><td>390×844</td><td>移动宽度目录与主操作可达</td><td><a href="../../tests/e2e/screenshots/unified-agent-journey/managed-mobile-390.png">PNG</a></td></tr>
               <tr><td>Team · 390×844</td><td>强制单成员视图；全队记录筛选可恢复</td><td><a href="../../tests/e2e/screenshots/unified-agent-journey/managed-team-390.png">PNG</a></td></tr>
+              <tr><td>Team · 1440×900</td><td>并行成员与待处理抽屉铺满真实 Electron 内容窗口；无右侧空白带</td><td><a href="../../tests/e2e/screenshots/unified-agent-journey/managed-team-1440.png">工作区</a> · <a href="../../tests/e2e/screenshots/unified-agent-journey/managed-team-attention-1440.png">抽屉</a></td></tr>
               <tr><td>键盘</td><td>卡片可用 Enter 打开；焦点环清晰；抽屉关闭恢复触发器</td><td class="pass">E2E + DOM 测试通过</td></tr>
             </tbody>
           </table>
@@ -220,14 +222,14 @@
             <tbody>
               <tr><td class="mono">bun run lint</td><td class="pass">退出 0；0 error（仓库既有 warnings 不阻断）</td></tr>
               <tr><td class="mono">bunx tsc --noEmit</td><td class="pass">通过</td></tr>
-              <tr><td class="mono">bun run test</td><td class="pass">476 files passed / 1 skipped；4168 tests passed / 5 skipped</td></tr>
+              <tr><td class="mono">bun run test</td><td class="pass">476 files passed / 1 skipped；4170 tests passed / 5 skipped</td></tr>
               <tr><td class="mono">bun run test:integration -- --reporter=dot</td><td class="pass">1 file、6 tests 通过；环境相关 1 file、4 tests 跳过</td></tr>
               <tr><td class="mono">bun run package</td><td class="pass">Main、preload、renderer 生产构建通过</td></tr>
-              <tr><td class="mono">playwright unified-agent-journey.e2e.ts</td><td class="pass">4/4：标准目录与详情、GEA 受管目录与视口、原子准备到交付回执、Team 聚合与窄屏；包含无 request 冲突恢复</td></tr>
+              <tr><td class="mono">playwright unified-agent-journey.e2e.ts</td><td class="pass">4/4：标准目录→会话→交互、GEA 合法增量→准备取消/重试→原 Turn 恢复→交付回执、Team 成员请求→回原上下文→聚合记录，以及真实 Electron 窗口/抽屉边界</td></tr>
               <tr><td class="mono">playwright team-view-modes.e2e.ts</td><td class="limited">2 skipped：本机无可创建 Team 的可用助手；无失败</td></tr>
             </tbody>
           </table>
-          <div class="notice" style="margin-top: 14px">完整测试在本文件所在提交上执行。页面引用的 10 张 PNG 均随同一提交纳入版本控制，可在无网络环境独立复核。</div>
+          <div class="notice" style="margin-top: 14px">完整测试在本文件所在提交上执行。页面引用的 12 张 PNG 均随同一提交纳入版本控制，可在无网络环境独立复核。</div>
         </section>
 
         <section id="issues">
@@ -244,7 +246,7 @@
               <tr><td>#51</td><td>结构化资源、交付物与回执</td><td class="pass">Closed</td></tr>
               <tr><td>#52</td><td>Team Work 收敛进会话工作区</td><td class="pass">Closed</td></tr>
               <tr><td>#53</td><td>错误恢复、响应式与无障碍验收</td><td class="pass">Closed</td></tr>
-              <tr><td>#54</td><td>标准版与 GEAUi 双路径交付验收</td><td class="limited">本页最终确认后关闭</td></tr>
+              <tr><td>#54</td><td>标准版与 GEAUi 双路径交付验收</td><td class="pass">验收完成，交付回写时关闭</td></tr>
             </tbody>
           </table>
         </section>

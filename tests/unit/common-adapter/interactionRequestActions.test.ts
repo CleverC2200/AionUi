@@ -94,4 +94,30 @@ describe('InteractionRequestActions', () => {
     await expect(actions.submit(command)).resolves.toEqual({ ...receipt, request: authoritativeRequest });
     expect(refreshPending).toHaveBeenCalledTimes(1);
   });
+
+  it('reconciles a cached conflict again without resubmitting the stale command', async () => {
+    const receipt = { ...accepted, status: 'conflict' as const, resolved_at: undefined };
+    const authoritativeRequest = {
+      id: 'request-1',
+      version: 'v2',
+      kind: 'permission' as const,
+      status: 'pending' as const,
+      title: 'Run command',
+      source: { type: 'agent' as const },
+      conversation_id: 'conversation-1',
+      allowed_actions: ['approve'],
+      updated_at: '2026-08-12T00:00:01.000Z',
+    };
+    const submit = vi.fn().mockResolvedValue(receipt);
+    const refreshPending = vi
+      .fn()
+      .mockResolvedValueOnce({ revision: 'pending-r1', items: [] })
+      .mockResolvedValueOnce({ revision: 'pending-r2', items: [authoritativeRequest] });
+    const actions = new InteractionRequestActions({ submit, refreshPending });
+
+    await expect(actions.submit(command)).resolves.toEqual(receipt);
+    await expect(actions.submit(command)).resolves.toEqual({ ...receipt, request: authoritativeRequest });
+    expect(submit).toHaveBeenCalledTimes(1);
+    expect(refreshPending).toHaveBeenCalledTimes(2);
+  });
 });

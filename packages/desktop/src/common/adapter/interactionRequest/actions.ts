@@ -43,7 +43,12 @@ export class InteractionRequestActions {
   submit(input: Omit<InteractionRequestActionCommand, 'idempotency_key'>): Promise<InteractionRequestReceipt> {
     const key = `${input.request_id}:${input.expected_version}:${input.action_id}`;
     const current = this.actions.get(key) ?? { idempotencyKey: `interaction:${key}` };
-    if (current.terminal) return Promise.resolve(current.terminal);
+    if (current.terminal) {
+      return this.reconcile(current.terminal).then((receipt) => {
+        current.terminal = receipt;
+        return receipt;
+      });
+    }
     if (current.promise) return current.promise;
 
     const command = parseInteractionRequestActionCommand({ ...input, idempotency_key: current.idempotencyKey });

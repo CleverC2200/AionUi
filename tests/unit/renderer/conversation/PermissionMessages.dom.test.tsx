@@ -212,6 +212,56 @@ describe('permission message adapters', () => {
     );
   });
 
+  it('can refresh a cached conflict again when pending state arrives late', async () => {
+    const message = makeGenericMessage('conflict-late-message');
+    message.content.interaction_request = { id: 'request-late', version: 'v1' };
+    interactionInvoke
+      .mockResolvedValueOnce({
+        receipt_id: 'receipt-conflict-late',
+        request_id: 'request-late',
+        version: 'v2',
+        status: 'conflict',
+      })
+      .mockResolvedValueOnce({
+        receipt_id: 'receipt-accepted-late',
+        request_id: 'request-late',
+        version: 'v3',
+        status: 'accepted',
+        resolved_at: '2026-08-12T00:00:02.000Z',
+      });
+    const authoritativeRequest = {
+      id: 'request-late',
+      version: 'v2',
+      kind: 'permission',
+      status: 'pending',
+      title: 'Run command',
+      source: { type: 'agent' },
+      conversation_id: 'conversation-1',
+      allowed_actions: ['proceed_once'],
+      updated_at: '2026-08-12T00:00:01.000Z',
+    };
+    interactionListInvoke
+      .mockResolvedValueOnce({ revision: 'pending-r1', items: [] })
+      .mockResolvedValueOnce({ revision: 'pending-r2', items: [authoritativeRequest] });
+    render(<MessagePermission message={message} />);
+
+    const option = screen.getByTestId('message-permission-option-proceed_once');
+    fireEvent.click(option);
+    await waitFor(() => expect(interactionListInvoke).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(option).toBeEnabled());
+    fireEvent.click(option);
+    await waitFor(() => expect(interactionListInvoke).toHaveBeenCalledTimes(2));
+    expect(interactionInvoke).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(option).toBeEnabled());
+    fireEvent.click(option);
+
+    expect(await screen.findByTestId('message-permission-status')).toBeInTheDocument();
+    expect(interactionInvoke).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ request_id: 'request-late', expected_version: 'v2' })
+    );
+  });
+
   it('keeps the generic payload exact and defaults confirmation to proceed_once', async () => {
     const message = makeGenericMessage();
     render(<MessagePermission message={message} />);
