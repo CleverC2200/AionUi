@@ -9,7 +9,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ConfigProvider } from '@arco-design/web-react';
 import AssistantEditorPage from '@/renderer/pages/settings/AssistantSettings/AssistantEditorPage';
-import type { AssistantEditorViewModel } from '@/renderer/pages/settings/AssistantSettings/types';
+import type { AssistantEditorViewModel, AssistantListItem } from '@/renderer/pages/settings/AssistantSettings/types';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -183,6 +183,7 @@ describe('AssistantEditorPage', () => {
       },
       violations: [],
       error: null,
+      verificationRequired: false,
       saving: false,
     };
 
@@ -190,7 +191,7 @@ describe('AssistantEditorPage', () => {
       <ConfigProvider>
         <AssistantEditorPage
           editor={editor}
-          activeAssistant={{ id: 'managed-1', source: 'managed', name: 'Managed' } as any}
+          activeAssistant={{ id: 'managed-1', source: 'managed', name: 'Managed' } as AssistantListItem}
           onBack={vi.fn()}
         />
       </ConfigProvider>
@@ -198,5 +199,42 @@ describe('AssistantEditorPage', () => {
 
     expect(screen.getByTestId('btn-save-assistant')).toBeDisabled();
     expect(screen.queryByTestId('btn-delete-assistant')).not.toBeInTheDocument();
+  });
+
+  it('blocks another managed write while an unknown result needs verification', () => {
+    const editor = createEditor();
+    editor.isCreating = false;
+    editor.managed = {
+      metadata: {
+        assignment_id: 'assignment-1',
+        template_id: 'template-1',
+        template_version: '1.0.0',
+        catalog_revision: 'catalog-r1',
+        activation: 'optional',
+        state: 'active',
+        minimum_client_version: '2.1.53',
+        sync_status: 'fresh',
+        required_skill_ids: [],
+        required_mcp_ids: [],
+        user_extensions: { mode: 'additive', allow_skills: true, allow_mcps: true },
+        extensions: { revision: 'extension-r1', skill_ids: [], mcp_ids: [], status: 'active', violations: [] },
+      },
+      violations: [],
+      error: 'GEA_WRITE_RESULT_UNKNOWN',
+      verificationRequired: true,
+      saving: false,
+    };
+
+    render(
+      <ConfigProvider>
+        <AssistantEditorPage
+          editor={editor}
+          activeAssistant={{ id: 'managed-1', source: 'managed', name: 'Managed' } as AssistantListItem}
+          onBack={vi.fn()}
+        />
+      </ConfigProvider>
+    );
+
+    expect(screen.getByTestId('btn-save-assistant')).toBeDisabled();
   });
 });

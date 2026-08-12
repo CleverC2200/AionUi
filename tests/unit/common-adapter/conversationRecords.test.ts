@@ -87,4 +87,68 @@ describe('ConversationRecords', () => {
       'CONVERSATION_RECORD_SENSITIVE_FIELD'
     );
   });
+
+  it('rejects verified receipts whose evidence is missing or not a passing verification record', () => {
+    const records = new ConversationRecords();
+    expect(() =>
+      records.replaceSnapshot({
+        revision: 1,
+        records: [
+          {
+            id: 'receipt-1',
+            revision: 1,
+            record_type: 'completion_receipt',
+            conversation_id: 'conversation-1',
+            producer: { type: 'agent', id: 'agent-1' },
+            created_at: '2026-08-12T00:00:00.000Z',
+            definition: 'Done',
+            owner: 'agent-1',
+            status: 'verified',
+            evidence_record_ids: ['missing-verification'],
+          },
+        ],
+      })
+    ).toThrow('CONVERSATION_RECORD_INVALID:receipt evidence missing-verification');
+  });
+
+  it('rejects verification records without concrete evidence or with circular verification references', () => {
+    const records = new ConversationRecords();
+    expect(() =>
+      records.replaceSnapshot({
+        revision: 1,
+        records: [
+          {
+            id: 'verification-1',
+            revision: 1,
+            record_type: 'verification_evidence',
+            conversation_id: 'conversation-1',
+            producer: { type: 'aioncore', id: 'aioncore' },
+            created_at: '2026-08-12T00:00:00.000Z',
+            outcome: 'pass',
+            summary: 'No evidence supplied',
+            evidence_record_ids: [],
+          },
+        ],
+      })
+    ).toThrow('CONVERSATION_RECORD_INVALID');
+
+    expect(() =>
+      records.replaceSnapshot({
+        revision: 1,
+        records: [
+          {
+            id: 'verification-1',
+            revision: 1,
+            record_type: 'verification_evidence',
+            conversation_id: 'conversation-1',
+            producer: { type: 'aioncore', id: 'aioncore' },
+            created_at: '2026-08-12T00:00:00.000Z',
+            outcome: 'pass',
+            summary: 'Self-referencing evidence',
+            evidence_record_ids: ['verification-1'],
+          },
+        ],
+      })
+    ).toThrow('CONVERSATION_RECORD_INVALID:dangling evidence verification-1');
+  });
 });

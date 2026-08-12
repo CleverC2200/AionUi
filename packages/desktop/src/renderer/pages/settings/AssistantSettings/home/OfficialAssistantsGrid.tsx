@@ -143,12 +143,16 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
           <div className='col-span-full rounded-14px border border-dashed border-border-2 bg-fill-1/40 px-20px py-28px text-center text-13px text-t-secondary'>
             {searchActive
               ? t('settings.assistantNoMatch', { defaultValue: 'No assistants match the current filters.' })
-              : t('settings.assistantsEmpty', { defaultValue: 'No assistants configured.' })}
+              : catalogMode === 'managed'
+                ? t('settings.enterpriseAssistantsEmpty', {
+                    defaultValue: 'Your enterprise has not assigned any assistants yet.',
+                  })
+                : t('settings.assistantsEmpty', { defaultValue: 'No assistants configured.' })}
           </div>
         ) : null}
         {catalogAssistants.map((assistant) => {
           const managed = assistant.managed;
-          const available = !managed || managed.state === 'active';
+          const available = !managed || (managed.state === 'active' && managed.sync_status !== 'blocked');
           const enabled = assistant.enabled !== false && available;
           const toggleLocked = managed?.activation === 'required' || !available;
           const actionMenu = (
@@ -224,7 +228,15 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
                         : t('settings.enterpriseWithdrawnBadge', { defaultValue: 'Withdrawn' })}
                     </Tag>
                   ) : null}
-                  {managed.sync_status !== 'fresh' || catalogSyncStatus === 'stale' ? (
+                  {managed.sync_status === 'blocked' && assistant.agent_status_message === 'CLIENT_TOO_OLD' ? (
+                    <Tag size='small'>
+                      {t('settings.enterpriseClientTooOldBadge', {
+                        defaultValue: 'Requires client {{version}}',
+                        version: managed.minimum_client_version,
+                      })}
+                    </Tag>
+                  ) : null}
+                  {managed.sync_status === 'stale' || catalogSyncStatus === 'stale' ? (
                     <Tag size='small'>{t('settings.enterpriseStaleBadge', { defaultValue: 'Update pending' })}</Tag>
                   ) : null}
                 </div>

@@ -12,6 +12,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAssistantOrder } from './useAssistantOrder';
 
+declare const __APP_VERSION__: string;
+
 /**
  * Manages the assistant list: loading from backend, sorting, and tracking the
  * active selection. The backend returns a single ordered builtin + user catalog,
@@ -20,7 +22,14 @@ import { useAssistantOrder } from './useAssistantOrder';
 export const useAssistantList = () => {
   const { i18n } = useTranslation();
   const assistantCatalogRef = useRef(
-    new AssistantCatalog(createAionCoreAssistantCatalogAdapter(() => ipcBridge.assistants.list.invoke()))
+    new AssistantCatalog(
+      createAionCoreAssistantCatalogAdapter(() =>
+        ipcBridge.assistants.catalog?.invoke
+          ? ipcBridge.assistants.catalog.invoke()
+          : ipcBridge.assistants.list.invoke()
+      ),
+      typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'unknown'
+    )
   );
   const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [catalogView, setCatalogView] = useState<AssistantCatalogView | null>(null);
@@ -29,7 +38,6 @@ export const useAssistantList = () => {
   const catalogRequestIdRef = useRef(0);
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null);
   const localeKey = resolveLocaleKey(i18n.language);
-  const previousLocaleKeyRef = useRef(localeKey);
   const { assistantOrder, setAssistantOrder } = useAssistantOrder();
 
   const loadAssistants = useCallback(async () => {
@@ -74,17 +82,6 @@ export const useAssistantList = () => {
   useEffect(() => {
     void loadAssistants();
   }, [loadAssistants]);
-
-  useEffect(() => {
-    const localeChanged = previousLocaleKeyRef.current !== localeKey;
-    previousLocaleKeyRef.current = localeKey;
-
-    if (!localeChanged) {
-      return;
-    }
-
-    void loadAssistants();
-  }, [loadAssistants, localeKey]);
 
   const activeAssistant = assistants.find((a) => a.id === activeAssistantId) ?? null;
 

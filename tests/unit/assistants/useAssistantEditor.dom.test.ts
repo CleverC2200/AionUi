@@ -260,6 +260,42 @@ describe('useAssistantEditor', () => {
     ]);
   });
 
+  it('requires verification after an unknown managed write and prevents another command', async () => {
+    const metadata = managedMetadata();
+    const assistant = {
+      id: 'enterprise-finance',
+      name: 'Finance Close',
+      source: 'managed',
+      sort_order: 1,
+      enabled: true,
+      managed: metadata,
+    } as AssistantListItem;
+    (ipcBridge.assistants.get.invoke as any).mockResolvedValue({
+      ...mockAssistantDetail,
+      id: assistant.id,
+      source: 'managed',
+      managed: metadata,
+    });
+    (ipcBridge.assistants.saveExtensions.invoke as any).mockResolvedValue({
+      status: 'error',
+      error: {
+        code: 'GEA_WRITE_RESULT_UNKNOWN',
+        category: 'unknown_external_write',
+        retryable: false,
+      },
+    });
+
+    const { result } = renderHook(() => useAssistantEditor({ ...defaultParams, activeAssistant: assistant }));
+    await act(async () => result.current.handleEdit(assistant));
+    act(() => result.current.setSelectedSkills(['spreadsheet-helper']));
+    await act(async () => result.current.handleSave());
+
+    expect(result.current.managedExtensionVerificationRequired).toBe(true);
+    expect(result.current.editVisible).toBe(true);
+    await act(async () => result.current.handleSave());
+    expect(ipcBridge.assistants.saveExtensions.invoke).toHaveBeenCalledTimes(1);
+  });
+
   it('handles handleEdit to populate form from active assistant', async () => {
     const assistant: AssistantListItem = {
       id: 'a1',

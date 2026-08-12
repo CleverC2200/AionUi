@@ -42,9 +42,9 @@ import type {
   ConversationPreparationResponse,
 } from '../types/conversationConfiguration';
 import {
-  InteractionRequestActionCommand,
-  InteractionRequestList,
-  InteractionRequestReceipt,
+  type InteractionRequestActionCommand,
+  type InteractionRequestList,
+  type InteractionRequestReceipt,
   parseInteractionRequestList,
 } from '../types/interactionRequest';
 import type { ConversationRecordEvent, ConversationRecordSnapshot } from '../types/conversationRecord';
@@ -242,7 +242,11 @@ export const voice = {
 // ---------------------------------------------------------------------------
 
 export const assistants = {
-  list: httpGet<Assistant[], void>('/api/assistants'),
+  list: withResponseMap(
+    httpGet<import('./assistant').AionCoreAssistantCatalogResponse, void>('/api/assistants'),
+    (response) => (Array.isArray(response) ? response : response.assistants)
+  ),
+  catalog: httpGet<import('./assistant').AionCoreAssistantCatalogResponse, void>('/api/assistants'),
   get: httpGet<AssistantDetail, { id: string; locale?: string }>(
     ({ id, locale }) =>
       `/api/assistants/${encodeURIComponent(id)}${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`
@@ -1871,7 +1875,7 @@ export interface ICreateConversationParams {
     id: string;
     revision: string;
   };
-  extra: {
+  extra?: {
     workspace?: string;
     custom_workspace?: boolean;
     default_files?: string[];
@@ -2005,7 +2009,13 @@ export interface IConversationTurnCompletedEvent {
   turn_id: string;
   status: 'pending' | 'running' | 'finished';
   state:
-    'ai_generating' | 'ai_waiting_input' | 'ai_waiting_confirmation' | 'initializing' | 'stopped' | 'error' | 'unknown';
+    | 'ai_generating'
+    | 'ai_waiting_input'
+    | 'ai_waiting_confirmation'
+    | 'initializing'
+    | 'stopped'
+    | 'error'
+    | 'unknown';
   detail: string;
   can_send_message: boolean;
   runtime: {

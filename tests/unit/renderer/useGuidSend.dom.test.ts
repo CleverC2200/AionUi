@@ -119,9 +119,9 @@ describe('useGuidSend', () => {
     });
 
     expect(prepareConfigurationInvokeMock).toHaveBeenCalledTimes(1);
-    expect(createConversationInvokeMock).toHaveBeenCalledWith(
-      expect.objectContaining({ preparation: { id: 'preparation-1', revision: 'preparation-r1' } })
-    );
+    expect(createConversationInvokeMock).toHaveBeenCalledWith({
+      preparation: { id: 'preparation-1', revision: 'preparation-r1' },
+    });
     expect(prepareConfigurationInvokeMock.mock.invocationCallOrder[0]).toBeLessThan(
       createConversationInvokeMock.mock.invocationCallOrder[0]
     );

@@ -123,6 +123,19 @@ describe('OfficialAssistantsGrid managed mode', () => {
     expect(screen.getByTestId('switch-enabled-enterprise-finance')).toBeDisabled();
   });
 
+  it('blocks chat when the managed assistant requires a newer client', () => {
+    renderGrid({
+      ...managedAssistant,
+      enabled: false,
+      team_selectable: false,
+      agent_status_message: 'CLIENT_TOO_OLD',
+      managed: { ...managedAssistant.managed!, sync_status: 'blocked' },
+    });
+    expect(screen.getByText('Requires client {{version}}')).toBeInTheDocument();
+    expect(screen.queryByTestId('btn-chat-enterprise-finance')).not.toBeInTheDocument();
+    expect(screen.getByTestId('switch-enabled-enterprise-finance')).toBeDisabled();
+  });
+
   it('shows last-good status inline and retries in place', () => {
     const onRetry = vi.fn();
     render(

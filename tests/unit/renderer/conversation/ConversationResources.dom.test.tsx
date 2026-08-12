@@ -202,6 +202,18 @@ describe('ConversationResourcesButton', () => {
       revision: 1,
       records: [
         {
+          id: 'verification-1',
+          revision: 1,
+          record_type: 'verification_evidence',
+          conversation_id: 'conversation-1',
+          turn_id: 'turn-1',
+          producer: { type: 'aioncore', id: 'aioncore' },
+          created_at: '2026-08-12T00:00:30.000Z',
+          outcome: 'pass',
+          summary: 'Production record matched',
+          evidence_record_ids: ['deliverable-1'],
+        },
+        {
           id: 'deliverable-1',
           revision: 1,
           record_type: 'deliverable_revision',
@@ -224,7 +236,7 @@ describe('ConversationResourcesButton', () => {
           definition: 'Production submission verified',
           owner: 'finance-agent',
           status: 'verified',
-          evidence_record_ids: ['deliverable-1'],
+          evidence_record_ids: ['verification-1'],
         },
       ],
     });

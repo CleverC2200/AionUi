@@ -68,6 +68,7 @@ export type AssistantEditorViewModel = {
     metadata: ManagedAssistantMetadata;
     violations: EnterpriseAssistantExtensionViolation[];
     error: string | null;
+    verificationRequired: boolean;
     saving: boolean;
   } | null;
   profile: {

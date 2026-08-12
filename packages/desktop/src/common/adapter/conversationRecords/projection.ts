@@ -1,9 +1,11 @@
 import type { ConversationRecord, ConversationRecordSnapshot } from '../../types/conversationRecord';
 import { parseConversationRecordEvent, parseConversationRecordSnapshot } from '../../types/conversationRecord';
+import { validateConversationRecordReferences } from '../../types/conversationRecord';
 
 export type ConversationRecordProjectionResult =
   | { status: 'applied' | 'duplicate'; snapshot: ConversationRecordSnapshot }
-  | { status: 'gap'; snapshot: ConversationRecordSnapshot; expected_sequence: number; received_sequence: number };
+  | { status: 'gap'; snapshot: ConversationRecordSnapshot; expected_sequence: number; received_sequence: number }
+  | { status: 'invalid'; snapshot: ConversationRecordSnapshot };
 
 export class ConversationRecords {
   private snapshot: ConversationRecordSnapshot = { revision: 0, records: [] };
@@ -35,7 +37,13 @@ export class ConversationRecords {
     const records = new Map(this.snapshot.records.map((record) => [record.id, record]));
     if (event.type === 'remove') records.delete(event.record_id);
     else this.upsert(records, event.record);
-    this.snapshot = { revision: event.sequence, records: [...records.values()] };
+    const nextSnapshot = { revision: event.sequence, records: [...records.values()] };
+    try {
+      validateConversationRecordReferences(nextSnapshot.records);
+    } catch {
+      return { status: 'invalid', snapshot: this.current() };
+    }
+    this.snapshot = nextSnapshot;
     return { status: 'applied', snapshot: this.current() };
   }
 

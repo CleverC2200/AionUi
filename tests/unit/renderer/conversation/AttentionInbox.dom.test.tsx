@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { AttentionInbox } from '@/renderer/pages/conversation/attention/AttentionInbox';
+import { AttentionInbox } from '@/renderer/pages/conversation/attention';
 import { SWRConfig } from 'swr';
 
 const { listInvoke, changedOn } = vi.hoisted(() => ({

@@ -63,6 +63,36 @@ describe('AssistantCatalog', () => {
     expect(required?.managed?.required_mcp_ids).toEqual(['finance-production']);
   });
 
+  it('keeps an empty enterprise snapshot in managed mode', async () => {
+    const catalog = new AssistantCatalog(
+      createEnterpriseAssistantFixtureAdapter({
+        status: 'ok',
+        snapshot: { ...enterpriseAssistantCatalogV1, revision: 'catalog-empty', assignments: [] },
+      })
+    );
+
+    await expect(catalog.load('en-US')).resolves.toMatchObject({
+      mode: 'managed',
+      revision: 'catalog-empty',
+      assistants: [],
+    });
+  });
+
+  it('blocks a managed assistant when the client is below its minimum version', async () => {
+    const catalog = new AssistantCatalog(
+      createEnterpriseAssistantFixtureAdapter({ status: 'ok', snapshot: enterpriseAssistantCatalogV1 }),
+      '2.1.52'
+    );
+
+    const view = await catalog.load('en-US');
+    expect(view.assistants[0]).toMatchObject({
+      enabled: false,
+      team_selectable: false,
+      agent_status_message: 'CLIENT_TOO_OLD',
+      managed: { sync_status: 'blocked' },
+    });
+  });
+
   it('keeps a stale last-good snapshot when a later refresh fails', async () => {
     const adapter: ConstructorParameters<typeof AssistantCatalog>[0] = {
       load: vi
@@ -89,6 +119,47 @@ describe('AssistantCatalog', () => {
     const view = await catalog.load('en-US');
     expect(view.sync_status).toBe('stale');
     expect(view.assistants.every((assistant) => assistant.managed?.sync_status === 'stale')).toBe(true);
+  });
+
+  it('does not let a late older response replace the last-good fallback', async () => {
+    let resolveOlder!: (view: {
+      assistants: Assistant[];
+      mode: 'standard';
+      sync_status: 'fresh';
+      revision: string;
+    }) => void;
+    const adapter: ConstructorParameters<typeof AssistantCatalog>[0] = {
+      load: vi
+        .fn()
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveOlder = resolve;
+          })
+        )
+        .mockResolvedValueOnce({
+          assistants: [standardAssistant('latest')],
+          mode: 'standard',
+          sync_status: 'fresh',
+          revision: 'r2',
+        })
+        .mockRejectedValueOnce(new Error('OFFLINE')),
+    };
+    const catalog = new AssistantCatalog(adapter);
+    const older = catalog.load('en-US');
+    await catalog.load('en-US');
+    resolveOlder({
+      assistants: [standardAssistant('older')],
+      mode: 'standard',
+      sync_status: 'fresh',
+      revision: 'r1',
+    });
+    await older;
+
+    await expect(catalog.load('en-US')).resolves.toMatchObject({
+      sync_status: 'stale',
+      revision: 'r2',
+      assistants: [{ id: 'latest' }],
+    });
   });
 
   it('rejects duplicate assistant ids before exposing the catalog', async () => {

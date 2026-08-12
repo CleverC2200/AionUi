@@ -366,10 +366,15 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
               ) : null}
               {editor.managed.error ? (
                 <div data-testid='assistant-managed-save-error'>
-                  {t('settings.assistantManagedErrorCode', {
-                    defaultValue: 'Validation result: {{code}}. Your draft is still here.',
-                    code: editor.managed.error,
-                  })}
+                  {editor.managed.verificationRequired
+                    ? t('settings.assistantManagedExtensionVerificationRequired', {
+                        defaultValue:
+                          'The write result is unknown. Verify enterprise status before trying again. Your draft is still here.',
+                      })
+                    : t('settings.assistantManagedErrorCode', {
+                        defaultValue: 'Validation result: {{code}}. Your draft is still here.',
+                        code: editor.managed.error,
+                      })}
                 </div>
               ) : null}
               {editor.managed.metadata.extensions.status === 'attention' ? (

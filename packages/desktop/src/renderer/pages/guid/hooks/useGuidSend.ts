@@ -237,26 +237,28 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     }
     setPreparationState('ready');
     const preparation = preparationResult.preparation ?? undefined;
+    const managedCreateRequest = preparation ? { preparation } : null;
 
     if (assistantBackend === 'aionrs') {
       try {
-        const conversation = await ipcBridge.conversation.create.invoke({
-          name: input,
-          model: current_model,
-          assistant: {
-            id: assistantConversationId,
-            locale: localeKey,
-            conversation_overrides: assistantOverrides,
-          },
-          preparation,
-          extra: {
-            default_files: files.map(chatFileRefPath),
-            workspace: finalWorkspace,
-            custom_workspace: isCustomWorkspace,
-            selected_mcp_server_ids: selectedUserMcpServerIdsToSend,
-            selected_session_mcp_servers: selectedSessionMcpServersToSend,
-          },
-        });
+        const conversation = await ipcBridge.conversation.create.invoke(
+          managedCreateRequest ?? {
+            name: input,
+            model: current_model,
+            assistant: {
+              id: assistantConversationId,
+              locale: localeKey,
+              conversation_overrides: assistantOverrides,
+            },
+            extra: {
+              default_files: files.map(chatFileRefPath),
+              workspace: finalWorkspace,
+              custom_workspace: isCustomWorkspace,
+              selected_mcp_server_ids: selectedUserMcpServerIdsToSend,
+              selected_session_mcp_servers: selectedSessionMcpServersToSend,
+            },
+          }
+        );
 
         if (!conversation || !conversation.id) {
           Message.error(t('conversation.createFailed'));
@@ -292,23 +294,24 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     }
 
     try {
-      const conversation = await ipcBridge.conversation.create.invoke({
-        name: input,
-        assistant: {
-          id: assistantConversationId,
-          locale: localeKey,
-          conversation_overrides: assistantOverrides,
-        },
-        preparation,
-        extra: {
-          workspace: finalWorkspace,
-          custom_workspace: isCustomWorkspace,
-          default_files: files.map(chatFileRefPath),
-          selected_mcp_server_ids: selectedUserMcpServerIdsToSend,
-          selected_session_mcp_servers:
-            selectedMcpServerIds !== undefined ? selectedSessionMcpServers : selectedSessionMcpServersToSend,
-        },
-      });
+      const conversation = await ipcBridge.conversation.create.invoke(
+        managedCreateRequest ?? {
+          name: input,
+          assistant: {
+            id: assistantConversationId,
+            locale: localeKey,
+            conversation_overrides: assistantOverrides,
+          },
+          extra: {
+            workspace: finalWorkspace,
+            custom_workspace: isCustomWorkspace,
+            default_files: files.map(chatFileRefPath),
+            selected_mcp_server_ids: selectedUserMcpServerIdsToSend,
+            selected_session_mcp_servers:
+              selectedMcpServerIds !== undefined ? selectedSessionMcpServers : selectedSessionMcpServersToSend,
+          },
+        }
+      );
       if (!conversation || !conversation.id) {
         console.error('Failed to create ACP conversation - conversation object is null or missing id');
         return;

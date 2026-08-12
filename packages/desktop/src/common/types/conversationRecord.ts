@@ -39,7 +39,7 @@ export const ConversationRecordSchema = z.discriminatedUnion('record_type', [
     record_type: z.literal('verification_evidence'),
     outcome: z.enum(['pass', 'fail', 'inconclusive']),
     summary: z.string(),
-    evidence_record_ids: z.array(identifier),
+    evidence_record_ids: z.array(identifier).min(1),
   }),
   base.extend({
     record_type: z.literal('completion_receipt'),
@@ -74,6 +74,35 @@ export type ConversationRecord = z.infer<typeof ConversationRecordSchema>;
 export type ConversationRecordSnapshot = z.infer<typeof ConversationRecordSnapshotSchema>;
 export type ConversationRecordEvent = z.infer<typeof ConversationRecordEventSchema>;
 
+export const validateConversationRecordReferences = (records: ConversationRecord[]): void => {
+  const byId = new Map(records.map((record) => [record.id, record]));
+  for (const record of records) {
+    if (record.record_type === 'verification_evidence') {
+      for (const evidenceId of record.evidence_record_ids) {
+        const evidence = byId.get(evidenceId);
+        if (
+          !evidence ||
+          evidence.record_type === 'verification_evidence' ||
+          evidence.record_type === 'completion_receipt'
+        ) {
+          throw new Error(`CONVERSATION_RECORD_INVALID:dangling evidence ${evidenceId}`);
+        }
+      }
+    }
+    if (record.record_type === 'completion_receipt') {
+      for (const evidenceId of record.evidence_record_ids) {
+        const evidence = byId.get(evidenceId);
+        if (!evidence || evidence.record_type !== 'verification_evidence') {
+          throw new Error(`CONVERSATION_RECORD_INVALID:receipt evidence ${evidenceId}`);
+        }
+        if (record.status === 'verified' && evidence.outcome !== 'pass') {
+          throw new Error(`CONVERSATION_RECORD_INVALID:unverified evidence ${evidenceId}`);
+        }
+      }
+    }
+  }
+};
+
 const parseGuarded = <T>(schema: z.ZodType<T>, value: unknown): T => {
   const sensitiveFields = findEnterpriseAssistantSensitiveFields(value);
   if (sensitiveFields.length > 0) throw new Error(`CONVERSATION_RECORD_SENSITIVE_FIELD:${sensitiveFields.join(',')}`);
@@ -82,7 +111,10 @@ const parseGuarded = <T>(schema: z.ZodType<T>, value: unknown): T => {
   return result.data;
 };
 
-export const parseConversationRecordSnapshot = (value: unknown): ConversationRecordSnapshot =>
-  parseGuarded(ConversationRecordSnapshotSchema, value);
+export const parseConversationRecordSnapshot = (value: unknown): ConversationRecordSnapshot => {
+  const snapshot = parseGuarded(ConversationRecordSnapshotSchema, value);
+  validateConversationRecordReferences(snapshot.records);
+  return snapshot;
+};
 export const parseConversationRecordEvent = (value: unknown): ConversationRecordEvent =>
   parseGuarded(ConversationRecordEventSchema, value);

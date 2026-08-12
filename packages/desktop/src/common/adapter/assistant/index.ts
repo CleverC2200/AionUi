@@ -4,7 +4,12 @@ export {
   createEnterpriseAssistantFixtureAdapter,
   projectEnterpriseAssistantAssignment,
 } from './catalog';
-export type { AssistantCatalogAdapter, AssistantCatalogSyncStatus, AssistantCatalogView } from './catalog';
+export type {
+  AionCoreAssistantCatalogResponse,
+  AssistantCatalogAdapter,
+  AssistantCatalogSyncStatus,
+  AssistantCatalogView,
+} from './catalog';
 export {
   ManagedAssistantExtensions,
   createAionCoreManagedAssistantExtensionAdapter,

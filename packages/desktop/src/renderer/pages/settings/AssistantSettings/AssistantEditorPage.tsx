@@ -22,7 +22,7 @@ const AssistantEditorPage: React.FC<AssistantEditorPageProps> = ({ editor, activ
       editor.managed.metadata.state === 'active' &&
       editor.managed.metadata.user_extensions.mode === 'additive'
     );
-  const canSave = (isCreating || Boolean(activeAssistant)) && managedEditable;
+  const canSave = (isCreating || Boolean(activeAssistant)) && managedEditable && !editor.managed?.verificationRequired;
 
   return (
     <div data-testid='assistant-editor-page' className='flex h-full min-h-0 flex-col overflow-hidden bg-transparent'>

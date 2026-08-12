@@ -14,6 +14,9 @@ import { useCallback, useState } from 'react';
  */
 export type TeamViewMode = 'parallel' | 'single' | 'board';
 
+export const resolveTeamViewMode = (stored: TeamViewMode, isNarrow: boolean): TeamViewMode =>
+  isNarrow ? 'single' : stored;
+
 const storageKey = (team_id: string): string => `team-view-mode-${team_id}`;
 
 const readViewMode = (team_id: string): TeamViewMode => {

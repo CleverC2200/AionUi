@@ -326,7 +326,7 @@ const ConversationResourcesPortal: React.FC<{ conversationId: string; workspace?
     const off = ipcBridge.conversationRecords.changed.on((event: ConversationRecordEvent) => {
       if (!alive || event.conversation_id !== conversationId) return;
       const result = projection.apply(event);
-      if (result.status === 'gap') void refresh();
+      if (result.status === 'gap' || result.status === 'invalid') void refresh();
       else {
         setRecords(result.snapshot.records);
         setRecordMode('structured');

@@ -24,7 +24,7 @@ import TeamAgentIdentity from './components/TeamAgentIdentity';
 import TeamViewToggle from './components/TeamViewToggle';
 import TeamControlBoard from './control-board/TeamControlBoard';
 import TeamWarmupOverlay from './components/TeamWarmupOverlay';
-import { useTeamViewMode } from './hooks/useTeamViewMode';
+import { resolveTeamViewMode, useTeamViewMode } from './hooks/useTeamViewMode';
 import { useTeamWarmup, type TeamWarmupMemberState, type TeamWarmupPhase } from './hooks/useTeamWarmup';
 import { TeamTabsProvider, useTeamTabs } from './hooks/TeamTabsContext';
 import { TeamIdentityProvider } from './identity/TeamIdentityContext';
@@ -262,7 +262,10 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
   const [showRightArrow, setShowRightArrow] = useState(false);
   // 视图模式（并行/单聊），按团队记忆。单聊 = 全屏当前选中成员。
   const [viewMode, setViewMode] = useTeamViewMode(team.id);
-  const isSingleView = viewMode === 'single';
+  const layout = useLayoutContext();
+  const isNarrow = layout?.isMobile ?? false;
+  const effectiveViewMode = resolveTeamViewMode(viewMode, isNarrow);
+  const isSingleView = effectiveViewMode === 'single';
 
   const activeAssistant = assistants.find((assistant) => assistant.slot_id === activeSlotId);
   const leadAssistant = assistants.find((assistant) => assistant.role === 'leader');
@@ -527,7 +530,9 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
           isTemporaryWorkspace={isTeamWorkspaceTemporary}
           workspacePreferenceKey={team.id}
           onRenameTitle={onRenameTeam}
-          headerExtra={assistants.length > 1 ? <TeamViewToggle value={viewMode} onChange={setViewMode} /> : undefined}
+          headerExtra={
+            assistants.length > 1 && !isNarrow ? <TeamViewToggle value={viewMode} onChange={setViewMode} /> : undefined
+          }
           headerLeading={
             <span className='inline-flex w-16px h-16px items-center justify-center shrink-0 leading-none text-t-primary'>
               <Peoples theme='outline' size='16' fill='currentColor' style={{ lineHeight: 0 }} />
@@ -542,7 +547,7 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
               colorOf={colorOf}
               onRetry={onRetryWarmup}
             />
-            {viewMode === 'board' ? (
+            {effectiveViewMode === 'board' ? (
               // 看板视图：只读展现全队 mailbox 与 task-board。
               <div className='flex-1 h-full min-w-0'>
                 <TeamControlBoard team={team} />
@@ -562,7 +567,9 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
                       isLeader={isLeaderSlot}
                       color={colorOf(assistant.slot_id)}
                       isFullscreen
-                      onToggleFullscreen={() => setViewMode('parallel')}
+                      onToggleFullscreen={() => {
+                        if (!isNarrow) setViewMode('parallel');
+                      }}
                       teamRunView={teamRun.state}
                       onTeamRunAck={teamRun.applyAck}
                       onRunStateStale={teamRun.reconcile}

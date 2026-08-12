@@ -134,7 +134,10 @@ export const useAssistantEditor = ({
     []
   );
   const [managedExtensionError, setManagedExtensionError] = useState<string | null>(null);
+  const [managedExtensionVerificationRequired, setManagedExtensionVerificationRequired] = useState(false);
   const [managedExtensionSaving, setManagedExtensionSaving] = useState(false);
+  const managedExtensionAttemptRef = useRef<{ fingerprint: string; idempotencyKey: string } | null>(null);
+  const managedExtensionSavingRef = useRef(false);
 
   const loadAssistantDetail = useCallback(
     async (assistantId: string) => ipcBridge.assistants.get.invoke({ id: assistantId, locale: localeKey }),
@@ -265,6 +268,8 @@ export const useAssistantEditor = ({
     setManagedMetadata(assistant.managed ?? null);
     setManagedExtensionViolations(assistant.managed?.extensions.violations ?? []);
     setManagedExtensionError(null);
+    setManagedExtensionVerificationRequired(false);
+    managedExtensionAttemptRef.current = null;
 
     try {
       const { detail, skillsList, autoSkills, mcpServers } = await loadEditorResources(assistant.id);
@@ -330,6 +335,8 @@ export const useAssistantEditor = ({
     setManagedMetadata(null);
     setManagedExtensionViolations([]);
     setManagedExtensionError(null);
+    setManagedExtensionVerificationRequired(false);
+    managedExtensionAttemptRef.current = null;
 
     try {
       const [skillsList, mcpServers] = await Promise.all([
@@ -370,6 +377,8 @@ export const useAssistantEditor = ({
     setManagedMetadata(null);
     setManagedExtensionViolations([]);
     setManagedExtensionError(null);
+    setManagedExtensionVerificationRequired(false);
+    managedExtensionAttemptRef.current = null;
 
     try {
       const { detail, skillsList, autoSkills, mcpServers } = await loadEditorResources(assistant.id);
@@ -419,18 +428,37 @@ export const useAssistantEditor = ({
   );
 
   const handleSave = async () => {
+    if (activeAssistant?.source === 'managed' && managedExtensionSavingRef.current) return;
+    if (activeAssistant?.source === 'managed' && managedExtensionVerificationRequired) {
+      message.error(
+        t('settings.assistantManagedExtensionVerificationRequired', {
+          defaultValue: 'The write result is unknown. Verify enterprise status before trying again.',
+        })
+      );
+      return;
+    }
     try {
       if (activeAssistant?.source === 'managed') {
         const metadata = managedMetadata ?? activeAssistant.managed;
         if (!metadata) throw new Error('ASSISTANT_MANAGED_METADATA_MISSING');
 
         setManagedExtensionSaving(true);
+        managedExtensionSavingRef.current = true;
         setManagedExtensionError(null);
+        const fingerprint = JSON.stringify({
+          assistantId: activeAssistant.id,
+          revision: metadata.catalog_revision,
+          skills: selectedSkills.toSorted(),
+          mcps: selectedMcpIds.toSorted(),
+        });
+        if (managedExtensionAttemptRef.current?.fingerprint !== fingerprint) {
+          managedExtensionAttemptRef.current = { fingerprint, idempotencyKey: createExtensionIdempotencyKey() };
+        }
         const result = await managedAssistantExtensionsRef.current.save(
           activeAssistant.id,
           metadata,
           { skills: selectedSkills, mcps: selectedMcpIds },
-          createExtensionIdempotencyKey()
+          managedExtensionAttemptRef.current.idempotencyKey
         );
         if (result.status === 'rejected') {
           setManagedExtensionViolations(result.violations);
@@ -443,10 +471,21 @@ export const useAssistantEditor = ({
         }
         if (result.status === 'error') {
           setManagedExtensionError(result.error.code);
+          if (result.error.category === 'unknown_external_write') {
+            setManagedExtensionVerificationRequired(true);
+          }
           message.error(
-            t('settings.assistantManagedExtensionSaveFailed', {
-              defaultValue: 'Enterprise validation could not complete. Your draft was kept.',
-            })
+            t(
+              result.error.category === 'unknown_external_write'
+                ? 'settings.assistantManagedExtensionVerificationRequired'
+                : 'settings.assistantManagedExtensionSaveFailed',
+              {
+                defaultValue:
+                  result.error.category === 'unknown_external_write'
+                    ? 'The write result is unknown. Verify enterprise status before trying again.'
+                    : 'Enterprise validation could not complete. Your draft was kept.',
+              }
+            )
           );
           return;
         }
@@ -462,6 +501,8 @@ export const useAssistantEditor = ({
           },
         });
         setManagedExtensionViolations([]);
+        setManagedExtensionVerificationRequired(false);
+        managedExtensionAttemptRef.current = null;
         await refreshAssistantCatalog();
         await refreshAssistantDetailCaches(activeAssistant.id);
         message.success(t('common.saveSuccess', { defaultValue: 'Saved successfully' }));
@@ -631,6 +672,7 @@ export const useAssistantEditor = ({
       }
       message.error(t('common.failed', { defaultValue: 'Failed' }));
     } finally {
+      managedExtensionSavingRef.current = false;
       setManagedExtensionSaving(false);
     }
   };
@@ -766,6 +808,7 @@ export const useAssistantEditor = ({
     managedMetadata,
     managedExtensionViolations,
     managedExtensionError,
+    managedExtensionVerificationRequired,
     managedExtensionSaving,
     handleEdit,
     handleCreate,

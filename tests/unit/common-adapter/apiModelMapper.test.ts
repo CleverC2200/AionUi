@@ -162,8 +162,7 @@ describe('apiModelMapper', () => {
         extra: {},
       });
 
-      expect(body.preparation).toEqual({ id: 'preparation-1', revision: 'preparation-r1' });
-      expect(body).not.toHaveProperty('configuration_snapshot');
+      expect(body).toEqual({ preparation: { id: 'preparation-1', revision: 'preparation-r1' } });
     });
 
     it('strips legacy type when assistant identity is present', () => {

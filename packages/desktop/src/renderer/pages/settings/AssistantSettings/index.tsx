@@ -115,6 +115,7 @@ const AssistantSettings: React.FC = () => {
           metadata: editor.managedMetadata,
           violations: editor.managedExtensionViolations,
           error: editor.managedExtensionError,
+          verificationRequired: editor.managedExtensionVerificationRequired,
           saving: editor.managedExtensionSaving,
         }
       : null,

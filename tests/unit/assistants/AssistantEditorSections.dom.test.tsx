@@ -283,6 +283,7 @@ describe('AssistantEditorSections', () => {
       },
       violations: [{ code: 'CAPABILITY_CONFLICT' as const, capability_id: 'local-files-readonly' }],
       error: null,
+      verificationRequired: false,
       saving: false,
     };
     renderWithProviders(

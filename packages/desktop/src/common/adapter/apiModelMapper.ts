@@ -55,6 +55,9 @@ export type CreateConversationBodyInput = {
  * agent types carry model info via `extra`.
  */
 export function buildCreateConversationBody(p: CreateConversationBodyInput): Record<string, unknown> {
+  if (p.preparation !== undefined && p.preparation !== null) {
+    return { preparation: p.preparation };
+  }
   const hasAssistant = p.assistant !== undefined && p.assistant !== null;
   const body: Record<string, unknown> = {
     type: hasAssistant ? undefined : p.type,

@@ -5,6 +5,7 @@ import type {
   EnterpriseAssistantCatalogSnapshot,
 } from '../../types/agent/enterpriseAssistantCatalog';
 import { parseEnterpriseAssistantCatalogResponse } from '../../types/agent/enterpriseAssistantCatalog';
+import semver from 'semver';
 
 export type AssistantCatalogSyncStatus = 'error' | 'fresh' | 'stale';
 
@@ -20,26 +21,43 @@ export type AssistantCatalogAdapter = {
   load: (locale: string) => Promise<AssistantCatalogView>;
 };
 
+export type AionCoreAssistantCatalogResponse =
+  | Assistant[]
+  | {
+      assistants: Assistant[];
+      mode: AssistantCatalogView['mode'];
+      sync_status?: AssistantCatalogSyncStatus;
+      revision?: string;
+      error_code?: string;
+    };
+
 const catalogMode = (assistants: readonly Assistant[]): AssistantCatalogView['mode'] =>
   assistants.some((assistant) => assistant.source === 'managed') ? 'managed' : 'standard';
 
-const normalizeAssistant = (assistant: Assistant): Assistant => {
+const normalizeAssistant = (assistant: Assistant, clientVersion: string): Assistant => {
   if (assistant.source !== 'managed' || !assistant.managed) return assistant;
-  const available = assistant.managed.state === 'active' && assistant.managed.sync_status !== 'blocked';
+  const versionBlocked =
+    Boolean(semver.valid(clientVersion)) &&
+    Boolean(semver.valid(assistant.managed.minimum_client_version)) &&
+    semver.lt(clientVersion, assistant.managed.minimum_client_version);
+  const managed = versionBlocked ? { ...assistant.managed, sync_status: 'blocked' as const } : assistant.managed;
+  const available = managed.state === 'active' && managed.sync_status !== 'blocked';
   return {
     ...assistant,
+    managed,
     deletable: false,
-    enabled: available && (assistant.managed.activation === 'required' ? true : assistant.enabled),
+    enabled: available && (managed.activation === 'required' ? true : assistant.enabled),
     team_selectable: available && assistant.team_selectable,
+    agent_status_message: versionBlocked ? 'CLIENT_TOO_OLD' : assistant.agent_status_message,
   };
 };
 
-function normalizeAssistantList(assistants: Assistant[]): Assistant[] {
+function normalizeAssistantList(assistants: Assistant[], clientVersion: string): Assistant[] {
   const ids = new Set<string>();
   return assistants.map((assistant) => {
     if (ids.has(assistant.id)) throw new Error(`ASSISTANT_CATALOG_DUPLICATE_ID:${assistant.id}`);
     ids.add(assistant.id);
-    return normalizeAssistant(assistant);
+    return normalizeAssistant(assistant, clientVersion);
   });
 }
 
@@ -50,15 +68,20 @@ function normalizeAssistantList(assistants: Assistant[]): Assistant[] {
  */
 export class AssistantCatalog {
   private lastGood: AssistantCatalogView | null = null;
+  private loadSequence = 0;
 
-  constructor(private readonly adapter: AssistantCatalogAdapter) {}
+  constructor(
+    private readonly adapter: AssistantCatalogAdapter,
+    private readonly clientVersion = 'unknown'
+  ) {}
 
   async load(locale: string): Promise<AssistantCatalogView> {
+    const sequence = ++this.loadSequence;
     try {
       const loaded = await this.adapter.load(locale);
-      const assistants = normalizeAssistantList(loaded.assistants);
-      const view = { ...loaded, assistants, mode: catalogMode(assistants) };
-      if (view.sync_status === 'fresh') this.lastGood = view;
+      const assistants = normalizeAssistantList(loaded.assistants, this.clientVersion);
+      const view = { ...loaded, assistants };
+      if (sequence === this.loadSequence && view.sync_status === 'fresh') this.lastGood = view;
       return view;
     } catch (error) {
       if (!this.lastGood) throw error;
@@ -77,11 +100,12 @@ export class AssistantCatalog {
 }
 
 export function createAionCoreAssistantCatalogAdapter(
-  loadAssistants: () => Promise<Assistant[]>
+  loadAssistants: () => Promise<AionCoreAssistantCatalogResponse>
 ): AssistantCatalogAdapter {
   return {
     load: async () => {
-      const assistants = await loadAssistants();
+      const response = await loadAssistants();
+      const assistants = Array.isArray(response) ? response : response.assistants;
       const revisions = new Set(
         assistants.flatMap((assistant) =>
           assistant.managed?.catalog_revision ? [assistant.managed.catalog_revision] : []
@@ -90,9 +114,16 @@ export function createAionCoreAssistantCatalogAdapter(
       if (revisions.size > 1) throw new Error('ASSISTANT_CATALOG_MIXED_REVISIONS');
       return {
         assistants,
-        mode: catalogMode(assistants),
-        sync_status: 'fresh',
-        ...(revisions.size === 1 ? { revision: [...revisions][0] } : {}),
+        mode: Array.isArray(response) ? catalogMode(assistants) : response.mode,
+        sync_status: Array.isArray(response) ? 'fresh' : (response.sync_status ?? 'fresh'),
+        ...(Array.isArray(response) ? {} : response.error_code ? { error_code: response.error_code } : {}),
+        ...(Array.isArray(response)
+          ? revisions.size === 1
+            ? { revision: [...revisions][0] }
+            : {}
+          : response.revision
+            ? { revision: response.revision }
+            : {}),
       };
     },
   };
@@ -184,7 +215,7 @@ export function createEnterpriseAssistantFixtureAdapter(
       if (response.status === 'ok') {
         return {
           assistants: projectEnterpriseAssistantSnapshot(response.snapshot, locale),
-          mode: response.snapshot.assignments.length > 0 ? 'managed' : 'standard',
+          mode: 'managed',
           sync_status: 'fresh',
           revision: response.snapshot.revision,
         };
