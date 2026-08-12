@@ -89,6 +89,9 @@ vi.mock('@/common', () => ({
     assistant: {
       list: { invoke: vi.fn(async () => []) },
     },
+    assistants: {
+      list: { invoke: vi.fn(async () => []) },
+    },
     conversation: {
       listChanged: makeTeamEventChannel('conversationListChanged'),
       confirmation: {
@@ -132,6 +135,11 @@ vi.mock('@/renderer/pages/team/components/TeamChatView', () => ({
   default: ({ conversation: chatConversation }: { conversation: TChatConversation }) => (
     <div data-testid={`team-chat-view-${chatConversation.id}`} />
   ),
+}));
+
+vi.mock('@/renderer/pages/team/components/TeamConversationResources', () => ({
+  __esModule: true,
+  default: () => null,
 }));
 
 vi.mock('@/renderer/pages/cron', () => ({

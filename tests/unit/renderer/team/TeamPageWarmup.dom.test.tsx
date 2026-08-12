@@ -80,6 +80,7 @@ vi.mock('@/common', () => ({
     },
     cron: { removeJob: { invoke: vi.fn() } },
     assistant: { list: { invoke: vi.fn(async () => []) } },
+    assistants: { list: { invoke: vi.fn(async () => []) } },
     conversation: {
       update: { invoke: vi.fn(async () => undefined) },
       // TeamPage subscribes to conversation.listChanged on mount to refetch the
@@ -126,6 +127,11 @@ vi.mock('@/renderer/pages/conversation/platforms/aionrs/AionrsModelSelector', ()
 vi.mock('@/renderer/pages/team/components/TeamChatView', () => ({
   __esModule: true,
   default: ({ conversation: c }: { conversation: TChatConversation }) => <div data-testid={`team-chat-view-${c.id}`} />,
+}));
+
+vi.mock('@/renderer/pages/team/components/TeamConversationResources', () => ({
+  __esModule: true,
+  default: () => null,
 }));
 
 // Isolate TeamPage from the workspace sider: the real ChatSlider subtree pulls

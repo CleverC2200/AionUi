@@ -115,7 +115,7 @@
           <p class="lead">本次升级增强现有客户端主旅程，不引入第二套能力市场、任务状态源或交付面板。企业助手的核心配置由 GEA/AionCore 管理，客户端只允许策略许可的辅助 Skill 与 MCP 增量。</p>
           <div class="status-row">
             <span class="badge ok">双路径 E2E 2/2</span>
-            <span class="badge ok">单元测试 4158 通过</span>
+            <span class="badge ok">单元测试 4166 通过</span>
             <span class="badge ok">生产构建通过</span>
             <span class="badge neutral">未推送</span>
           </div>
@@ -217,7 +217,7 @@
             <tbody>
               <tr><td class="mono">bun run lint</td><td class="pass">退出 0；0 error（仓库既有 warnings 不阻断）</td></tr>
               <tr><td class="mono">bunx tsc --noEmit</td><td class="pass">通过</td></tr>
-              <tr><td class="mono">bun run test -- --reporter=dot</td><td class="pass">475 files passed / 1 skipped；4158 tests passed / 5 skipped</td></tr>
+              <tr><td class="mono">bun run test</td><td class="pass">476 files passed / 1 skipped；4166 tests passed / 5 skipped</td></tr>
               <tr><td class="mono">bun run test:integration -- --reporter=dot</td><td class="pass">1 file、6 tests 通过；环境相关 1 file、4 tests 跳过</td></tr>
               <tr><td class="mono">bun run package</td><td class="pass">Main、preload、renderer 生产构建通过</td></tr>
               <tr><td class="mono">playwright unified-agent-journey.e2e.ts</td><td class="pass">标准 + GEA 2/2 通过</td></tr>
