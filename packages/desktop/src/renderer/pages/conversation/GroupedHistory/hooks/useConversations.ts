@@ -72,6 +72,7 @@ export const useConversations = () => {
     clearCompletionUnread,
     setActiveConversation,
     groupedHistory,
+    sidebarMode,
     loadMore,
     resetGroupWindow,
   } = useConversationHistoryContext();
@@ -244,6 +245,7 @@ export const useConversations = () => {
 
   return {
     conversations,
+    sidebarMode,
     isConversationGenerating,
     hasCompletionUnread,
     expandedWorkspaces,

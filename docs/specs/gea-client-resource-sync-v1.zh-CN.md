@@ -412,6 +412,12 @@ AionCore 必须原子消费仍有效且属于当前身份的 preparation，并�
 - Team 工作区：Task、Run、Lease、Receipt、Attention 由 AionCore 权威管理。
 - 恢复与无障碍：离线、陈旧目录、失效 Assignment、窄屏和键盘流程有明确降级状态。
 
+当前联调兼容边界：若随客户端运行的 AionCore 尚未提供 `/api/sidebar`，AionUi 仅使用既有
+`/api/conversations` 与 `/api/teams` 恢复旧版“团队 / 项目 / 对话”左栏；若尚未提供
+`/api/interaction-requests`，待处理入口显示空态而不报加载错误。只有明确的路由不存在
+（`404 + NOT_FOUND + Route not found.`）才允许此降级，网络错误或其他服务端错误仍正常暴露。
+新接口可用后，其服务端分组、分页和待处理状态继续作为权威，不使用兼容投影覆盖。
+
 GEA V1 不应接收这些过程数据。若未来要向 GEA 汇总企业运行结果，应另建“最小化执行回执”契约，只同步必要的状态、引用和审计 ID，不默认同步对话内容、工具参数或文件正文。
 
 ## 9. 错误结构

@@ -27,6 +27,8 @@ type UseConversationActionsParams = {
   setSelectedConversationIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   toggleSelectedConversation: (conversation: TChatConversation) => void;
   markAsRead: (conversation_id: string) => void;
+  /** Older AionCore has conversation.update but not the order endpoints. */
+  legacySidebarMode?: boolean;
 };
 
 export const useConversationActions = ({
@@ -37,6 +39,7 @@ export const useConversationActions = ({
   setSelectedConversationIds,
   toggleSelectedConversation,
   markAsRead,
+  legacySidebarMode = false,
 }: UseConversationActionsParams) => {
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [renameModalName, setRenameModalName] = useState<string>('');
@@ -208,6 +211,24 @@ export const useConversationActions = ({
       const pinned = isConversationPinned(conversation);
 
       try {
+        if (legacySidebarMode) {
+          const success = await ipcBridge.conversation.update.invoke({
+            id: conversation.id,
+            updates: {
+              extra: {
+                pinned: !pinned,
+                pinned_at: pinned ? undefined : Date.now(),
+              } as Partial<TChatConversation['extra']>,
+            } as Partial<TChatConversation>,
+            merge_extra: true,
+          });
+          if (!success) {
+            Message.error(t('conversation.history.pinFailed'));
+            return;
+          }
+          emitter.emit('chat.history.refresh');
+          return;
+        }
         if (pinned) {
           await ipcBridge.order.pinned.delete.invoke({ item_type: 'conversation', item_id: conversation.id });
         } else {
@@ -219,7 +240,7 @@ export const useConversationActions = ({
         Message.error(t('conversation.history.pinFailed'));
       }
     },
-    [t]
+    [legacySidebarMode, t]
   );
 
   const handleMenuVisibleChange = useCallback((conversation_id: string, visible: boolean) => {

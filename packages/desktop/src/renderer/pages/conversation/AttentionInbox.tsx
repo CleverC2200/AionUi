@@ -1,4 +1,5 @@
 import { ipcBridge } from '@/common';
+import { isRouteUnavailableError } from '@/common/adapter/sidebarCompatibility';
 import type { InteractionRequest } from '@/common/types/interactionRequest';
 import { Alert, Badge, Button, Drawer, Empty, Spin, Typography } from '@arco-design/web-react';
 import { Attention, Right } from '@icon-park/react';
@@ -16,9 +17,16 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
   const navigate = useNavigate();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [visible, setVisible] = useState(false);
-  const { data, error, isLoading, isValidating, mutate } = useSWR('interaction-requests.pending', () =>
-    ipcBridge.interactionRequest.list.invoke()
-  );
+  const { data, error, isLoading, isValidating, mutate } = useSWR('interaction-requests.pending', async () => {
+    try {
+      return await ipcBridge.interactionRequest.list.invoke();
+    } catch (requestError) {
+      if (isRouteUnavailableError(requestError)) {
+        return { revision: 'unsupported', items: [] };
+      }
+      throw requestError;
+    }
+  });
   const items = data?.items ?? [];
 
   useEffect(() => {

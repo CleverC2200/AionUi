@@ -135,6 +135,28 @@ describe('AttentionInbox', () => {
     expect(await screen.findByText('conversation.attention.empty')).toBeInTheDocument();
   });
 
+  it('treats an unavailable interaction-request route as an unsupported empty inbox', async () => {
+    listInvoke.mockRejectedValueOnce(
+      Object.assign(new Error('route unavailable'), {
+        name: 'BackendHttpError',
+        status: 404,
+        code: 'NOT_FOUND',
+        backendMessage: 'Route not found.',
+      })
+    );
+    render(
+      <SWRConfig value={{ provider: () => new Map(), shouldRetryOnError: false }}>
+        <MemoryRouter>
+          <AttentionInbox />
+        </MemoryRouter>
+      </SWRConfig>
+    );
+
+    fireEvent.click(await screen.findByTestId('attention-inbox-trigger'));
+    expect(await screen.findByText('conversation.attention.empty')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('reloads the authoritative pending list after realtime reconnect', async () => {
     let reconnect: (() => void) | undefined;
     reconnectedOn.mockImplementationOnce((listener: () => void) => {

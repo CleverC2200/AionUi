@@ -7,6 +7,7 @@
 import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
 import { flattenSidebarConversations, scopeToToken } from '@/common/adapter/sidebarMapper';
+import { buildLegacySidebarResponse, isRouteUnavailableError } from '@/common/adapter/sidebarCompatibility';
 import type { SidebarGroup, SidebarResponse } from '@/common/types/sidebar';
 import { addEventListener } from '@/renderer/utils/emitter';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
@@ -128,6 +129,7 @@ export const getSidebarStreamGuardDecision = ({
 type ConversationListSyncSnapshot = {
   /** Backend sidebar read model (grouped, windowed) — the render source of truth. */
   sidebar: SidebarResponse;
+  sidebarMode: 'backend' | 'legacy';
   /** Flat conversation list derived from `sidebar` (batch selection, fork-name lookup). */
   conversations: TChatConversation[];
   generatingConversationIds: Set<string>;
@@ -140,6 +142,7 @@ const listeners = new Set<() => void>();
 
 let isStoreInitialized = false;
 let sidebarState: SidebarResponse = EMPTY_SIDEBAR;
+let sidebarModeState: ConversationListSyncSnapshot['sidebarMode'] = 'backend';
 // First-screen snapshot per group token, captured on every full refresh, so
 // collapsing a group can reset it to the first window without a network request
 // (the "收起重置不发请求" rule).
@@ -160,6 +163,7 @@ let projectIdByIdState = new Map<string, string | null>();
 let activeConversationIdState: string | null = null;
 let snapshotState: ConversationListSyncSnapshot = {
   sidebar: sidebarState,
+  sidebarMode: sidebarModeState,
   conversations: conversationsState,
   generatingConversationIds: generatingConversationIdsState,
   completionUnreadConversationIds: completionUnreadConversationIdsState,
@@ -168,6 +172,7 @@ let snapshotState: ConversationListSyncSnapshot = {
 const emitStoreChange = () => {
   snapshotState = {
     sidebar: sidebarState,
+    sidebarMode: sidebarModeState,
     conversations: conversationsState,
     generatingConversationIds: generatingConversationIdsState,
     completionUnreadConversationIds: completionUnreadConversationIdsState,
@@ -248,13 +253,28 @@ const applySidebarResponse = (response: SidebarResponse) => {
   emitStoreChange();
 };
 
+const loadLegacySidebar = async (): Promise<SidebarResponse> => {
+  const result = await ipcBridge.database.getUserConversations.invoke({ limit: 10000 });
+  return buildLegacySidebarResponse({ conversations: Array.isArray(result?.items) ? result.items : [] });
+};
+
 const refreshConversations = () => {
-  void ipcBridge.sidebar.get
-    .invoke({ limit: FIRST_SCREEN_LIMIT })
+  const request =
+    sidebarModeState === 'legacy' ? loadLegacySidebar() : ipcBridge.sidebar.get.invoke({ limit: FIRST_SCREEN_LIMIT });
+  void request
     .then((response) => {
       applySidebarResponse(response ?? EMPTY_SIDEBAR);
     })
-    .catch((error) => {
+    .catch(async (error) => {
+      if (sidebarModeState === 'backend' && isRouteUnavailableError(error)) {
+        sidebarModeState = 'legacy';
+        try {
+          applySidebarResponse(await loadLegacySidebar());
+          return;
+        } catch (legacyError) {
+          console.error('[WorkspaceGroupedHistory] Failed to load legacy sidebar:', legacyError);
+        }
+      }
       console.error('[WorkspaceGroupedHistory] Failed to load sidebar:', error);
       applySidebarResponse(EMPTY_SIDEBAR);
     });
@@ -468,11 +488,12 @@ export const useConversationListSync = () => {
     initializeConversationListSyncStore();
   }, []);
 
-  const { sidebar, conversations, generatingConversationIds, completionUnreadConversationIds } = useSyncExternalStore(
-    subscribeConversationListSync,
-    getConversationListSyncSnapshot,
-    getConversationListSyncSnapshot
-  );
+  const { sidebar, sidebarMode, conversations, generatingConversationIds, completionUnreadConversationIds } =
+    useSyncExternalStore(
+      subscribeConversationListSync,
+      getConversationListSyncSnapshot,
+      getConversationListSyncSnapshot
+    );
 
   const clearCompletionUnread = useCallback((conversation_id: string) => {
     clearCompletionUnreadState(conversation_id);
@@ -506,6 +527,7 @@ export const useConversationListSync = () => {
 
   return {
     sidebar,
+    sidebarMode,
     conversations,
     isConversationGenerating,
     hasCompletionUnread,
