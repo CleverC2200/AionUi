@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type FeedbackEventTags, submitFeedbackReport } from '@/renderer/services/feedback/submitFeedbackReport';
+import { GEA_REMOTE_SERVICE_POLICY } from '@/common/config/geaManagedServices';
 
 const AIONUI_DOWNLOAD_URL = 'https://www.aionui.com/';
 const INSTALLATION_INTEGRITY_REPORT_FLUSH_TIMEOUT_MS = 2000;
@@ -193,7 +194,10 @@ export function getInstallationIntegrityModalActions(
     onRecoverCorruptedDatabase: options.onRecoverCorruptedDatabase ?? (() => Promise.resolve()),
     onReportDiagnostics: options.onReportDiagnostics ?? (() => Promise.resolve()),
     recoverText: config.showRecover ? dialogKindText(t, diagnosticsKind, 'confirmRebuild') : undefined,
-    reportText: config.showDiagnostics ? dialogKindText(t, diagnosticsKind, 'sendDiagnostics') : undefined,
+    reportText:
+      config.showDiagnostics && GEA_REMOTE_SERVICE_POLICY.feedbackSubmissionEnabled
+        ? dialogKindText(t, diagnosticsKind, 'sendDiagnostics')
+        : undefined,
   };
 }
 

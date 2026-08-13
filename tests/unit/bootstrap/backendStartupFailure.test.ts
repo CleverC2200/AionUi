@@ -3,6 +3,10 @@ import { classifyBackendStartupFailure } from '@/process/startup/backendStartupF
 import { detectStartupArchitectureMismatch } from '@/process/startup/architectureCompatibility';
 import { getInstallationIntegrityModalActions } from '@/renderer/components/layout/InstallationIntegrityDialog';
 
+vi.mock('@/common/config/geaManagedServices', () => ({
+  GEA_REMOTE_SERVICE_POLICY: { autoUpdateEnabled: false, feedbackSubmissionEnabled: true },
+}));
+
 describe('classifyBackendStartupFailure', () => {
   it('classifies missing GLIBC symbols as an incompatible backend runtime', () => {
     const error = new Error('aioncore exited before health check passed') as Error & {

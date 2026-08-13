@@ -5,6 +5,7 @@
  */
 
 import { useFeedback } from '@/renderer/hooks/context/FeedbackContext';
+import { GEA_REMOTE_SERVICE_POLICY } from '@/common/config/geaManagedServices';
 import { Comment } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback } from 'react';
@@ -40,6 +41,8 @@ const FeedbackButton: React.FC<FeedbackButtonProps> = ({ module, feedbackTags, f
     },
     [feedbackExtra, feedbackTags, module, openFeedback]
   );
+
+  if (!GEA_REMOTE_SERVICE_POLICY.feedbackSubmissionEnabled) return null;
 
   return (
     <button

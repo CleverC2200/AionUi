@@ -15,6 +15,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 
+vi.mock('@/common/config/geaManagedServices', () => ({
+  GEA_REMOTE_SERVICE_POLICY: { autoUpdateEnabled: false, feedbackSubmissionEnabled: true },
+}));
+
 vi.mock('electron', () => ({
   app: { getVersion: () => '0.0.0-test', getPath: () => '/tmp', isPackaged: false },
 }));

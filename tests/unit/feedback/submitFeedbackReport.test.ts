@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { submitFeedbackReport } from '@/renderer/services/feedback/submitFeedbackReport';
 
+vi.mock('@/common/config/geaManagedServices', () => ({
+  GEA_REMOTE_SERVICE_POLICY: { autoUpdateEnabled: false, feedbackSubmissionEnabled: true },
+}));
+
 const sentryMocks = vi.hoisted(() => {
   const setTag = vi.fn();
   const flush = vi.fn(async () => true);

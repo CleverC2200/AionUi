@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import { GEA_REMOTE_SERVICE_POLICY } from '@/common/config/geaManagedServices';
 import type {
   AutoUpdateReadyResult,
   UpdateCheckResult,
@@ -23,7 +24,6 @@ import * as fs from 'fs';
 import { load as loadYaml } from 'js-yaml';
 import * as path from 'path';
 import semver from 'semver';
-import { autoUpdaterService } from '../services/autoUpdaterService';
 import { consumeInstallerLastFailure } from '../services/installerLastFailure';
 
 /** Lazily loads i18n to avoid pulling in initStorage chain at module load time */
@@ -73,6 +73,13 @@ const ALLOWED_DOWNLOAD_HOSTS = new Set<string>([
   'release-assets.githubusercontent.com',
 ]);
 const MAX_REDIRECTS = 8;
+const GEA_UPDATE_CHANNEL_UNAVAILABLE = 'GEA update service is not configured';
+
+let autoUpdaterServicePromise: Promise<typeof import('../services/autoUpdaterService')> | null = null;
+const getAutoUpdaterService = async () => {
+  autoUpdaterServicePromise ??= import('../services/autoUpdaterService');
+  return (await autoUpdaterServicePromise).autoUpdaterService;
+};
 
 const isAllowedAssetName = (name: string) => {
   const ext = path.extname(name);
@@ -674,6 +681,10 @@ export function initUpdateBridge(): void {
 
   ipcBridge.update.check.provider(
     async (params): Promise<{ success: boolean; data?: UpdateCheckResult; msg?: string }> => {
+      if (!GEA_REMOTE_SERVICE_POLICY.autoUpdateEnabled) {
+        return { success: false, msg: GEA_UPDATE_CHANNEL_UNAVAILABLE };
+      }
+
       try {
         const repo = resolveRepo(params?.repo);
         const currentVersion = app.getVersion();
@@ -724,6 +735,10 @@ export function initUpdateBridge(): void {
 
   ipcBridge.update.download.provider(
     async (params: UpdateDownloadRequest): Promise<{ success: boolean; data?: UpdateDownloadResult; msg?: string }> => {
+      if (!GEA_REMOTE_SERVICE_POLICY.autoUpdateEnabled) {
+        return { success: false, msg: GEA_UPDATE_CHANNEL_UNAVAILABLE };
+      }
+
       try {
         if (!params?.url) {
           return { success: false, msg: (await getI18n()).t('update.errors.missingUrl') };
@@ -805,7 +820,12 @@ export function initUpdateBridge(): void {
       data?: { updateInfo?: { version: string; releaseDate?: string; releaseNotes?: string } };
       msg?: string;
     }> => {
+      if (!GEA_REMOTE_SERVICE_POLICY.autoUpdateEnabled) {
+        return { success: false, msg: GEA_UPDATE_CHANNEL_UNAVAILABLE };
+      }
+
       try {
+        const autoUpdaterService = await getAutoUpdaterService();
         // Set prerelease preference before checking
         const includePrerelease = Boolean(params?.includePrerelease);
         autoUpdaterService.setAllowPrerelease(includePrerelease);
@@ -834,7 +854,12 @@ export function initUpdateBridge(): void {
   );
 
   ipcBridge.autoUpdate.download.provider(async (): Promise<{ success: boolean; msg?: string }> => {
+    if (!GEA_REMOTE_SERVICE_POLICY.autoUpdateEnabled) {
+      return { success: false, msg: GEA_UPDATE_CHANNEL_UNAVAILABLE };
+    }
+
     try {
+      const autoUpdaterService = await getAutoUpdaterService();
       const result = await autoUpdaterService.downloadUpdate();
       return { success: result.success, msg: result.error };
     } catch (err: unknown) {
@@ -844,7 +869,12 @@ export function initUpdateBridge(): void {
 
   ipcBridge.autoUpdate.restoreDownloaded.provider(
     async (): Promise<{ success: boolean; data: AutoUpdateReadyResult; msg?: string }> => {
+      if (!GEA_REMOTE_SERVICE_POLICY.autoUpdateEnabled) {
+        return { success: false, data: { ready: false }, msg: GEA_UPDATE_CHANNEL_UNAVAILABLE };
+      }
+
       try {
+        const autoUpdaterService = await getAutoUpdaterService();
         const result = await autoUpdaterService.restoreDownloadedUpdateIfAvailable();
         return { success: result.success, data: result.data, msg: result.error };
       } catch (err: unknown) {
@@ -858,7 +888,12 @@ export function initUpdateBridge(): void {
   );
 
   ipcBridge.autoUpdate.cancelDownload.provider(async (): Promise<{ success: boolean; msg?: string }> => {
+    if (!GEA_REMOTE_SERVICE_POLICY.autoUpdateEnabled) {
+      return { success: false, msg: GEA_UPDATE_CHANNEL_UNAVAILABLE };
+    }
+
     try {
+      const autoUpdaterService = await getAutoUpdaterService();
       const result = await autoUpdaterService.cancelDownload();
       return { success: result.success, msg: result.error };
     } catch (err: unknown) {
@@ -867,6 +902,8 @@ export function initUpdateBridge(): void {
   });
 
   ipcBridge.autoUpdate.quitAndInstall.provider(async (): Promise<void> => {
+    if (!GEA_REMOTE_SERVICE_POLICY.autoUpdateEnabled) return;
+    const autoUpdaterService = await getAutoUpdaterService();
     await autoUpdaterService.quitAndInstall();
   });
 }

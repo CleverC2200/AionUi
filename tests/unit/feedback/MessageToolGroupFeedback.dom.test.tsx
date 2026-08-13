@@ -12,6 +12,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+vi.mock('@/common/config/geaManagedServices', () => ({
+  GEA_REMOTE_SERVICE_POLICY: { autoUpdateEnabled: false, feedbackSubmissionEnabled: true },
+}));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'en' } }),
 }));
