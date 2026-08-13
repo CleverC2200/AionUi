@@ -39,6 +39,9 @@
     "detailUsedByTitle": "در حال استفاده",
     "detailUsedByEmpty": "هنوز هیچ دستیاری از این مهارت استفاده نمی‌کند.",
     "detailBuiltinAssistant": "داخلی",
+    "detailManagedAssistant": "مدیریت‌شده توسط سازمان",
+    "detailEnableBundled": "فعال‌سازی برای دستیار",
+    "detailDisableBundled": "غیرفعال کردن",
     "detailFilesTitle": "فایل‌های مهارت",
     "detailFilesError": "فایل‌های این مهارت بارگیری نشدند.",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "هیچ مهارت رسمی در دسترس نیست.",
     "noSearchResults": "هیچ مهارت منطبقی وجود ندارد.",
     "customHint": "یک پوشه مهارت، پوشه والد یا zip را وارد کنید؛ حداکثر {{maxFileSize}} برای هر فایل و {{maxTotalSize}} برای هر مهارت؛ وارد کردن نام تکراری مهارت موجود را بازنویسی می‌کند.",
+    "bundledTitle": "همراه برنامه",
+    "bundledHint": "همراه کلاینت نصب و به‌صورت پیش‌فرض فعال می‌شود. برای دستیارهای قابل ویرایش می‌توان آن را غیرفعال کرد، اما قابل حذف نیست.",
     "officialHint": "مهارت‌های رسمی همراه GEAUi — آماده استفاده، فقط‌خواندنی و با هر نسخه به‌روزرسانی می‌شوند.",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },
@@ -1335,6 +1340,13 @@
   "personalModelFetchFailed": "دریافت مدل‌های شخصی از GEA ناموفق بود. بعداً دوباره تلاش کنید یا با مدیر تماس بگیرید.",
   "personalModelLoginRequired": "پیش از دریافت مدل‌های شخصی از GEA وارد شوید.",
   "personalModelNoneAvailable": "هیچ مجوز مدل شخصی برای همگام‌سازی از GEA موجود نیست.",
+  "geaResourceFetchFromGea": "دریافت از GEA",
+  "geaResourceFetching": "در حال دریافت از GEA…",
+  "geaResourceFetchSuccess": "{{count}} منبع از GEA به‌روزرسانی شد.",
+  "geaResourceNoChanges": "منابع GEA از قبل به‌روز هستند.",
+  "geaResourceLoginRequired": "پیش از دریافت منابع از GEA وارد شوید.",
+  "geaResourceUnavailable": "همگام‌سازی منابع GEA در سرویس فعلی در دسترس نیست.",
+  "geaResourceFetchFailed": "دریافت منابع از GEA ناموفق بود. بعداً دوباره تلاش کنید یا با مدیر تماس بگیرید.",
   "autoInjectedSkillsHint": "در هر گفتگو به‌طور خودکار بارگذاری می‌شوند — نیازی به فعال‌سازی نیست؛ عامل تصمیم می‌گیرد چه زمانی از آن‌ها استفاده کند.",
   "browserData": {
     "title": "مرورگر درون‌برنامه",

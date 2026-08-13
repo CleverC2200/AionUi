@@ -12,12 +12,23 @@ export type ConversationFileResourceItem = {
   kind: 'file';
   path: string;
   name: string;
+  provenance?: ConversationResourceProvenance;
 };
 
 export type ConversationUrlResourceItem = {
   kind: 'url';
   url: string;
   name: string;
+  provenance?: ConversationResourceProvenance;
+};
+
+export type ConversationResourceProvenance = {
+  recordId: string;
+  revision: number;
+  producer: string;
+  turnId?: string;
+  taskId?: string;
+  replacesRecordId?: string;
 };
 
 export type ConversationResourceItem = ConversationFileResourceItem | ConversationUrlResourceItem;

@@ -183,6 +183,7 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
                 onEditServer={showEditMcpModal}
                 onDeleteServer={showDeleteConfirm}
                 onOAuthLogin={handleOAuthLogin}
+                isConfigurationReadOnly={server.source === 'managed'}
               />
             ))
           )}

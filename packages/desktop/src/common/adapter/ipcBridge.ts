@@ -35,6 +35,20 @@ import type {
   SetAssistantStateRequest,
   UpdateAssistantRequest,
 } from '../types/agent/assistantTypes';
+import type { EnterpriseAssistantExtensionResult } from '../types/agent/enterpriseAssistantCatalog';
+import type { ManagedAssistantExtensionSaveParams } from './assistant/extensions';
+import type {
+  ConversationPreparationRequest,
+  ConversationPreparationResponse,
+} from '../types/conversationConfiguration';
+import {
+  type InteractionRequestActionCommand,
+  type InteractionRequestList,
+  type InteractionRequestReceipt,
+  parseInteractionRequestList,
+} from '../types/interactionRequest';
+import type { ConversationRecordEvent, ConversationRecordSnapshot } from '../types/conversationRecord';
+import { parseConversationRecordSnapshot } from '../types/conversationRecord';
 import type {
   EnsureConversationRuntimeResponse,
   GetConfigOptionsResponse,
@@ -228,7 +242,11 @@ export const voice = {
 // ---------------------------------------------------------------------------
 
 export const assistants = {
-  list: httpGet<Assistant[], void>('/api/assistants'),
+  list: withResponseMap(
+    httpGet<import('./assistant').AionCoreAssistantCatalogResponse, void>('/api/assistants'),
+    (response) => (Array.isArray(response) ? response : response.assistants)
+  ),
+  catalog: httpGet<import('./assistant').AionCoreAssistantCatalogResponse, void>('/api/assistants'),
   get: httpGet<AssistantDetail, { id: string; locale?: string }>(
     ({ id, locale }) =>
       `/api/assistants/${encodeURIComponent(id)}${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`
@@ -244,6 +262,45 @@ export const assistants = {
     }
   ),
   import: httpPost<ImportAssistantsResult, ImportAssistantsRequest>('/api/assistants/import'),
+  saveExtensions: httpPost<EnterpriseAssistantExtensionResult, ManagedAssistantExtensionSaveParams>(
+    (p) => `/api/assistants/${encodeURIComponent(p.assistant_id)}/extensions`,
+    ({ assistant_id: _assistantId, ...request }) => request
+  ),
+};
+
+// ---------------------------------------------------------------------------
+// GEA client resources — AionCore remains the only gateway to GEA
+// ---------------------------------------------------------------------------
+
+export type GeaClientResourceKind = 'assistants' | 'skills' | 'mcps';
+
+export type SkillSource = 'builtin' | 'custom' | 'cron' | 'extension' | 'managed';
+
+export type AvailableSkill = {
+  skill_id?: string;
+  version?: string;
+  name: string;
+  description: string;
+  location: string;
+  relative_location?: string;
+  is_auto_inject: boolean;
+  is_custom: boolean;
+  source: SkillSource;
+  state?: 'active' | 'suspended' | 'withdrawn' | 'incompatible';
+};
+
+export type GeaClientResourceSyncResult = {
+  changed: number;
+  failed: number;
+  revision?: string;
+  skipped: number;
+  status: 'completed' | 'notAuthenticated' | 'partial' | 'unavailable';
+};
+
+export const clientResources = {
+  syncFromGea: httpPost<GeaClientResourceSyncResult, { resources: GeaClientResourceKind[] }>(
+    '/api/client-resources/sync'
+  ),
 };
 
 // ---------------------------------------------------------------------------
@@ -251,6 +308,9 @@ export const assistants = {
 // ---------------------------------------------------------------------------
 
 export const conversation = {
+  prepareConfiguration: httpPost<ConversationPreparationResponse, ConversationPreparationRequest>(
+    '/api/conversations/prepare'
+  ),
   create: withResponseMap(
     httpPost<TChatConversation, ICreateConversationParams>('/api/conversations', (p) => buildCreateConversationBody(p)),
     fromApiConversation
@@ -477,6 +537,28 @@ export const conversation = {
         `/api/conversations/${p.conversation_id}/approvals/check?action=${encodeURIComponent(p.action)}${p.command_type ? `&command_type=${encodeURIComponent(p.command_type)}` : ''}`
     ),
   },
+};
+
+export const interactionRequest = {
+  list: withResponseMap(
+    httpGet<InteractionRequestList, void>('/api/interaction-requests?status=pending'),
+    parseInteractionRequestList
+  ),
+  act: httpPost<InteractionRequestReceipt, InteractionRequestActionCommand>(
+    (p) => `/api/interaction-requests/${encodeURIComponent(p.request_id)}/actions`,
+    ({ request_id: _requestId, ...command }) => command
+  ),
+  changed: wsEmitter<{ revision: string }>('interaction_request.changed'),
+};
+
+export const conversationRecords = {
+  get: withResponseMap(
+    httpGet<ConversationRecordSnapshot, { conversation_id: string }>(
+      (p) => `/api/conversations/${encodeURIComponent(p.conversation_id)}/records`
+    ),
+    parseConversationRecordSnapshot
+  ),
+  changed: wsEmitter<ConversationRecordEvent>('conversation.record'),
 };
 
 export const runtime = {
@@ -872,18 +954,7 @@ export const fs = {
   deleteAssistantRule: httpDelete<boolean, { assistant_id: string }>(
     (p) => `/api/skills/assistant-rule/${p.assistant_id}`
   ),
-  listAvailableSkills: httpGet<
-    Array<{
-      name: string;
-      description: string;
-      location: string;
-      relative_location?: string;
-      is_auto_inject: boolean;
-      is_custom: boolean;
-      source: 'builtin' | 'custom' | 'cron' | 'extension';
-    }>,
-    void
-  >('/api/skills'),
+  listAvailableSkills: httpGet<AvailableSkill[], void>('/api/skills'),
   materializeSkillsForAgent: httpPost<
     { skills: Array<{ name: string; source_path: string }> },
     { conversation_id: string; skills: string[] }
@@ -1824,7 +1895,11 @@ export interface ICreateConversationParams {
       mcp_ids?: string[];
     };
   };
-  extra: {
+  preparation?: {
+    id: string;
+    revision: string;
+  };
+  extra?: {
     workspace?: string;
     custom_workspace?: boolean;
     default_files?: string[];

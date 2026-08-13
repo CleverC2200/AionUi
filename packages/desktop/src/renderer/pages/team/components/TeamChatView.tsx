@@ -99,6 +99,7 @@ const AionrsTeamChat: React.FC<{
       loadedMcpServers={loadedMcpServers}
       loadedMcpStatuses={loadedMcpStatuses}
       hideComposerModelSelector={hideComposerModelSelector}
+      hideConversationResources
     />
   );
 };
@@ -253,6 +254,7 @@ const TeamChatView: React.FC<TeamChatViewProps> = ({
             loadedMcpServers={capabilitySnapshot?.mcp_servers}
             loadedMcpStatuses={capabilitySnapshot?.mcp_statuses}
             hideComposerModelSelector={hideComposerModelSelector}
+            hideConversationResources
           />
         );
       case 'aionrs':

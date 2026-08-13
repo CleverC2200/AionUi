@@ -12,11 +12,12 @@ export type AssistantListFilter = 'all' | 'enabled' | 'disabled' | 'builtin' | '
  * - `user` → "Custom" tag
  * - `generated` (agent-generated) → "CLI" tag, matching the product terminology.
  */
-export type AssistantSourceTag = 'builtin' | 'custom' | 'cli' | null;
+export type AssistantSourceTag = 'builtin' | 'custom' | 'cli' | 'managed' | null;
 
 export const resolveAssistantSourceTag = (source: string): AssistantSourceTag => {
   if (source === 'builtin') return 'builtin';
   if (source === 'generated') return 'cli';
+  if (source === 'managed') return 'managed';
   return 'custom';
 };
 

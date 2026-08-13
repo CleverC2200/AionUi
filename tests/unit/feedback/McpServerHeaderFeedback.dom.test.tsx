@@ -86,4 +86,19 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
       autoScreenshot: true,
     });
   });
+
+  it('labels a GEA-managed server and hides local configuration actions', () => {
+    const { container } = render(
+      <ConfigProvider>
+        <McpServerHeader
+          server={{ ...buildServer('connected'), source: 'managed' }}
+          {...commonProps}
+          isConfigurationReadOnly
+        />
+      </ConfigProvider>
+    );
+
+    expect(screen.getByText('settings.enterpriseManagedBadge')).toBeInTheDocument();
+    expect(container.querySelector('.i-icon-setting-one')).not.toBeInTheDocument();
+  });
 });

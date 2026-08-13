@@ -24,7 +24,8 @@ import TeamAgentIdentity from './components/TeamAgentIdentity';
 import TeamViewToggle from './components/TeamViewToggle';
 import TeamControlBoard from './control-board/TeamControlBoard';
 import TeamWarmupOverlay from './components/TeamWarmupOverlay';
-import { useTeamViewMode } from './hooks/useTeamViewMode';
+import TeamConversationResources from './components/TeamConversationResources';
+import { resolveTeamViewMode, useTeamViewMode } from './hooks/useTeamViewMode';
 import { useTeamWarmup, type TeamWarmupMemberState, type TeamWarmupPhase } from './hooks/useTeamWarmup';
 import { TeamTabsProvider, useTeamTabs } from './hooks/TeamTabsContext';
 import { TeamIdentityProvider } from './identity/TeamIdentityContext';
@@ -39,6 +40,9 @@ import { previewScopeKey } from '@/renderer/pages/conversation/Preview/context/p
 import { setCurrentProject } from '@/renderer/pages/conversation/explorer/currentProjectStore';
 import { setCurrentConversation } from '@/renderer/pages/conversation/explorer/currentConversationStore';
 import { getSnapshotConversationProjectId } from '@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync';
+import { useTeamWorkSnapshot } from './control-board/useTeamWorkSnapshot';
+import { summarizeTeamMembers } from './memberWorkSummary';
+import { useLocation } from 'react-router-dom';
 
 type Props = {
   team: TTeam;
@@ -259,11 +263,24 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
   const [showRightArrow, setShowRightArrow] = useState(false);
   // 视图模式（并行/单聊），按团队记忆。单聊 = 全屏当前选中成员。
   const [viewMode, setViewMode] = useTeamViewMode(team.id);
-  const isSingleView = viewMode === 'single';
+  const layout = useLayoutContext();
+  const isNarrow = layout?.isMobile ?? false;
+  const effectiveViewMode = resolveTeamViewMode(viewMode, isNarrow);
+  const isSingleView = effectiveViewMode === 'single';
 
   const activeAssistant = assistants.find((assistant) => assistant.slot_id === activeSlotId);
   const leadAssistant = assistants.find((assistant) => assistant.role === 'leader');
   const teamRun = useTeamRunView(team.id);
+  const { snapshot: teamWorkSnapshot } = useTeamWorkSnapshot(team.id);
+  const memberWorkSummaries = useMemo(() => summarizeTeamMembers(teamWorkSnapshot), [teamWorkSnapshot]);
+  const location = useLocation();
+
+  useEffect(() => {
+    const targetSlotId = (location.state as { targetSlotId?: string } | null)?.targetSlotId;
+    if (!targetSlotId || !assistants.some((assistant) => assistant.slot_id === targetSlotId)) return;
+    switchTab(targetSlotId);
+    setViewMode('single');
+  }, [assistants, location.key, location.state, setViewMode, switchTab]);
 
   // 进团队 warmup：以团队会话整体就绪为闸门（ensureSession resolve = 全员成功）。遮罩覆盖对话区。
   // runtimeStatus 是各成员逐个的真实唤醒信号，用于遮罩头像的「唤醒中→点亮」及失败态定位。
@@ -484,11 +501,12 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
       <TeamTabs
         onTabClick={handleTabClick}
         pendingCounts={slotPendingCounts}
+        workSummaries={memberWorkSummaries}
         warmingUp={isWarmingUp}
         failedSlotIds={warmupFailedSlotIds}
       />
     ),
-    [handleTabClick, slotPendingCounts, isWarmingUp, warmupFailedSlotIds]
+    [handleTabClick, slotPendingCounts, memberWorkSummaries, isWarmingUp, warmupFailedSlotIds]
   );
 
   return (
@@ -513,13 +531,21 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
           isTemporaryWorkspace={isTeamWorkspaceTemporary}
           workspacePreferenceKey={team.id}
           onRenameTitle={onRenameTeam}
-          headerExtra={assistants.length > 1 ? <TeamViewToggle value={viewMode} onChange={setViewMode} /> : undefined}
+          headerExtra={
+            assistants.length > 1 && !isNarrow ? <TeamViewToggle value={viewMode} onChange={setViewMode} /> : undefined
+          }
           headerLeading={
             <span className='inline-flex w-16px h-16px items-center justify-center shrink-0 leading-none text-t-primary'>
               <Peoples theme='outline' size='16' fill='currentColor' style={{ lineHeight: 0 }} />
             </span>
           }
         >
+          <TeamConversationResources
+            members={assistants}
+            activeSlotId={activeSlotId}
+            activeConversationId={activeAssistant?.conversation_id}
+            workspace={effectiveWorkspace}
+          />
           <div className='relative flex h-full'>
             <TeamWarmupOverlay
               phase={warmupPhase}
@@ -528,7 +554,7 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
               colorOf={colorOf}
               onRetry={onRetryWarmup}
             />
-            {viewMode === 'board' ? (
+            {effectiveViewMode === 'board' ? (
               // 看板视图：只读展现全队 mailbox 与 task-board。
               <div className='flex-1 h-full min-w-0'>
                 <TeamControlBoard team={team} />
@@ -548,7 +574,9 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
                       isLeader={isLeaderSlot}
                       color={colorOf(assistant.slot_id)}
                       isFullscreen
-                      onToggleFullscreen={() => setViewMode('parallel')}
+                      onToggleFullscreen={() => {
+                        if (!isNarrow) setViewMode('parallel');
+                      }}
                       teamRunView={teamRun.state}
                       onTeamRunAck={teamRun.applyAck}
                       onRunStateStale={teamRun.reconcile}

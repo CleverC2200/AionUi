@@ -13,22 +13,11 @@ import SettingsPageHeader from '../components/SettingsPageHeader';
 import TalkToButlerButton from '@/renderer/components/base/TalkToButlerButton';
 import { AionSearchInput } from '@/renderer/components/base';
 import { buildSkillImportNotice, getSkillImportErrorMessage } from './skillImportMessages';
+import { useGeaResourceSync } from '@/renderer/hooks/system/useGeaResourceSync';
+import type { AvailableSkill } from '@/common/adapter/ipcBridge';
 
 // Skill 信息类型 / Skill info type
-interface SkillInfo {
-  name: string;
-  description: string;
-  location: string;
-  /**
-   * Relative location under the builtin-skills corpus (e.g.
-   * `auto-inject/cron/SKILL.md`). Present only for built-in sources; the
-   * export-to-external-source flow still uses absolute `location` paths.
-   */
-  relative_location?: string;
-  is_auto_inject: boolean;
-  is_custom: boolean;
-  source?: 'builtin' | 'custom' | 'cron' | 'extension';
-}
+type SkillInfo = AvailableSkill;
 
 const isAutoInjectedBuiltinSkill = (skill: SkillInfo) => skill.source === 'builtin' && skill.is_auto_inject;
 
@@ -168,16 +157,17 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     [activeTab, navigate]
   );
 
-  // "Custom" tab: only user-imported skills.
-  const mySkills = useMemo(() => availableSkills.filter((s) => s.source === 'custom'), [availableSkills]);
-  // "Official" tab: built-in non-auto-injected skills shown as the primary list,
-  // with extension skills and auto-injected skills kept as separate read-only sections.
+  // "My Skills" contains user imports plus the system-required skills bundled
+  // with the installation. Bundled skills stay outside delete/batch actions.
+  const customSkills = useMemo(() => availableSkills.filter((s) => s.source === 'custom'), [availableSkills]);
+  // "Official" remains the browse-only catalog for optional built-in skills.
   const officialSkills = useMemo(
     () => availableSkills.filter((s) => s.source === 'builtin' && !s.is_auto_inject),
     [availableSkills]
   );
   const builtinAutoSkills = useMemo(() => availableSkills.filter(isAutoInjectedBuiltinSkill), [availableSkills]);
   const extensionSkills = useMemo(() => availableSkills.filter((s) => s.source === 'extension'), [availableSkills]);
+  const managedSkills = useMemo(() => availableSkills.filter((s) => s.source === 'managed'), [availableSkills]);
   const importHistoryGroups = useMemo(() => buildImportHistoryGroups(importHistory), [importHistory]);
 
   const matchesQuery = useCallback(
@@ -193,29 +183,55 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     [search_query]
   );
 
-  const filteredSkills = useMemo(() => matchesQuery(mySkills), [matchesQuery, mySkills]);
+  const filteredSkills = useMemo(() => matchesQuery(customSkills), [matchesQuery, customSkills]);
   const filteredOfficialSkills = useMemo(() => matchesQuery(officialSkills), [matchesQuery, officialSkills]);
   const filteredExtensionSkills = useMemo(() => matchesQuery(extensionSkills), [matchesQuery, extensionSkills]);
   const filteredAutoSkills = useMemo(() => matchesQuery(builtinAutoSkills), [matchesQuery, builtinAutoSkills]);
 
+  const loadSkillsProjection = useCallback(async () => {
+    const skills = await ipcBridge.fs.listAvailableSkills.invoke();
+    setAvailableSkills(skills);
+  }, []);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const skills = await ipcBridge.fs.listAvailableSkills.invoke();
-      setAvailableSkills(skills);
+      await loadSkillsProjection();
 
       const history = await ipcBridge.fs.listSkillImportHistory.invoke();
       setImportHistory(history as SkillImportRecord[]);
 
       const limits = await ipcBridge.fs.getSkillImportLimits.invoke();
       setImportLimits(limits);
+      return true;
     } catch (error) {
       console.error('Failed to fetch skills:', error);
       Message.error(t('settings.skillsHub.fetchError', { defaultValue: 'Failed to fetch skills' }));
+      return false;
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [loadSkillsProjection, t]);
+
+  const refreshSkillsProjection = useCallback(async () => {
+    try {
+      await loadSkillsProjection();
+      return true;
+    } catch (error) {
+      console.error('Failed to refresh skills after GEA sync:', error);
+      return false;
+    }
+  }, [loadSkillsProjection]);
+
+  const {
+    available: geaAvailable,
+    syncing: geaSyncing,
+    syncFromGea,
+  } = useGeaResourceSync({
+    message: Message,
+    refresh: refreshSkillsProjection,
+    resource: 'skills',
+  });
 
   useEffect(() => {
     void fetchData();
@@ -227,7 +243,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     if (!highlightName || loading) return;
     const target = availableSkills.find((s) => s.name === highlightName);
     if (target) {
-      setActiveTab(target.source === 'custom' ? 'custom' : 'official');
+      setActiveTab(target.source === 'custom' || isAutoInjectedBuiltinSkill(target) ? 'custom' : 'official');
     }
   }, [highlightName, loading, availableSkills]);
 
@@ -642,14 +658,25 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
   );
 
   // Read-only skill card used by the Official / Extension / Auto-injected sections.
-  const renderReadonlySkillCard = (skill: SkillInfo, variant: 'official' | 'extension' | 'auto', testId?: string) => {
+  const renderReadonlySkillCard = (
+    skill: SkillInfo,
+    variant: 'official' | 'extension' | 'auto' | 'managed',
+    testId?: string
+  ) => {
     const isAuto = variant === 'auto';
     const isExtension = variant === 'extension';
     const accent = isAuto ? 'success' : 'primary';
     return (
       <div
         key={skill.name}
-        data-testid={testId}
+        data-testid={
+          testId ??
+          (isAuto
+            ? `bundled-skill-card-${normalizeTestId(skill.name)}`
+            : variant === 'managed'
+              ? `managed-skill-card-${normalizeTestId(skill.name)}`
+              : undefined)
+        }
         ref={(el) => {
           skillRefs.current[skill.name] = el;
         }}
@@ -684,7 +711,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           )}
         </div>
         <div className='shrink-0 sm:self-center flex items-center justify-end pl-4px'>
-          <SkillUsedByStack assistants={getAssistantsUsingSkill(skill.name, assistantCatalog ?? [])} />
+          <SkillUsedByStack assistants={getAssistantsUsingSkill(skill.name, assistantCatalog ?? [], isAuto)} />
         </div>
       </div>
     );
@@ -708,7 +735,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     count: number,
     countClass: string,
     skills: SkillInfo[],
-    variant: 'extension' | 'auto',
+    variant: 'extension' | 'auto' | 'managed',
     hint?: React.ReactNode
   ) => (
     <div data-testid={testId}>
@@ -764,7 +791,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
               'Import a skill folder, parent folder, or zip; up to {{maxFileSize}} per file and {{maxTotalSize}} per skill; importing the same name overwrites the existing skill.',
           })}
         </p>
-        {mySkills.length > 0 && (
+        {customSkills.length > 0 && (
           <div className='flex shrink-0 items-center gap-8px'>
             {batchMode ? (
               <>
@@ -805,7 +832,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           </div>
         )}
       </div>
-      {batchMode && mySkills.length > 0 && (
+      {batchMode && customSkills.length > 0 && (
         <div className='flex items-center justify-between gap-12px text-12px text-t-secondary'>
           <Checkbox
             data-testid='checkbox-select-all-skills'
@@ -824,7 +851,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           </span>
         </div>
       )}
-      {mySkills.length > 0 ? (
+      {customSkills.length > 0 ? (
         <div className='flex flex-col gap-8px rounded-12px border border-border-2 bg-2 p-8px md:rounded-16px md:p-10px'>
           {filteredSkills.length === 0 && (
             <div className='text-center text-t-secondary text-13px py-32px bg-fill-1 rd-12px border border-border-2 border-dashed'>
@@ -909,7 +936,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
             </div>
           ))}
         </div>
-      ) : (
+      ) : builtinAutoSkills.length === 0 ? (
         <div className='text-center text-t-secondary text-13px py-40px bg-fill-1 rd-12px border border-border-2 border-dashed'>
           {loading
             ? t('common.loading', { defaultValue: 'Please wait...' })
@@ -917,11 +944,26 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
                 defaultValue: 'No skills found. Import some to get started.',
               })}
         </div>
-      )}
+      ) : null}
+
+      {builtinAutoSkills.length > 0 &&
+        readonlySection(
+          'auto-skills-section',
+          <Lightning theme='filled' size={18} fill='var(--color-success-6)' />,
+          t('settings.skillsHub.bundledTitle', { defaultValue: 'Bundled with installation' }),
+          builtinAutoSkills.length,
+          'bg-[rgba(var(--success-6),0.08)] text-[rgb(var(--success-6))]',
+          filteredAutoSkills,
+          'auto',
+          t('settings.skillsHub.bundledHint', {
+            defaultValue:
+              'Installed with the client and enabled by default. They may be disabled for editable assistants, but cannot be deleted.',
+          })
+        )}
     </div>
   );
 
-  // ======== Official tab (official builtin list + extension + auto-injected sections) ========
+  // ======== Official tab (optional builtin list + extension section) ========
   const officialPane = (
     <div className='flex flex-col gap-24px'>
       <div data-testid='official-skills-section'>
@@ -961,19 +1003,15 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           'extension'
         )}
 
-      {builtinAutoSkills.length > 0 &&
+      {managedSkills.length > 0 &&
         readonlySection(
-          'auto-skills-section',
-          <Lightning theme='filled' size={18} fill='var(--color-success-6)' />,
-          t('settings.autoInjectedSkills'),
-          builtinAutoSkills.length,
-          'bg-[rgba(var(--success-6),0.08)] text-[rgb(var(--success-6))]',
-          filteredAutoSkills,
-          'auto',
-          t('settings.autoInjectedSkillsHint', {
-            defaultValue:
-              'Loaded automatically into every conversation — no need to enable them; the agent decides when to use them.',
-          })
+          'managed-skills-section',
+          <Puzzle theme='filled' size={18} fill='var(--color-primary-6)' />,
+          t('settings.enterpriseManagedBadge', { defaultValue: 'Enterprise managed' }),
+          managedSkills.length,
+          'bg-[rgba(var(--primary-6),0.08)] text-primary-6',
+          matchesQuery(managedSkills),
+          'managed'
         )}
     </div>
   );
@@ -1002,8 +1040,26 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
               {t('settings.skillsHub.importHistoryTitle', { defaultValue: 'Import history' })}
             </Button>
             <TalkToButlerButton
-              label={t('settings.skillsHub.addSkill', { defaultValue: 'Add Skill' })}
+              label={
+                geaSyncing
+                  ? t('settings.geaResourceFetching')
+                  : t('settings.skillsHub.addSkill', { defaultValue: 'Add Skill' })
+              }
+              loading={geaSyncing}
               chatLabel={t('settings.talkToButler.addViaChat', { defaultValue: 'Add via chat' })}
+              extraActions={
+                geaAvailable
+                  ? [
+                      {
+                        key: 'gea',
+                        label: geaSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea'),
+                        onClick: (): void => {
+                          void syncFromGea();
+                        },
+                      },
+                    ]
+                  : []
+              }
               onManual={handleManualImport}
               manualLabel={t('settings.skillsHub.manualImport', { defaultValue: 'Import Skills' })}
               prompt={t('settings.talkToButler.prompt.addSkill', {
@@ -1017,12 +1073,12 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           {
             key: 'custom',
             label: t('settings.skillsHub.tabCustom', { defaultValue: 'Custom' }),
-            count: mySkills.length,
+            count: customSkills.length + builtinAutoSkills.length,
           },
           {
             key: 'official',
             label: t('settings.skillsHub.tabOfficial', { defaultValue: 'Official' }),
-            count: officialSkills.length + extensionSkills.length + builtinAutoSkills.length,
+            count: officialSkills.length + extensionSkills.length + managedSkills.length,
           },
         ]}
         activeTab={activeTab}

@@ -5,6 +5,7 @@
  */
 
 import type { SpeechToTextConfig } from '@/common/types/provider/speech';
+import type { ConversationConfigurationSnapshot } from '@/common/types/conversationConfiguration';
 import type { Theme } from '@/common/theme/types';
 import { buildStorage } from '@/common/platform/storage';
 
@@ -154,6 +155,8 @@ interface IChatConversation<T, Extra> {
   channel_chat_id?: string;
   /** Explicit assistant identity for assistant-led conversations */
   assistant?: TConversationAssistantIdentity;
+  /** Immutable runtime facts published atomically before the first turn. */
+  configuration_snapshot?: ConversationConfigurationSnapshot;
   /**
    * Owning Project id (top-level, from `ConversationResponse.project_id`, stage3
    * contract). Drives Project-scoped Explorer mounting + preview isolation.
@@ -618,6 +621,12 @@ export interface IMcpServer {
   original_json: string; // 存储原始JSON配置，用于编辑时的准确显示
   /** Built-in MCP server managed by AionUi (hide edit/delete in UI) */
   builtin?: boolean;
+  /** Resource ownership from the AionCore projection. Managed configuration is server-owned. */
+  source?: 'local' | 'builtin' | 'extension' | 'managed';
+  version?: string;
+  state?: 'active' | 'suspended' | 'withdrawn' | 'incompatible';
+  auth_mode?: 'none' | 'local_secret' | 'user_oauth' | 'enterprise_delegation';
+  production_write?: boolean;
 }
 
 export type ISessionMcpServer = Pick<IMcpServer, 'id' | 'name' | 'transport'>;

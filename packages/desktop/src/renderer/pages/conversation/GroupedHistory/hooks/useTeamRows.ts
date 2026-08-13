@@ -36,7 +36,11 @@ type UseTeamRowsArgs = {
   /** Current route path, to derive per-row `selected`. */
   pathname: string;
   onSessionClick?: () => void;
+  /** Older AionCore has team.list but not the grouped sidebar/order routes. */
+  legacyMode?: boolean;
 };
+
+const LEGACY_TEAM_PINNED_KEY = 'team-pinned-ids';
 
 /**
  * Team data + actions for the folded-in sidebar team rows. Grouping / order /
@@ -48,7 +52,7 @@ type UseTeamRowsArgs = {
  * needs; the rename modal state lives here as a single instance (mirroring the
  * conversation rename modal), exposed as `renameModal` for the caller to mount.
  */
-export const useTeamRows = ({ pathname, onSessionClick }: UseTeamRowsArgs) => {
+export const useTeamRows = ({ pathname, onSessionClick, legacyMode = false }: UseTeamRowsArgs) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { teams, mutate: refreshTeams, removeTeam } = useTeamList();
@@ -59,6 +63,14 @@ export const useTeamRows = ({ pathname, onSessionClick }: UseTeamRowsArgs) => {
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameName, setRenameName] = useState('');
   const [renameLoading, setRenameLoading] = useState(false);
+  const [legacyPinnedIds, setLegacyPinnedIds] = useState<string[]>(() => {
+    try {
+      const value = JSON.parse(localStorage.getItem(LEGACY_TEAM_PINNED_KEY) ?? '[]') as unknown;
+      return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
 
   const handleTeamClick = useCallback(
     (team_id: string) => {
@@ -75,6 +87,14 @@ export const useTeamRows = ({ pathname, onSessionClick }: UseTeamRowsArgs) => {
   // re-groups server-side. Mirrors the conversation `handleTogglePin`.
   const handleTogglePin = useCallback(
     async (team_id: string, pinned: boolean) => {
+      if (legacyMode) {
+        setLegacyPinnedIds((current) => {
+          const next = pinned ? current.filter((id) => id !== team_id) : [...current, team_id];
+          localStorage.setItem(LEGACY_TEAM_PINNED_KEY, JSON.stringify(next));
+          return next;
+        });
+        return;
+      }
       try {
         if (pinned) {
           await ipcBridge.order.pinned.delete.invoke({ item_type: 'team', item_id: team_id });
@@ -87,8 +107,21 @@ export const useTeamRows = ({ pathname, onSessionClick }: UseTeamRowsArgs) => {
         Message.error(t('team.sider.pin'));
       }
     },
-    [t]
+    [legacyMode, t]
   );
+
+  const legacyTeamItems = useMemo<SidebarTeamItem[]>(() => {
+    if (!legacyMode) return [];
+    return teams
+      .map((team) => ({
+        team_id: team.id,
+        name: team.name,
+        updated_at: team.updated_at,
+        pinned: legacyPinnedIds.includes(team.id),
+        member_conversation_ids: team.assistants.map((assistant) => assistant.conversation_id).filter(Boolean),
+      }))
+      .toSorted((a, b) => Number(b.pinned) - Number(a.pinned) || b.updated_at - a.updated_at);
+  }, [legacyMode, legacyPinnedIds, teams]);
 
   const openRename = useCallback((team_id: string, name: string) => {
     setRenameId(team_id);
@@ -170,5 +203,5 @@ export const useTeamRows = ({ pathname, onSessionClick }: UseTeamRowsArgs) => {
     [renameId, renameName, renameLoading, handleRenameConfirm, closeRename]
   );
 
-  return { resolveTeamRow, renameModal };
+  return { resolveTeamRow, renameModal, legacyTeamItems };
 };

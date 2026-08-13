@@ -1,4 +1,16 @@
 {
+  "attention": {
+    "title": "待处理",
+    "open": "打开 {{count}} 个待处理请求",
+    "empty": "暂无待处理请求",
+    "loadFailed": "待处理请求加载失败，当前工作没有被修改。",
+    "source": {
+      "agent": "助手",
+      "team_agent": "团队成员",
+      "aioncore": "AionCore",
+      "business_system": "业务系统"
+    }
+  },
   "welcome": {
     "title": "Hi，今天有什么安排？",
     "placeholder": "发消息、上传文件、打开文件夹、创建定时任务，或输入 / 唤起命令...",
@@ -616,10 +628,18 @@
   },
   "resources": {
     "tooltip": "来源与产出物",
+    "inspector": "工作记录",
+    "inferred": "从历史推断",
+    "deliverables": "交付物",
+    "receipts": "结果与验证",
     "outputs": "产出物",
     "sources": "来源",
     "emptyOutputs": "暂无产出物",
-    "emptySources": "暂无来源"
+    "emptySources": "暂无来源",
+    "recordIdentity": "记录 {{id}} · 版本 {{revision}} · {{producer}}",
+    "recordTurn": "轮次 {{turn}}",
+    "recordTask": "任务 {{task}}",
+    "recordReplaces": "替换 {{id}}"
   },
   "agentTip": {
     "codes": {
@@ -764,6 +784,24 @@
     },
     "pathCopied": "已复制路径",
     "copyFailed": "复制路径失败"
+  },
+  "configurationPreparation": {
+    "preparing": "正在准备助手、Skill、MCP 和权限…",
+    "blockedTitle": "当前还不能开始这个会话",
+    "openSkills": "打开 Skill",
+    "openMcp": "打开 MCP 设置",
+    "openUpdate": "检查更新",
+    "issue": {
+      "ASSIGNMENT_INACTIVE": "此企业助手当前不可用。",
+      "CLIENT_TOO_OLD": "请先更新客户端，再使用此助手。",
+      "EXTENSION_REJECTED": "部分本地扩展与企业策略冲突。",
+      "IDENTITY_CHANGED": "当前登录身份已变化，请重新登录后重试。",
+      "MCP_AUTH_REQUIRED": "有 MCP 需要先完成授权，才能开始会话。",
+      "MISSING_SKILL": "客户端缺少企业必需的 Skill。",
+      "OFFLINE_CACHE_EXPIRED": "离线企业配置已过期，不能开始新的工作。",
+      "POLICY_CHANGED": "准备会话期间企业策略发生了变化。",
+      "STALE_REVISION": "企业助手配置已更新，请重新加载后重试。"
+    }
   },
   "terminal": {
     "running": "运行中",

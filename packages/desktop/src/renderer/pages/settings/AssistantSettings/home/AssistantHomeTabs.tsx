@@ -5,6 +5,7 @@
  */
 
 import type { AssistantListItem } from '../types';
+import type { AssistantCatalogView } from '@/common/adapter/assistant';
 import EnabledAssistantsList from './EnabledAssistantsList';
 import MyAssistantsList from './MyAssistantsList';
 import OfficialAssistantsGrid from './OfficialAssistantsGrid';
@@ -17,6 +18,9 @@ import { useTranslation } from 'react-i18next';
 
 type AssistantHomeTabsProps = {
   assistants: AssistantListItem[];
+  catalogView: AssistantCatalogView | null;
+  catalogError: string | null;
+  catalogLoading: boolean;
   assistantOrder: readonly string[];
   localeKey: string;
   onOpenDetail: (assistant: AssistantListItem) => void;
@@ -27,6 +31,9 @@ type AssistantHomeTabsProps = {
   onToggleEnabled: (assistant: AssistantListItem, checked: boolean) => void;
   onReorderEnabled: (activeId: string, overId: string) => void | Promise<void>;
   onStartChat: (assistant: AssistantListItem) => void;
+  onReloadCatalog: () => void | Promise<unknown>;
+  catalogSyncing?: boolean;
+  onSyncFromGea: () => void | Promise<void>;
   /** Tab to show on mount (e.g. return to Official after editing a builtin). */
   initialTab?: 'enabled' | 'mine' | 'official';
   /** Notified whenever the active tab changes, so the parent can remember it. */
@@ -37,6 +44,9 @@ type HomeTab = 'enabled' | 'mine' | 'official';
 
 const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
   assistants,
+  catalogView,
+  catalogError,
+  catalogLoading,
   assistantOrder,
   localeKey,
   onOpenDetail,
@@ -47,6 +57,9 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
   onToggleEnabled,
   onReorderEnabled,
   onStartChat,
+  onReloadCatalog,
+  catalogSyncing = false,
+  onSyncFromGea,
   initialTab = 'enabled',
   onTabChange,
 }) => {
@@ -55,6 +68,7 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
   const isMobile = layout?.isMobile ?? false;
   const [tab, setTab] = useState<HomeTab>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
+  const managedMode = catalogView?.mode === 'managed' || assistants.some((assistant) => assistant.source === 'managed');
 
   const selectTab = (next: HomeTab) => {
     setTab(next);
@@ -67,11 +81,11 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
     let official = 0;
     for (const assistant of assistants) {
       if (assistant.enabled !== false) enabled += 1;
-      if (assistant.source === 'builtin') official += 1;
-      else mine += 1;
+      if (managedMode ? assistant.source === 'managed' : assistant.source === 'builtin') official += 1;
+      else if (assistant.source !== 'builtin' && assistant.source !== 'managed') mine += 1;
     }
     return { enabled, mine, official };
-  }, [assistants]);
+  }, [assistants, managedMode]);
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const filteredAssistants = useMemo(() => {
@@ -120,8 +134,28 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
                 )}
                 <TalkToButlerButton
                   className='shrink-0'
-                  label={t('settings.createAssistant', { defaultValue: 'Create Assistant' })}
+                  label={
+                    catalogSyncing
+                      ? t('settings.geaResourceFetching')
+                      : t('settings.createAssistant', { defaultValue: 'Create Assistant' })
+                  }
+                  loading={catalogSyncing}
                   chatLabel={t('settings.talkToButler.createViaChat', { defaultValue: 'Create via chat' })}
+                  extraActions={
+                    managedMode
+                      ? [
+                          {
+                            key: 'gea',
+                            label: catalogSyncing
+                              ? t('settings.geaResourceFetching')
+                              : t('settings.geaResourceFetchFromGea'),
+                            onClick: (): void => {
+                              void onSyncFromGea();
+                            },
+                          },
+                        ]
+                      : []
+                  }
                   onManual={onCreate}
                   manualLabel={t('settings.talkToButler.createManually', { defaultValue: 'Create manually' })}
                   prompt={t('settings.talkToButler.prompt.createAssistant', {
@@ -144,7 +178,9 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
               },
               {
                 key: 'official',
-                label: t('settings.assistantTabOfficial', { defaultValue: 'Official' }),
+                label: managedMode
+                  ? t('settings.assistantTabEnterprise', { defaultValue: 'Enterprise' })
+                  : t('settings.assistantTabOfficial', { defaultValue: 'Official' }),
                 count: counts.official,
               },
             ]}
@@ -178,17 +214,21 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
               onDelete={onDelete}
               onToggleEnabled={onToggleEnabled}
               onStartChat={onStartChat}
-              onGoOfficial={() => selectTab('official')}
               searchActive={Boolean(normalizedSearchQuery)}
             />
           ) : (
             <OfficialAssistantsGrid
               assistants={filteredAssistants}
+              catalogMode={managedMode ? 'managed' : 'official'}
+              catalogSyncStatus={catalogView?.sync_status}
+              catalogError={catalogError ?? catalogView?.error_code}
+              catalogLoading={catalogLoading}
               localeKey={localeKey}
               onOpenSettings={onOpenSettings}
               onDuplicate={onDuplicate}
               onToggleEnabled={onToggleEnabled}
               onStartChat={onStartChat}
+              onRetry={onReloadCatalog}
               searchActive={Boolean(normalizedSearchQuery)}
             />
           )}

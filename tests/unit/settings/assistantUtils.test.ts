@@ -241,6 +241,10 @@ describe('resolveAssistantSourceTag', () => {
   it('shows the CLI tag for generated assistants', () => {
     expect(resolveAssistantSourceTag('generated')).toBe('cli');
   });
+
+  it('shows the enterprise tag for managed assistants', () => {
+    expect(resolveAssistantSourceTag('managed')).toBe('managed');
+  });
 });
 
 describe('buildAssistantEditorBackends', () => {

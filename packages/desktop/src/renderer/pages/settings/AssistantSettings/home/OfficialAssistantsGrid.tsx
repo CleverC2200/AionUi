@@ -5,21 +5,27 @@
  */
 
 import type { AssistantListItem } from '../types';
+import type { AssistantCatalogSyncStatus } from '@/common/adapter/assistant';
 import { type AssistantEnabledFilter, filterByEnabled } from '../assistantUtils';
 import AssistantAvatar from '../AssistantAvatar';
 import RuntimeBadge from './RuntimeBadge';
-import { Button, Dropdown, Menu, Switch } from '@arco-design/web-react';
+import { Alert, Button, Dropdown, Menu, Spin, Switch, Tag } from '@arco-design/web-react';
 import { AllApplication, Down, MoreOne } from '@icon-park/react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type OfficialAssistantsGridProps = {
   assistants: AssistantListItem[];
+  catalogMode: 'managed' | 'official';
+  catalogSyncStatus?: AssistantCatalogSyncStatus;
+  catalogError?: string;
+  catalogLoading?: boolean;
   localeKey: string;
   onOpenSettings: (assistant: AssistantListItem) => void;
   onDuplicate: (assistant: AssistantListItem) => void;
   onToggleEnabled: (assistant: AssistantListItem, checked: boolean) => void;
   onStartChat: (assistant: AssistantListItem) => void;
+  onRetry: () => void | Promise<unknown>;
   searchActive?: boolean;
 };
 
@@ -32,19 +38,27 @@ const FILTER_OPTIONS: AssistantEnabledFilter[] = ['all', 'enabled', 'disabled'];
  */
 const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
   assistants,
+  catalogMode,
+  catalogSyncStatus,
+  catalogError,
+  catalogLoading = false,
   localeKey,
   onOpenSettings,
   onDuplicate,
   onToggleEnabled,
   onStartChat,
+  onRetry,
   searchActive = false,
 }) => {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<AssistantEnabledFilter>('all');
-  const officialAssistants = useMemo(() => {
-    const builtins = assistants.filter((a) => a.source === 'builtin').toSorted((a, b) => a.sort_order - b.sort_order);
-    return filterByEnabled(builtins, filter);
-  }, [assistants, filter]);
+  const catalogAssistants = useMemo(() => {
+    const source = catalogMode === 'managed' ? 'managed' : 'builtin';
+    const items = assistants
+      .filter((assistant) => assistant.source === source)
+      .toSorted((a, b) => a.sort_order - b.sort_order);
+    return filterByEnabled(items, filter);
+  }, [assistants, catalogMode, filter]);
 
   const filterMenu = (
     <Menu onClickMenuItem={(key) => setFilter(key as AssistantEnabledFilter)}>
@@ -60,6 +74,29 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
 
   return (
     <div data-testid='official-assistants-pane'>
+      {catalogError ? (
+        <Alert
+          className='mb-14px'
+          type={catalogAssistants.length > 0 ? 'warning' : 'error'}
+          showIcon
+          content={
+            <div className='flex flex-wrap items-center justify-between gap-8px'>
+              <span>
+                {catalogAssistants.length > 0
+                  ? t('settings.enterpriseAssistantsShowingLastGood', {
+                      defaultValue: 'Showing the last synced enterprise catalog. New conversations may be restricted.',
+                    })
+                  : t('settings.enterpriseAssistantsLoadFailed', {
+                      defaultValue: 'Enterprise assistants could not be loaded. Check your connection and try again.',
+                    })}
+              </span>
+              <Button size='mini' loading={catalogLoading} onClick={() => void onRetry()} data-testid='catalog-retry'>
+                {t('common.retry', { defaultValue: 'Retry' })}
+              </Button>
+            </div>
+          }
+        />
+      ) : null}
       {/* Compact toolbar: quiet one-line hint (full text on hover) + filter. */}
       <div className='mb-14px flex items-center justify-between gap-12px'>
         <span className='inline-flex min-w-0 items-center gap-6px text-12px text-t-tertiary'>
@@ -71,9 +108,13 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
             style={{ lineHeight: 0 }}
           />
           <span className='truncate'>
-            {t('settings.officialAssistantsHintShort', {
-              defaultValue: 'Maintained by GEAUi · enable to use, duplicate to customize',
-            })}
+            {catalogMode === 'managed'
+              ? t('settings.enterpriseAssistantsHintShort', {
+                  defaultValue: 'Managed by your enterprise · core capabilities stay protected',
+                })
+              : t('settings.officialAssistantsHintShort', {
+                  defaultValue: 'Maintained by GEAUi · enable to use, duplicate to customize',
+                })}
           </span>
         </span>
         <Dropdown droplist={filterMenu} trigger='click' position='br'>
@@ -92,16 +133,28 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
         </Dropdown>
       </div>
 
-      <div className='grid grid-cols-1 gap-14px sm:grid-cols-2 lg:grid-cols-3'>
-        {officialAssistants.length === 0 ? (
+      <div className='grid grid-cols-1 gap-14px sm:grid-cols-2 lg:grid-cols-3' aria-busy={catalogLoading}>
+        {catalogLoading && catalogAssistants.length === 0 ? (
+          <div className='col-span-full py-40px flex-center' role='status' aria-live='polite'>
+            <Spin tip={t('common.loading', { defaultValue: 'Loading…' })} />
+          </div>
+        ) : null}
+        {!catalogLoading && catalogAssistants.length === 0 ? (
           <div className='col-span-full rounded-14px border border-dashed border-border-2 bg-fill-1/40 px-20px py-28px text-center text-13px text-t-secondary'>
             {searchActive
               ? t('settings.assistantNoMatch', { defaultValue: 'No assistants match the current filters.' })
-              : t('settings.assistantsEmpty', { defaultValue: 'No assistants configured.' })}
+              : catalogMode === 'managed'
+                ? t('settings.enterpriseAssistantsEmpty', {
+                    defaultValue: 'Your enterprise has not assigned any assistants yet.',
+                  })
+                : t('settings.assistantsEmpty', { defaultValue: 'No assistants configured.' })}
           </div>
         ) : null}
-        {officialAssistants.map((assistant) => {
-          const enabled = assistant.enabled !== false;
+        {catalogAssistants.map((assistant) => {
+          const managed = assistant.managed;
+          const available = !managed || (managed.state === 'active' && managed.sync_status !== 'blocked');
+          const enabled = assistant.enabled !== false && available;
+          const toggleLocked = managed?.activation === 'required' || !available;
           const actionMenu = (
             <Menu
               onClickMenuItem={(key) => {
@@ -114,11 +167,13 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
                   {t('common.settings', { defaultValue: 'Settings' })}
                 </span>
               </Menu.Item>
-              <Menu.Item key='duplicate'>
-                <span data-testid={`menu-duplicate-${assistant.id}`}>
-                  {t('settings.duplicateAssistant', { defaultValue: 'Duplicate as my assistant' })}
-                </span>
-              </Menu.Item>
+              {!managed ? (
+                <Menu.Item key='duplicate'>
+                  <span data-testid={`menu-duplicate-${assistant.id}`}>
+                    {t('settings.duplicateAssistant', { defaultValue: 'Duplicate as my assistant' })}
+                  </span>
+                </Menu.Item>
+              ) : null}
             </Menu>
           );
 
@@ -126,8 +181,17 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
             <div
               key={assistant.id}
               data-testid={`official-card-${assistant.id}`}
-              className='group flex cursor-pointer flex-col rounded-14px border border-solid border-transparent bg-base p-16px transition-all duration-180 hover:border-border-2'
+              className='group flex cursor-pointer flex-col rounded-14px border border-solid border-transparent bg-base p-16px transition-all duration-180 hover:border-border-2 focus-visible:border-primary-6 focus-visible:outline-none'
               onClick={() => onOpenSettings(assistant)}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                onOpenSettings(assistant);
+              }}
+              role='button'
+              tabIndex={0}
+              aria-label={assistant.name_i18n?.[localeKey] || assistant.name}
             >
               {/* Header row: avatar on the left, enable switch on the right. */}
               <div className='flex items-start justify-between'>
@@ -139,13 +203,44 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
                     size='small'
                     data-testid={`switch-enabled-${assistant.id}`}
                     checked={enabled}
+                    disabled={toggleLocked}
                     onChange={(checked) => onToggleEnabled(assistant, checked)}
+                    aria-label={t('settings.assistantToggleEnabled', {
+                      defaultValue: 'Enable {{name}}',
+                      name: assistant.name_i18n?.[localeKey] || assistant.name,
+                    })}
                   />
                 </span>
               </div>
               <div className={`mt-12px truncate text-14px font-600 text-t-primary ${enabled ? '' : 'opacity-70'}`}>
                 {assistant.name_i18n?.[localeKey] || assistant.name}
               </div>
+              {managed ? (
+                <div className='mt-7px flex min-h-22px flex-wrap items-center gap-6px'>
+                  <Tag size='small'>{t('settings.enterpriseManagedBadge', { defaultValue: 'Enterprise managed' })}</Tag>
+                  {managed.activation === 'required' ? (
+                    <Tag size='small'>{t('settings.enterpriseRequiredBadge', { defaultValue: 'Required' })}</Tag>
+                  ) : null}
+                  {managed.state !== 'active' ? (
+                    <Tag size='small'>
+                      {managed.state === 'suspended'
+                        ? t('settings.enterpriseSuspendedBadge', { defaultValue: 'Suspended' })
+                        : t('settings.enterpriseWithdrawnBadge', { defaultValue: 'Withdrawn' })}
+                    </Tag>
+                  ) : null}
+                  {managed.sync_status === 'blocked' && assistant.agent_status_message === 'CLIENT_TOO_OLD' ? (
+                    <Tag size='small'>
+                      {t('settings.enterpriseClientTooOldBadge', {
+                        defaultValue: 'Requires client {{version}}',
+                        version: managed.minimum_client_version,
+                      })}
+                    </Tag>
+                  ) : null}
+                  {managed.sync_status === 'stale' || catalogSyncStatus === 'stale' ? (
+                    <Tag size='small'>{t('settings.enterpriseStaleBadge', { defaultValue: 'Update pending' })}</Tag>
+                  ) : null}
+                </div>
+              ) : null}
               <div
                 className={`mt-6px line-clamp-2 text-12px leading-[1.5] text-t-secondary ${enabled ? '' : 'opacity-55'}`}
               >
@@ -162,7 +257,7 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
                       type='text'
                       size='small'
                       data-testid={`btn-chat-${assistant.id}`}
-                      className='!inline-flex !h-28px !items-center !justify-center !rounded-9px !bg-fill-2 !px-12px !leading-none !text-t-secondary !opacity-0 transition-all hover:!bg-primary-6 hover:!text-white group-hover:!opacity-100'
+                      className='!inline-flex !h-28px !items-center !justify-center !rounded-9px !bg-fill-2 !px-12px !leading-none !text-t-secondary !opacity-0 transition-all hover:!bg-primary-6 hover:!text-white focus:!opacity-100 group-hover:!opacity-100 group-focus-within:!opacity-100'
                       onClick={() => onStartChat(assistant)}
                     >
                       {t('settings.assistantGoChat', { defaultValue: 'Chat' })}

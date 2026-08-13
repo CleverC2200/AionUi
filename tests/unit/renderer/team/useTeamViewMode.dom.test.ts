@@ -5,9 +5,20 @@
  */
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, expect, test } from 'vitest';
-import { useTeamViewMode } from '@/renderer/pages/team/hooks/useTeamViewMode';
+import { resolveTeamViewMode, useTeamViewMode } from '@/renderer/pages/team/hooks/useTeamViewMode';
 
 beforeEach(() => localStorage.clear());
+
+test('forces the single-member journey on narrow layouts without rewriting the stored preference', () => {
+  expect(resolveTeamViewMode('parallel', true)).toBe('single');
+  expect(resolveTeamViewMode('board', true)).toBe('single');
+  expect(resolveTeamViewMode('parallel', false)).toBe('parallel');
+});
+
+test('defaults to a focused member conversation instead of the control surface', () => {
+  const { result } = renderHook(() => useTeamViewMode('t1'));
+  expect(result.current[0]).toBe('single');
+});
 
 test('migrates legacy "flow" stored value to "board"', () => {
   localStorage.setItem('team-view-mode-t1', 'flow');

@@ -11,6 +11,8 @@ import { ConfigProvider } from '@arco-design/web-react';
 import { MemoryRouter } from 'react-router-dom';
 import AssistantSettings from '@/renderer/pages/settings/AssistantSettings';
 import EnabledAssistantsList from '@/renderer/pages/settings/AssistantSettings/home/EnabledAssistantsList';
+import MyAssistantsList from '@/renderer/pages/settings/AssistantSettings/home/MyAssistantsList';
+import AssistantHomeTabs from '@/renderer/pages/settings/AssistantSettings/home/AssistantHomeTabs';
 import type { AssistantListItem } from '@/renderer/pages/settings/AssistantSettings/types';
 
 const useAssistantListMock = vi.fn();
@@ -233,6 +235,85 @@ describe('AssistantSettings', () => {
     expect(screen.getByTestId('switch-enabled-cli')).toBeInTheDocument();
   });
 
+  it('keeps assistant creation actions in the header instead of repeating them in the empty state', () => {
+    render(
+      <ConfigProvider>
+        <MyAssistantsList
+          assistants={[]}
+          localeKey='en-US'
+          onOpenDetail={vi.fn()}
+          onDelete={vi.fn()}
+          onToggleEnabled={vi.fn()}
+          onStartChat={vi.fn()}
+        />
+      </ConfigProvider>
+    );
+
+    expect(screen.getByTestId('created-empty')).toHaveTextContent('No custom assistants yet');
+    expect(screen.queryByTestId('created-empty-create')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('created-empty-official')).not.toBeInTheDocument();
+  });
+
+  it('offers GEA sync from the assistant creation menu', async () => {
+    const onSyncFromGea = vi.fn();
+    render(
+      <ConfigProvider>
+        <AssistantHomeTabs
+          assistants={[]}
+          catalogView={{ assistants: [], mode: 'managed', sync_status: 'fresh' }}
+          catalogError={null}
+          catalogLoading={false}
+          assistantOrder={[]}
+          localeKey='en-US'
+          onOpenDetail={vi.fn()}
+          onOpenSettings={vi.fn()}
+          onDuplicate={vi.fn()}
+          onDelete={vi.fn()}
+          onCreate={vi.fn()}
+          onToggleEnabled={vi.fn()}
+          onReorderEnabled={vi.fn()}
+          onStartChat={vi.fn()}
+          onReloadCatalog={vi.fn()}
+          onSyncFromGea={onSyncFromGea}
+        />
+      </ConfigProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('btn-create-assistant'));
+    const marker = await screen.findByTestId('btn-create-assistant-gea');
+    fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
+
+    expect(onSyncFromGea).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the GEA sync action out of a standard assistant catalog', async () => {
+    render(
+      <ConfigProvider>
+        <AssistantHomeTabs
+          assistants={[]}
+          catalogView={{ assistants: [], mode: 'standard', sync_status: 'fresh' }}
+          catalogError={null}
+          catalogLoading={false}
+          assistantOrder={[]}
+          localeKey='en-US'
+          onOpenDetail={vi.fn()}
+          onOpenSettings={vi.fn()}
+          onDuplicate={vi.fn()}
+          onDelete={vi.fn()}
+          onCreate={vi.fn()}
+          onToggleEnabled={vi.fn()}
+          onReorderEnabled={vi.fn()}
+          onStartChat={vi.fn()}
+          onReloadCatalog={vi.fn()}
+          onSyncFromGea={vi.fn()}
+        />
+      </ConfigProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('btn-create-assistant'));
+    expect(screen.queryByTestId('btn-create-assistant-gea')).not.toBeInTheDocument();
+  });
+
   it('disables enabled-assistant dragging while search is active', () => {
     const assistants = [
       { id: 'cli', name: 'Codex', sort_order: 1, source: 'generated', enabled: true },
@@ -296,6 +377,37 @@ describe('AssistantSettings', () => {
     expect(onStartChat).toHaveBeenCalledTimes(1);
     expect(onStartChat).toHaveBeenCalledWith(expect.objectContaining({ id: 'cli' }));
     expect(onOpenDetail).not.toHaveBeenCalled();
+  });
+
+  it('labels managed assistants as enterprise and locks required activation', () => {
+    const assistants = [
+      {
+        id: 'enterprise-required',
+        name: 'Finance Close',
+        sort_order: 1,
+        source: 'managed',
+        enabled: true,
+        managed: { activation: 'required', state: 'active' },
+      },
+    ] as AssistantListItem[];
+
+    render(
+      <ConfigProvider>
+        <EnabledAssistantsList
+          assistants={assistants}
+          assistantOrder={[]}
+          localeKey='en-US'
+          searchActive={false}
+          onOpenDetail={vi.fn()}
+          onToggleEnabled={vi.fn()}
+          onReorder={vi.fn()}
+          onStartChat={vi.fn()}
+        />
+      </ConfigProvider>
+    );
+
+    expect(screen.getByText('Enterprise')).toBeInTheDocument();
+    expect(screen.getByTestId('switch-enabled-enterprise-required')).toBeDisabled();
   });
 
   it('uses the homepage avatar treatment without cropping runtime logos', () => {

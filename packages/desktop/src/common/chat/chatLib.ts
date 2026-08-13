@@ -321,6 +321,7 @@ export type IMessageAsk = IMessage<
     session_id: string;
     request_id: string;
     questions: IAskQuestion[];
+    interaction_request?: { id: string; version: string };
   }
 >;
 
@@ -433,6 +434,7 @@ export interface IConfirmation<Option extends any = any> {
   action?: string;
   description: string;
   call_id: string;
+  interaction_request?: { id: string; version: string };
   options: Array<{
     label: string;
     value: Option;

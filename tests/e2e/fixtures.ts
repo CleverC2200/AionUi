@@ -224,6 +224,14 @@ async function launchApp(): Promise<ElectronApplication> {
      */
     AIONUI_CDP_PORT: process.env.AIONUI_CDP_PORT || '9230',
   };
+  const recording = process.env.E2E_RECORD_VIDEO_DIR
+    ? {
+        recordVideo: {
+          dir: path.resolve(process.env.E2E_RECORD_VIDEO_DIR),
+          size: { width: 1280, height: 800 },
+        },
+      }
+    : {};
 
   if (usePackaged) {
     const packaged = resolvePackagedApp();
@@ -242,6 +250,7 @@ async function launchApp(): Promise<ElectronApplication> {
     }
 
     const electronApp = await electron.launch({
+      ...recording,
       executablePath: packaged.executablePath,
       args: launchArgs,
       cwd: packaged.cwd,
@@ -264,6 +273,7 @@ async function launchApp(): Promise<ElectronApplication> {
   }
 
   const electronApp = await electron.launch({
+    ...recording,
     args: launchArgs,
     cwd: projectRoot,
     env: {
@@ -331,6 +341,15 @@ export const test = base.extend<Fixtures>({
       } catch {
         // best-effort: page may have crashed
       }
+    }
+
+    // Electron's shared context normally stays alive for the whole worker. An
+    // explicit recording run is a single-test evidence job, so close it here
+    // to let Playwright flush the WebM before the worker exits.
+    if (process.env.E2E_RECORD_VIDEO_DIR && app) {
+      await electronApp.close().catch(() => {});
+      app = null;
+      mainPage = null;
     }
   },
 });

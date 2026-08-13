@@ -21,10 +21,19 @@ import { useTranslation } from 'react-i18next';
  * Assistants that have this skill attached (enabled or custom list).
  * The live API may omit the skill arrays on some assistants, so guard both.
  */
-export const getAssistantsUsingSkill = (skillName: string, assistants: Assistant[]): Assistant[] =>
-  assistants.filter(
-    (a) => (a.enabled_skills ?? []).includes(skillName) || (a.custom_skill_names ?? []).includes(skillName)
-  );
+export const getAssistantsUsingSkill = (
+  skillName: string,
+  assistants: Assistant[],
+  isAutoInjectedBuiltin = false
+): Assistant[] =>
+  assistants.filter((assistant) => {
+    if (isAutoInjectedBuiltin) {
+      return !(assistant.disabled_builtin_skills ?? []).includes(skillName);
+    }
+    return (
+      (assistant.enabled_skills ?? []).includes(skillName) || (assistant.custom_skill_names ?? []).includes(skillName)
+    );
+  });
 
 const SkillUsedByStack: React.FC<{ assistants: Assistant[]; max?: number }> = ({ assistants, max = 4 }) => {
   const { t, i18n } = useTranslation();

@@ -5,13 +5,16 @@
  */
 
 import { useLocalFilePreview } from '@/renderer/pages/conversation/Preview/hooks/useLocalFilePreview';
+import { ipcBridge } from '@/common';
 import { useMessageList } from '@/renderer/pages/conversation/Messages/hooks';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview/context/PreviewContext';
 import type { TMessage } from '@/common/chat/chatLib';
+import { ConversationRecords } from '@/common/adapter/conversation-records';
+import type { ConversationRecord, ConversationRecordEvent } from '@/common/types/conversationRecord';
 import { iconColors } from '@/renderer/styles/colors';
 import { loadAllConversationMessagesPaged } from '@/renderer/utils/chat/messagePagination';
-import { Button, Popover, Tooltip } from '@arco-design/web-react';
-import { ApplicationMenu, Earth, FileText, Pic } from '@icon-park/react';
+import { Button, Popover, Tag, Tooltip, Typography } from '@arco-design/web-react';
+import { ApplicationMenu, Attention, CheckOne, Earth, FileText, Pic, Send } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +24,7 @@ import {
   conversationResourcesSlotId,
   isImageResource,
   type ConversationResourceItem,
+  type ConversationResourceProvenance,
 } from './model';
 
 const ResourceIcon: React.FC<{ item: ConversationResourceItem }> = ({ item }) =>
@@ -33,6 +37,108 @@ const ResourceIcon: React.FC<{ item: ConversationResourceItem }> = ({ item }) =>
   );
 
 const resourceLocation = (item: ConversationResourceItem): string => (item.kind === 'url' ? item.url : item.path);
+
+export type ConversationFactItem = {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'danger' | 'neutral' | 'success' | 'warning';
+  resource?: ConversationResourceItem;
+  provenance?: ConversationResourceProvenance;
+};
+
+const recordProvenance = (record: ConversationRecord): ConversationResourceProvenance => ({
+  recordId: record.id,
+  revision: record.revision,
+  producer: `${record.producer.type}:${record.producer.id}`,
+  turnId: record.turn_id,
+  taskId: record.task_id,
+  replacesRecordId: record.record_type === 'deliverable_revision' ? record.replaces_record_id : undefined,
+});
+
+const recordResource = (record: ConversationRecord): ConversationResourceItem | undefined => {
+  if (!('resource' in record)) return undefined;
+  return record.resource.kind === 'url' || /^https?:\/\//i.test(record.resource.uri)
+    ? { kind: 'url', url: record.resource.uri, name: record.resource.name, provenance: recordProvenance(record) }
+    : { kind: 'file', path: record.resource.uri, name: record.resource.name, provenance: recordProvenance(record) };
+};
+
+export const buildConversationRecordFacts = (records: ConversationRecord[]) => ({
+  sources: records
+    .filter((record) => record.record_type === 'context_evidence')
+    .flatMap((record) => {
+      const resource = recordResource(record);
+      return resource ? [resource] : [];
+    }),
+  outputs: records
+    .filter((record) => record.record_type === 'output')
+    .flatMap((record) => {
+      const resource = recordResource(record);
+      return resource ? [resource] : [];
+    }),
+  deliverables: records
+    .filter((record) => record.record_type === 'deliverable_revision')
+    .map<ConversationFactItem>((record) => ({
+      id: record.id,
+      title: record.resource.name,
+      description: `${record.status} · r${record.revision}`,
+      status: record.status === 'ready' ? 'success' : record.status === 'withdrawn' ? 'danger' : 'neutral',
+      resource: recordResource(record),
+      provenance: recordProvenance(record),
+    })),
+  receipts: records
+    .filter(
+      (record) =>
+        record.record_type === 'external_result' ||
+        record.record_type === 'verification_evidence' ||
+        record.record_type === 'completion_receipt'
+    )
+    .map<ConversationFactItem>((record) => {
+      if (record.record_type === 'external_result') {
+        return {
+          id: record.id,
+          title: record.system,
+          description: record.reference,
+          status: record.outcome === 'success' ? 'success' : record.outcome === 'failure' ? 'danger' : 'warning',
+          provenance: recordProvenance(record),
+        };
+      }
+      if (record.record_type === 'verification_evidence') {
+        return {
+          id: record.id,
+          title: record.summary,
+          status: record.outcome === 'pass' ? 'success' : record.outcome === 'fail' ? 'danger' : 'warning',
+          provenance: recordProvenance(record),
+        };
+      }
+      return {
+        id: record.id,
+        title: record.definition,
+        description: record.owner,
+        status: record.status === 'verified' ? 'success' : 'danger',
+        provenance: recordProvenance(record),
+      };
+    }),
+});
+
+const ProvenanceText: React.FC<{ provenance?: ConversationResourceProvenance }> = ({ provenance }) => {
+  const { t } = useTranslation();
+  if (!provenance) return null;
+  return (
+    <Typography.Text className='block truncate text-11px text-t-quaternary'>
+      {t('conversation.resources.recordIdentity', {
+        id: provenance.recordId,
+        revision: provenance.revision,
+        producer: provenance.producer,
+      })}
+      {provenance.turnId ? ` · ${t('conversation.resources.recordTurn', { turn: provenance.turnId })}` : ''}
+      {provenance.taskId ? ` · ${t('conversation.resources.recordTask', { task: provenance.taskId })}` : ''}
+      {provenance.replacesRecordId
+        ? ` · ${t('conversation.resources.recordReplaces', { id: provenance.replacesRecordId })}`
+        : ''}
+    </Typography.Text>
+  );
+};
 
 const ResourceSection: React.FC<{
   title: string;
@@ -50,12 +156,15 @@ const ResourceSection: React.FC<{
             key={`${item.kind}:${resourceLocation(item)}`}
             type='text'
             long
-            className={`${styles.resourceButton} !h-34px !px-4px !text-t-primary hover:!bg-2 active:!bg-3`}
+            className={`${styles.resourceButton} !h-auto !min-h-34px !px-4px !py-5px !text-t-primary hover:!bg-2 active:!bg-3`}
             icon={<ResourceIcon item={item} />}
             onClick={() => onOpen(item)}
             title={resourceLocation(item)}
           >
-            <span className='min-w-0 flex-1 truncate text-left text-13px'>{item.name}</span>
+            <span className='min-w-0 flex-1 text-left'>
+              <Typography.Text className='block truncate text-13px'>{item.name}</Typography.Text>
+              <ProvenanceText provenance={item.provenance} />
+            </span>
           </Button>
         ))}
       </div>
@@ -64,12 +173,83 @@ const ResourceSection: React.FC<{
   );
 };
 
+const FactSection: React.FC<{
+  title: string;
+  items: ConversationFactItem[];
+  onOpen: (item: ConversationResourceItem) => void;
+}> = ({ title, items, onOpen }) => {
+  if (items.length === 0) return null;
+  return (
+    <section className='flex min-h-0 flex-col gap-4px'>
+      <div className='h-28px flex items-center px-4px text-13px font-500 text-t-secondary'>{title}</div>
+      <div className='max-h-170px min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain'>
+        {items.map((item) => {
+          const icon =
+            item.status === 'success' ? (
+              <CheckOne size={16} />
+            ) : item.status === 'warning' ? (
+              <Attention size={16} />
+            ) : item.status === 'danger' ? (
+              <Attention size={16} />
+            ) : (
+              <Send size={16} />
+            );
+          return item.resource ? (
+            <Button
+              key={item.id}
+              type='text'
+              long
+              className={`${styles.resourceButton} !h-auto !min-h-34px !px-4px !py-5px !text-t-primary hover:!bg-2`}
+              icon={icon}
+              onClick={() => onOpen(item.resource!)}
+            >
+              <span className='min-w-0 flex-1 text-left'>
+                <Typography.Text className='block truncate text-13px'>{item.title}</Typography.Text>
+                {item.description ? (
+                  <Typography.Text className='block truncate text-12px text-t-tertiary'>
+                    {item.description}
+                  </Typography.Text>
+                ) : null}
+                <ProvenanceText provenance={item.provenance} />
+              </span>
+            </Button>
+          ) : (
+            <div key={item.id} className='min-h-34px px-4px py-5px flex items-start gap-8px text-t-primary'>
+              <span className='mt-2px shrink-0'>{icon}</span>
+              <span className='min-w-0'>
+                <Typography.Text className='block text-13px'>{item.title}</Typography.Text>
+                {item.description ? (
+                  <Typography.Text className='block text-12px text-t-tertiary'>{item.description}</Typography.Text>
+                ) : null}
+                <ProvenanceText provenance={item.provenance} />
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
+
 export const ConversationResourcesButton: React.FC<{
   outputs: ConversationResourceItem[];
   sources: ConversationResourceItem[];
+  deliverables?: ConversationFactItem[];
+  receipts?: ConversationFactItem[];
+  inferred?: boolean;
   onOpen: (item: ConversationResourceItem) => void;
   onRequestOpen?: () => void;
-}> = ({ outputs, sources, onOpen, onRequestOpen }) => {
+  scopeControls?: React.ReactNode;
+}> = ({
+  outputs,
+  sources,
+  deliverables = [],
+  receipts = [],
+  inferred = false,
+  onOpen,
+  onRequestOpen,
+  scopeControls,
+}) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
@@ -83,6 +263,15 @@ export const ConversationResourcesButton: React.FC<{
       className='w-300px max-w-[calc(100vw-24px)] flex flex-col gap-8px px-8px py-10px'
       data-testid='conversation-resources-panel'
     >
+      <div className='flex items-center justify-between px-4px'>
+        <Typography.Text className='text-13px font-600 text-t-primary'>
+          {t('conversation.resources.inspector')}
+        </Typography.Text>
+        {inferred ? <Tag size='small'>{t('conversation.resources.inferred')}</Tag> : null}
+      </div>
+      {scopeControls}
+      <FactSection title={t('conversation.resources.deliverables')} items={deliverables} onOpen={handleOpen} />
+      <FactSection title={t('conversation.resources.receipts')} items={receipts} onOpen={handleOpen} />
       <ResourceSection
         title={t('conversation.resources.outputs')}
         emptyText={t('conversation.resources.emptyOutputs')}
@@ -139,15 +328,19 @@ const ConversationResourcesPortal: React.FC<{ conversationId: string; workspace?
   const { openBrowserTab } = usePreviewContext();
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [historyMessages, setHistoryMessages] = useState<TMessage[] | null>(null);
+  const [recordMode, setRecordMode] = useState<'legacy' | 'loading' | 'structured'>('loading');
+  const [records, setRecords] = useState<ConversationRecord[]>([]);
   const loadingConversationRef = useRef<string | undefined>(undefined);
   const resourceMessages = useMemo(
     () => (historyMessages ? [...historyMessages, ...messages] : messages),
     [historyMessages, messages]
   );
-  const resources = useMemo(
+  const inferredResources = useMemo(
     () => collectConversationResources(resourceMessages, workspace),
     [resourceMessages, workspace]
   );
+  const structured = useMemo(() => buildConversationRecordFacts(records), [records]);
+  const resources = recordMode === 'legacy' ? inferredResources : structured;
 
   useEffect(() => {
     const targetId = conversationResourcesSlotId(conversationId);
@@ -159,6 +352,40 @@ const ConversationResourcesPortal: React.FC<{ conversationId: string; workspace?
     const observer = new MutationObserver(syncTarget);
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['id'] });
     return () => observer.disconnect();
+  }, [conversationId]);
+
+  useEffect(() => {
+    let alive = true;
+    const projection = new ConversationRecords();
+    setRecordMode('loading');
+    setRecords([]);
+
+    const refresh = () =>
+      ipcBridge.conversationRecords.get
+        .invoke({ conversation_id: conversationId })
+        .then((snapshot) => {
+          if (!alive) return;
+          const next = projection.replaceSnapshot(snapshot);
+          setRecords(next.records);
+          setRecordMode('structured');
+        })
+        .catch(() => {
+          if (alive) setRecordMode('legacy');
+        });
+    void refresh();
+    const off = ipcBridge.conversationRecords.changed.on((event: ConversationRecordEvent) => {
+      if (!alive || event.conversation_id !== conversationId) return;
+      const result = projection.apply(event);
+      if (result.status === 'gap' || result.status === 'invalid') void refresh();
+      else {
+        setRecords(result.snapshot.records);
+        setRecordMode('structured');
+      }
+    });
+    return () => {
+      alive = false;
+      off();
+    };
   }, [conversationId]);
 
   useEffect(() => {
@@ -186,8 +413,11 @@ const ConversationResourcesPortal: React.FC<{ conversationId: string; workspace?
     <ConversationResourcesButton
       outputs={resources.outputs}
       sources={resources.sources}
+      deliverables={recordMode === 'structured' ? structured.deliverables : []}
+      receipts={recordMode === 'structured' ? structured.receipts : []}
+      inferred={recordMode === 'legacy'}
       onOpen={(item) => (item.kind === 'url' ? openBrowserTab(item.url) : void openLocalFile(item.path))}
-      onRequestOpen={loadHistory}
+      onRequestOpen={recordMode === 'legacy' ? loadHistory : undefined}
     />,
     target
   );

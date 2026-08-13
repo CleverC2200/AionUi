@@ -89,6 +89,9 @@ vi.mock('@/common', () => ({
     assistant: {
       list: { invoke: vi.fn(async () => []) },
     },
+    assistants: {
+      list: { invoke: vi.fn(async () => []) },
+    },
     conversation: {
       listChanged: makeTeamEventChannel('conversationListChanged'),
       confirmation: {
@@ -134,6 +137,11 @@ vi.mock('@/renderer/pages/team/components/TeamChatView', () => ({
   ),
 }));
 
+vi.mock('@/renderer/pages/team/components/TeamConversationResources', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
 vi.mock('@/renderer/pages/cron', () => ({
   CronJobManager: (props: { conversation_id: string; cron_job_id?: string }) => {
     cronJobManagerMock(props);
@@ -161,6 +169,7 @@ describe('TeamPage cron job manager', () => {
     vi.mocked(ipcBridge.cron.removeJob.invoke).mockResolvedValue(undefined);
     vi.mocked(ipcBridge.team.removeAgent.invoke).mockResolvedValue(undefined);
     localStorage.clear();
+    localStorage.setItem('team-view-mode-team-1', 'parallel');
   });
 
   it('renders CronJobManager in the team member header when the member conversation has a cron job', async () => {

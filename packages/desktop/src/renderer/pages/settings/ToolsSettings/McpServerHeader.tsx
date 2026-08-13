@@ -14,6 +14,8 @@ interface McpServerHeaderProps {
   isLoggingIn?: boolean;
   /** Extension-contributed servers are read-only */
   isReadOnly?: boolean;
+  /** Hide edit/delete while keeping runtime authentication and connection checks available. */
+  isConfigurationReadOnly?: boolean;
   onTestConnection: (server: IMcpServer) => void;
   onEditServer: (server: IMcpServer) => void;
   onDeleteServer: (serverId: string) => void;
@@ -148,6 +150,7 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
   oauthStatus,
   isLoggingIn,
   isReadOnly,
+  isConfigurationReadOnly,
   onTestConnection,
   onEditServer,
   onDeleteServer,
@@ -162,11 +165,18 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
   const statusPopoverContent = getStatusPopoverContent(server, t);
 
   const isError = server.last_test_status === 'error';
+  const managedBadge =
+    server.source === 'managed' ? (
+      <span className='rounded-4px border border-border-2 bg-fill-1 px-6px py-1px text-11px text-t-secondary'>
+        {t('settings.enterpriseManagedBadge')}
+      </span>
+    ) : null;
 
   return (
     <div className='flex items-center justify-between group'>
       <div className='flex items-center gap-2'>
         <span>{server.name}</span>
+        {managedBadge}
         {statusPopoverContent ? (
           <Popover content={statusPopoverContent} trigger='hover' position='top'>
             <span className='flex items-center cursor-default'>{statusIcon}</span>
@@ -199,7 +209,7 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
           />
         )}
       </div>
-      {!isReadOnly && (
+      {!isReadOnly && !isConfigurationReadOnly && (
         <div className='flex items-center gap-2 invisible group-hover:visible' onClick={(e) => e.stopPropagation()}>
           {!server.builtin && (
             <Dropdown

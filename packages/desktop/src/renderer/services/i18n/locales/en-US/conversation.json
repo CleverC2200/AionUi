@@ -1,4 +1,16 @@
 {
+  "attention": {
+    "title": "Needs attention",
+    "open": "Open {{count}} pending requests",
+    "empty": "No pending requests",
+    "loadFailed": "Pending requests could not be loaded. Your work has not been changed.",
+    "source": {
+      "agent": "Assistant",
+      "team_agent": "Team member",
+      "aioncore": "AionCore",
+      "business_system": "Business system"
+    }
+  },
   "welcome": {
     "title": "Hi, what's your plan for today?",
     "placeholder": "Send a message, upload files, open a folder, create a scheduled task, or type / for commands...",
@@ -616,10 +628,18 @@
   },
   "resources": {
     "tooltip": "Sources and outputs",
+    "inspector": "Work record",
+    "inferred": "Inferred from history",
+    "deliverables": "Deliverables",
+    "receipts": "Results and verification",
     "outputs": "Outputs",
     "sources": "Sources",
     "emptyOutputs": "No outputs yet",
-    "emptySources": "No sources yet"
+    "emptySources": "No sources yet",
+    "recordIdentity": "Record {{id}} · revision {{revision}} · {{producer}}",
+    "recordTurn": "Turn {{turn}}",
+    "recordTask": "Task {{task}}",
+    "recordReplaces": "replaces {{id}}"
   },
   "agentTip": {
     "codes": {
@@ -764,6 +784,24 @@
     },
     "pathCopied": "Path copied",
     "copyFailed": "Failed to copy path"
+  },
+  "configurationPreparation": {
+    "preparing": "Preparing the assistant, Skills, MCP servers, and permissions…",
+    "blockedTitle": "This conversation is not ready to start",
+    "openSkills": "Open Skills",
+    "openMcp": "Open MCP settings",
+    "openUpdate": "Check for updates",
+    "issue": {
+      "ASSIGNMENT_INACTIVE": "This enterprise assistant is currently unavailable.",
+      "CLIENT_TOO_OLD": "Update the client before using this assistant.",
+      "EXTENSION_REJECTED": "One or more local extensions conflict with enterprise policy.",
+      "IDENTITY_CHANGED": "Your signed-in identity changed. Sign in again and retry.",
+      "MCP_AUTH_REQUIRED": "An MCP server needs authentication before the conversation can start.",
+      "MISSING_SKILL": "A required Skill is not available on this client.",
+      "OFFLINE_CACHE_EXPIRED": "The offline enterprise configuration is too old to start new work.",
+      "POLICY_CHANGED": "Enterprise policy changed while this conversation was being prepared.",
+      "STALE_REVISION": "The enterprise assistant changed. Reload and retry."
+    }
   },
   "terminal": {
     "running": "Running",

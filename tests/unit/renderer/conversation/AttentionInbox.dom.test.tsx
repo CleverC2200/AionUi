@@ -1,0 +1,179 @@
+import React from 'react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, useLocation } from 'react-router-dom';
+import { AttentionInbox } from '@/renderer/pages/conversation/AttentionInbox';
+import { SWRConfig } from 'swr';
+
+const { listInvoke, changedOn, reconnectedOn } = vi.hoisted(() => ({
+  listInvoke: vi.fn(),
+  changedOn: vi.fn(() => vi.fn()),
+  reconnectedOn: vi.fn(() => vi.fn()),
+}));
+
+vi.mock('@/common', () => ({
+  ipcBridge: {
+    interactionRequest: {
+      list: { invoke: listInvoke },
+      changed: { on: changedOn },
+    },
+    realtime: { reconnected: { on: reconnectedOn } },
+  },
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { count?: number }) =>
+      `${key}${options?.count === undefined ? '' : `:${options.count}`}`,
+  }),
+}));
+
+const LocationProbe = () => {
+  const location = useLocation();
+  return (
+    <output data-testid='location'>{JSON.stringify({ pathname: location.pathname, state: location.state })}</output>
+  );
+};
+
+describe('AttentionInbox', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    listInvoke.mockResolvedValue({
+      revision: 'attention-r1',
+      items: [
+        {
+          id: 'request-1',
+          version: 'v1',
+          kind: 'permission',
+          status: 'pending',
+          title: 'Approve production submission',
+          summary: 'Return to the original governed turn',
+          source: { type: 'business_system', label: 'Finance' },
+          conversation_id: 'conversation-1',
+          turn_id: 'turn-1',
+          message_id: 'message-1',
+          allowed_actions: ['approve', 'reject'],
+          updated_at: '2026-08-12T00:00:00.000Z',
+        },
+      ],
+    });
+  });
+
+  it('projects pending work and returns to the authoritative conversation message', async () => {
+    const onNavigate = vi.fn();
+    render(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <MemoryRouter initialEntries={['/guid']}>
+          <AttentionInbox onNavigate={onNavigate} />
+          <LocationProbe />
+        </MemoryRouter>
+      </SWRConfig>
+    );
+
+    const trigger = await screen.findByTestId('attention-inbox-trigger');
+    expect(trigger).toHaveAttribute('aria-label', 'conversation.attention.open:1');
+    expect(trigger).toContainElement(screen.getByTestId('attention-inbox-count'));
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByTestId('attention-request-request-1'));
+
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('location')).toHaveTextContent('"pathname":"/conversation/conversation-1"');
+    expect(screen.getByTestId('location')).toHaveTextContent('"targetMessageId":"message-1"');
+  });
+
+  it('returns a team request to its original member and turn context', async () => {
+    listInvoke.mockResolvedValueOnce({
+      revision: 'attention-team-r1',
+      items: [
+        {
+          id: 'team-request-1',
+          version: 'v1',
+          kind: 'approval',
+          status: 'pending',
+          title: 'Review teammate output',
+          source: { type: 'team_agent', label: 'Researcher' },
+          conversation_id: 'member-conversation-1',
+          team_id: 'team-1',
+          slot_id: 'worker-slot',
+          turn_id: 'turn-1',
+          message_id: 'message-1',
+          allowed_actions: ['approve'],
+          updated_at: '2026-08-12T00:00:00.000Z',
+        },
+      ],
+    });
+    render(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <MemoryRouter initialEntries={['/guid']}>
+          <AttentionInbox />
+          <LocationProbe />
+        </MemoryRouter>
+      </SWRConfig>
+    );
+    fireEvent.click(await screen.findByTestId('attention-inbox-trigger'));
+    fireEvent.click(await screen.findByTestId('attention-request-team-request-1'));
+
+    expect(screen.getByTestId('location')).toHaveTextContent('"pathname":"/team/team-1"');
+    expect(screen.getByTestId('location')).toHaveTextContent('"targetSlotId":"worker-slot"');
+  });
+
+  it('shows a recoverable load error instead of an empty inbox', async () => {
+    listInvoke
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ revision: 'attention-r2', items: [] });
+    render(
+      <SWRConfig value={{ provider: () => new Map(), shouldRetryOnError: false }}>
+        <MemoryRouter>
+          <AttentionInbox />
+        </MemoryRouter>
+      </SWRConfig>
+    );
+
+    fireEvent.click(await screen.findByTestId('attention-inbox-trigger'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('conversation.attention.loadFailed');
+    fireEvent.click(screen.getByText('common.retry'));
+    await waitFor(() => expect(listInvoke).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('conversation.attention.empty')).toBeInTheDocument();
+  });
+
+  it('treats an unavailable interaction-request route as an unsupported empty inbox', async () => {
+    listInvoke.mockRejectedValueOnce(
+      Object.assign(new Error('route unavailable'), {
+        name: 'BackendHttpError',
+        status: 404,
+        code: 'NOT_FOUND',
+        backendMessage: 'Route not found.',
+      })
+    );
+    render(
+      <SWRConfig value={{ provider: () => new Map(), shouldRetryOnError: false }}>
+        <MemoryRouter>
+          <AttentionInbox />
+        </MemoryRouter>
+      </SWRConfig>
+    );
+
+    fireEvent.click(await screen.findByTestId('attention-inbox-trigger'));
+    expect(await screen.findByText('conversation.attention.empty')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('reloads the authoritative pending list after realtime reconnect', async () => {
+    let reconnect: (() => void) | undefined;
+    reconnectedOn.mockImplementationOnce((listener: () => void) => {
+      reconnect = listener;
+      return vi.fn();
+    });
+    render(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <MemoryRouter>
+          <AttentionInbox />
+        </MemoryRouter>
+      </SWRConfig>
+    );
+
+    await screen.findByTestId('attention-inbox-trigger');
+    await act(async () => reconnect?.());
+    await waitFor(() => expect(listInvoke).toHaveBeenCalledTimes(2));
+  });
+});

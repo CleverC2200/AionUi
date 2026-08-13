@@ -6,10 +6,15 @@
 
 import { conversation } from '@/common/adapter/ipcBridge';
 import type { IAskQuestion, IMessageAsk } from '@/common/chat/chatLib';
+import type { InteractionRequest } from '@/common/types/interactionRequest';
 import { Button, Card, Checkbox, Input, Radio } from '@arco-design/web-react';
 import { CheckOne } from '@icon-park/react';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  interactionRequestActions,
+  requireAcceptedInteractionReceipt,
+} from '@/renderer/services/interactionRequestActions';
 // The permission panel's stylesheet supplies the shared card chrome; own.* adds
 // the question-specific pieces (option rows with secondary description lines),
 // built on the same tokens so the two cards read as siblings (user feedback,
@@ -32,6 +37,8 @@ type Draft = {
 };
 
 const emptyDraft = (): Draft => ({ labels: [], other: '', otherSelected: false });
+const isAnswered = (draft: Draft): boolean =>
+  draft.labels.length > 0 || (draft.otherSelected && draft.other.trim().length > 0);
 
 /**
  * Structured question card (`ask` frame — claude AskUserQuestion).
@@ -51,17 +58,30 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
   );
   const [drafts, setDrafts] = useState<Draft[]>(() => questions.map(emptyDraft));
   const [submitted, setSubmitted] = useState<'answered' | 'declined' | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<'changed' | 'ordinary' | 'verification' | null>(null);
+  const [authoritativeRequest, setAuthoritativeRequest] = useState<InteractionRequest | null>(null);
+  const [authorityBlocked, setAuthorityBlocked] = useState(false);
+  const submittingRef = useRef(false);
+
+  useEffect(() => {
+    setAuthoritativeRequest(null);
+    setAuthorityBlocked(false);
+  }, [content.interaction_request?.id, content.interaction_request?.version]);
 
   const updateDraft = useCallback((index: number, patch: Partial<Draft>) => {
     setDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
   }, []);
 
-  const answered = (d: Draft) => d.labels.length > 0 || (d.otherSelected && d.other.trim().length > 0);
-  const allAnswered = questions.length > 0 && drafts.every(answered);
+  const allAnswered = questions.length > 0 && drafts.every(isAnswered);
 
   const requestId = content.request_id || message.id;
 
   const handleSubmit = useCallback(async () => {
+    if (submittingRef.current || submitted !== null) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    setSubmissionError(null);
     // claude keys its answers map by the question TEXT; a multi-select answer
     // is an array of labels (claude joins with ", "). Other-text rides as a
     // plain label — claude accepts arbitrary answer strings. Sent over the
@@ -72,18 +92,99 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
       if (d.otherSelected && d.other.trim()) labels.push(d.other.trim());
       return { question: q.question, labels };
     });
-    await conversation.answerAsk.invoke({ conversation_id: message.conversation_id, request_id: requestId, answers });
-    setSubmitted('answered');
-  }, [drafts, questions, message.conversation_id, requestId]);
+    try {
+      if (content.interaction_request) {
+        const request = authoritativeRequest ?? content.interaction_request;
+        const receipt = await interactionRequestActions.submit({
+          request_id: request.id,
+          expected_version: request.version,
+          action_id: 'answer',
+          payload: { answers },
+        });
+        if (receipt.request) {
+          setAuthoritativeRequest(receipt.request);
+          setAuthorityBlocked(
+            receipt.request.status !== 'pending' || !receipt.request.allowed_actions.includes('answer')
+          );
+        } else {
+          setAuthorityBlocked(receipt.status === 'unknown_external_write');
+        }
+        requireAcceptedInteractionReceipt(receipt);
+      } else {
+        await conversation.answerAsk.invoke({
+          conversation_id: message.conversation_id,
+          request_id: requestId,
+          answers,
+        });
+      }
+      setSubmitted('answered');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setSubmissionError(
+        errorMessage.includes('UNKNOWN_EXTERNAL_WRITE')
+          ? 'verification'
+          : errorMessage.includes('CONFLICT') || errorMessage.includes('EXPIRED') || errorMessage.includes('FORBIDDEN')
+            ? 'changed'
+            : 'ordinary'
+      );
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }, [
+    authoritativeRequest,
+    content.interaction_request,
+    drafts,
+    questions,
+    message.conversation_id,
+    requestId,
+    submitted,
+  ]);
 
   const handleDecline = useCallback(async () => {
-    await conversation.answerAsk.invoke({
-      conversation_id: message.conversation_id,
-      request_id: requestId,
-      decline: true,
-    });
-    setSubmitted('declined');
-  }, [message.conversation_id, requestId]);
+    if (submittingRef.current || submitted !== null) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    setSubmissionError(null);
+    try {
+      if (content.interaction_request) {
+        const request = authoritativeRequest ?? content.interaction_request;
+        const receipt = await interactionRequestActions.submit({
+          request_id: request.id,
+          expected_version: request.version,
+          action_id: 'decline',
+        });
+        if (receipt.request) {
+          setAuthoritativeRequest(receipt.request);
+          setAuthorityBlocked(
+            receipt.request.status !== 'pending' || !receipt.request.allowed_actions.includes('decline')
+          );
+        } else {
+          setAuthorityBlocked(receipt.status === 'unknown_external_write');
+        }
+        requireAcceptedInteractionReceipt(receipt);
+      } else {
+        await conversation.answerAsk.invoke({
+          conversation_id: message.conversation_id,
+          request_id: requestId,
+          decline: true,
+        });
+      }
+      setSubmitted('declined');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setSubmissionError(
+        errorMessage.includes('UNKNOWN_EXTERNAL_WRITE')
+          ? 'verification'
+          : errorMessage.includes('CONFLICT') || errorMessage.includes('EXPIRED') || errorMessage.includes('FORBIDDEN')
+            ? 'changed'
+            : 'ordinary'
+      );
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }, [authoritativeRequest, content.interaction_request, message.conversation_id, requestId, submitted]);
 
   if (!questions.length) return null;
 
@@ -103,7 +204,7 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
                   className={own.optionList}
                   value={d.labels}
                   onChange={(labels) => updateDraft(qi, { labels: labels as string[] })}
-                  disabled={submitted !== null}
+                  disabled={submitted !== null || authorityBlocked}
                 >
                   {q.options.map((opt) => (
                     <Checkbox
@@ -128,7 +229,7 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
                       ? updateDraft(qi, { labels: [], otherSelected: true })
                       : updateDraft(qi, { labels: [value], otherSelected: false })
                   }
-                  disabled={submitted !== null}
+                  disabled={submitted !== null || authorityBlocked}
                 >
                   {q.options.map((opt) => (
                     <Radio
@@ -158,7 +259,7 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
                       placeholder={t('messages.askOtherPlaceholder')}
                       value={d.other}
                       onChange={(v) => updateDraft(qi, { other: v })}
-                      disabled={submitted !== null}
+                      disabled={submitted !== null || authorityBlocked}
                       data-testid={`message-question-other-input-${qi}`}
                     />
                   ) : null}
@@ -175,13 +276,19 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
             <Button
               type='primary'
               size='small'
-              disabled={!allAnswered}
+              disabled={!allAnswered || authorityBlocked}
+              loading={submitting}
               onClick={handleSubmit}
               data-testid='message-question-submit'
             >
               {t('messages.askSubmit')}
             </Button>
-            <Button size='small' onClick={handleDecline} data-testid='message-question-decline'>
+            <Button
+              size='small'
+              disabled={submitting || authorityBlocked}
+              onClick={handleDecline}
+              data-testid='message-question-decline'
+            >
               {t('messages.askDecline')}
             </Button>
           </div>
@@ -196,6 +303,19 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
             <span>{submitted === 'answered' ? t('messages.askAnswered') : t('messages.askDeclined')}</span>
           </div>
         )}
+        {submissionError ? (
+          <div className={`${styles.feedback} ${styles.error}`} role='alert' aria-live='assertive'>
+            <span>
+              {t(
+                submissionError === 'verification'
+                  ? 'messages.interactionVerificationRequired'
+                  : submissionError === 'changed'
+                    ? 'messages.interactionRequestChanged'
+                    : 'messages.permissionResponseFailed'
+              )}
+            </span>
+          </div>
+        ) : null}
       </div>
     </Card>
   );

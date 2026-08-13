@@ -32,6 +32,7 @@ import { useConversations } from './hooks/useConversations';
 import { useDragAndDrop } from './hooks/useDragAndDrop';
 import { useTeamRows } from './hooks/useTeamRows';
 import type { ConversationRowProps, WorkspaceGroupedHistoryProps } from './types';
+import { AttentionInbox } from '../AttentionInbox';
 
 const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   onSessionClick,
@@ -55,6 +56,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
 
   const {
     conversations,
+    sidebarMode,
     isConversationGenerating,
     hasCompletionUnread,
     expandedWorkspaces,
@@ -70,7 +72,11 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     loadMore,
   } = useConversations();
 
-  const { resolveTeamRow, renameModal: teamRenameModal } = useTeamRows({ pathname, onSessionClick });
+  const {
+    resolveTeamRow,
+    renameModal: teamRenameModal,
+    legacyTeamItems,
+  } = useTeamRows({ pathname, onSessionClick, legacyMode: sidebarMode === 'legacy' });
 
   const renderTeamRow = useCallback(
     (item: SidebarTeamItem, dimIcon = false) => {
@@ -178,6 +184,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     setSelectedConversationIds,
     toggleSelectedConversation,
     markAsRead,
+    legacySidebarMode: sidebarMode === 'legacy',
   });
 
   const { sensors, handleDragEnd, isDragEnabled } = useDragAndDrop({
@@ -328,7 +335,11 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     [pinnedRows, pinnedConversations]
   );
 
-  const hasAnyContent = pinnedRowItems.length > 0 || projectGroups.length > 0 || chatsSections.length > 0;
+  const hasAnyContent =
+    pinnedRowItems.length > 0 ||
+    projectGroups.length > 0 ||
+    chatsSections.length > 0 ||
+    (sidebarMode === 'legacy' && legacyTeamItems.length > 0);
 
   return (
     <>
@@ -361,6 +372,8 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
         onCancel={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
       />
+
+      {!collapsed && <AttentionInbox onNavigate={onSessionClick} />}
 
       {batchMode && !collapsed && (
         <div className='px-12px pb-8px pt-2px sticky top-0 z-20 bg-[var(--bg-2)]'>
@@ -549,6 +562,31 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
           )}
         </DndContext>
 
+        {/* Compatibility: older AionCore exposes teams independently and has no
+            grouped sidebar read model. Preserve the original Teams section. */}
+        {sidebarMode === 'legacy' && (
+          <div className='min-w-0'>
+            {!collapsed && (
+              <SectionLabel
+                sectionKey='teams'
+                label={t('team.sider.title')}
+                trailing={
+                  <Tooltip content={t('team.sider.createTeam')} position='top'>
+                    <div
+                      data-testid='team-create-btn'
+                      className='-mr-4px size-20px rd-4px flex items-center justify-center hover:bg-fill-4 transition-all shrink-0 cursor-pointer text-t-secondary hover:text-t-primary'
+                      onClick={() => setGlobalTeamCreateVisible(true)}
+                    >
+                      <Plus theme='outline' size='14' fill='currentColor' className='block leading-none' />
+                    </div>
+                  </Tooltip>
+                }
+              />
+            )}
+            {!collapsedSections.has('teams') && legacyTeamItems.map((item) => renderTeamRow(item))}
+          </div>
+        )}
+
         {/* L1: Projects section — workspace folders, peer to conversations */}
         {projectGroups.length > 0 && (
           <div className='min-w-0'>
@@ -669,7 +707,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                             unmountOnExit={false}
                           >
                             <span
-                              aria-label='Project actions'
+                              aria-label={t('conversation.history.projectActions', { name: group.displayName })}
                               className={classNames(
                                 'flex-center cursor-pointer transition-colors text-t-secondary hover:text-t-primary size-20px rd-4px sider-action-btn',
                                 isMobile ? 'flex' : 'hidden group-hover:flex'
@@ -710,23 +748,25 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
               label={t('conversation.history.conversationsSection')}
               divider
               trailing={
-                <Tooltip content={t('team.sider.createTeam')} position='top'>
-                  {/* [E2E SYNC] data-testid="team-create-btn" 是 E2E 测试入口 selector，不得删改。
+                sidebarMode === 'legacy' ? undefined : (
+                  <Tooltip content={t('team.sider.createTeam')} position='top'>
+                    {/* [E2E SYNC] data-testid="team-create-btn" 是 E2E 测试入口 selector，不得删改。
                       如需修改，必须同步更新 tests/e2e/cases/teams/team-create.e2e.ts。 */}
-                  <div
-                    data-testid='team-create-btn'
-                    className='-mr-4px size-20px rd-4px flex items-center justify-center hover:bg-fill-4 transition-all shrink-0 cursor-pointer text-t-secondary hover:text-t-primary'
-                    onClick={() => setGlobalTeamCreateVisible(true)}
-                  >
-                    <Plus
-                      theme='outline'
-                      size='14'
-                      fill='currentColor'
-                      className='block leading-none'
-                      style={{ lineHeight: 0 }}
-                    />
-                  </div>
-                </Tooltip>
+                    <div
+                      data-testid='team-create-btn'
+                      className='-mr-4px size-20px rd-4px flex items-center justify-center hover:bg-fill-4 transition-all shrink-0 cursor-pointer text-t-secondary hover:text-t-primary'
+                      onClick={() => setGlobalTeamCreateVisible(true)}
+                    >
+                      <Plus
+                        theme='outline'
+                        size='14'
+                        fill='currentColor'
+                        className='block leading-none'
+                        style={{ lineHeight: 0 }}
+                      />
+                    </div>
+                  </Tooltip>
+                )
               }
             />
           )}

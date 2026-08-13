@@ -30,6 +30,15 @@
     "sessionStopped": "The team session has stopped.",
     "retryStart": "Retry start"
   },
+  "memberWork": {
+    "attention": "Needs input",
+    "blocked": "Blocked",
+    "stale": "Paused",
+    "working": "Working",
+    "review": "In review",
+    "waiting": "Waiting",
+    "done": "Done"
+  },
   "sendBox": {
     "placeholder": "Message the team leader assistant..."
   },
@@ -103,6 +112,11 @@
     "parallel": "Parallel",
     "single": "Single",
     "board": "Board"
+  },
+  "resources": {
+    "allMembers": "All members",
+    "filteredBy": "Filtered by {{name}}",
+    "structuredRecordsHint": "Deliverables are shown in the conversation resource inspector."
   },
   "controlBoard": {
     "title": "Team Control Board",

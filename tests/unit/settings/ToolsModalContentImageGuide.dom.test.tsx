@@ -13,6 +13,9 @@ const hooks = vi.hoisted(() => ({
   modelListWithImage: [] as unknown[],
   mcpServers: [] as unknown[],
   getClientBusinessSetting: vi.fn(() => Promise.resolve(undefined)),
+  refreshMcpServers: vi.fn(() => Promise.resolve(true)),
+  syncFromGea: vi.fn(),
+  catalog: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -28,16 +31,17 @@ vi.mock('@/renderer/components/base/AionSelect', () => {
   return { default: Object.assign(Select, { OptGroup: Select, Option: Select }) };
 });
 
-vi.mock('@/renderer/components/base/TalkToButlerButton', () => ({
-  default: () => <div>TalkToButlerButton</div>,
-}));
-
 vi.mock('@/renderer/pages/settings/components/AddMcpServerModal', () => ({
   default: () => null,
 }));
 
 vi.mock('@/renderer/pages/settings/ToolsSettings/McpServerItem', () => ({
-  default: () => null,
+  default: ({ server, isConfigurationReadOnly }: { server: { id: string }; isConfigurationReadOnly?: boolean }) => (
+    <div
+      data-testid={`mcp-server-${server.id}`}
+      data-configuration-readonly={isConfigurationReadOnly ? 'true' : 'false'}
+    />
+  ),
 }));
 
 vi.mock('@/renderer/hooks/agent/useConfigModelListWithImage', () => ({
@@ -51,6 +55,7 @@ vi.mock('@/renderer/hooks/mcp', () => ({
     saveMcpServers: vi.fn(() => Promise.resolve()),
     setMcpServers: vi.fn(),
     isMcpServersLoading: false,
+    refreshMcpServers: hooks.refreshMcpServers,
   }),
   useMcpConnection: () => ({ testingServers: {}, handleTestMcpConnection: vi.fn(), handleTestMcpConnections: vi.fn() }),
   useMcpModal: () => ({
@@ -89,6 +94,13 @@ vi.mock('@/renderer/services/clientBusinessSettings', () => ({
   removeClientBusinessSetting: vi.fn(() => Promise.resolve()),
 }));
 
+vi.mock('@/common', () => ({
+  ipcBridge: {
+    clientResources: { syncFromGea: { invoke: hooks.syncFromGea } },
+    assistants: { catalog: { invoke: hooks.catalog } },
+  },
+}));
+
 vi.mock('@/common/adapter/ipcBridge', () => ({
   mcpService: {},
 }));
@@ -100,6 +112,11 @@ describe('ToolsModalContent image model guide', () => {
     hooks.modelListWithImage = [];
     hooks.mcpServers = [];
     hooks.getClientBusinessSetting.mockClear();
+    hooks.refreshMcpServers.mockClear();
+    hooks.syncFromGea.mockReset();
+    hooks.syncFromGea.mockResolvedValue({ status: 'completed', changed: 1, skipped: 0, failed: 0 });
+    hooks.catalog.mockReset();
+    hooks.catalog.mockResolvedValue({ assistants: [], mode: 'managed', sync_status: 'fresh' });
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -144,5 +161,49 @@ describe('ToolsModalContent image model guide', () => {
       (a) => a.textContent === 'settings.goToModelSettings'
     );
     expect(links).toHaveLength(0);
+  });
+
+  it('fetches MCP resources from GEA from the add-server menu', async () => {
+    render(<ToolsModalContent />);
+
+    await waitFor(() => expect(hooks.catalog).toHaveBeenCalled());
+    fireEvent.click(await screen.findByTestId('add-mcp-server-menu'));
+    const marker = await screen.findByTestId('add-mcp-server-menu-gea');
+    fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
+
+    await waitFor(() => expect(hooks.syncFromGea).toHaveBeenCalledWith({ resources: ['mcps'] }));
+    await waitFor(() => expect(hooks.refreshMcpServers).toHaveBeenCalledTimes(1));
+  });
+
+  it('keeps the GEA sync action out of a standard MCP catalog', async () => {
+    hooks.catalog.mockResolvedValue({ assistants: [], mode: 'standard', sync_status: 'fresh' });
+    render(<ToolsModalContent />);
+
+    await waitFor(() => expect(hooks.catalog).toHaveBeenCalled());
+    fireEvent.click(await screen.findByTestId('add-mcp-server-menu'));
+    expect(screen.queryByTestId('add-mcp-server-menu-gea')).not.toBeInTheDocument();
+  });
+
+  it('renders GEA-managed MCP servers without local edit or delete controls', async () => {
+    hooks.mcpServers = [
+      {
+        id: 'mcp-oa-production',
+        name: 'OA Production',
+        enabled: true,
+        source: 'managed',
+        production_write: true,
+        transport: { type: 'http', url: 'https://managed.invalid/mcp' },
+        created_at: 1,
+        updated_at: 1,
+        original_json: '{}',
+      },
+    ];
+
+    render(<ToolsModalContent />);
+
+    expect(await screen.findByTestId('mcp-server-mcp-oa-production')).toHaveAttribute(
+      'data-configuration-readonly',
+      'true'
+    );
   });
 });

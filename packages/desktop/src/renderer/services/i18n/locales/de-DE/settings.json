@@ -39,6 +39,9 @@
     "detailUsedByTitle": "Verwendet von",
     "detailUsedByEmpty": "Noch kein Assistent verwendet diesen Skill.",
     "detailBuiltinAssistant": "Integriert",
+    "detailManagedAssistant": "Vom Unternehmen verwaltet",
+    "detailEnableBundled": "Für Assistent aktivieren",
+    "detailDisableBundled": "Deaktivieren",
     "detailFilesTitle": "Skill-Dateien",
     "detailFilesError": "Die Dateien dieses Skills konnten nicht geladen werden.",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "Keine offiziellen Skills verfügbar.",
     "noSearchResults": "Keine passenden Skills.",
     "customHint": "Importiere einen Skill-Ordner, übergeordneten Ordner oder eine Zip-Datei; max. {{maxFileSize}} pro Datei und {{maxTotalSize}} pro Skill; ein gleichnamiger Import überschreibt den vorhandenen Skill.",
+    "bundledTitle": "In der App enthalten",
+    "bundledHint": "Wird mit dem Client installiert und ist standardmäßig aktiviert. Für bearbeitbare Assistenten kann der Skill deaktiviert, aber nicht gelöscht werden.",
     "officialHint": "Offizielle, mit GEAUi gebündelte Skills – sofort einsatzbereit, schreibgeschützt und mit jedem Release aktualisiert.",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },
@@ -1335,6 +1340,13 @@
   "personalModelFetchFailed": "Persönliche Modelle konnten nicht von GEA abgerufen werden. Versuchen Sie es später erneut oder wenden Sie sich an den Administrator.",
   "personalModelLoginRequired": "Melden Sie sich an, bevor Sie persönliche Modelle von GEA abrufen.",
   "personalModelNoneAvailable": "In GEA ist keine synchronisierbare persönliche Modellautorisierung verfügbar.",
+  "geaResourceFetchFromGea": "Von GEA abrufen",
+  "geaResourceFetching": "Wird von GEA abgerufen…",
+  "geaResourceFetchSuccess": "{{count}} Ressource(n) von GEA aktualisiert.",
+  "geaResourceNoChanges": "Die GEA-Ressourcen sind bereits aktuell.",
+  "geaResourceLoginRequired": "Melden Sie sich an, bevor Sie Ressourcen von GEA abrufen.",
+  "geaResourceUnavailable": "Die GEA-Ressourcensynchronisierung ist im aktuellen Dienst nicht verfügbar.",
+  "geaResourceFetchFailed": "Ressourcen konnten nicht von GEA abgerufen werden. Versuchen Sie es später erneut oder wenden Sie sich an den Administrator.",
   "autoInjectedSkillsHint": "Werden automatisch in jede Unterhaltung geladen – kein Aktivieren nötig; der Agent entscheidet, wann er sie nutzt.",
   "browserData": {
     "title": "Integrierter Browser",
