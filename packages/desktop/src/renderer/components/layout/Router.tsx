@@ -22,6 +22,7 @@ const ComponentsShowcase = React.lazy(() => import('@renderer/pages/TestShowcase
 const ScheduledTasksPage = React.lazy(() => import('@renderer/pages/cron/ScheduledTasksPage'));
 const TaskDetailPage = React.lazy(() => import('@renderer/pages/cron/ScheduledTasksPage/TaskDetailPage'));
 const TeamIndex = React.lazy(() => import('@renderer/pages/team'));
+const WorkCenterPrototype = React.lazy(() => import('@renderer/pages/settings/AssistantSettings/home/prototype'));
 
 const withRouteFallback = (Component: React.LazyExoticComponent<React.ComponentType>) => (
   <Suspense fallback={<AppLoader />}>
@@ -55,6 +56,7 @@ const ProtectedLayout: React.FC<{ layout: React.ReactElement }> = ({ layout }) =
 
 const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
   const { status } = useAuth();
+  const prototypeEnabled = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
 
   return (
     <HashRouter>
@@ -63,6 +65,9 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
           path='/login'
           element={status === 'authenticated' ? <Navigate to='/guid' replace /> : withRouteFallback(LoginPage)}
         />
+        {prototypeEnabled ? (
+          <Route path='/prototype/work-center' element={withRouteFallback(WorkCenterPrototype)} />
+        ) : null}
         <Route element={<ProtectedLayout layout={layout} />}>
           <Route index element={<Navigate to='/guid' replace />} />
           <Route path='/guid' element={withRouteFallback(Guid)} />
