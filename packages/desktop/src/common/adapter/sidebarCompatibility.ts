@@ -6,7 +6,7 @@
 
 import type { TChatConversation } from '@/common/config/storage';
 import type { SidebarGroup, SidebarItem, SidebarResponse } from '@/common/types/sidebar';
-import { isBackendHttpError } from './httpBridge';
+import { isBackendRouteUnavailableError } from './httpBridge';
 
 const getActivityTime = (conversation: TChatConversation): number =>
   conversation.modified_at || conversation.created_at || 0;
@@ -22,11 +22,7 @@ const getWorkspaceName = (workspace: string): string => {
 };
 
 /** A 404 is a capability signal only when the backend says the route itself is absent. */
-export const isRouteUnavailableError = (error: unknown): boolean =>
-  isBackendHttpError(error) &&
-  error.status === 404 &&
-  error.code === 'NOT_FOUND' &&
-  error.backendMessage.trim().toLowerCase() === 'route not found.';
+export const isRouteUnavailableError = (error: unknown): boolean => isBackendRouteUnavailableError(error);
 
 /**
  * Rebuild the pre-read-model sidebar from the routes shipped by older AionCore

@@ -1,4 +1,4 @@
-import type { ElectronApplication, Page, Route } from '@playwright/test';
+import type { ElectronApplication, Page, Request, Route } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { closeAssistantEditor, goToAssistantSettings, navigateTo, takeScreenshot } from '../../helpers';
 
@@ -453,13 +453,14 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
         resolved_at: '2026-08-12T00:01:00.000Z',
       });
     };
+    const countEnterpriseSyncRequest = (request: Request): void => {
+      if (new URL(request.url()).pathname === '/api/client-resources/sync') enterpriseSyncRequestCount += 1;
+    };
 
     await page.route('**/api/assistants**', assistantHandler);
     await page.route('**/api/conversations**', conversationHandler);
     await page.route('**/api/interaction-requests**', interactionHandler);
-    page.on('request', (request) => {
-      if (new URL(request.url()).pathname === '/api/client-resources/sync') enterpriseSyncRequestCount += 1;
-    });
+    page.on('request', countEnterpriseSyncRequest);
     try {
       await setZoomFactor(electronApp, 1);
       await setElectronContentSize(electronApp, page, 1440, 900);
@@ -521,6 +522,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
       await page.unroute('**/api/assistants**', assistantHandler);
       await page.unroute('**/api/conversations**', conversationHandler);
       await page.unroute('**/api/interaction-requests**', interactionHandler);
+      page.off('request', countEnterpriseSyncRequest);
       await page.evaluate((key) => sessionStorage.removeItem(key), E2E_STREAM_KEY);
     }
   });

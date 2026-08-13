@@ -1,5 +1,5 @@
 import { ipcBridge } from '@/common';
-import { isBackendHttpError } from '@/common/adapter/httpBridge';
+import { isBackendRouteUnavailableError } from '@/common/adapter/httpBridge';
 import type { GeaClientResourceKind } from '@/common/adapter/ipcBridge';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -80,11 +80,7 @@ export const useGeaResourceSync = ({
         message.info(t('settings.geaResourceNoChanges'));
       }
     } catch (error) {
-      const unsupportedRoute =
-        isBackendHttpError(error) &&
-        error.status === 404 &&
-        error.code === 'NOT_FOUND' &&
-        error.backendMessage === 'Route not found.';
+      const unsupportedRoute = isBackendRouteUnavailableError(error);
       message.error(unsupportedRoute ? t('settings.geaResourceUnavailable') : t('settings.geaResourceFetchFailed'));
     } finally {
       syncingRef.current = false;

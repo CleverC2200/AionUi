@@ -136,6 +136,17 @@ export function isBackendHttpError(error: unknown): error is BackendHttpError {
   return false;
 }
 
+/** A 404 is a capability signal only when the backend says the route itself is absent. */
+export function isBackendRouteUnavailableError(error: unknown): boolean {
+  return (
+    isBackendHttpError(error) &&
+    error.status === 404 &&
+    error.code === 'NOT_FOUND' &&
+    typeof error.backendMessage === 'string' &&
+    error.backendMessage.trim().toLowerCase() === 'route not found.'
+  );
+}
+
 // ---------------------------------------------------------------------------
 // HTTP request helper
 // ---------------------------------------------------------------------------
