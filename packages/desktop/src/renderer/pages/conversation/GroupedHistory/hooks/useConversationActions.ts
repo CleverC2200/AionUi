@@ -6,7 +6,6 @@
 
 import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
-import type { RemoveProjectResult } from '@/common/types/sidebar';
 import { requestConversationSendBoxPrefill } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { refreshConversationCache } from '@/renderer/pages/conversation/utils/conversationCache';
 import { isLegacyReadOnlyConversationType } from '@/renderer/pages/conversation/utils/conversationRuntime';
@@ -27,8 +26,6 @@ type UseConversationActionsParams = {
   setSelectedConversationIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   toggleSelectedConversation: (conversation: TChatConversation) => void;
   markAsRead: (conversation_id: string) => void;
-  /** Older AionCore has conversation.update but not the order endpoints. */
-  legacySidebarMode?: boolean;
 };
 
 export const useConversationActions = ({
@@ -39,7 +36,6 @@ export const useConversationActions = ({
   setSelectedConversationIds,
   toggleSelectedConversation,
   markAsRead,
-  legacySidebarMode = false,
 }: UseConversationActionsParams) => {
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [renameModalName, setRenameModalName] = useState<string>('');
@@ -204,43 +200,31 @@ export const useConversationActions = ({
 
   const handleTogglePin = useCallback(
     async (conversation: TChatConversation) => {
-      // Pin truth lives in the backend `user_order` table (a row's existence),
-      // not `extra.pinned`. Toggling = insert/delete that row; both calls are
-      // idempotent and take no body. The sidebar refresh re-reads the derived
-      // `pinned` flag and re-groups server-side.
       const pinned = isConversationPinned(conversation);
 
       try {
-        if (legacySidebarMode) {
-          const success = await ipcBridge.conversation.update.invoke({
-            id: conversation.id,
-            updates: {
-              extra: {
-                pinned: !pinned,
-                pinned_at: pinned ? undefined : Date.now(),
-              } as Partial<TChatConversation['extra']>,
-            } as Partial<TChatConversation>,
-            merge_extra: true,
-          });
-          if (!success) {
-            Message.error(t('conversation.history.pinFailed'));
-            return;
-          }
+        const success = await ipcBridge.conversation.update.invoke({
+          id: conversation.id,
+          updates: {
+            extra: {
+              pinned: !pinned,
+              pinned_at: pinned ? undefined : Date.now(),
+            } as Partial<TChatConversation['extra']>,
+          } as Partial<TChatConversation>,
+          merge_extra: true,
+        });
+
+        if (success) {
           emitter.emit('chat.history.refresh');
-          return;
-        }
-        if (pinned) {
-          await ipcBridge.order.pinned.delete.invoke({ item_type: 'conversation', item_id: conversation.id });
         } else {
-          await ipcBridge.order.pinned.put.invoke({ item_type: 'conversation', item_id: conversation.id });
+          Message.error(t('conversation.history.pinFailed'));
         }
-        emitter.emit('chat.history.refresh');
       } catch (error) {
         console.error('Failed to toggle pin conversation:', error);
         Message.error(t('conversation.history.pinFailed'));
       }
     },
-    [legacySidebarMode, t]
+    [t]
   );
 
   const handleMenuVisibleChange = useCallback((conversation_id: string, visible: boolean) => {
@@ -283,38 +267,13 @@ export const useConversationActions = ({
   const [removeProjectTarget, setRemoveProjectTarget] = useState<{
     name: string;
     conversations: TChatConversation[];
-    /**
-     * The backing standard project id when this is a real project group. Absent
-     * for dir pseudo-groups, which have no project record and fall back to
-     * per-conversation deletion.
-     */
-    projectId?: string;
-    /** Accurate delete preview from a `dry_run` call; absent until it resolves. */
-    preview?: RemoveProjectResult;
   } | null>(null);
   const [removeProjectLoading, setRemoveProjectLoading] = useState(false);
 
-  const handleRemoveProject = useCallback(
-    (projectName: string, conversations: TChatConversation[], projectId?: string) => {
-      // Dir pseudo-groups (no backing project) can only remove their loose
-      // conversations — skip when there is nothing to remove. A real project may
-      // hold only teams (no standalone conversations), so let it through.
-      if (!projectId && conversations.length === 0) return;
-      setRemoveProjectTarget({ name: projectName, conversations, projectId });
-      if (!projectId) return;
-      // Fetch an accurate preview (teams + path-merged items the current window
-      // may not show). Best-effort: on failure the dialog keeps the local count.
-      void ipcBridge.sidebar.removeProject
-        .invoke({ project_id: projectId, dry_run: true })
-        .then((preview) => {
-          setRemoveProjectTarget((prev) => (prev && prev.projectId === projectId ? { ...prev, preview } : prev));
-        })
-        .catch(() => {
-          /* keep fallback count */
-        });
-    },
-    []
-  );
+  const handleRemoveProject = useCallback((projectName: string, conversations: TChatConversation[]) => {
+    if (conversations.length === 0) return;
+    setRemoveProjectTarget({ name: projectName, conversations });
+  }, []);
 
   const handleRemoveProjectCancel = useCallback(() => {
     if (removeProjectLoading) return;
@@ -325,35 +284,21 @@ export const useConversationActions = ({
     if (!removeProjectTarget) return;
     setRemoveProjectLoading(true);
     try {
-      if (removeProjectTarget.projectId) {
-        // Real project: one server-side transaction removes teams + standalone
-        // conversations + the project record ("所见即所删").
-        const result = await ipcBridge.sidebar.removeProject.invoke({ project_id: removeProjectTarget.projectId });
-        emitter.emit('chat.history.refresh');
-        const removed = result.teams_deleted + result.conversations_deleted;
-        if (removed > 0) {
-          Message.success(t('conversation.history.batchDeleteSuccess', { count: removed }));
-        } else {
-          Message.error(t('conversation.history.deleteFailed'));
-        }
-      } else {
-        // Dir pseudo-group: delete its loose conversations one by one.
-        const target = removeProjectTarget;
-        const results = await Promise.allSettled(target.conversations.map((c) => removeConversation(c.id)));
-        const failedConversations = target.conversations.filter((_, index) => {
-          const result = results[index];
-          return result?.status !== 'fulfilled' || !result.value;
-        });
-        const successCount = target.conversations.length - failedConversations.length;
-        emitter.emit('chat.history.refresh');
-        if (successCount > 0) {
-          Message.success(t('conversation.history.batchDeleteSuccess', { count: successCount }));
-        }
-        if (failedConversations.length > 0) {
-          Message.error(t('conversation.history.deleteFailed'));
-          setRemoveProjectTarget({ ...target, conversations: failedConversations });
-          return;
-        }
+      const target = removeProjectTarget;
+      const results = await Promise.allSettled(target.conversations.map((c) => removeConversation(c.id)));
+      const failedConversations = target.conversations.filter((_, index) => {
+        const result = results[index];
+        return result?.status !== 'fulfilled' || !result.value;
+      });
+      const successCount = target.conversations.length - failedConversations.length;
+      emitter.emit('chat.history.refresh');
+      if (successCount > 0) {
+        Message.success(t('conversation.history.batchDeleteSuccess', { count: successCount }));
+      }
+      if (failedConversations.length > 0) {
+        Message.error(t('conversation.history.deleteFailed'));
+        setRemoveProjectTarget({ ...target, conversations: failedConversations });
+        return;
       }
       setRemoveProjectTarget(null);
     } catch (error) {

@@ -75,16 +75,10 @@
     "removeProjectTitle": "Remover projeto",
     "removeProject": "Remover projeto",
     "removeProjectConfirm": "Remover o projeto \"{{name}}\"? Suas {{count}} conversa(s) também serão removidas.",
-    "removeProjectConfirmTeams": "Suas {{teams}} equipe(s) também serão removidas.",
-    "removeProjectListMore": "+{{count}} mais",
     "newConversationInProject": "Novo chat neste projeto",
     "reorderPinned": "Arraste para reordenar a conversa fixada",
     "forkedFrom": "Bifurcada de “{{name}}”",
-    "forkedConversation": "Conversa bifurcada",
-    "loadMore": "Carregar mais",
-    "newTeamInProject": "Nova equipe neste projeto",
-    "projectCreateMenu": "Criar",
-    "collapseAllProjects": "Recolher todos os projetos"
+    "forkedConversation": "Conversa bifurcada"
   },
   "historySearch": {
     "tooltip": "Pesquisar mensagens",

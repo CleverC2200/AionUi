@@ -7,7 +7,6 @@ const CONVERSATION_ID = 'e2e-enterprise-payment-review';
 const QUESTION_REQUEST_ID = 'e2e-erp-cost-center';
 const PERMISSION_REQUEST_ID = 'e2e-oa-production-submit';
 const E2E_STREAM_KEY = 'aionui:e2e-message-stream-conversation-id';
-const PROJECT_ID = 'enterprise-payment-project';
 const PROJECT_NAME = '企业付款复核项目';
 
 type E2EStreamRegistry = {
@@ -137,7 +136,7 @@ const conversation = {
   created_at: 1,
   updated_at: 1,
   extra: {
-    workspace: '/tmp/aionui-enterprise-payment-e2e',
+    workspace: `/tmp/${PROJECT_NAME}`,
     custom_workspace: true,
     backend: 'codex',
     preset_assistant_id: ASSISTANT_ID,
@@ -294,6 +293,43 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
     const conversationHandler = async (route: Route): Promise<void> => {
       const request = route.request();
       const pathname = new URL(request.url()).pathname;
+      if (request.method() === 'GET' && pathname === '/api/conversations') {
+        const runtime = taskCompleted
+          ? {
+              state: 'idle',
+              can_send_message: true,
+              has_task: true,
+              task_status: 'finished',
+              is_processing: false,
+              pending_confirmations: 0,
+              turn_id: 'turn-payment-1',
+            }
+          : pending.size > 0
+            ? {
+                state: 'waiting_confirmation',
+                can_send_message: false,
+                has_task: true,
+                task_status: 'running',
+                is_processing: false,
+                pending_confirmations: pending.size,
+                turn_id: 'turn-payment-1',
+              }
+            : {
+                state: 'running',
+                can_send_message: false,
+                has_task: true,
+                task_status: 'running',
+                is_processing: true,
+                pending_confirmations: 0,
+                turn_id: 'turn-payment-1',
+              };
+        await fulfillJson(route, {
+          items: [{ ...conversation, modified_at: Date.now(), runtime }],
+          total: 1,
+          has_more: false,
+        });
+        return;
+      }
       if (request.method() === 'POST' && pathname === '/api/conversations/prepare') {
         lifecycleTrace.push('conversation:prepare');
         prepareBody = request.postDataJSON() as Record<string, unknown>;
@@ -477,65 +513,6 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
       await route.continue();
     };
 
-    const sidebarHandler = async (route: Route): Promise<void> => {
-      const pathname = new URL(route.request().url()).pathname;
-      if (pathname === '/api/sidebar/items') {
-        await fulfillJson(route, { items: [], has_more: false });
-        return;
-      }
-      const runtime = taskCompleted
-        ? {
-            state: 'idle',
-            can_send_message: true,
-            has_task: true,
-            task_status: 'finished',
-            is_processing: false,
-            pending_confirmations: 0,
-            turn_id: 'turn-payment-1',
-          }
-        : pending.size > 0
-          ? {
-              state: 'waiting_confirmation',
-              can_send_message: false,
-              has_task: true,
-              task_status: 'running',
-              is_processing: false,
-              pending_confirmations: pending.size,
-              turn_id: 'turn-payment-1',
-            }
-          : {
-              state: 'running',
-              can_send_message: false,
-              has_task: true,
-              task_status: 'running',
-              is_processing: true,
-              pending_confirmations: 0,
-              turn_id: 'turn-payment-1',
-            };
-      await fulfillJson(route, {
-        groups: [
-          { scope: { type: 'pinned' }, items: [], has_more: false },
-          {
-            scope: {
-              type: 'project',
-              project_id: PROJECT_ID,
-              name: PROJECT_NAME,
-              workspace: conversation.extra.workspace,
-            },
-            items: [
-              {
-                type: 'conversation',
-                conversation: { ...conversation, modified_at: Date.now(), runtime },
-              },
-            ],
-            has_more: false,
-          },
-          { scope: { type: 'chats' }, items: [], has_more: false },
-        ],
-        has_more_groups: false,
-      });
-    };
-
     const interactionHandler = async (route: Route): Promise<void> => {
       const request = route.request();
       const pathname = new URL(request.url()).pathname;
@@ -583,7 +560,6 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
     await page.route('**/api/assistants**', assistantHandler);
     await page.route('**/api/skills**', skillsHandler);
     await page.route('**/api/mcp/**', mcpHandler);
-    await page.route('**/api/sidebar**', sidebarHandler);
     await page.route('**/api/conversations**', conversationHandler);
     await page.route('**/api/interaction-requests**', interactionHandler);
 
@@ -778,7 +754,6 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
       await page.unroute('**/api/assistants**', assistantHandler);
       await page.unroute('**/api/skills**', skillsHandler);
       await page.unroute('**/api/mcp/**', mcpHandler);
-      await page.unroute('**/api/sidebar**', sidebarHandler);
       await page.unroute('**/api/conversations**', conversationHandler);
       await page.unroute('**/api/interaction-requests**', interactionHandler);
       await page.evaluate((key) => sessionStorage.removeItem(key), E2E_STREAM_KEY);
