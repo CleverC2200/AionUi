@@ -13,7 +13,7 @@ import type { AvailableBackend } from './types';
 import { filterAssistantEditorBackends } from './assistantUtils';
 import { AionInlineSearchInput } from '@/renderer/components/base';
 import { DROPDOWN_SEARCH_THRESHOLD } from '@/renderer/components/agent/runtimeSelectorOptions';
-import { Avatar, Select, Tag } from '@arco-design/web-react';
+import { Alert, Avatar, Select, Tag } from '@arco-design/web-react';
 import { Info, Robot } from '@icon-park/react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -128,9 +128,10 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
 
   const isBuiltin = activeAssistant?.source === 'builtin';
   const isGenerated = activeAssistant?.source === 'generated';
-  const isReadOnlyAssistant = isBuiltin;
-  const isIdentityLocked = isBuiltin || isGenerated;
-  const isDescriptionReadOnly = isBuiltin;
+  const isManaged = activeAssistant?.source === 'managed';
+  const isReadOnlyAssistant = isBuiltin || isManaged;
+  const isIdentityLocked = isBuiltin || isGenerated || isManaged;
+  const isDescriptionReadOnly = isBuiltin || isManaged;
   const showSkills = isCreating || activeAssistant !== null;
   const currentBackend = availableBackends.find((option) => option.id === editAgent);
   const editAgentRuntimeKey = currentBackend?.runtimeKey || '';
@@ -233,38 +234,46 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
   const editableSkillOptions = useMemo(() => {
     const optionMap = new Map<string, { value: string; label: string; isAuto?: boolean; disabled?: boolean }>();
 
-    pendingSkills.forEach((skill) => {
-      optionMap.set(skill.name, { value: skill.name, label: skill.name });
-    });
+    if (!isManaged) {
+      pendingSkills.forEach((skill) => {
+        optionMap.set(skill.name, { value: skill.name, label: skill.name });
+      });
+    }
 
     availableSkills.forEach((skill) => {
-      optionMap.set(skill.name, {
-        value: skill.name,
+      const value = isManaged ? skill.skill_id : skill.name;
+      if (!value) return;
+      optionMap.set(value, {
+        value,
         label: skill.name,
       });
     });
 
-    builtinAutoSkills.forEach((skill) => {
-      optionMap.set(skill.name, {
-        value: skill.name,
-        label: skill.name,
-        isAuto: true,
+    if (!isManaged) {
+      builtinAutoSkills.forEach((skill) => {
+        optionMap.set(skill.name, {
+          value: skill.name,
+          label: skill.name,
+          isAuto: true,
+        });
       });
-    });
+    }
 
     return Array.from(optionMap.values());
-  }, [availableSkills, builtinAutoSkills, pendingSkills, t]);
+  }, [availableSkills, builtinAutoSkills, isManaged, pendingSkills]);
   const selectedSkillValues = useMemo(
     () =>
-      Array.from(
-        new Set([
-          ...selectedSkills,
-          ...builtinAutoSkills
-            .filter((skill) => !disabledBuiltinSkills.includes(skill.name))
-            .map((skill) => skill.name),
-        ])
-      ),
-    [builtinAutoSkills, disabledBuiltinSkills, selectedSkills]
+      isManaged
+        ? selectedSkills
+        : Array.from(
+            new Set([
+              ...selectedSkills,
+              ...builtinAutoSkills
+                .filter((skill) => !disabledBuiltinSkills.includes(skill.name))
+                .map((skill) => skill.name),
+            ])
+          ),
+    [builtinAutoSkills, disabledBuiltinSkills, isManaged, selectedSkills]
   );
 
   const applyPromptItems = (items: string[]) => {
@@ -307,6 +316,10 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
   };
 
   const handleSkillSelectionChange = (values: string[]) => {
+    if (isManaged) {
+      setSelectedSkills(values);
+      return;
+    }
     const nextSelected = values.filter((value) => !autoSkillNames.includes(value));
     const nextDisabledAuto = autoSkillNames.filter((skillName) => !values.includes(skillName));
     setSelectedSkills(nextSelected);
@@ -334,6 +347,54 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
 
   return (
     <div className='flex flex-col gap-16px pb-24px'>
+      {isManaged && editor.managed ? (
+        <Alert
+          type={editor.managed.error || editor.managed.violations.length > 0 ? 'warning' : 'info'}
+          showIcon
+          data-testid='assistant-managed-governance-banner'
+          title={t('settings.assistantManagedBannerTitle', { defaultValue: 'Enterprise configuration is protected' })}
+          content={
+            <div className='space-y-4px'>
+              <div>
+                {t('settings.assistantManagedBannerBody', {
+                  defaultValue:
+                    'Core instructions, permissions, and required capabilities are managed by your enterprise. You may only add allowed auxiliary Skills and MCP servers.',
+                })}
+              </div>
+              {editor.managed.metadata.state !== 'active' ? (
+                <div data-testid='assistant-managed-inactive-reason'>
+                  {editor.managed.metadata.state_reason ||
+                    t('settings.assistantManagedInactive', {
+                      defaultValue:
+                        'This assistant is not currently available. Local changes cannot override its state.',
+                    })}
+                </div>
+              ) : null}
+              {editor.managed.error ? (
+                <div data-testid='assistant-managed-save-error'>
+                  {editor.managed.verificationRequired
+                    ? t('settings.assistantManagedExtensionVerificationRequired', {
+                        defaultValue:
+                          'The write result is unknown. Verify enterprise status before trying again. Your draft is still here.',
+                      })
+                    : t('settings.assistantManagedErrorCode', {
+                        defaultValue: 'Validation result: {{code}}. Your draft is still here.',
+                        code: editor.managed.error,
+                      })}
+                </div>
+              ) : null}
+              {editor.managed.metadata.extensions.status === 'attention' ? (
+                <div data-testid='assistant-managed-extension-attention'>
+                  {t('settings.assistantManagedExtensionNeedsAttention', {
+                    defaultValue:
+                      'An enterprise update affected one or more local extensions. Review the highlighted items before saving.',
+                  })}
+                </div>
+              ) : null}
+            </div>
+          }
+        />
+      ) : null}
       {isBuiltin && activeAssistant ? (
         <div
           className='rounded-12px border border-border-2 bg-fill-1 px-14px py-12px text-13px leading-20px text-t-secondary md:rounded-16px'
@@ -449,7 +510,7 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
               getPopupContainer={getEditorSelectPopupContainer}
               value={editAgent}
               onChange={(value) => setEditAgent(value as string)}
-              disabled={isGenerated}
+              disabled={isGenerated || isManaged}
               data-testid='select-assistant-agent'
               onVisibleChange={(visible) => {
                 // Reset on close so reopening starts from the full list rather
@@ -504,9 +565,12 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
               ))}
             </Select>
             <div className='mt-6px text-11px text-t-tertiary'>
-              {t('settings.assistantEngineAffectsDefaults', {
-                defaultValue: 'Changing the main agent updates which model and permission values are available below.',
-              })}
+              {isManaged
+                ? t('settings.assistantManagedCoreFieldHint', { defaultValue: 'Managed by your enterprise.' })
+                : t('settings.assistantEngineAffectsDefaults', {
+                    defaultValue:
+                      'Changing the main agent updates which model and permission values are available below.',
+                  })}
             </div>
           </div>
         </div>
@@ -517,6 +581,7 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
         localeKey={localeKey}
         isBuiltin={isBuiltin}
         isReadOnlyAssistant={isReadOnlyAssistant}
+        managed={editor.managed}
         isCreating={isCreating}
         showSkills={showSkills}
         defaultModelMode={defaultModelMode}

@@ -41,7 +41,7 @@ const assistants: TeamAssistant[] = [
   },
 ];
 
-const renderTabs = (warmingUp: boolean) =>
+const renderTabs = (warmingUp: boolean, workSummaries?: React.ComponentProps<typeof TeamTabs>['workSummaries']) =>
   render(
     <TeamTabsProvider
       assistants={assistants}
@@ -50,7 +50,7 @@ const renderTabs = (warmingUp: boolean) =>
       team_id='team-1'
       renameAssistant={renameAssistantMock}
     >
-      <TeamTabs warmingUp={warmingUp} />
+      <TeamTabs warmingUp={warmingUp} workSummaries={workSummaries} />
     </TeamTabsProvider>
   );
 
@@ -101,5 +101,12 @@ describe('TeamTabs', () => {
 
     expect(screen.getByTestId('team-tab-lead-slot')).toHaveAttribute('data-active', 'true');
     expect(screen.getByTestId('team-tab-worker-slot')).toHaveAttribute('data-active', 'false');
+  });
+
+  it('shows compact authoritative work state on the member rail', () => {
+    renderTabs(false, new Map([['worker-slot', { state: 'attention', count: 1, focus: 'Approve release' }]]));
+
+    expect(screen.getByTestId('team-tab-work-worker-slot')).toHaveAttribute('data-work-state', 'attention');
+    expect(screen.getByTestId('team-tab-work-worker-slot')).toHaveAttribute('title', 'Approve release');
   });
 });

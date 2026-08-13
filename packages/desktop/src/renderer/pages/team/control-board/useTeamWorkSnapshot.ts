@@ -51,31 +51,33 @@ export function useTeamWorkSnapshot(teamId: string) {
   }, [mutate, replaceSnapshot, teamId]);
 
   useEffect(() => {
-    const unsubscribeWork = ipcBridge.team.workEvent.on((event) => {
-      if (event.team_id !== teamId) return;
-      const current = snapshotRef.current;
-      if (!current) {
-        void replaceSnapshot();
-        return;
-      }
-      const result = applyTeamWorkEvent(current, event);
-      if (result.kind === 'reconcile') {
-        void reconcileEvents();
-      } else if (result.kind === 'applied') {
-        snapshotRef.current = result.snapshot;
-        void mutate(result.snapshot, false);
-      }
-    });
-    const unsubscribeReconnect = ipcBridge.realtime.reconnected.on(() => {
-      void (async () => {
-        try {
-          await ipcBridge.team.reconcileStaleWork.invoke({ team_id: teamId });
-        } catch {
-          // The authoritative snapshot below is the reconnect fallback.
+    const unsubscribeWork =
+      ipcBridge.team.workEvent?.on((event) => {
+        if (event.team_id !== teamId) return;
+        const current = snapshotRef.current;
+        if (!current) {
+          void replaceSnapshot();
+          return;
         }
-        await replaceSnapshot();
-      })();
-    });
+        const result = applyTeamWorkEvent(current, event);
+        if (result.kind === 'reconcile') {
+          void reconcileEvents();
+        } else if (result.kind === 'applied') {
+          snapshotRef.current = result.snapshot;
+          void mutate(result.snapshot, false);
+        }
+      }) ?? (() => {});
+    const unsubscribeReconnect =
+      ipcBridge.realtime?.reconnected?.on(() => {
+        void (async () => {
+          try {
+            await ipcBridge.team.reconcileStaleWork.invoke({ team_id: teamId });
+          } catch {
+            // The authoritative snapshot below is the reconnect fallback.
+          }
+          await replaceSnapshot();
+        })();
+      }) ?? (() => {});
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') void replaceSnapshot();
     };

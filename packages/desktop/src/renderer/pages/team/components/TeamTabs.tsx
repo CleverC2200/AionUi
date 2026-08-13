@@ -10,6 +10,7 @@ import AgentStatusBadge from './AgentStatusBadge';
 import TeamAgentIdentity from './TeamAgentIdentity';
 import { useTeamTabs } from '../hooks/TeamTabsContext';
 import TeamAddMemberPopover from './memberPicker/TeamAddMemberPopover';
+import type { TeamMemberWorkSummary } from '../memberWorkSummary';
 
 const TAB_OVERFLOW_THRESHOLD = 10;
 
@@ -28,6 +29,7 @@ type TeamTabViewProps = {
   color: string;
   /** Number of pending permission confirmations for this agent */
   pendingCount?: number;
+  workSummary?: TeamMemberWorkSummary;
   /** A drag is in progress somewhere in the bar: freeze hover affordances so pills don't reflow mid-drag. */
   dragActive: boolean;
   onSwitch: (slot_id: string) => void;
@@ -47,6 +49,7 @@ const TeamTabView: React.FC<TeamTabViewProps> = ({
   warmupFailed = false,
   color,
   pendingCount = 0,
+  workSummary,
   dragActive,
   onSwitch,
   onRename,
@@ -193,6 +196,16 @@ const TeamTabView: React.FC<TeamTabViewProps> = ({
               )
             }
           />
+          {workSummary && workSummary.state !== 'idle' ? (
+            <span
+              className='shrink-0 max-w-68px truncate rounded-999px px-6px py-1px text-10px leading-14px text-t-secondary bg-fill-2'
+              title={workSummary.focus}
+              data-testid={`team-tab-work-${slot_id}`}
+              data-work-state={workSummary.state}
+            >
+              {t(`team.memberWork.${workSummary.state}`, { count: workSummary.count })}
+            </span>
+          ) : null}
         </div>
       )}
       {/* hover 时胶囊变宽、露出操作按钮；失焦则收起（胶囊变窄，只剩头像+文字）。拖拽期间冻结，避免布局跳动。 */}
@@ -225,6 +238,7 @@ type TeamTabsProps = {
   onTabClick?: (slot_id: string) => void;
   /** Pending permission confirmation counts per assistant slot ID */
   pendingCounts?: Map<string, number>;
+  workSummaries?: Map<string, TeamMemberWorkSummary>;
   /** 团队 warmup 进行中：禁用改成员（添加/移除/重命名）——PRD 第 7 节要求。 */
   warmingUp?: boolean;
   /** warmup 失败的成员 slot：胶囊头像标红提示，引导用户移除/换模型自救。 */
@@ -235,7 +249,13 @@ type TeamTabsProps = {
  * Tab bar for team mode showing assistant tabs with status badges.
  * Supports scroll overflow with fade indicators.
  */
-const TeamTabs: React.FC<TeamTabsProps> = ({ onTabClick, pendingCounts, warmingUp = false, failedSlotIds }) => {
+const TeamTabs: React.FC<TeamTabsProps> = ({
+  onTabClick,
+  pendingCounts,
+  workSummaries,
+  warmingUp = false,
+  failedSlotIds,
+}) => {
   const { t } = useTranslation();
   const {
     assistants,
@@ -341,6 +361,7 @@ const TeamTabs: React.FC<TeamTabsProps> = ({ onTabClick, pendingCounts, warmingU
                     warmupFailed={failedSlotIds?.has(assistant.slot_id) ?? false}
                     color={colorOf(assistant.slot_id)}
                     pendingCount={pendingCounts?.get(assistant.slot_id) ?? 0}
+                    workSummary={workSummaries?.get(assistant.slot_id)}
                     dragActive={dragActive}
                     onSwitch={(slot_id) => {
                       switchTab(slot_id);

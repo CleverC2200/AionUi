@@ -21,6 +21,7 @@ import { Button, Image } from '@arco-design/web-react';
 import { Down } from '@icon-park/react';
 import MessageAcpPermission from '@renderer/pages/conversation/Messages/acp/MessageAcpPermission';
 import MessageQuestion from './MessageQuestion';
+import { focusMessageTarget } from './focusMessageTarget';
 import MessagePermission from './components/MessagePermission';
 import MessageAcpTerminalOutput from '@renderer/pages/conversation/Messages/acp/MessageAcpTerminalOutput';
 import MessageAcpToolCall from '@renderer/pages/conversation/Messages/acp/MessageAcpToolCall';
@@ -606,6 +607,7 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
         behavior: 'smooth',
         block: 'center',
       });
+      focusMessageTarget(targetElement);
     });
 
     const timer = window.setTimeout(() => {

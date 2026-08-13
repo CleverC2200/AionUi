@@ -283,9 +283,9 @@ const TeamControlBoard: React.FC<Props> = ({ team }) => {
                             passed: run.verification_receipt.checks.filter((check) => check.passed).length,
                             total: run.verification_receipt.checks.length,
                           })}
-                          {run.verification_receipt.artifacts.map((artifact) => (
-                            <div key={artifact}>{artifact}</div>
-                          ))}
+                          {run.verification_receipt.artifacts.length > 0 ? (
+                            <div>{t('team.resources.structuredRecordsHint')}</div>
+                          ) : null}
                           {run.verification_receipt.remaining_risks.map((risk) => (
                             <div key={risk}>
                               {t('team.controlBoard.risk')}: {risk}

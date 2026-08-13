@@ -30,6 +30,15 @@
     "sessionStopped": "团队会话已停止。",
     "retryStart": "重试启动"
   },
+  "memberWork": {
+    "attention": "待处理",
+    "blocked": "受阻",
+    "stale": "已暂停",
+    "working": "进行中",
+    "review": "待验收",
+    "waiting": "等待中",
+    "done": "已完成"
+  },
   "sendBox": {
     "placeholder": "向团队 Leader 助手发消息..."
   },
@@ -103,6 +112,11 @@
     "parallel": "并行",
     "single": "单聊",
     "board": "看板"
+  },
+  "resources": {
+    "allMembers": "全部成员",
+    "filteredBy": "已筛选：{{name}}",
+    "structuredRecordsHint": "交付物请在会话资源检查器中查看。"
   },
   "controlBoard": {
     "title": "团队控制看板",

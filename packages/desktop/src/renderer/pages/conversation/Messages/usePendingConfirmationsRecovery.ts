@@ -32,6 +32,7 @@ export function buildPendingConfirmationMessage(
         session_id: conversation_id,
         request_id: confirmation.call_id,
         questions: confirmation.questions,
+        interaction_request: confirmation.interaction_request,
       },
     };
   }

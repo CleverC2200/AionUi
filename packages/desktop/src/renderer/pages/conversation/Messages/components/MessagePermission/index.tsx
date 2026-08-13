@@ -6,8 +6,13 @@
 
 import { ipcBridge } from '@/common';
 import type { IMessagePermission } from '@/common/chat/chatLib';
-import React, { useCallback, useMemo } from 'react';
+import type { InteractionRequest } from '@/common/types/interactionRequest';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  interactionRequestActions,
+  requireAcceptedInteractionReceipt,
+} from '@/renderer/services/interactionRequestActions';
 import { PermissionRequestPanel } from './PermissionRequestPanel';
 import {
   classifyLegacyPermission,
@@ -25,6 +30,13 @@ const MessagePermission: React.FC<MessagePermissionProps> = React.memo(({ messag
   const { description, title, action, call_id, command_type } = content;
   const options = Array.isArray(content.options) ? content.options : [];
   const displayTitle = title || description || t('messages.permissionRequest');
+  const [authoritativeRequest, setAuthoritativeRequest] = useState<InteractionRequest | null>(null);
+  const [authorityBlocked, setAuthorityBlocked] = useState(false);
+
+  useEffect(() => {
+    setAuthoritativeRequest(null);
+    setAuthorityBlocked(false);
+  }, [content.interaction_request?.id, content.interaction_request?.version]);
 
   const panelOptions = useMemo<PermissionPanelOption[]>(
     () =>
@@ -38,27 +50,46 @@ const MessagePermission: React.FC<MessagePermissionProps> = React.memo(({ messag
           label: t(label, { ...option?.params, defaultValue: label }),
           intent: classifyLegacyPermission(value),
           testId: `message-permission-option-${value || fallbackId}`,
+          disabled:
+            authoritativeRequest?.status !== undefined &&
+            (authoritativeRequest.status !== 'pending' || !authoritativeRequest.allowed_actions.includes(value)),
         };
       }),
-    [options, t]
+    [authoritativeRequest, options, t]
   );
 
   const handleConfirm = useCallback(
     async (selectedValue: string) => {
-      await ipcBridge.conversation.confirmation.confirm.invoke({
-        conversation_id: message.conversation_id,
-        call_id,
-        msg_id: message.msg_id || '',
-        data: { value: selectedValue },
-        always_allow: selectedValue === 'proceed_always',
-      });
+      if (content.interaction_request) {
+        const request = authoritativeRequest ?? content.interaction_request;
+        const receipt = await interactionRequestActions.submit({
+          request_id: request.id,
+          expected_version: request.version,
+          action_id: selectedValue,
+        });
+        if (receipt.request) {
+          setAuthoritativeRequest(receipt.request);
+          setAuthorityBlocked(receipt.request.status !== 'pending');
+        } else {
+          setAuthorityBlocked(receipt.status === 'unknown_external_write');
+        }
+        requireAcceptedInteractionReceipt(receipt);
+      } else {
+        await ipcBridge.conversation.confirmation.confirm.invoke({
+          conversation_id: message.conversation_id,
+          call_id,
+          msg_id: message.msg_id || '',
+          data: { value: selectedValue },
+          always_allow: selectedValue === 'proceed_always',
+        });
+      }
     },
-    [call_id, message.conversation_id, message.msg_id]
+    [authoritativeRequest, call_id, content.interaction_request, message.conversation_id, message.msg_id]
   );
 
   return (
     <PermissionRequestPanel
-      requestKey={`${message.id}:${call_id}`}
+      requestKey={`${message.id}:${call_id}:${authoritativeRequest?.version ?? content.interaction_request?.version ?? ''}`}
       testIdPrefix='message-permission'
       title={displayTitle}
       description={description && description !== displayTitle ? description : undefined}
@@ -66,6 +97,7 @@ const MessagePermission: React.FC<MessagePermissionProps> = React.memo(({ messag
       detail={command_type}
       options={panelOptions}
       onConfirm={handleConfirm}
+      authorityBlocked={authorityBlocked}
     />
   );
 });

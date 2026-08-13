@@ -39,6 +39,9 @@
     "detailUsedByTitle": "使用中的助手",
     "detailUsedByEmpty": "還沒有助手使用這個技能。",
     "detailBuiltinAssistant": "內建",
+    "detailManagedAssistant": "企業受管",
+    "detailEnableBundled": "為助手啟用",
+    "detailDisableBundled": "關閉",
     "detailFilesTitle": "技能檔案",
     "detailFilesError": "無法載入此技能的檔案。",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "暫無官方技能。",
     "noSearchResults": "沒有符合的技能。",
     "customHint": "支援技能目錄、父目錄或 zip 匯入；單檔上限 {{maxFileSize}}、單技能上限 {{maxTotalSize}}；同名匯入會覆蓋現有技能。",
+    "bundledTitle": "安裝內建",
+    "bundledHint": "隨客戶端安裝並預設啟用；可對可編輯助手關閉或重新啟用，但不能刪除。",
     "officialHint": "GEAUi 官方內建的技能，開箱即用、唯讀，隨版本更新維護。",
     "deleteAffectsNewOnlyHint": "刪除僅影響新會話：歷史會話中已選用的技能仍可繼續使用。"
   },
@@ -1062,7 +1067,17 @@
     "slackStep2": "傳送任意訊息或 @提及 以發起配對",
     "slackStep3": "配對請求將顯示在下方。點擊「核准」以授權該使用者。",
     "slackStep4": "核准後，你就可以在 Slack 中與助手聊天了！",
-    "unknownUser": "未知使用者"
+    "unknownUser": "未知使用者",
+    "discordBotToken": "Bot Token",
+    "discordBotTokenDesc": "建立一個 Discord 應用程式，新增 Bot，開啟 MESSAGE CONTENT intent（訊息內容權限），然後複製 Bot Token。",
+    "discordPluginEnabled": "Discord 機器人已啟用",
+    "discordPluginDisabled": "Discord 機器人已停用",
+    "agentDescDiscord": "用於 Discord 對話",
+    "defaultModelDescDiscord": "用於 Discord 對話的模型",
+    "discordStep1": "開啟 Discord，在頻道中 @你的機器人，或傳送私訊給它",
+    "discordStep2": "傳送任意訊息或 @提及 以發起配對",
+    "discordStep3": "配對請求將顯示在下方。點擊「核准」以授權該使用者。",
+    "discordStep4": "核准後，你就可以在 Discord 中與助手聊天了！"
   },
   "lark": {
     "appId": "App ID",
@@ -1382,6 +1397,13 @@
   "personalModelFetchFailed": "從 GEA 取得個人模型失敗，請稍後重試或聯絡管理員。",
   "personalModelLoginRequired": "請先登入，再從 GEA 取得個人模型。",
   "personalModelNoneAvailable": "GEA 中沒有可同步的個人模型授權。",
+  "geaResourceFetchFromGea": "從 GEA 取得",
+  "geaResourceFetching": "正在從 GEA 取得…",
+  "geaResourceFetchSuccess": "已從 GEA 更新 {{count}} 項資源。",
+  "geaResourceNoChanges": "GEA 資源已是最新。",
+  "geaResourceLoginRequired": "請先登入，再從 GEA 取得資源。",
+  "geaResourceUnavailable": "目前服務尚未支援 GEA 資源同步。",
+  "geaResourceFetchFailed": "從 GEA 取得資源失敗，請稍後重試或聯絡管理員。",
   "autoInjectedSkillsHint": "每次對話都會自動載入，無需手動啟用；由智能體自行決定何時呼叫。",
   "browserData": {
     "title": "應用內瀏覽器",

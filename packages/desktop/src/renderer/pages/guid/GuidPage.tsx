@@ -284,6 +284,7 @@ const GuidPage: React.FC = () => {
 
     // Agent state
     selectedAssistantId: agentSelection.selectedAssistantId,
+    selectedAssistant: agentSelection.selectedAssistant,
     selectedAssistantBackend: agentSelection.selectedAssistantBackend,
     selectedMode: agentSelection.selectedMode,
     selectedAcpModel: agentSelection.selectedAcpModel,
@@ -728,6 +729,65 @@ const GuidPage: React.FC = () => {
             onSelectWorkspace={(dir) => guidInput.setDir(dir)}
             onClearWorkspace={() => guidInput.setDir('')}
           />
+
+          {send.preparationState === 'preparing' ? (
+            <div
+              className='mt-10px flex w-full flex-wrap items-center gap-8px rounded-10px border border-border-2 bg-fill-1 px-12px py-9px text-12px text-t-secondary'
+              role='status'
+              aria-live='polite'
+              data-testid='conversation-preparation-status'
+            >
+              <span className='h-7px w-7px animate-pulse rounded-full bg-primary-6' aria-hidden='true' />
+              <span className='min-w-0 flex-1'>
+                {t('conversation.configurationPreparation.preparing', {
+                  defaultValue: 'Preparing the assistant, Skills, MCP servers, and permissions…',
+                })}
+              </span>
+              <Button size='mini' onClick={send.cancelPreparation} data-testid='conversation-preparation-cancel'>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+            </div>
+          ) : null}
+
+          {send.preparationState === 'blocked' ? (
+            <div
+              className='mt-10px w-full rounded-10px border border-warning-6 bg-warning-1 px-12px py-10px text-12px text-t-secondary'
+              role='alert'
+              data-testid='conversation-preparation-blocked'
+            >
+              <div className='font-600 text-t-primary'>
+                {t('conversation.configurationPreparation.blockedTitle', {
+                  defaultValue: 'This conversation is not ready to start',
+                })}
+              </div>
+              <div className='mt-4px'>
+                {send.preparationIssues[0]?.message ||
+                  t(`conversation.configurationPreparation.issue.${send.preparationIssues[0]?.code}`, {
+                    defaultValue: send.preparationIssues[0]?.code || 'CONVERSATION_PREPARATION_BLOCKED',
+                  })}
+              </div>
+              <div className='mt-8px flex flex-wrap gap-8px'>
+                {send.preparationIssues[0]?.action === 'view_skills' ? (
+                  <Button size='mini' onClick={() => navigate('/settings/skills')}>
+                    {t('conversation.configurationPreparation.openSkills', { defaultValue: 'Open Skills' })}
+                  </Button>
+                ) : null}
+                {send.preparationIssues[0]?.action === 'authenticate_mcp' ? (
+                  <Button size='mini' onClick={() => navigate('/settings/tools')}>
+                    {t('conversation.configurationPreparation.openMcp', { defaultValue: 'Open MCP settings' })}
+                  </Button>
+                ) : null}
+                {send.preparationIssues[0]?.action === 'update_client' ? (
+                  <Button size='mini' onClick={() => navigate('/settings/about')}>
+                    {t('conversation.configurationPreparation.openUpdate', { defaultValue: 'Check for updates' })}
+                  </Button>
+                ) : null}
+                <Button size='mini' type='primary' onClick={send.sendMessageHandler}>
+                  {t('common.retry', { defaultValue: 'Retry' })}
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           {selectedAssistantPrompts.length > 0 ? (
             <div className='mt-18px w-full animate-fade-in pl-20px'>

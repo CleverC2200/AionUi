@@ -39,6 +39,9 @@
     "detailUsedByTitle": "Используется",
     "detailUsedByEmpty": "Этот навык пока не используется ни одним ассистентом.",
     "detailBuiltinAssistant": "Встроенный",
+    "detailManagedAssistant": "Управляется компанией",
+    "detailEnableBundled": "Включить для ассистента",
+    "detailDisableBundled": "Отключить",
     "detailFilesTitle": "Файлы навыка",
     "detailFilesError": "Не удалось загрузить файлы этого навыка.",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "Нет доступных официальных навыков.",
     "noSearchResults": "Нет подходящих навыков.",
     "customHint": "Импортируйте папку навыка, родительскую папку или zip; до {{maxFileSize}} на файл и {{maxTotalSize}} на навык; импорт с тем же именем перезаписывает существующий навык.",
+    "bundledTitle": "Входит в комплект приложения",
+    "bundledHint": "Устанавливается вместе с клиентом и включён по умолчанию. Можно отключить для редактируемых ассистентов, но нельзя удалить.",
     "officialHint": "Официальные навыки, входящие в состав GEAUi, — готовы к использованию, только для чтения и обновляются с каждым релизом.",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },
@@ -985,7 +990,17 @@
     "slackStep2": "Отправьте любое сообщение или @упоминание, чтобы начать сопряжение",
     "slackStep3": "Запрос на сопряжение появится ниже. Нажмите «Одобрить», чтобы авторизовать пользователя.",
     "slackStep4": "После одобрения вы можете начать общение с ассистентом в Slack!",
-    "unknownUser": "Неизвестный пользователь"
+    "unknownUser": "Неизвестный пользователь",
+    "discordBotToken": "Токен бота",
+    "discordBotTokenDesc": "Создайте приложение Discord, добавьте бота, включите intent MESSAGE CONTENT и скопируйте токен бота.",
+    "discordPluginEnabled": "Бот Discord включён",
+    "discordPluginDisabled": "Бот Discord отключён",
+    "agentDescDiscord": "Используется для разговоров в Discord",
+    "defaultModelDescDiscord": "Модель, используемая для разговоров в Discord",
+    "discordStep1": "Откройте Discord и упомяните бота в канале или отправьте ему личное сообщение",
+    "discordStep2": "Отправьте любое сообщение или @упоминание, чтобы начать сопряжение",
+    "discordStep3": "Запрос на сопряжение появится ниже. Нажмите «Одобрить», чтобы авторизовать пользователя.",
+    "discordStep4": "После одобрения вы можете начать общение с ассистентом в Discord!"
   },
   "lark": {
     "appId": "App ID",
@@ -1325,6 +1340,13 @@
   "personalModelFetchFailed": "Не удалось получить персональные модели из GEA. Повторите попытку позже или обратитесь к администратору.",
   "personalModelLoginRequired": "Войдите в систему перед получением персональных моделей из GEA.",
   "personalModelNoneAvailable": "В GEA нет доступных для синхронизации разрешений на персональные модели.",
+  "geaResourceFetchFromGea": "Получить из GEA",
+  "geaResourceFetching": "Получение из GEA…",
+  "geaResourceFetchSuccess": "Из GEA обновлено ресурсов: {{count}}.",
+  "geaResourceNoChanges": "Ресурсы GEA уже актуальны.",
+  "geaResourceLoginRequired": "Войдите в систему перед получением ресурсов из GEA.",
+  "geaResourceUnavailable": "Синхронизация ресурсов GEA недоступна в текущей службе.",
+  "geaResourceFetchFailed": "Не удалось получить ресурсы из GEA. Повторите попытку позже или обратитесь к администратору.",
   "autoInjectedSkillsHint": "Автоматически загружаются в каждый диалог — включать не нужно; агент сам решает, когда их использовать.",
   "browserData": {
     "title": "Встроенный браузер",

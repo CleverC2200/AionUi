@@ -63,6 +63,26 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
   const cronStatus = getJobStatus(conversation.id);
   const siderTooltipProps = getSiderTooltipProps(tooltipEnabled);
   const inlineNameTooltipEnabled = !collapsed && !isMobile && !!conversation.name;
+  const taskStatus = (() => {
+    const runtime = conversation.runtime;
+    if (!runtime?.has_task) return null;
+    if (runtime.pending_confirmations > 0 || runtime.state === 'waiting_confirmation') {
+      return {
+        label: t('team.memberWork.attention'),
+        className: 'bg-[rgba(var(--warning-6),0.12)] text-[rgb(var(--warning-7))]',
+      };
+    }
+    if (runtime.task_status === 'finished' || conversation.status === 'finished') {
+      return {
+        label: t('team.memberWork.done'),
+        className: 'bg-[rgba(var(--success-6),0.12)] text-[rgb(var(--success-7))]',
+      };
+    }
+    return {
+      label: t('team.memberWork.working'),
+      className: 'bg-[rgba(var(--primary-6),0.10)] text-[rgb(var(--primary-7))]',
+    };
+  })();
 
   const renderLeadingIcon = () => {
     if (cronStatus !== 'none') {
@@ -149,6 +169,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
     >
       <div
         id={'c-' + conversation.id}
+        data-testid={`conversation-row-${conversation.id}`}
         className={classNames(
           'chat-history__item h-34px rd-8px flex items-center group cursor-pointer relative overflow-hidden shrink-0 conversation-item [&.conversation-item+&.conversation-item]:mt-2px min-w-0 transition-colors',
           collapsed ? 'justify-center px-0' : 'justify-start gap-8px pr-16px',
@@ -202,6 +223,18 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
           >
             <div className='chat-history__item-name overflow-hidden text-ellipsis flex items-center gap-4px w-full text-14px font-[500] lh-24px whitespace-nowrap min-w-0 text-t-primary'>
               <span className='block overflow-hidden text-ellipsis whitespace-nowrap min-w-0'>{conversation.name}</span>
+              {taskStatus ? (
+                <span
+                  data-testid={`conversation-task-status-${conversation.id}`}
+                  className={classNames(
+                    'shrink-0 rd-999px px-6px py-1px text-10px leading-14px font-500',
+                    taskStatus.className
+                  )}
+                  aria-label={taskStatus.label}
+                >
+                  {taskStatus.label}
+                </span>
+              ) : null}
               {forkLineage && (
                 <Tooltip
                   content={

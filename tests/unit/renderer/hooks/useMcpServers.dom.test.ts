@@ -76,4 +76,28 @@ describe('useMcpServers', () => {
 
     await waitFor(() => expect(result.current.mcpServers).toHaveLength(1));
   });
+
+  it('preserves the last good MCP catalog when an explicit refresh fails', async () => {
+    const existing = {
+      id: 'existing-mcp',
+      name: 'Existing MCP',
+      enabled: true,
+      transport: { type: 'stdio' as const, command: 'existing', args: [] },
+      created_at: 1,
+      updated_at: 1,
+      original_json: '{}',
+    };
+    ensureBackendMcpCatalogMock.mockResolvedValueOnce({ allServers: [existing] });
+    const { result } = renderHook(() => useMcpServers());
+    await waitFor(() => expect(result.current.mcpServers).toEqual([existing]));
+
+    ensureBackendMcpCatalogMock.mockRejectedValueOnce(new Error('temporary catalog failure'));
+    let refreshed = true;
+    await act(async () => {
+      refreshed = await result.current.refreshMcpServers();
+    });
+
+    expect(refreshed).toBe(false);
+    expect(result.current.mcpServers).toEqual([existing]);
+  });
 });

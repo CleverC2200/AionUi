@@ -10,6 +10,7 @@ import React from 'react';
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { SWRConfig } from 'swr';
 
 const mocks = vi.hoisted(() => ({
   listAvailableSkills: vi.fn(),
@@ -132,9 +133,24 @@ describe('getAssistantsUsingSkill', () => {
     ] as never[];
     expect(getAssistantsUsingSkill('demo-skill', assistants).map((a) => a.id)).toEqual(['a1', 'a2']);
   });
+
+  it('treats bundled skills as enabled unless an assistant explicitly disables them', () => {
+    const assistants = [
+      makeAssistant({ id: 'a1', disabled_builtin_skills: [] }),
+      makeAssistant({ id: 'a2', disabled_builtin_skills: ['demo-skill'] }),
+    ] as never[];
+    expect(getAssistantsUsingSkill('demo-skill', assistants, true).map((a) => a.id)).toEqual(['a1']);
+  });
 });
 
 describe('SkillDetailPage', () => {
+  const renderDetail = () =>
+    render(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <SkillDetailPage />
+      </SWRConfig>
+    );
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.params.skillName = 'demo-skill';
@@ -163,7 +179,7 @@ describe('SkillDetailPage', () => {
   });
 
   it('renders skill info and used-by rows (builtin marked read-only)', async () => {
-    render(<SkillDetailPage />);
+    renderDetail();
 
     await waitFor(() => expect(screen.getByTestId('skill-detail-info')).toBeInTheDocument());
     expect(screen.getByText('A demo skill.')).toBeInTheDocument();
@@ -176,7 +192,7 @@ describe('SkillDetailPage', () => {
   });
 
   it('removes the duplicate skill name from the breadcrumb and auto-selects SKILL.md', async () => {
-    render(<SkillDetailPage />);
+    renderDetail();
 
     await waitFor(() => expect(screen.getByTestId('markdown-viewer')).toHaveTextContent('# Demo skill'));
     expect(screen.getAllByText('demo-skill')).toHaveLength(1);
@@ -188,13 +204,13 @@ describe('SkillDetailPage', () => {
 
   it('shows not-found state for a missing skill', async () => {
     mocks.params.skillName = 'ghost-skill';
-    render(<SkillDetailPage />);
+    renderDetail();
 
     await waitFor(() => expect(screen.getByTestId('skill-detail-not-found')).toBeInTheDocument());
   });
 
   it('offers only unattached editable assistants in the add menu', async () => {
-    render(<SkillDetailPage />);
+    renderDetail();
 
     await waitFor(() => expect(screen.getByTestId('btn-add-assistant')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('btn-add-assistant'));
@@ -207,7 +223,7 @@ describe('SkillDetailPage', () => {
   });
 
   it('attaches the skill when an assistant is picked from the add menu', async () => {
-    render(<SkillDetailPage />);
+    renderDetail();
 
     await waitFor(() => expect(screen.getByTestId('btn-add-assistant')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('btn-add-assistant'));
@@ -220,7 +236,7 @@ describe('SkillDetailPage', () => {
   });
 
   it('detaches via the inline remove button without navigating', async () => {
-    render(<SkillDetailPage />);
+    renderDetail();
 
     await waitFor(() => expect(screen.getByTestId('btn-detach-a1')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('btn-detach-a1'));
@@ -231,15 +247,75 @@ describe('SkillDetailPage', () => {
   });
 
   it('builtin users show a read-only tag instead of a remove button', async () => {
-    render(<SkillDetailPage />);
+    renderDetail();
 
     await waitFor(() => expect(screen.getByTestId('skill-used-by-row-b1')).toBeInTheDocument());
     expect(screen.getByText('Built-in')).toBeInTheDocument();
     expect(screen.queryByTestId('btn-detach-b1')).not.toBeInTheDocument();
   });
 
+  it('does not offer the local edit flow for a GEA-managed skill', async () => {
+    mocks.listAvailableSkills.mockResolvedValue([
+      {
+        skill_id: 'skill-demo',
+        version: '1.0.0',
+        name: 'demo-skill',
+        description: 'Managed enterprise capability.',
+        location: '/managed/skills/demo-skill/SKILL.md',
+        is_auto_inject: false,
+        is_custom: false,
+        source: 'managed',
+        state: 'active',
+      },
+    ]);
+
+    renderDetail();
+
+    await waitFor(() => expect(screen.getByTestId('skill-detail-info')).toHaveTextContent('Enterprise managed'));
+    expect(screen.queryByTestId('btn-edit-skill-via-chat')).not.toBeInTheDocument();
+  });
+
+  it('disables and re-enables a bundled skill through disabled_builtin_skills', async () => {
+    const bundledSkills = [
+      {
+        name: 'demo-skill',
+        description: 'Required client capability.',
+        location: '/tmp/builtin-skills/auto-inject/demo-skill/SKILL.md',
+        is_auto_inject: true,
+        is_custom: false,
+        source: 'builtin',
+      },
+    ];
+    const bundledAssistants = [
+      makeAssistant({ id: 'a1', name: 'Writer', disabled_builtin_skills: [] }),
+      makeAssistant({ id: 'a2', name: 'Coder', disabled_builtin_skills: ['demo-skill'] }),
+      makeAssistant({ id: 'm1', name: 'Enterprise', source: 'managed', disabled_builtin_skills: [] }),
+    ];
+    mocks.listAvailableSkills.mockResolvedValue(bundledSkills);
+    mocks.assistantsList.mockResolvedValue(bundledAssistants);
+    renderDetail();
+
+    await waitFor(() => expect(screen.getByTestId('btn-detach-a1')).toHaveTextContent('Disable'));
+    expect(screen.getByTestId('skill-used-by-row-m1')).toHaveTextContent('Enterprise managed');
+    expect(screen.queryByTestId('btn-detach-m1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('btn-edit-skill-via-chat')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('btn-detach-a1'));
+    await waitFor(() =>
+      expect(mocks.assistantsUpdate).toHaveBeenCalledWith({
+        id: 'a1',
+        disabled_builtin_skills: ['demo-skill'],
+      })
+    );
+
+    fireEvent.click(screen.getByTestId('btn-add-assistant'));
+    fireEvent.click(await screen.findByTestId('menu-add-assistant-a2'));
+    await waitFor(() => expect(mocks.assistantsUpdate).toHaveBeenCalledWith({ id: 'a2', disabled_builtin_skills: [] }));
+    expect(screen.queryByTestId('menu-add-assistant-m1')).not.toBeInTheDocument();
+  });
+
   it('navigates to the assistant editor when a used-by row is clicked', async () => {
-    render(<SkillDetailPage />);
+    renderDetail();
 
     await waitFor(() => expect(screen.getByTestId('skill-used-by-row-a1')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('skill-used-by-row-a1'));
@@ -250,7 +326,7 @@ describe('SkillDetailPage', () => {
 
   it('back button restores the originating skills tab', async () => {
     mocks.locationState.skillsTab = 'official';
-    render(<SkillDetailPage />);
+    renderDetail();
 
     await waitFor(() => expect(screen.getByTestId('btn-back-skill-detail')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('btn-back-skill-detail'));
@@ -258,7 +334,7 @@ describe('SkillDetailPage', () => {
   });
 
   it('opens the skill editing flow in chat with the skill name prefilled', async () => {
-    render(<SkillDetailPage />);
+    renderDetail();
 
     const button = await screen.findByTestId('btn-edit-skill-via-chat');
     fireEvent.click(button);

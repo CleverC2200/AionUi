@@ -39,6 +39,9 @@
     "detailUsedByTitle": "Usada por",
     "detailUsedByEmpty": "Nenhum assistente está usando esta habilidade ainda.",
     "detailBuiltinAssistant": "Integrado",
+    "detailManagedAssistant": "Gerenciado pela empresa",
+    "detailEnableBundled": "Ativar para o assistente",
+    "detailDisableBundled": "Desativar",
     "detailFilesTitle": "Arquivos da habilidade",
     "detailFilesError": "Não foi possível carregar os arquivos desta habilidade.",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "Nenhuma habilidade oficial disponível.",
     "noSearchResults": "Nenhuma habilidade correspondente.",
     "customHint": "Importe uma pasta de habilidade, pasta principal ou zip; até {{maxFileSize}} por arquivo e {{maxTotalSize}} por habilidade; importar o mesmo nome substitui a habilidade existente.",
+    "bundledTitle": "Incluído no aplicativo",
+    "bundledHint": "Instalado com o cliente e ativado por padrão. Pode ser desativado para assistentes editáveis, mas não pode ser excluído.",
     "officialHint": "Habilidades oficiais incluídas no GEAUi — prontas para uso, somente leitura e atualizadas a cada versão.",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },
@@ -1005,7 +1010,17 @@
     "slackStep2": "Envie qualquer mensagem ou @menção para iniciar o pareamento",
     "slackStep3": "Uma solicitação de pareamento aparecerá abaixo. Clique em \"Aprovar\" para autorizar o usuário.",
     "slackStep4": "Após aprovado, você pode começar a conversar com o assistente no Slack!",
-    "unknownUser": "Usuário desconhecido"
+    "unknownUser": "Usuário desconhecido",
+    "discordBotToken": "Token do bot",
+    "discordBotTokenDesc": "Crie um aplicativo do Discord, adicione um Bot, ative o intent MESSAGE CONTENT e copie o Token do bot.",
+    "discordPluginEnabled": "Bot do Discord ativado",
+    "discordPluginDisabled": "Bot do Discord desativado",
+    "agentDescDiscord": "Usado para conversas no Discord",
+    "defaultModelDescDiscord": "Modelo usado para conversas no Discord",
+    "discordStep1": "Abra o Discord e mencione seu bot em um canal, ou envie um DM",
+    "discordStep2": "Envie qualquer mensagem ou @menção para iniciar o pareamento",
+    "discordStep3": "Uma solicitação de pareamento aparecerá abaixo. Clique em \"Aprovar\" para autorizar o usuário.",
+    "discordStep4": "Após aprovado, você pode começar a conversar com o assistente no Discord!"
   },
   "lark": {
     "appId": "ID do Aplicativo",
@@ -1328,6 +1343,13 @@
   "personalModelFetchFailed": "Não foi possível buscar os modelos pessoais no GEA. Tente novamente mais tarde ou contate o administrador.",
   "personalModelLoginRequired": "Entre antes de buscar modelos pessoais no GEA.",
   "personalModelNoneAvailable": "Não há autorização de modelo pessoal disponível para sincronizar no GEA.",
+  "geaResourceFetchFromGea": "Buscar no GEA",
+  "geaResourceFetching": "Buscando no GEA…",
+  "geaResourceFetchSuccess": "{{count}} recurso(s) atualizado(s) pelo GEA.",
+  "geaResourceNoChanges": "Os recursos do GEA já estão atualizados.",
+  "geaResourceLoginRequired": "Entre antes de buscar recursos no GEA.",
+  "geaResourceUnavailable": "A sincronização de recursos do GEA não está disponível no serviço atual.",
+  "geaResourceFetchFailed": "Não foi possível buscar os recursos no GEA. Tente novamente mais tarde ou contate o administrador.",
   "autoInjectedSkillsHint": "Carregadas automaticamente em cada conversa — não é preciso ativá-las; o agente decide quando usá-las.",
   "browserData": {
     "title": "Navegador interno",

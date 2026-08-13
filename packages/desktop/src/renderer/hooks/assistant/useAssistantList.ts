@@ -1,11 +1,18 @@
 import { ipcBridge } from '@/common';
 import { resolveLocaleKey } from '@/common/utils';
 import type { Assistant } from '@/common/types/agent/assistantTypes';
+import {
+  AssistantCatalog,
+  createAionCoreAssistantCatalogAdapter,
+  type AssistantCatalogView,
+} from '@/common/adapter/assistant';
 import { reorderAssistantList } from '@/renderer/pages/settings/AssistantSettings/assistantUtils';
 import { selectableAssistants } from '@/renderer/utils/model/assistantSelection';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAssistantOrder } from './useAssistantOrder';
+
+declare const __APP_VERSION__: string;
 
 /**
  * Manages the assistant list: loading from backend, sorting, and tracking the
@@ -14,24 +21,49 @@ import { useAssistantOrder } from './useAssistantOrder';
  */
 export const useAssistantList = () => {
   const { i18n } = useTranslation();
+  const assistantCatalogRef = useRef(
+    new AssistantCatalog(
+      createAionCoreAssistantCatalogAdapter(() =>
+        ipcBridge.assistants.catalog?.invoke
+          ? ipcBridge.assistants.catalog.invoke()
+          : ipcBridge.assistants.list.invoke()
+      ),
+      typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'unknown'
+    )
+  );
   const [assistants, setAssistants] = useState<Assistant[]>([]);
+  const [catalogView, setCatalogView] = useState<AssistantCatalogView | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const catalogRequestIdRef = useRef(0);
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null);
   const localeKey = resolveLocaleKey(i18n.language);
-  const previousLocaleKeyRef = useRef(localeKey);
   const { assistantOrder, setAssistantOrder } = useAssistantOrder();
 
   const loadAssistants = useCallback(async () => {
+    const requestId = ++catalogRequestIdRef.current;
+    setCatalogLoading(true);
     try {
-      const list = await ipcBridge.assistants.list.invoke();
+      const view = await assistantCatalogRef.current.load(localeKey);
+      if (requestId !== catalogRequestIdRef.current) return false;
+      const list = view.assistants;
+      setCatalogView(view);
+      setCatalogError(view.error_code ?? null);
       setAssistants(list);
       setActiveAssistantId((prev) => {
         if (prev && list.some((a) => a.id === prev)) return prev;
         return list[0]?.id ?? null;
       });
+      return view.sync_status === 'fresh' && !view.error_code;
     } catch (error) {
+      if (requestId !== catalogRequestIdRef.current) return false;
       console.error('Failed to load assistants:', error);
+      setCatalogError(error instanceof Error ? error.message : 'ASSISTANT_CATALOG_LOAD_FAILED');
+      return false;
+    } finally {
+      if (requestId === catalogRequestIdRef.current) setCatalogLoading(false);
     }
-  }, []);
+  }, [localeKey]);
 
   const reorderEnabledAssistants = useCallback(
     async (activeId: string, overId: string) => {
@@ -53,17 +85,6 @@ export const useAssistantList = () => {
     void loadAssistants();
   }, [loadAssistants]);
 
-  useEffect(() => {
-    const localeChanged = previousLocaleKeyRef.current !== localeKey;
-    previousLocaleKeyRef.current = localeKey;
-
-    if (!localeChanged) {
-      return;
-    }
-
-    void loadAssistants();
-  }, [loadAssistants, localeKey]);
-
   const activeAssistant = assistants.find((a) => a.id === activeAssistantId) ?? null;
 
   return {
@@ -77,5 +98,8 @@ export const useAssistantList = () => {
     assistantOrder,
     setAssistantOrder,
     localeKey,
+    catalogView,
+    catalogError,
+    catalogLoading,
   };
 };

@@ -12,18 +12,22 @@ export const useMcpServers = () => {
   const [extensionMcpServers, setExtensionMcpServers] = useState<IMcpServer[]>([]);
   const [isMcpServersLoading, setIsMcpServersLoading] = useState(true);
 
+  const refreshMcpServers = useCallback(async () => {
+    setIsMcpServersLoading(true);
+    try {
+      const { allServers } = await ensureBackendMcpCatalog();
+      setMcpServers(allServers);
+      return true;
+    } catch (error) {
+      console.error('[useMcpServers] Failed to load MCP catalog:', error);
+      return false;
+    } finally {
+      setIsMcpServersLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    void ensureBackendMcpCatalog()
-      .then(({ allServers }) => {
-        setMcpServers(allServers);
-      })
-      .catch((error) => {
-        console.error('[useMcpServers] Failed to load MCP catalog:', error);
-        setMcpServers([]);
-      })
-      .finally(() => {
-        setIsMcpServersLoading(false);
-      });
+    void refreshMcpServers();
 
     void ipcBridge.extensions.getMcpServers
       .invoke()
@@ -50,7 +54,7 @@ export const useMcpServers = () => {
         console.error('[useMcpServers] Failed to load extension MCP servers:', error);
         setExtensionMcpServers([]);
       });
-  }, []);
+  }, [refreshMcpServers]);
 
   const saveMcpServers = useCallback((serversOrUpdater: IMcpServer[] | ((prev: IMcpServer[]) => IMcpServer[])) => {
     setMcpServers((prevServers) =>
@@ -66,5 +70,6 @@ export const useMcpServers = () => {
     extensionMcpServers,
     setMcpServers,
     saveMcpServers,
+    refreshMcpServers,
   };
 };

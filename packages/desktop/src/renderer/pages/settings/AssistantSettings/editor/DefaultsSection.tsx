@@ -1,4 +1,4 @@
-import type { BuiltinAutoSkill, SkillInfo } from '../types';
+import type { AssistantEditorViewModel } from '../types';
 import type { IMcpServer } from '@/common/config/storage';
 import { DROPDOWN_SEARCH_THRESHOLD } from '@/renderer/components/agent/runtimeSelectorOptions';
 import { Button, Select, Tooltip } from '@arco-design/web-react';
@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ConfigRow, ReadonlySelectionField, SectionCard } from './editorSectionPrimitives';
 import styles from './DefaultsSection.module.css';
+import ManagedCapabilityEditor from './ManagedCapabilityEditor';
 
 type SelectOption = { key: string; value: string; label: string; description?: string };
 type EditableSkillOption = { value: string; label: string; isAuto?: boolean; disabled?: boolean };
@@ -38,6 +39,7 @@ type DefaultsSectionProps = {
   isBuiltin: boolean;
   isReadOnlyAssistant: boolean;
   isCreating: boolean;
+  managed: AssistantEditorViewModel['managed'];
   showSkills: boolean;
   defaultModelMode: 'auto' | 'fixed';
   setDefaultModelMode: (value: 'auto' | 'fixed') => void;
@@ -74,6 +76,7 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
   localeKey,
   isBuiltin,
   isReadOnlyAssistant,
+  managed,
   showSkills,
   defaultModelMode,
   setDefaultModelMode,
@@ -278,7 +281,18 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
               </Button>
             }
           >
-            {canEditDefaultSkillsAndMcps ? (
+            {managed ? (
+              <ManagedCapabilityEditor
+                kind='skill'
+                requiredIds={managed.metadata.required_skill_ids}
+                options={editableSkillOptions.map((option) => ({ id: option.value, label: option.label }))}
+                selectedIds={selectedSkillValues}
+                setSelectedIds={handleSkillSelectionChange}
+                allowExtensions={managed.metadata.user_extensions.allow_skills}
+                active={managed.metadata.state === 'active'}
+                violations={managed.violations}
+              />
+            ) : canEditDefaultSkillsAndMcps ? (
               <Select
                 className={styles.summarySelect}
                 getPopupContainer={getEditorSelectPopupContainer}
@@ -395,7 +409,18 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
             </Button>
           }
         >
-          {canEditDefaultSkillsAndMcps ? (
+          {managed ? (
+            <ManagedCapabilityEditor
+              kind='mcp'
+              requiredIds={managed.metadata.required_mcp_ids}
+              options={enabledMcpServers.map((server) => ({ id: server.id, label: server.name }))}
+              selectedIds={selectedMcpIds}
+              setSelectedIds={setSelectedMcpIds}
+              allowExtensions={managed.metadata.user_extensions.allow_mcps}
+              active={managed.metadata.state === 'active'}
+              violations={managed.violations}
+            />
+          ) : canEditDefaultSkillsAndMcps ? (
             <Select
               className={styles.summarySelect}
               getPopupContainer={getEditorSelectPopupContainer}

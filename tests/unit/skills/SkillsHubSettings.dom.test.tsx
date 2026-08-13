@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   listSkillImportHistory: vi.fn(),
   importSkills: vi.fn(),
   deleteSkill: vi.fn(),
+  syncFromGea: vi.fn(),
+  catalog: vi.fn(),
   showOpen: vi.fn(),
   messageError: vi.fn(),
   messageSuccess: vi.fn(),
@@ -45,6 +47,12 @@ vi.mock('@/common', () => ({
     },
     dialog: {
       showOpen: { invoke: mocks.showOpen },
+    },
+    clientResources: {
+      syncFromGea: { invoke: mocks.syncFromGea },
+    },
+    assistants: {
+      catalog: { invoke: mocks.catalog },
     },
   },
 }));
@@ -115,6 +123,8 @@ describe('SkillsHubSettings', () => {
       max_total_bytes: 64 * 1024 * 1024,
     });
     mocks.listSkillImportHistory.mockResolvedValue([]);
+    mocks.syncFromGea.mockResolvedValue({ status: 'completed', changed: 1, skipped: 0, failed: 0 });
+    mocks.catalog.mockResolvedValue({ assistants: [], mode: 'managed', sync_status: 'fresh' });
   });
 
   it('exports a component (smoke)', () => {
@@ -144,6 +154,7 @@ describe('SkillsHubSettings', () => {
     render(<SkillsHubSettings withWrapper={false} />);
 
     await waitFor(() => expect(mocks.listAvailableSkills).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.catalog).toHaveBeenCalled());
     await triggerManualImport();
 
     await waitFor(() =>
@@ -173,6 +184,15 @@ describe('SkillsHubSettings', () => {
       )
     );
     await waitFor(() => expect(mocks.listAvailableSkills.mock.calls.length).toBeGreaterThan(initialFetchCount));
+  });
+
+  it('keeps the GEA sync action out of a standard skill catalog', async () => {
+    mocks.catalog.mockResolvedValue({ assistants: [], mode: 'standard', sync_status: 'fresh' });
+    render(<SkillsHubSettings withWrapper={false} />);
+
+    await waitFor(() => expect(mocks.catalog).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId('btn-add-skill'));
+    expect(screen.queryByTestId('btn-add-skill-gea')).not.toBeInTheDocument();
   });
 
   it('renders import history failure detail in the secondary view', async () => {
@@ -205,6 +225,42 @@ describe('SkillsHubSettings', () => {
 
     await waitFor(() => expect(screen.getByTestId('btn-open-import-history')).toBeInTheDocument());
     expect(screen.queryByText('No import records yet.')).not.toBeInTheDocument();
+  });
+
+  it('fetches skills from GEA from the add-skill menu and reloads the projection', async () => {
+    render(<SkillsHubSettings withWrapper={false} />);
+
+    await waitFor(() => expect(mocks.listAvailableSkills).toHaveBeenCalled());
+    const initialFetchCount = mocks.listAvailableSkills.mock.calls.length;
+    fireEvent.click(screen.getByTestId('btn-add-skill'));
+    const marker = await screen.findByTestId('btn-add-skill-gea');
+    fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
+
+    await waitFor(() => expect(mocks.syncFromGea).toHaveBeenCalledWith({ resources: ['skills'] }));
+    await waitFor(() => expect(mocks.listAvailableSkills.mock.calls.length).toBeGreaterThan(initialFetchCount));
+  });
+
+  it('renders GEA-managed skills as a distinct read-only section', async () => {
+    mocks.listAvailableSkills.mockResolvedValue([
+      {
+        skill_id: 'skill-enterprise-report',
+        version: '1.0.0',
+        name: 'enterprise-report',
+        description: 'Managed reporting workflow',
+        location: '/managed/enterprise-report/SKILL.md',
+        is_auto_inject: false,
+        is_custom: false,
+        source: 'managed',
+        state: 'active',
+      },
+    ]);
+
+    render(<SkillsHubSettings withWrapper={false} />);
+
+    fireEvent.click(await screen.findByTestId('settings-tab-official'));
+    await waitFor(() => expect(screen.getByTestId('managed-skills-section')).toBeInTheDocument());
+    expect(screen.getByTestId('managed-skill-card-enterprise-report')).toBeInTheDocument();
+    expect(screen.queryByTestId('my-skill-card-enterprise-report')).not.toBeInTheDocument();
   });
 
   it('renders import history as a secondary view without search or category filters', async () => {
@@ -326,7 +382,7 @@ describe('SkillsHubSettings', () => {
     expect(screen.queryByText('Available')).not.toBeInTheDocument();
   });
 
-  it('splits custom and official skills into two tabs, with auto-injected under Official', async () => {
+  it('puts bundled auto-injected skills under My Skills and keeps them out of deletion', async () => {
     mocks.listAvailableSkills.mockResolvedValue([
       {
         name: 'cron',
@@ -362,16 +418,19 @@ describe('SkillsHubSettings', () => {
 
     render(<SkillsHubSettings withWrapper={false} />);
 
-    // Custom tab is active by default: shows the imported skill, not the builtin/auto ones.
+    // My Skills is active by default: imported and installation-bundled skills
+    // appear together, while only imported skills expose deletion.
     await waitFor(() => expect(screen.getByTestId('my-skill-card-sample-single')).toBeInTheDocument());
-    expect(screen.queryByTestId('auto-skills-section')).not.toBeInTheDocument();
+    expect(screen.getByTestId('auto-skills-section')).toBeInTheDocument();
+    expect(screen.getByTestId('bundled-skill-card-cron')).toBeInTheDocument();
+    expect(screen.queryByTestId('btn-delete-cron')).not.toBeInTheDocument();
     expect(screen.queryByTestId('official-skill-card-officecli')).not.toBeInTheDocument();
 
-    // Switch to the Official tab: official builtin list + auto-injected section appear.
+    // Official is now only the browse catalog for optional built-ins.
     fireEvent.click(screen.getByTestId('settings-tab-official'));
     expect(screen.getByTestId('official-skill-card-officecli')).toBeInTheDocument();
-    expect(screen.getByTestId('auto-skills-section')).toBeInTheDocument();
-    expect(screen.getByText('cron')).toBeInTheDocument();
+    expect(screen.queryByTestId('auto-skills-section')).not.toBeInTheDocument();
+    expect(screen.queryByText('cron')).not.toBeInTheDocument();
     // cron-source skills are never listed.
     expect(screen.queryByText('job-generated')).not.toBeInTheDocument();
     // The custom skill is not in the Official tab.
@@ -400,7 +459,7 @@ describe('SkillsHubSettings', () => {
     });
   });
 
-  it('renders the auto-injected skills hint without an Arco popup trigger', async () => {
+  it('explains the bundled skill policy without an Arco popup trigger', async () => {
     mocks.listAvailableSkills.mockResolvedValue([
       {
         name: 'officecli',
@@ -414,17 +473,17 @@ describe('SkillsHubSettings', () => {
 
     render(<SkillsHubSettings withWrapper={false} />);
 
-    fireEvent.click(await screen.findByTestId('settings-tab-official'));
-
-    const autoSection = screen.getByTestId('auto-skills-section');
+    const autoSection = await screen.findByTestId('auto-skills-section');
     const nativeHint = Array.from(autoSection.querySelectorAll('[title]')).some(
       (el) =>
         el.getAttribute('title') ===
-        'Loaded automatically into every conversation — no need to enable them; the agent decides when to use them.'
+        'Installed with the client and enabled by default. They may be disabled for editable assistants, but cannot be deleted.'
     );
 
     expect(nativeHint).toBe(true);
     expect(autoSection.querySelector('.arco-trigger')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('btn-batch-manage')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('btn-delete-officecli')).not.toBeInTheDocument();
   });
 
   it('does not expose the local skills directory path on the skills page', async () => {

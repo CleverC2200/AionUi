@@ -14,6 +14,7 @@ const {
   messageSuccessMock,
   navigateMock,
   removeConversationMock,
+  updateConversationMock,
   requestPrefillMock,
   routeState,
 } = vi.hoisted(() => ({
@@ -22,6 +23,7 @@ const {
   messageSuccessMock: vi.fn(),
   navigateMock: vi.fn(),
   removeConversationMock: vi.fn(),
+  updateConversationMock: vi.fn(),
   requestPrefillMock: vi.fn(),
   routeState: { id: 'current-conversation' as string | undefined },
 }));
@@ -57,7 +59,7 @@ vi.mock('@/common', () => ({
   ipcBridge: {
     conversation: {
       remove: { invoke: removeConversationMock },
-      update: { invoke: vi.fn() },
+      update: { invoke: updateConversationMock },
     },
   },
 }));
@@ -178,6 +180,36 @@ describe('delete conversation action', () => {
     expect(emitterEmitMock).toHaveBeenCalledWith('chat.history.refresh');
     expect(result.current.deleteConversationId).toBeNull();
     expect(result.current.deleteConversationLoading).toBe(false);
+  });
+});
+
+describe('legacy sidebar pin action', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    updateConversationMock.mockResolvedValue(true);
+  });
+
+  it('uses the supported conversation extra update when order routes are unavailable', async () => {
+    const conversation = makeConversation('legacy-pin', 'acp');
+    const { result } = renderHook(() =>
+      useConversationActions({
+        batchMode: false,
+        selectedConversationIds: new Set(),
+        setSelectedConversationIds: vi.fn(),
+        toggleSelectedConversation: vi.fn(),
+        markAsRead: vi.fn(),
+        legacySidebarMode: true,
+      })
+    );
+
+    await act(async () => result.current.handleTogglePin(conversation));
+
+    expect(updateConversationMock).toHaveBeenCalledWith({
+      id: 'legacy-pin',
+      updates: { extra: expect.objectContaining({ pinned: true, pinned_at: expect.any(Number) }) },
+      merge_extra: true,
+    });
+    expect(emitterEmitMock).toHaveBeenCalledWith('chat.history.refresh');
   });
 });
 

@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import React, { Suspense, useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { cleanupSiderTooltips, getSiderTooltipProps } from '@renderer/utils/ui/siderTooltip';
@@ -45,7 +45,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const location = useLocation();
-  const { pathname } = location;
+  const { pathname, search, hash } = location;
 
   const navigate = useNavigate();
   const { closePreview, clearPreviewForScope } = usePreviewContext();
@@ -53,7 +53,14 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const { theme, setTheme } = useThemeContext();
   const [isBatchMode, setIsBatchMode] = useState(false);
   const isSettings = pathname.startsWith('/settings');
+  const lastNonSettingsPathRef = useRef('/guid');
   const showAccount = status === 'authenticated';
+
+  useEffect(() => {
+    if (!pathname.startsWith('/settings')) {
+      lastNonSettingsPathRef.current = `${pathname}${search}${hash}`;
+    }
+  }, [pathname, search, hash]);
 
   const handleNewChat = () => {
     cleanupSiderTooltips();
@@ -71,7 +78,12 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const handleSettingsClick = () => {
     cleanupSiderTooltips();
     blurActiveElement();
-    if (!isSettings) {
+    if (isSettings) {
+      const target = lastNonSettingsPathRef.current || '/guid';
+      Promise.resolve(navigate(target)).catch((error) => {
+        console.error('Navigation failed:', error);
+      });
+    } else {
       Promise.resolve(navigate('/settings/agent')).catch((error) => {
         console.error('Navigation failed:', error);
       });

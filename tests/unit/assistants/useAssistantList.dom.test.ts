@@ -124,6 +124,22 @@ describe('useAssistantList', () => {
     expect(result.current.activeAssistant).toBeNull();
   });
 
+  it('reports whether an explicit catalog reload succeeded', async () => {
+    (ipcBridge.assistants.list.invoke as any).mockResolvedValue([]);
+    const { result } = renderHook(() => useAssistantList());
+    await waitFor(() => expect(ipcBridge.assistants.list.invoke).toHaveBeenCalled());
+
+    (ipcBridge.assistants.list.invoke as any).mockRejectedValueOnce(new Error('catalog unavailable'));
+    let refreshed = true;
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await act(async () => {
+      refreshed = await result.current.loadAssistants();
+    });
+
+    expect(refreshed).toBe(false);
+    consoleErrorSpy.mockRestore();
+  });
+
   it('preserves active selection if still present after reload', async () => {
     const mockList: Assistant[] = [
       { id: '1', name: 'A', sort_order: 1, source: 'user', enabled: true },
@@ -187,6 +203,27 @@ describe('useAssistantList', () => {
     expect(result.current.activeAssistantId).toBeNull();
 
     consoleErrorSpy.mockRestore();
+  });
+
+  it('keeps the latest catalog when overlapping reloads resolve out of order', async () => {
+    let resolveFirst!: (value: Assistant[]) => void;
+    vi.mocked(ipcBridge.assistants.list.invoke)
+      .mockReturnValueOnce(
+        new Promise<Assistant[]>((resolve) => {
+          resolveFirst = resolve;
+        })
+      )
+      .mockResolvedValueOnce([{ id: 'latest', name: 'Latest', sort_order: 1, source: 'user', enabled: true }]);
+
+    const { result } = renderHook(() => useAssistantList());
+    await act(async () => {
+      await result.current.loadAssistants();
+    });
+    expect(result.current.assistants.map((assistant) => assistant.id)).toEqual(['latest']);
+
+    resolveFirst([{ id: 'stale', name: 'Stale', sort_order: 1, source: 'user', enabled: true }]);
+    await act(async () => await Promise.resolve());
+    expect(result.current.assistants.map((assistant) => assistant.id)).toEqual(['latest']);
   });
 
   it('reorders only enabled assistants through the shared preference', async () => {

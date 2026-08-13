@@ -20,6 +20,7 @@ import {
   stubProvider,
   withResponseMap,
   BackendHttpError,
+  dispatchE2EWsEvent,
   isBackendHttpError,
   wsEmitter,
   wsMappedEmitter,
@@ -392,6 +393,16 @@ describe('httpBridge', () => {
   });
 
   describe('wsEmitter', () => {
+    it('lets the Electron E2E harness use the same realtime subscription path', () => {
+      const events: unknown[] = [];
+      const unsubscribe = wsEmitter('interaction_request.changed').on((payload: unknown) => events.push(payload));
+
+      dispatchE2EWsEvent('interaction_request.changed', { revision: 'e2e:r1' });
+
+      expect(events).toEqual([{ revision: 'e2e:r1' }]);
+      unsubscribe();
+    });
+
     it('emits realtime.reconnected only after a prior websocket open', () => {
       vi.useFakeTimers();
       vi.stubGlobal('window', { __backendPort: 13400 });

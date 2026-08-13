@@ -20,6 +20,7 @@
 import { Message } from '@arco-design/web-react';
 import { useAssistantEditor, useAssistantList } from '@/renderer/hooks/assistant';
 import { useManagedAgentRuntimeCatalog } from '@/renderer/hooks/agent/useManagedAgents';
+import { useGeaResourceSync } from '@/renderer/hooks/system/useGeaResourceSync';
 import { buildAssistantEditorBackends, resolveAvatarImageSrc } from './assistantUtils';
 import AssistantEditorPage from './AssistantEditorPage';
 import AssistantHomeTabs from './home/AssistantHomeTabs';
@@ -70,8 +71,17 @@ const AssistantSettings: React.FC = () => {
     assistantOrder,
     setAssistantOrder,
     localeKey,
+    catalogView,
+    catalogError,
+    catalogLoading,
   } = useAssistantList();
   const managedAgentRuntimeCatalog = useManagedAgentRuntimeCatalog();
+  const { syncing: catalogSyncing, syncFromGea } = useGeaResourceSync({
+    available: catalogView?.mode === 'managed',
+    message,
+    refresh: loadAssistants,
+    resource: 'assistants',
+  });
   const builtinAvatarOptions = useMemo(
     () =>
       assistants
@@ -111,6 +121,15 @@ const AssistantSettings: React.FC = () => {
   const showEditor = editor.editVisible && (editor.isCreating || activeAssistantId !== null);
   const editorViewModel: AssistantEditorViewModel = {
     isCreating: editor.isCreating,
+    managed: editor.managedMetadata
+      ? {
+          metadata: editor.managedMetadata,
+          violations: editor.managedExtensionViolations,
+          error: editor.managedExtensionError,
+          verificationRequired: editor.managedExtensionVerificationRequired,
+          saving: editor.managedExtensionSaving,
+        }
+      : null,
     profile: {
       name: editor.editName,
       setName: editor.setEditName,
@@ -236,6 +255,9 @@ const AssistantSettings: React.FC = () => {
           ) : (
             <AssistantHomeTabs
               assistants={assistants}
+              catalogView={catalogView}
+              catalogError={catalogError}
+              catalogLoading={catalogLoading}
               assistantOrder={assistantOrder}
               localeKey={localeKey}
               initialTab={homeTab}
@@ -268,6 +290,9 @@ const AssistantSettings: React.FC = () => {
                 }
               }}
               onStartChat={handleStartChat}
+              onReloadCatalog={loadAssistants}
+              catalogSyncing={catalogSyncing}
+              onSyncFromGea={syncFromGea}
             />
           )}
 

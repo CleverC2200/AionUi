@@ -32,6 +32,18 @@ describe('pending confirmations recovery', () => {
     expect(hasPermissionMessageForCallId(list, 'tool-2')).toBe(false);
   });
 
+  it('preserves unified request identity while rebuilding a structured question', () => {
+    const message = buildPendingConfirmationMessage('conv-1', {
+      ...confirmation,
+      questions: [{ question: 'Continue?', options: [{ label: 'Yes' }] }],
+      interaction_request: { id: 'request-1', version: 'v1' },
+    });
+
+    expect(message.type).toBe('ask');
+    if (message.type !== 'ask') throw new Error('expected ask');
+    expect(message.content.interaction_request).toEqual({ id: 'request-1', version: 'v1' });
+  });
+
   it('removes recovered permission messages by confirmation id or call_id', () => {
     const list = [
       buildPendingConfirmationMessage('conv-1', confirmation),

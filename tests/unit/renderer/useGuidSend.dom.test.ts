@@ -7,14 +7,20 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMcpServer } from '@/common/config/storage';
+import type { Assistant } from '@/common/types/agent/assistantTypes';
+import { managedConversationBlocked, managedConversationReady } from '../../fixtures/conversationConfiguration';
 import { useGuidSend, type GuidSendDeps } from '@/renderer/pages/guid/hooks/useGuidSend';
 
 const createConversationInvokeMock = vi.fn();
+const prepareConfigurationInvokeMock = vi.fn();
 const swrMutateMock = vi.fn();
 
 vi.mock('@/common', () => ({
   ipcBridge: {
     conversation: {
+      prepareConfiguration: {
+        invoke: (...args: unknown[]) => prepareConfigurationInvokeMock(...args),
+      },
       create: {
         invoke: (...args: unknown[]) => createConversationInvokeMock(...args),
       },
@@ -77,15 +83,135 @@ const createDeps = (): GuidSendDeps => ({
 
 describe('useGuidSend', () => {
   beforeEach(() => {
+    prepareConfigurationInvokeMock.mockReset();
+    prepareConfigurationInvokeMock.mockResolvedValue(managedConversationReady);
     createConversationInvokeMock.mockReset();
     createConversationInvokeMock.mockResolvedValue({ id: 'conv-1' });
     swrMutateMock.mockReset();
     swrMutateMock.mockResolvedValue(undefined);
   });
 
+  it('prepares a managed configuration before atomically creating the conversation', async () => {
+    const deps = createDeps();
+    deps.selectedAssistant = {
+      id: 'enterprise-finance',
+      source: 'managed',
+      managed: {
+        assignment_id: 'assignment-finance',
+        template_id: 'finance-close',
+        template_version: '1.0.0',
+        catalog_revision: 'catalog-r1',
+        activation: 'required',
+        state: 'active',
+        minimum_client_version: '2.1.53',
+        sync_status: 'fresh',
+        required_skill_ids: ['finance-close'],
+        required_mcp_ids: ['finance-production'],
+        user_extensions: { mode: 'additive', allow_skills: true, allow_mcps: true },
+        extensions: { revision: 'extension-r1', skill_ids: [], mcp_ids: [], status: 'active', violations: [] },
+      },
+    } as Assistant;
+    deps.selectedAssistantId = deps.selectedAssistant.id;
+
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      await result.current.handleSend();
+    });
+
+    expect(prepareConfigurationInvokeMock).toHaveBeenCalledTimes(1);
+    expect(createConversationInvokeMock).toHaveBeenCalledWith({
+      preparation: { id: 'preparation-1', revision: 'preparation-r1' },
+    });
+    expect(prepareConfigurationInvokeMock.mock.invocationCallOrder[0]).toBeLessThan(
+      createConversationInvokeMock.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('keeps a managed preparation blocked and does not create a half-configured conversation', async () => {
+    prepareConfigurationInvokeMock.mockResolvedValue(managedConversationBlocked);
+    const deps = createDeps();
+    deps.selectedAssistant = {
+      id: 'enterprise-finance',
+      source: 'managed',
+      managed: {
+        assignment_id: 'assignment-finance',
+        template_id: 'finance-close',
+        template_version: '1.0.0',
+        catalog_revision: 'catalog-r1',
+        activation: 'required',
+        state: 'active',
+        minimum_client_version: '2.1.53',
+        sync_status: 'fresh',
+        required_skill_ids: [],
+        required_mcp_ids: ['finance-production'],
+        user_extensions: { mode: 'none', allow_skills: false, allow_mcps: false },
+        extensions: { revision: 'extension-r1', skill_ids: [], mcp_ids: [], status: 'active', violations: [] },
+      },
+    } as Assistant;
+    deps.selectedAssistantId = deps.selectedAssistant.id;
+
+    const { result } = renderHook(() => useGuidSend(deps));
+    let blockedError: unknown;
+    await act(async () => {
+      try {
+        await result.current.handleSend();
+      } catch (error) {
+        blockedError = error;
+      }
+    });
+
+    expect(blockedError).toEqual(expect.objectContaining({ message: 'MCP_AUTH_REQUIRED' }));
+    expect(result.current.preparationState).toBe('blocked');
+    expect(result.current.preparationIssues).toEqual([expect.objectContaining({ code: 'MCP_AUTH_REQUIRED' })]);
+    expect(createConversationInvokeMock).not.toHaveBeenCalled();
+  });
+
+  it('cancels a managed preparation immediately and ignores its late response', async () => {
+    let resolvePreparation!: (value: unknown) => void;
+    prepareConfigurationInvokeMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePreparation = resolve;
+      })
+    );
+    const deps = createDeps();
+    deps.selectedAssistant = {
+      id: 'enterprise-finance',
+      source: 'managed',
+      managed: {
+        assignment_id: 'assignment-finance',
+        template_id: 'finance-close',
+        template_version: '1.0.0',
+        catalog_revision: 'catalog-r1',
+        activation: 'required',
+        state: 'active',
+        minimum_client_version: '2.1.53',
+        sync_status: 'fresh',
+        required_skill_ids: [],
+        required_mcp_ids: [],
+        user_extensions: { mode: 'none', allow_skills: false, allow_mcps: false },
+        extensions: { revision: 'extension-r1', skill_ids: [], mcp_ids: [], status: 'active', violations: [] },
+      },
+    } as Assistant;
+    deps.selectedAssistantId = deps.selectedAssistant.id;
+
+    const { result } = renderHook(() => useGuidSend(deps));
+    let sending!: Promise<void>;
+    act(() => {
+      sending = result.current.handleSend();
+    });
+    act(() => result.current.cancelPreparation());
+
+    await act(async () => {
+      await expect(sending).rejects.toThrow('CONVERSATION_PREPARATION_CANCELLED');
+    });
+    expect(result.current.preparationState).toBe('idle');
+    expect(createConversationInvokeMock).not.toHaveBeenCalled();
+    resolvePreparation(managedConversationReady);
+  });
+
   it('passes selected mode into assistant conversation overrides when creating a preset ACP conversation', async () => {
     const deps = createDeps();
-    (deps as any).selectedThoughtLevelValue = 'high';
+    deps.selectedThoughtLevelValue = 'high';
 
     const { result } = renderHook(() => useGuidSend(deps));
 

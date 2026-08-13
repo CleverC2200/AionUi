@@ -39,6 +39,9 @@
     "detailUsedByTitle": "사용 중인 어시스턴트",
     "detailUsedByEmpty": "아직 이 스킬을 사용하는 어시스턴트가 없습니다.",
     "detailBuiltinAssistant": "기본 제공",
+    "detailManagedAssistant": "기업 관리",
+    "detailEnableBundled": "어시스턴트에서 활성화",
+    "detailDisableBundled": "비활성화",
     "detailFilesTitle": "스킬 파일",
     "detailFilesError": "이 스킬의 파일을 불러올 수 없습니다.",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsEmpty": "사용 가능한 공식 스킬이 없습니다.",
     "noSearchResults": "일치하는 스킬이 없습니다.",
     "customHint": "스킬 폴더, 상위 폴더 또는 zip을 가져올 수 있으며, 파일당 최대 {{maxFileSize}}, 스킬당 최대 {{maxTotalSize}}입니다. 같은 이름으로 가져오면 기존 스킬을 덮어씁니다.",
+    "bundledTitle": "앱 기본 제공",
+    "bundledHint": "클라이언트와 함께 설치되고 기본적으로 활성화됩니다. 편집 가능한 어시스턴트에서는 끌 수 있지만 삭제할 수 없습니다.",
     "officialHint": "GEAUi에 기본 제공되는 공식 스킬입니다. 바로 사용할 수 있고 읽기 전용이며 버전마다 업데이트됩니다.",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },
@@ -995,7 +1000,17 @@
     "slackStep2": "메시지를 보내거나 @멘션하여 페어링을 시작하세요",
     "slackStep3": "페어링 요청이 아래에 표시됩니다. \"승인\"을 클릭하여 사용자를 인증하세요.",
     "slackStep4": "승인되면 Slack에서 어시스턴트와 채팅을 시작할 수 있습니다!",
-    "unknownUser": "알 수 없는 사용자"
+    "unknownUser": "알 수 없는 사용자",
+    "discordBotToken": "Bot 토큰",
+    "discordBotTokenDesc": "Discord 애플리케이션을 만들고 Bot을 추가한 뒤 MESSAGE CONTENT 인텐트를 활성화하고 Bot 토큰을 복사하세요.",
+    "discordPluginEnabled": "Discord 봇이 활성화되었습니다",
+    "discordPluginDisabled": "Discord 봇이 비활성화되었습니다",
+    "agentDescDiscord": "Discord 대화에 사용됩니다",
+    "defaultModelDescDiscord": "Discord 대화에 사용되는 모델",
+    "discordStep1": "Discord를 열고 채널에서 봇을 멘션하거나 DM을 보내세요",
+    "discordStep2": "메시지를 보내거나 @멘션하여 페어링을 시작하세요",
+    "discordStep3": "페어링 요청이 아래에 표시됩니다. \"승인\"을 클릭하여 사용자를 인증하세요.",
+    "discordStep4": "승인되면 Discord에서 어시스턴트와 채팅을 시작할 수 있습니다!"
   },
   "lark": {
     "appId": "App ID",
@@ -1327,6 +1342,13 @@
   "personalModelFetchFailed": "GEA에서 개인 모델을 가져오지 못했습니다. 나중에 다시 시도하거나 관리자에게 문의하세요.",
   "personalModelLoginRequired": "로그인한 후 GEA에서 개인 모델을 가져오세요.",
   "personalModelNoneAvailable": "GEA에 동기화할 수 있는 개인 모델 권한이 없습니다.",
+  "geaResourceFetchFromGea": "GEA에서 가져오기",
+  "geaResourceFetching": "GEA에서 가져오는 중…",
+  "geaResourceFetchSuccess": "GEA에서 리소스 {{count}}개를 업데이트했습니다.",
+  "geaResourceNoChanges": "GEA 리소스가 이미 최신 상태입니다.",
+  "geaResourceLoginRequired": "로그인한 후 GEA에서 리소스를 가져오세요.",
+  "geaResourceUnavailable": "현재 서비스에서는 GEA 리소스 동기화를 사용할 수 없습니다.",
+  "geaResourceFetchFailed": "GEA에서 리소스를 가져오지 못했습니다. 나중에 다시 시도하거나 관리자에게 문의하세요.",
   "autoInjectedSkillsHint": "모든 대화에 자동으로 로드됩니다. 활성화할 필요가 없으며, 에이전트가 사용 시점을 결정합니다.",
   "browserData": {
     "title": "앱 내 브라우저",

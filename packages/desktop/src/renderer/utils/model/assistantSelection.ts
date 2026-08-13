@@ -28,6 +28,7 @@ const sourceGroupWeight = (source: string): number => {
     case 'user':
       return 1;
     case 'builtin':
+    case 'managed':
       return 2;
     default:
       return 1;

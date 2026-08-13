@@ -17,6 +17,17 @@ const mocks = vi.hoisted(() => ({
   loadAllMessages: vi.fn(),
   openBrowserTab: vi.fn(),
   openLocalFile: vi.fn(),
+  recordsGet: vi.fn(),
+  recordsChangedOn: vi.fn(() => vi.fn()),
+}));
+
+vi.mock('@/common', () => ({
+  ipcBridge: {
+    conversationRecords: {
+      get: { invoke: mocks.recordsGet },
+      changed: { on: mocks.recordsChangedOn },
+    },
+  },
 }));
 
 vi.mock('@/renderer/pages/conversation/Messages/hooks', () => ({
@@ -45,6 +56,8 @@ describe('ConversationResourcesButton', () => {
     mocks.loadAllMessages.mockReset().mockResolvedValue([]);
     mocks.openBrowserTab.mockReset();
     mocks.openLocalFile.mockReset();
+    mocks.recordsGet.mockReset().mockRejectedValue(new Error('legacy backend'));
+    mocks.recordsChangedOn.mockClear();
   });
 
   afterEach(() => {
@@ -176,6 +189,65 @@ describe('ConversationResourcesButton', () => {
 
     expect(mocks.openBrowserTab).toHaveBeenCalledWith('https://developer.mozilla.org/en-US/docs/Web/API');
     expect(mocks.openLocalFile).not.toHaveBeenCalled();
+
+    view.unmount();
+    target.remove();
+  });
+
+  it('uses structured records without scanning message wording and shows no inferred label', async () => {
+    const target = document.createElement('div');
+    target.id = 'conversation-resources-conversation-1';
+    document.body.append(target);
+    mocks.recordsGet.mockResolvedValue({
+      revision: 1,
+      records: [
+        {
+          id: 'verification-1',
+          revision: 1,
+          record_type: 'verification_evidence',
+          conversation_id: 'conversation-1',
+          turn_id: 'turn-1',
+          producer: { type: 'aioncore', id: 'aioncore' },
+          created_at: '2026-08-12T00:00:30.000Z',
+          outcome: 'pass',
+          summary: 'Production record matched',
+          evidence_record_ids: ['deliverable-1'],
+        },
+        {
+          id: 'deliverable-1',
+          revision: 1,
+          record_type: 'deliverable_revision',
+          conversation_id: 'conversation-1',
+          turn_id: 'turn-1',
+          producer: { type: 'agent', id: 'agent-1' },
+          created_at: '2026-08-12T00:00:00.000Z',
+          deliverable_id: 'deliverable',
+          status: 'ready',
+          resource: { kind: 'file', uri: '/workspace/final.xlsx', name: 'final.xlsx' },
+        },
+        {
+          id: 'receipt-1',
+          revision: 1,
+          record_type: 'completion_receipt',
+          conversation_id: 'conversation-1',
+          turn_id: 'turn-1',
+          producer: { type: 'aioncore', id: 'aioncore' },
+          created_at: '2026-08-12T00:01:00.000Z',
+          definition: 'Production submission verified',
+          owner: 'finance-agent',
+          status: 'verified',
+          evidence_record_ids: ['verification-1'],
+        },
+      ],
+    });
+
+    const view = render(<ConversationResourcesPortal conversationId='conversation-1' workspace='/workspace' />);
+    fireEvent.click(await screen.findByTestId('conversation-resources-trigger'));
+
+    expect(await screen.findByText('final.xlsx')).toBeInTheDocument();
+    expect(screen.getByText('Production submission verified')).toBeInTheDocument();
+    expect(screen.queryByText('conversation.resources.inferred')).not.toBeInTheDocument();
+    expect(mocks.loadAllMessages).not.toHaveBeenCalled();
 
     view.unmount();
     target.remove();

@@ -45,6 +45,7 @@ const AcpChat: React.FC<{
   assistantId?: string;
   forkCapability?: { at_turn: boolean };
   promptCapability?: { image: boolean; audio: boolean };
+  hideConversationResources?: boolean;
 }> = ({
   conversation_id,
   workspace,
@@ -63,6 +64,7 @@ const AcpChat: React.FC<{
   assistantId,
   forkCapability,
   promptCapability,
+  hideConversationResources,
 }) => {
   useMessageLstCache(conversation_id);
   usePendingConfirmationsRecovery(conversation_id);
@@ -89,7 +91,9 @@ const AcpChat: React.FC<{
       }}
     >
       <ConversationArtifactProvider conversation_id={conversation_id}>
-        <ConversationResourcesPortal conversationId={conversation_id} workspace={workspace} />
+        {!hideConversationResources && (
+          <ConversationResourcesPortal conversationId={conversation_id} workspace={workspace} />
+        )}
         <div className={`${CHAT_SURFACE_CONTAINER_CLASS} flex-1 flex flex-col px-20px min-h-0`}>
           <FlexFullContainer>
             <MessageList className='flex-1' emptySlot={emptySlot} />

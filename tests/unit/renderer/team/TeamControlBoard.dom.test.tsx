@@ -152,7 +152,7 @@ const team: TTeam = {
 };
 
 describe('TeamControlBoard', () => {
-  it('projects snapshot metrics, capacity queue state, attempts and receipts', () => {
+  it('projects snapshot metrics, capacity queue state and attempts without legacy artifact strings', () => {
     render(<TeamControlBoard team={team} />);
 
     expect(screen.getByTestId('team-control-board')).toBeInTheDocument();
@@ -163,7 +163,8 @@ describe('TeamControlBoard', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /Build feature/ })[0]);
 
     expect(screen.getByTestId('team-work-task-drawer')).toBeInTheDocument();
-    expect(screen.getByText('artifact://build')).toBeInTheDocument();
+    expect(screen.getByText('team.resources.structuredRecordsHint')).toBeInTheDocument();
+    expect(screen.queryByText('artifact://build')).not.toBeInTheDocument();
     expect(screen.getByText(/manual rollout/)).toBeInTheDocument();
   });
 });

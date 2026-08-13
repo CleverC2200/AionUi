@@ -39,6 +39,9 @@
     "detailUsedByTitle": "Utilisée par",
     "detailUsedByEmpty": "Aucun assistant n’utilise encore cette compétence.",
     "detailBuiltinAssistant": "Intégré",
+    "detailManagedAssistant": "Géré par l’entreprise",
+    "detailEnableBundled": "Activer pour l’assistant",
+    "detailDisableBundled": "Désactiver",
     "detailFilesTitle": "Fichiers de la compétence",
     "detailFilesError": "Impossible de charger les fichiers de cette compétence.",
     "editViaChat": {
@@ -111,6 +114,8 @@
     "officialSkillsTitle": "Compétences officielles",
     "officialSkillsEmpty": "Aucune compétence officielle disponible.",
     "customHint": "Importez un dossier de compétences, un dossier parent ou un zip ; jusqu'à {{maxFileSize}} par fichier et {{maxTotalSize}} par compétence ; l'importation du même nom écrase la compétence existante.",
+    "bundledTitle": "Inclus avec l’application",
+    "bundledHint": "Installé avec le client et activé par défaut. Peut être désactivé pour les assistants modifiables, mais ne peut pas être supprimé.",
     "officialHint": "Compétences officielles fournies avec GEAUi — prêtes à l'emploi, en lecture seule et mises à jour à chaque version.",
     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
   },
@@ -1005,7 +1010,17 @@
     "slackStep2": "Envoyez un message ou une @mention pour lancer l'appairage",
     "slackStep3": "Une demande d'appairage apparaîtra ci-dessous. Cliquez sur « Approuver » pour autoriser l'utilisateur.",
     "slackStep4": "Une fois approuvé, vous pouvez commencer à discuter avec l'assistant dans Slack !",
-    "unknownUser": "Utilisateur inconnu"
+    "unknownUser": "Utilisateur inconnu",
+    "discordBotToken": "Jeton du bot",
+    "discordBotTokenDesc": "Créez une application Discord, ajoutez un Bot, activez l'intent MESSAGE CONTENT et copiez le Jeton du bot.",
+    "discordPluginEnabled": "Bot Discord activé",
+    "discordPluginDisabled": "Bot Discord désactivé",
+    "agentDescDiscord": "Utilisé pour les conversations Discord",
+    "defaultModelDescDiscord": "Modèle utilisé pour les conversations Discord",
+    "discordStep1": "Ouvrez Discord et mentionnez votre bot dans un canal, ou envoyez-lui un message privé",
+    "discordStep2": "Envoyez un message ou une @mention pour lancer l'appairage",
+    "discordStep3": "Une demande d'appairage apparaîtra ci-dessous. Cliquez sur « Approuver » pour autoriser l'utilisateur.",
+    "discordStep4": "Une fois approuvé, vous pouvez commencer à discuter avec l'assistant dans Discord !"
   },
   "lark": {
     "appId": "ID d'application",
@@ -1325,6 +1340,13 @@
   "personalModelFetchFailed": "Impossible de récupérer les modèles personnels depuis GEA. Réessayez plus tard ou contactez l'administrateur.",
   "personalModelLoginRequired": "Connectez-vous avant de récupérer les modèles personnels depuis GEA.",
   "personalModelNoneAvailable": "Aucune autorisation de modèle personnel n'est disponible à synchroniser depuis GEA.",
+  "geaResourceFetchFromGea": "Récupérer depuis GEA",
+  "geaResourceFetching": "Récupération depuis GEA…",
+  "geaResourceFetchSuccess": "{{count}} ressource(s) mise(s) à jour depuis GEA.",
+  "geaResourceNoChanges": "Les ressources GEA sont déjà à jour.",
+  "geaResourceLoginRequired": "Connectez-vous avant de récupérer des ressources depuis GEA.",
+  "geaResourceUnavailable": "La synchronisation des ressources GEA n'est pas disponible dans le service actuel.",
+  "geaResourceFetchFailed": "Impossible de récupérer les ressources depuis GEA. Réessayez plus tard ou contactez l'administrateur.",
   "autoInjectedSkillsHint": "Chargé automatiquement dans chaque conversation – pas besoin de les activer ; l'agent décide quand les utiliser.",
   "browserData": {
     "title": "Navigateur intégré",

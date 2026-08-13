@@ -283,32 +283,27 @@ export const useConversationActions = ({
   const handleRemoveProjectConfirm = useCallback(async () => {
     if (!removeProjectTarget) return;
     setRemoveProjectLoading(true);
-    const target = removeProjectTarget;
     try {
-      const results = await Promise.allSettled(
-        target.conversations.map((conversation) => removeConversation(conversation.id))
-      );
+      const target = removeProjectTarget;
+      const results = await Promise.allSettled(target.conversations.map((c) => removeConversation(c.id)));
       const failedConversations = target.conversations.filter((_, index) => {
         const result = results[index];
         return result?.status !== 'fulfilled' || !result.value;
       });
       const successCount = target.conversations.length - failedConversations.length;
-
+      emitter.emit('chat.history.refresh');
       if (successCount > 0) {
-        emitter.emit('chat.history.refresh');
-        Message.success(
-          t('conversation.history.batchDeleteSuccess', {
-            count: successCount,
-          })
-        );
+        Message.success(t('conversation.history.batchDeleteSuccess', { count: successCount }));
       }
-
       if (failedConversations.length > 0) {
         Message.error(t('conversation.history.deleteFailed'));
         setRemoveProjectTarget({ ...target, conversations: failedConversations });
-      } else {
-        setRemoveProjectTarget(null);
+        return;
       }
+      setRemoveProjectTarget(null);
+    } catch (error) {
+      console.error('Failed to remove project:', error);
+      Message.error(t('conversation.history.deleteFailed'));
     } finally {
       setRemoveProjectLoading(false);
     }
