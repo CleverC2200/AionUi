@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import React, { Suspense, useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { cleanupSiderTooltips, getSiderTooltipProps } from '@renderer/utils/ui/siderTooltip';
@@ -13,6 +13,7 @@ import { shell, webui } from '@/common/adapter/ipcBridge';
 import { configService } from '@/common/config/configService';
 import { SiderToolbar, SiderSearchEntry, SiderScheduledEntry, SiderAssistantEntry } from './SiderNav';
 import SiderFooter from './SiderFooter';
+import TeamSiderSection from './TeamSiderSection';
 import siderStyles from './Sider.module.css';
 
 const WorkspaceGroupedHistory = React.lazy(() => import('@renderer/pages/conversation/GroupedHistory'));
@@ -44,7 +45,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const location = useLocation();
-  const { pathname } = location;
+  const { pathname, search, hash } = location;
 
   const navigate = useNavigate();
   const { closePreview, clearPreviewForScope } = usePreviewContext();
@@ -52,7 +53,14 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const { theme, setTheme } = useThemeContext();
   const [isBatchMode, setIsBatchMode] = useState(false);
   const isSettings = pathname.startsWith('/settings');
+  const lastNonSettingsPathRef = useRef('/guid');
   const showAccount = status === 'authenticated';
+
+  useEffect(() => {
+    if (!pathname.startsWith('/settings')) {
+      lastNonSettingsPathRef.current = `${pathname}${search}${hash}`;
+    }
+  }, [pathname, search, hash]);
 
   const handleNewChat = () => {
     cleanupSiderTooltips();
@@ -70,7 +78,12 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const handleSettingsClick = () => {
     cleanupSiderTooltips();
     blurActiveElement();
-    if (!isSettings) {
+    if (isSettings) {
+      const target = lastNonSettingsPathRef.current || '/guid';
+      Promise.resolve(navigate(target)).catch((error) => {
+        console.error('Navigation failed:', error);
+      });
+    } else {
       Promise.resolve(navigate('/settings/agent')).catch((error) => {
         console.error('Navigation failed:', error);
       });
@@ -238,11 +251,22 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 collapsed ? 'mx-6px' : 'mx-10px'
               )}
             />
-            {/* Scrollable content: pinned → projects → conversations. Teams are
-                folded into their group by the backend sidebar read model. */}
+            {/* Scrollable content: pinned → team (slot) → projects → conversations */}
             <div className={classNames('flex-1 min-h-0 overflow-y-auto', siderStyles.scrollArea)}>
               <Suspense fallback={<div className='min-h-200px' />}>
-                <WorkspaceGroupedHistory {...workspaceHistoryProps} />
+                <WorkspaceGroupedHistory
+                  {...workspaceHistoryProps}
+                  afterPinnedContent={
+                    <>
+                      <TeamSiderSection
+                        collapsed={collapsed}
+                        pathname={pathname}
+                        siderTooltipProps={siderTooltipProps}
+                        onSessionClick={onSessionClick}
+                      />
+                    </>
+                  }
+                />
               </Suspense>
             </div>
           </div>

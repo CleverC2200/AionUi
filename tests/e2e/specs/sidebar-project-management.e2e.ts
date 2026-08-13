@@ -69,7 +69,7 @@ test.describe('Sidebar Project Management', () => {
         .last()
         .click();
 
-      const modalBody = page.locator('.aionui-modal-std-body').filter({ hasText: projectName });
+      const modalBody = page.getByRole('dialog').filter({ hasText: projectName });
       await expect(modalBody).toBeVisible();
       await expect(modalBody).toContainText('2');
       await page.screenshot({ path: 'tests/e2e/results/sidebar-projects-conversation-derived.png' });
