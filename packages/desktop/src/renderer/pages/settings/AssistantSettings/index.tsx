@@ -23,6 +23,7 @@ import { useManagedAgentRuntimeCatalog } from '@/renderer/hooks/agent/useManaged
 import { buildAssistantEditorBackends, resolveAvatarImageSrc } from './assistantUtils';
 import AssistantEditorPage from './AssistantEditorPage';
 import AssistantHomeTabs from './home/AssistantHomeTabs';
+import WorkCenterPrototype from './home/prototype';
 import DeleteAssistantModal from './DeleteAssistantModal';
 import SkillConfirmModals from './SkillConfirmModals';
 import type { AssistantEditorViewModel, AssistantListItem } from './types';
@@ -42,6 +43,9 @@ const AssistantSettings: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const navigationState = (location.state as AssistantNavigationState | null) ?? null;
+  const prototypeParams = new URLSearchParams(location.search);
+  const showWorkCenterPrototype =
+    process.env.NODE_ENV !== 'production' && prototypeParams.get('prototype') === 'work-center';
 
   // Keep the current management surface when returning from the editor. The
   // unified Enabled tab is the default entry point for assistant ordering.
@@ -221,7 +225,9 @@ const AssistantSettings: React.FC = () => {
       <div className='flex flex-col h-full w-full'>
         {messageContext}
         <div className='flex-1 min-h-0'>
-          {showEditor ? (
+          {showWorkCenterPrototype ? (
+            <WorkCenterPrototype />
+          ) : showEditor ? (
             <AssistantEditorPage
               editor={editorViewModel}
               activeAssistant={activeAssistant}

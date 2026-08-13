@@ -309,30 +309,37 @@ const Config: React.FC<PropsWithChildren> = ({ children }) => {
 const Main = () => {
   const { ready } = useAuth();
   const [configReady, setConfigReady] = useState(false);
+  const isLocalWorkCenterPrototype =
+    ['127.0.0.1', 'localhost'].includes(window.location.hostname) &&
+    window.location.hash.startsWith('#/prototype/work-center');
 
   useEffect(() => {
     if (!ready) return;
+    if (isLocalWorkCenterPrototype) {
+      setConfigReady(true);
+      return;
+    }
     void bootstrapRendererConfig().finally(() => setConfigReady(true));
-  }, [ready]);
+  }, [isLocalWorkCenterPrototype, ready]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || isLocalWorkCenterPrototype) return;
     void repairAllCronJobTimeZonesOnce();
-  }, [ready]);
+  }, [isLocalWorkCenterPrototype, ready]);
 
   if (!ready || !configReady) {
     return null;
   }
 
-  return (
-    <Router
-      layout={
-        <ConversationHistoryProvider>
-          <Layout sider={<Sider />} />
-        </ConversationHistoryProvider>
-      }
-    />
+  const layout = isLocalWorkCenterPrototype ? (
+    <></>
+  ) : (
+    <ConversationHistoryProvider>
+      <Layout sider={<Sider />} />
+    </ConversationHistoryProvider>
   );
+
+  return <Router layout={layout} />;
 };
 
 const App = HOC.Wrapper(Config)(Main);
