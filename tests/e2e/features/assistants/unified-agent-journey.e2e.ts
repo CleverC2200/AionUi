@@ -473,9 +473,8 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
       await goToAssistantSettings(page);
       await page.getByTestId('btn-create-assistant').click();
       await expect(page.getByTestId('btn-create-assistant-gea')).toHaveCount(0);
-      await page.keyboard.press('Escape');
-      await expect(page.getByTestId('btn-create-assistant-manual')).not.toBeVisible();
       await page.locator('[data-testid="settings-tab-official"]').click();
+      await expect(page.getByTestId('btn-create-assistant-manual')).not.toBeVisible();
 
       const card = page.getByTestId(`official-card-${STANDARD_ASSISTANT_ID}`);
       await expect(card).toBeVisible({ timeout: 15_000 });
