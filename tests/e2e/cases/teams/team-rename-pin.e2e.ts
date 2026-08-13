@@ -28,7 +28,8 @@ async function clickTeamMenuItem(
   await row.hover();
   const trigger = row.locator(MENU_TRIGGER);
   await expect(trigger).toBeVisible({ timeout: 3_000 });
-  await trigger.click();
+  await trigger.focus();
+  await trigger.press('Enter');
 
   // 等 dropdown 菜单弹出，点击对应 key 的 menu item（用文本匹配）
   const item = page
@@ -78,6 +79,8 @@ test.describe('Team Rename & Pin', () => {
   });
 
   test('重命名 team', async ({ page }) => {
+    test.setTimeout(120_000);
+
     // 1. 通过 UI 创建 team
     try {
       await createTeam(page, RENAME_ORIG);

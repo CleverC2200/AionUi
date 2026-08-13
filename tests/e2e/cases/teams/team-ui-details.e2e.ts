@@ -39,12 +39,18 @@ test.describe('Team UI Details', () => {
     await siderToggle.click();
     const teamSectionToggle = page.locator('[data-testid="team-section-toggle"]');
     await expect(teamSectionToggle).toBeVisible({ timeout: 5_000 });
-    if ((await teamSectionToggle.getAttribute('aria-expanded')) !== 'true') {
-      await teamSectionToggle.click();
+    await teamSectionToggle.focus();
+    if ((await teamSectionToggle.getAttribute('aria-expanded')) === 'true') {
+      await teamSectionToggle.press('Space');
+      await expect(teamSectionToggle).toHaveAttribute('aria-expanded', 'false');
     }
+    await teamSectionToggle.press('Enter');
+    await expect(teamSectionToggle).toHaveAttribute('aria-expanded', 'true');
     await expect(expandedItem).toBeVisible({ timeout: 5_000 });
 
-    await expandedItem.click();
+    const teamItemActivation = expandedItem.getByRole('button').first();
+    await teamItemActivation.focus();
+    await teamItemActivation.press('Enter');
     await page.waitForURL(new RegExp(`/team/${teamId}`), { timeout: 10_000 });
 
     const hash = await page.evaluate(() => window.location.hash);

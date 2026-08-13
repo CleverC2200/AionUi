@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TTeam } from '@/common/types/team/teamTypes';
@@ -57,11 +57,22 @@ vi.mock('@renderer/components/layout/Sider/useSiderTeamRunning', () => ({
 vi.mock('@renderer/components/layout/Sider/SiderItem', async () => {
   const ReactModule = await vi.importActual<typeof import('react')>('react');
   return {
-    default: ({ icon, name, pinned }: { icon: React.ReactNode; name: string; pinned?: boolean }) =>
+    default: ({
+      icon,
+      name,
+      pinned,
+      testId,
+    }: {
+      icon: React.ReactNode;
+      name: string;
+      pinned?: boolean;
+      testId?: string;
+    }) =>
       ReactModule.createElement(
         'div',
         {
-          'data-testid': `sider-item-${name}`,
+          'data-testid': testId ?? `sider-item-${name}`,
+          'data-name': name,
           'data-pinned': String(Boolean(pinned)),
         },
         icon
@@ -69,7 +80,13 @@ vi.mock('@renderer/components/layout/Sider/SiderItem', async () => {
   };
 });
 
-vi.mock('@renderer/pages/team/components/TeamCreateModal', () => ({ default: () => null }));
+vi.mock('@renderer/pages/team/components/TeamCreateModal', async () => {
+  const ReactModule = await vi.importActual<typeof import('react')>('react');
+  return {
+    default: ({ visible }: { visible: boolean }) =>
+      visible ? ReactModule.createElement('div', { 'data-testid': 'team-create-modal' }) : null,
+  };
+});
 vi.mock('@renderer/utils/ui/siderTooltip', () => ({ cleanupSiderTooltips: vi.fn() }));
 vi.mock('@renderer/utils/ui/focus', () => ({ blurActiveElement: vi.fn() }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
@@ -140,7 +157,7 @@ describe('TeamSiderSection running state', () => {
     const spinnerSlot = screen.getByTestId('team-spinner-running-team');
     expect(within(spinnerSlot).getByTestId('spin')).toHaveAttribute('data-size', '16');
     expect(screen.queryByTestId('team-icon-running-team')).not.toBeInTheDocument();
-    expect(screen.getByTestId('sider-item-Running team')).toHaveAttribute('data-pinned', 'false');
+    expect(screen.getByTestId('team-sider-item-running-team')).toHaveAttribute('data-pinned', 'false');
   });
 
   it('keeps the regular team icon for an idle team in the expanded section', () => {
@@ -149,7 +166,7 @@ describe('TeamSiderSection running state', () => {
 
     expect(screen.getByTestId('team-icon-idle-team')).toHaveAttribute('data-mock-icon', 'Peoples');
     expect(screen.queryByTestId('team-spinner-idle-team')).not.toBeInTheDocument();
-    expect(screen.getByTestId('sider-item-Idle team')).toHaveAttribute('data-pinned', 'true');
+    expect(screen.getByTestId('team-sider-item-idle-team')).toHaveAttribute('data-pinned', 'true');
   });
 
   it('keeps an unpinned idle team unpinned', () => {
@@ -157,7 +174,7 @@ describe('TeamSiderSection running state', () => {
     localStorage.setItem('team-pinned-ids', JSON.stringify(['running-team']));
     renderSection(false);
 
-    expect(screen.getByTestId('sider-item-Idle team')).toHaveAttribute('data-pinned', 'false');
+    expect(screen.getByTestId('team-sider-item-idle-team')).toHaveAttribute('data-pinned', 'false');
   });
 
   it('shows a spinner for a running team in collapsed mode', () => {
@@ -175,5 +192,48 @@ describe('TeamSiderSection running state', () => {
 
     expect(screen.getByTestId('collapsed-team-icon-idle-team')).toHaveAttribute('data-mock-icon', 'Peoples');
     expect(screen.queryByTestId('collapsed-team-spinner-idle-team')).not.toBeInTheDocument();
+  });
+
+  it('opens a collapsed team from the keyboard', () => {
+    renderSection(true);
+
+    const item = screen.getByTestId('collapsed-team-item-idle-team');
+    expect(item).toHaveAttribute('role', 'button');
+    expect(item).toHaveAttribute('tabindex', '0');
+    expect(item).toHaveAttribute('aria-label', 'Idle team');
+
+    fireEvent.keyDown(item, { key: ' ' });
+
+    expect(fixtures.navigate).toHaveBeenCalledWith('/team/idle-team');
+  });
+
+  it('exposes the expanded state and toggles the team section from the keyboard', () => {
+    renderSection(false);
+
+    const toggle = screen.getByTestId('team-section-toggle');
+    expect(toggle).toHaveAttribute('role', 'button');
+    expect(toggle).toHaveAttribute('tabindex', '0');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.keyDown(toggle, { key: ' ' });
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('team-sider-item-running-team')).toBeInTheDocument();
+  });
+
+  it('opens team creation from the keyboard without toggling the section', () => {
+    renderSection(false);
+
+    const sectionToggle = screen.getByTestId('team-section-toggle');
+    const createButton = screen.getByTestId('team-create-btn');
+    expect(createButton).toHaveAttribute('role', 'button');
+    expect(createButton).toHaveAttribute('tabindex', '0');
+    expect(createButton).toHaveAttribute('aria-label', 'team.sider.createTeam');
+    expect(sectionToggle).not.toContainElement(createButton);
+
+    fireEvent.keyDown(createButton, { key: 'Enter' });
+
+    expect(screen.getByTestId('team-create-modal')).toBeInTheDocument();
+    expect(sectionToggle).toHaveAttribute('aria-expanded', 'false');
   });
 });

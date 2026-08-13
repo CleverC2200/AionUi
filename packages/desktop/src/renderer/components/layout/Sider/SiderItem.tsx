@@ -9,6 +9,7 @@ import { Dropdown, Menu, Tooltip } from '@arco-design/web-react';
 import { MoreOne, Pushpin } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export type SiderMenuItem = {
   key: string;
@@ -23,6 +24,7 @@ export type SiderItemProps = {
   selected?: boolean;
   pinned?: boolean;
   menuItems?: SiderMenuItem[];
+  testId?: string;
   onMenuAction?: (key: string) => void;
   onClick?: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
@@ -34,10 +36,12 @@ const SiderItem: React.FC<SiderItemProps> = ({
   selected,
   pinned,
   menuItems,
+  testId,
   onMenuAction,
   onClick,
   onContextMenu,
 }) => {
+  const { t } = useTranslation();
   const [menuVisible, setMenuVisible] = useState(false);
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
@@ -55,6 +59,7 @@ const SiderItem: React.FC<SiderItemProps> = ({
       position='top'
     >
       <div
+        data-testid={testId}
         className={classNames(
           'h-34px rd-8px flex items-center gap-8px pl-10px pr-8px cursor-pointer relative overflow-hidden shrink-0 group min-w-0 transition-colors',
           {
@@ -62,32 +67,44 @@ const SiderItem: React.FC<SiderItemProps> = ({
             '!bg-fill-3': selected,
           }
         )}
-        onClick={onClick}
         onContextMenu={onContextMenu}
       >
-        {/* Leading icon — pushpin overlays this slot on hover when row is pinned */}
-        <span className='size-22px flex items-center justify-center shrink-0 line-height-0 text-t-primary relative'>
-          <span
-            className={classNames('flex items-center justify-center', {
-              'group-hover:opacity-0 transition-opacity': hasMenu && pinned,
-            })}
-          >
-            {icon}
-          </span>
-          {hasMenu && pinned && (
+        <div
+          role={onClick ? 'button' : undefined}
+          tabIndex={onClick ? 0 : undefined}
+          aria-label={onClick ? name : undefined}
+          className='flex h-full min-w-0 flex-1 items-center gap-8px rd-6px border border-solid border-transparent focus-visible:border-primary-6 focus-visible:bg-fill-3 focus-visible:outline-none'
+          onClick={onClick}
+          onKeyDown={(event) => {
+            if (!onClick || (event.key !== 'Enter' && event.key !== ' ')) return;
+            event.preventDefault();
+            onClick();
+          }}
+        >
+          {/* Leading icon — pushpin overlays this slot on hover when row is pinned */}
+          <span className='size-22px flex items-center justify-center shrink-0 line-height-0 text-t-primary relative'>
             <span
-              className='absolute inset-0 flex-center text-t-secondary pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity'
-              style={{ lineHeight: 0 }}
+              className={classNames('flex items-center justify-center', {
+                'group-hover:opacity-0 transition-opacity': hasMenu && pinned,
+              })}
             >
-              <Pushpin theme='outline' size='14' />
+              {icon}
             </span>
-          )}
-        </span>
+            {hasMenu && pinned && (
+              <span
+                className='absolute inset-0 flex-center text-t-secondary pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity'
+                style={{ lineHeight: 0 }}
+              >
+                <Pushpin theme='outline' size='14' />
+              </span>
+            )}
+          </span>
 
-        {/* Name with truncation — reserve room for the hover three-dot menu */}
-        <div className='h-24px min-w-0 flex-1 overflow-hidden pr-12px'>
-          <div className='overflow-hidden text-ellipsis block w-full text-14px font-[500] lh-24px whitespace-nowrap min-w-0 text-t-primary'>
-            <span className='block overflow-hidden text-ellipsis whitespace-nowrap'>{name}</span>
+          {/* Name with truncation — reserve room for the hover three-dot menu */}
+          <div className='h-24px min-w-0 flex-1 overflow-hidden pr-12px'>
+            <div className='overflow-hidden text-ellipsis block w-full text-14px font-[500] lh-24px whitespace-nowrap min-w-0 text-t-primary'>
+              <span className='block overflow-hidden text-ellipsis whitespace-nowrap'>{name}</span>
+            </div>
           </div>
         </div>
 
@@ -131,8 +148,13 @@ const SiderItem: React.FC<SiderItemProps> = ({
             >
               <span
                 data-testid='sider-item-menu-trigger'
+                role='button'
+                tabIndex={0}
+                aria-label={t('common.more')}
+                aria-haspopup='menu'
+                aria-expanded={menuVisible}
                 className={classNames(
-                  'flex-center cursor-pointer transition-colors text-t-secondary hover:text-t-primary size-20px rd-4px sider-action-btn',
+                  'flex-center cursor-pointer transition-colors text-t-secondary hover:text-t-primary focus-visible:text-t-primary focus-visible:border-primary-6 focus-visible:bg-fill-4 focus-visible:outline-none size-20px rd-4px border border-solid border-transparent sider-action-btn',
                   {
                     flex: isMobile || menuVisible,
                     'hidden group-hover:flex': !isMobile && !menuVisible,
@@ -140,6 +162,12 @@ const SiderItem: React.FC<SiderItemProps> = ({
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
+                  setMenuVisible(true);
+                }}
+                onKeyDown={(event) => {
+                  event.stopPropagation();
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
                   setMenuVisible(true);
                 }}
               >
