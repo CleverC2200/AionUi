@@ -56,7 +56,7 @@ const PrototypeSwitcher: React.FC<PrototypeSwitcherProps> = ({ current, onChange
 
   const active = variants[currentIndex];
 
-  if (import.meta.env.PROD) return null;
+  if (process.env.NODE_ENV === 'production') return null;
 
   return (
     <div className='fixed bottom-18px left-1/2 z-100 flex -translate-x-1/2 items-center gap-4px rounded-full border border-border-2 bg-bg-1 p-4px shadow-lg'>
