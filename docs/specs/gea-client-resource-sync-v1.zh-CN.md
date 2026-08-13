@@ -80,17 +80,17 @@ AionUi Renderer 不直接访问 GEA。AionCore 负责：
 
 所有跨端对象都必须使用稳定 ID，不得使用显示名称、本地路径或 URL 作为关联键。
 
-| 对象 | 稳定标识 | 版本/并发字段 | 说明 |
-| --- | --- | --- | --- |
-| 企业目录 | `tenant_id` | `revision` | 任意目录内容变化都生成新 revision |
-| 助手模板 | `template_id` | `template_version` | 同版本内容不可变化 |
-| 用户分配 | `assignment_id` | 目录 `revision` | 不得改指其他 template |
-| 助手实例 | `assistant_id` | 跟随 Assignment | AionUi 列表和会话使用的 ID |
-| Skill | `skill_id` | `version` + `digest` | 名称只用于展示 |
-| MCP | `mcp_id` | `version` | 凭据和认证状态不进入目录 |
-| Agent | `agent_id` | `version` | 运行包或远程服务必须可解析 |
-| 用户增量 | Assignment | `expected_revision` | 保存必须带幂等键 |
-| 会话准备 | `preparation_id` | `revision` + `expires_at` | 只能由创建会话接口原子消费 |
+| 对象     | 稳定标识         | 版本/并发字段             | 说明                              |
+| -------- | ---------------- | ------------------------- | --------------------------------- |
+| 企业目录 | `tenant_id`      | `revision`                | 任意目录内容变化都生成新 revision |
+| 助手模板 | `template_id`    | `template_version`        | 同版本内容不可变化                |
+| 用户分配 | `assignment_id`  | 目录 `revision`           | 不得改指其他 template             |
+| 助手实例 | `assistant_id`   | 跟随 Assignment           | AionUi 列表和会话使用的 ID        |
+| Skill    | `skill_id`       | `version` + `digest`      | 名称只用于展示                    |
+| MCP      | `mcp_id`         | `version`                 | 凭据和认证状态不进入目录          |
+| Agent    | `agent_id`       | `version`                 | 运行包或远程服务必须可解析        |
+| 用户增量 | Assignment       | `expected_revision`       | 保存必须带幂等键                  |
+| 会话准备 | `preparation_id` | `revision` + `expires_at` | 只能由创建会话接口原子消费        |
 
 版本规则：
 
@@ -323,17 +323,17 @@ AionCore 收到后重新获取完整快照。断线重连、事件序号缺口�
 
 GEA 同事不需要让客户端直连 GEA，但需要和 AionCore 同事一起保证以下投影：
 
-| AionCore 接口 | 用途 | 关键要求 |
-| --- | --- | --- |
-| `GET /api/assistants` | 助手目录 | 企业模式即使返回空数组，也必须显式返回 `mode = managed` |
-| `GET /api/assistants/{id}` | 助手详情 | 企业核心字段只读，带完整 managed 元数据 |
-| `POST /api/assistants/{id}/extensions` | 保存辅助能力 | 请求体不重复 assistant ID，透传幂等与乐观并发语义 |
-| `GET /api/skills` | 当前设备可用 Skill 投影 | 企业 Skill 使用稳定 ID，保留来源和可用状态 |
-| `GET /api/mcp/servers` | 当前设备 MCP 投影 | 不把 secret 返回 Renderer；区分认证和运行状态 |
-| `GET /api/agents/management` | Agent 运行目录 | GEA 元数据与本机安装、健康状态合并展示 |
-| `POST /api/client-resources/sync` | 用户显式从 GEA 获取资源 | 请求指定 `assistants / skills / mcps`，AionCore 拉取完整快照并返回同步摘要 |
-| `POST /api/conversations/prepare` | 原子准备会话 | 解析 Assignment、策略、Skill、MCP、Agent 和身份 |
-| `POST /api/conversations` | 创建会话 | 企业助手仅接受 opaque preparation |
+| AionCore 接口                          | 用途                    | 关键要求                                                                   |
+| -------------------------------------- | ----------------------- | -------------------------------------------------------------------------- |
+| `GET /api/assistants`                  | 助手目录                | 企业模式即使返回空数组，也必须显式返回 `mode = managed`                    |
+| `GET /api/assistants/{id}`             | 助手详情                | 企业核心字段只读，带完整 managed 元数据                                    |
+| `POST /api/assistants/{id}/extensions` | 保存辅助能力            | 请求体不重复 assistant ID，透传幂等与乐观并发语义                          |
+| `GET /api/skills`                      | 当前设备可用 Skill 投影 | 企业 Skill 使用稳定 ID，保留来源和可用状态                                 |
+| `GET /api/mcp/servers`                 | 当前设备 MCP 投影       | 不把 secret 返回 Renderer；区分认证和运行状态                              |
+| `GET /api/agents/management`           | Agent 运行目录          | GEA 元数据与本机安装、健康状态合并展示                                     |
+| `POST /api/client-resources/sync`      | 用户显式从 GEA 获取资源 | 请求指定 `assistants / skills / mcps`，AionCore 拉取完整快照并返回同步摘要 |
+| `POST /api/conversations/prepare`      | 原子准备会话            | 解析 Assignment、策略、Skill、MCP、Agent 和身份                            |
+| `POST /api/conversations`              | 创建会话                | 企业助手仅接受 opaque preparation                                          |
 
 `GET /api/assistants` 的企业模式建议返回：
 
@@ -424,17 +424,17 @@ AionCore 必须原子消费仍有效且属于当前身份的 preparation，并�
 
 ## 7. 哪些内容同步，哪些绝对不同步
 
-| 内容 | GEA → 客户端 | 客户端 → GEA | 说明 |
-| --- | --- | --- | --- |
-| 企业助手模板、Assignment | 是 | 否 | GEA 权威 |
-| 企业 Skill/Agent 版本和制品引用 | 是 | 否 | AionCore 校验并物化 |
-| MCP 稳定引用、认证模式、生产写入标记 | 是 | 否 | secret 不进入目录 |
-| 用户选择的辅助 Skill/MCP ID | 回显 | 是 | GEA 接受后跨客户端同步 |
-| 本地 Skill 文件或目录 | 否 | 否 | 后续如需发布，走独立审核发布流程 |
-| MCP token、Cookie、headers、环境变量 | 否 | 否 | 仅安全存储或运行时持有 |
-| Agent 本机路径、命令覆盖、secret env | 否 | 否 | 设备本地状态 |
-| 用户对话正文、工具输入输出、工作区文件 | 否 | 否 | 本轮不作为 GEA 目录同步数据 |
-| 设备安装、认证、连接、健康状态 | 否 | 默认否 | AionCore 本地计算，可单独上报匿名诊断但不影响目录事实 |
+| 内容                                   | GEA → 客户端 | 客户端 → GEA | 说明                                                  |
+| -------------------------------------- | ------------ | ------------ | ----------------------------------------------------- |
+| 企业助手模板、Assignment               | 是           | 否           | GEA 权威                                              |
+| 企业 Skill/Agent 版本和制品引用        | 是           | 否           | AionCore 校验并物化                                   |
+| MCP 稳定引用、认证模式、生产写入标记   | 是           | 否           | secret 不进入目录                                     |
+| 用户选择的辅助 Skill/MCP ID            | 回显         | 是           | GEA 接受后跨客户端同步                                |
+| 本地 Skill 文件或目录                  | 否           | 否           | 后续如需发布，走独立审核发布流程                      |
+| MCP token、Cookie、headers、环境变量   | 否           | 否           | 仅安全存储或运行时持有                                |
+| Agent 本机路径、命令覆盖、secret env   | 否           | 否           | 设备本地状态                                          |
+| 用户对话正文、工具输入输出、工作区文件 | 否           | 否           | 本轮不作为 GEA 目录同步数据                           |
+| 设备安装、认证、连接、健康状态         | 否           | 默认否       | AionCore 本地计算，可单独上报匿名诊断但不影响目录事实 |
 
 ## 8. 与本轮其他客户端改动的关系
 

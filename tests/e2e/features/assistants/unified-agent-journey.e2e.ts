@@ -220,18 +220,22 @@ const setElectronContentSize = async (
     { width, height }
   );
   await page.setViewportSize({ width, height });
-  await expect.poll(() => page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))).toEqual({
-    width,
-    height,
-  });
+  await expect
+    .poll(() => page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight })))
+    .toEqual({
+      width,
+      height,
+    });
 };
 
 const setRendererViewport = async (page: Page, width: number, height: number): Promise<void> => {
   await page.setViewportSize({ width, height });
-  await expect.poll(() => page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))).toEqual({
-    width,
-    height,
-  });
+  await expect
+    .poll(() => page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight })))
+    .toEqual({
+      width,
+      height,
+    });
 };
 
 const expectNoPageOverflow = async (page: Page): Promise<void> => {

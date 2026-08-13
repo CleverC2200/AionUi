@@ -1,7 +1,14 @@
 import type { ITeamWorkSnapshot, ITeamWorkTask } from '@/common/types/team/teamTypes';
 
 export type TeamMemberWorkState =
-  'attention' | 'blocked' | 'done' | 'idle' | 'review' | 'stale' | 'waiting' | 'working';
+  | 'attention'
+  | 'blocked'
+  | 'done'
+  | 'idle'
+  | 'review'
+  | 'stale'
+  | 'waiting'
+  | 'working';
 export type TeamMemberWorkSummary = {
   state: TeamMemberWorkState;
   count: number;

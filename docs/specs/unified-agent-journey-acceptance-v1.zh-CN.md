@@ -6,20 +6,20 @@
 
 ## 自动化证据
 
-| 风险 | 预期行为 | 自动化证据 |
-| --- | --- | --- |
-| 目录首次失败、空目录 | 在原位置显示错误或空状态，不伪造企业助手 | `assistantCatalog.test.ts`、`OfficialAssistantsGrid.dom.test.tsx` |
-| 离线 last-good、陈旧 revision | 明示上次同步版本和“待同步”，允许就地重试；新会话仍由 AionCore 决定能否开始 | `assistantCatalog.test.ts`、`useAssistantList.dom.test.ts`、`OfficialAssistantsGrid.dom.test.tsx` |
-| 暂停、撤回、客户端过低 | 禁止启用或开始，准备错误提供 Skill、MCP 或更新入口 | `OfficialAssistantsGrid.dom.test.tsx`、`conversationPreparation.test.ts`、`useGuidSend.dom.test.ts` |
-| 扩展冲突、MCP 未授权、身份/策略变化 | 保留本地草稿，在字段旁显示服务端拒绝；不创建半配置会话 | `managedAssistantExtensions.test.ts`、`AssistantEditorPage.dom.test.tsx`、`useGuidSend.dom.test.ts` |
-| 准备取消、准备竞态 | 取消立即返回；晚到结果不可创建会话；只消费最新 generation | `conversationPreparation.test.ts`、`useGuidSend.dom.test.ts` |
-| 请求过期、无权限、版本冲突 | 原消息内显示权威状态变化，不静默吞错 | `PermissionMessages.dom.test.tsx`；结构化问题卡同分支人工复核 |
-| 重复提交、重连、未知外部写入 | 合并重复提交；未知结果先核验且不自动重试 | `interactionRequestActions.test.ts`、`AttentionInbox.dom.test.tsx` |
-| 结构化事件重复、乱序、gap | 较旧 revision 不覆盖新记录；gap 回源权威 snapshot | `conversationRecords.test.ts`、`teamWorkProjection.test.ts` |
-| 交付替换、证据缺失 | 按稳定 record ID/revision 替换；无证据不得宣称完成 | `conversationRecords.test.ts`、`ConversationResources.dom.test.tsx` |
-| Team lease 过期与待处理恢复 | 成员显示暂停而非运行；待处理回到原成员、原消息 | `memberWorkSummary.test.ts`、`AttentionInbox.dom.test.tsx` |
-| GEA 资源到企业业务任务闭环 | 三类资源逐页同步后才允许受管 prepare；左栏项目任务按 AionCore runtime 展示“进行中 / 待处理 / 已完成”；ERP question、OA permission 均回到原 Turn；生产结果经有效证据链形成完成回执 | `enterprise-business-lifecycle.e2e.ts`、`ConversationRowCronMenu.dom.test.tsx` |
-| 键盘与焦点 | 目录卡片可用 Enter/Space；抽屉关闭恢复触发器；请求跳转聚焦原消息内首个操作 | `OfficialAssistantsGrid.dom.test.tsx`、`AttentionInbox.dom.test.tsx`、`focusMessageTarget.dom.test.ts` |
+| 风险                                | 预期行为                                                                                                                                                                          | 自动化证据                                                                                             |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 目录首次失败、空目录                | 在原位置显示错误或空状态，不伪造企业助手                                                                                                                                          | `assistantCatalog.test.ts`、`OfficialAssistantsGrid.dom.test.tsx`                                      |
+| 离线 last-good、陈旧 revision       | 明示上次同步版本和“待同步”，允许就地重试；新会话仍由 AionCore 决定能否开始                                                                                                        | `assistantCatalog.test.ts`、`useAssistantList.dom.test.ts`、`OfficialAssistantsGrid.dom.test.tsx`      |
+| 暂停、撤回、客户端过低              | 禁止启用或开始，准备错误提供 Skill、MCP 或更新入口                                                                                                                                | `OfficialAssistantsGrid.dom.test.tsx`、`conversationPreparation.test.ts`、`useGuidSend.dom.test.ts`    |
+| 扩展冲突、MCP 未授权、身份/策略变化 | 保留本地草稿，在字段旁显示服务端拒绝；不创建半配置会话                                                                                                                            | `managedAssistantExtensions.test.ts`、`AssistantEditorPage.dom.test.tsx`、`useGuidSend.dom.test.ts`    |
+| 准备取消、准备竞态                  | 取消立即返回；晚到结果不可创建会话；只消费最新 generation                                                                                                                         | `conversationPreparation.test.ts`、`useGuidSend.dom.test.ts`                                           |
+| 请求过期、无权限、版本冲突          | 原消息内显示权威状态变化，不静默吞错                                                                                                                                              | `PermissionMessages.dom.test.tsx`；结构化问题卡同分支人工复核                                          |
+| 重复提交、重连、未知外部写入        | 合并重复提交；未知结果先核验且不自动重试                                                                                                                                          | `interactionRequestActions.test.ts`、`AttentionInbox.dom.test.tsx`                                     |
+| 结构化事件重复、乱序、gap           | 较旧 revision 不覆盖新记录；gap 回源权威 snapshot                                                                                                                                 | `conversationRecords.test.ts`、`teamWorkProjection.test.ts`                                            |
+| 交付替换、证据缺失                  | 按稳定 record ID/revision 替换；无证据不得宣称完成                                                                                                                                | `conversationRecords.test.ts`、`ConversationResources.dom.test.tsx`                                    |
+| Team lease 过期与待处理恢复         | 成员显示暂停而非运行；待处理回到原成员、原消息                                                                                                                                    | `memberWorkSummary.test.ts`、`AttentionInbox.dom.test.tsx`                                             |
+| GEA 资源到企业业务任务闭环          | 三类资源逐页同步后才允许受管 prepare；左栏项目任务按 AionCore runtime 展示“进行中 / 待处理 / 已完成”；ERP question、OA permission 均回到原 Turn；生产结果经有效证据链形成完成回执 | `enterprise-business-lifecycle.e2e.ts`、`ConversationRowCronMenu.dom.test.tsx`                         |
+| 键盘与焦点                          | 目录卡片可用 Enter/Space；抽屉关闭恢复触发器；请求跳转聚焦原消息内首个操作                                                                                                        | `OfficialAssistantsGrid.dom.test.tsx`、`AttentionInbox.dom.test.tsx`、`focusMessageTarget.dom.test.ts` |
 
 ## E2E 视口矩阵
 
