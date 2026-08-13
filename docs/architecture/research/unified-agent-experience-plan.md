@@ -28,22 +28,22 @@
 
 ## 2. 先统一语言，避免再次做成功能堆叠
 
-| 领域对象 | 含义 | 权威归属 | 不能混同 |
-| --- | --- | --- | --- |
-| Publisher | 发布者命名空间、组织身份、签名身份和发布权限 | GEA IAM / Market | Publisher 不是普通页面作者字段 |
-| MarketplaceListing | 可搜索、可运营的商品介绍和当前公开版本指针 | GEA Market | Listing 不是可执行包 |
-| CapabilityPackage | 发布者命名空间下的能力身份，可为 agent、skill、mcp、knowledge、workflow 或 bundle | GEA Market | Package 不是某次安装 |
-| CapabilityRelease | 不可变版本、manifest、artifact、digest、签名、兼容条件和权限声明 | GEA Market / Artifact Store | Release 不允许同版本覆盖 |
-| Review | 自动校验、安全扫描、维护者审核及其证据 | GEA Market | 审核通过不代表运行成功 |
-| Entitlement | tenant、org、team、user 或 agentCode 获得某项能力的授权、范围、期限和 revision | GEA IAM / Policy | Entitlement 不是本地安装或运行许可自述 |
-| CapabilityDeployment | 精确 Release 在执行目标上的物化：GEA hosted activation 或 AionCore local installation | 对应执行目标的服务端 | 托管 MCP 不伪造本地 Installation |
-| SecretBinding | credential requirement 到服务端 secret reference 的范围化映射 | GEA Secret Service；本地目标由 AionCore 安全代理 | SecretBinding 不包含明文值 |
-| CapabilityBinding | Entitlement、Release、Deployment 与 AgentRevision 或 TeamMemberRevision 的版本化绑定 | GEA Agent Registry；AionCore 保留本地投影 | Binding 不等于运行时已加载 |
-| AgentRevision | Agent 身份、提示词、模型、Tool Policy 和所有能力绑定的不可变版本 | GEA Agent Registry | 不再只保存可变 skill_ids |
-| RuntimeBundle | GEA Resolver 将 AgentRevision、Entitlement、Release、SecretRef 和 Tool Policy 解析出的逻辑运行投影 | GEA Resolver | AionCore 或 LangGraph adapter 只渲染目标格式，不建立第二个逻辑 Bundle |
-| OperationReceipt | publish、review、activate/install、bind、preflight、rollback、revoke 的终态证据 | 执行动作的服务端，使用统一 envelope | Toast 不是 receipt |
-| ExecutionReceipt | 某次 run / tool invoke 实际使用的 release、binding、policy decision、结果和 auditId | 对应 runtime / Gateway，归一化回 GEA receipt store | 执行成功不由模型文本证明 |
-| Revocation | entitlement revoke、release yank 或 emergency suspend 的决策、范围、原因和生效策略 | GEA IAM / Market / Security | yank、revoke、suspend 不能合成一个删除动作 |
+| 领域对象             | 含义                                                                                               | 权威归属                                           | 不能混同                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------- |
+| Publisher            | 发布者命名空间、组织身份、签名身份和发布权限                                                       | GEA IAM / Market                                   | Publisher 不是普通页面作者字段                                        |
+| MarketplaceListing   | 可搜索、可运营的商品介绍和当前公开版本指针                                                         | GEA Market                                         | Listing 不是可执行包                                                  |
+| CapabilityPackage    | 发布者命名空间下的能力身份，可为 agent、skill、mcp、knowledge、workflow 或 bundle                  | GEA Market                                         | Package 不是某次安装                                                  |
+| CapabilityRelease    | 不可变版本、manifest、artifact、digest、签名、兼容条件和权限声明                                   | GEA Market / Artifact Store                        | Release 不允许同版本覆盖                                              |
+| Review               | 自动校验、安全扫描、维护者审核及其证据                                                             | GEA Market                                         | 审核通过不代表运行成功                                                |
+| Entitlement          | tenant、org、team、user 或 agentCode 获得某项能力的授权、范围、期限和 revision                     | GEA IAM / Policy                                   | Entitlement 不是本地安装或运行许可自述                                |
+| CapabilityDeployment | 精确 Release 在执行目标上的物化：GEA hosted activation 或 AionCore local installation              | 对应执行目标的服务端                               | 托管 MCP 不伪造本地 Installation                                      |
+| SecretBinding        | credential requirement 到服务端 secret reference 的范围化映射                                      | GEA Secret Service；本地目标由 AionCore 安全代理   | SecretBinding 不包含明文值                                            |
+| CapabilityBinding    | Entitlement、Release、Deployment 与 AgentRevision 或 TeamMemberRevision 的版本化绑定               | GEA Agent Registry；AionCore 保留本地投影          | Binding 不等于运行时已加载                                            |
+| AgentRevision        | Agent 身份、提示词、模型、Tool Policy 和所有能力绑定的不可变版本                                   | GEA Agent Registry                                 | 不再只保存可变 skill_ids                                              |
+| RuntimeBundle        | GEA Resolver 将 AgentRevision、Entitlement、Release、SecretRef 和 Tool Policy 解析出的逻辑运行投影 | GEA Resolver                                       | AionCore 或 LangGraph adapter 只渲染目标格式，不建立第二个逻辑 Bundle |
+| OperationReceipt     | publish、review、activate/install、bind、preflight、rollback、revoke 的终态证据                    | 执行动作的服务端，使用统一 envelope                | Toast 不是 receipt                                                    |
+| ExecutionReceipt     | 某次 run / tool invoke 实际使用的 release、binding、policy decision、结果和 auditId                | 对应 runtime / Gateway，归一化回 GEA receipt store | 执行成功不由模型文本证明                                              |
+| Revocation           | entitlement revoke、release yank 或 emergency suspend 的决策、范围、原因和生效策略                 | GEA IAM / Market / Security                        | yank、revoke、suspend 不能合成一个删除动作                            |
 
 这组边界会直接影响界面：
 
@@ -76,16 +76,16 @@ Jiuwen 不是一个完整统一市场，但有三组很值得借鉴的组件：
 
 ### 3.2 Aion / GEA 已经有什么
 
-| 现有资产 | 已有能力 | 关键断点 |
-| --- | --- | --- |
-| [AionHub](https://github.com/iOfficeAI/AionHub) manifest | semver、engine/apiVersion、dependencies、license、permissions；可贡献 Agent、Skill、MCP 等 | 当前公开仓内容仍以 ACP Adapter 为主，不是完整商品目录；静态 index 没有 GEA 租户、审核、entitlement 和撤回语义 |
-| AionCore extension / Hub | 本地包发现、manifest 解析、安装路由；本地主工作树另有远端下载、完整性校验、安全解压和原子替换候选实现 | 已提交基线的远端安装能力仍不完整；dirty worktree 候选不能当成已发布事实；缺 durable job、version lock、used-by guard 和长期 rollback |
-| GEA 登录与 Gateway | agentCode 授权会话、delegation token、MCP list/call、auditId | agentCode 没绑定市场 Entitlement、Deployment 或 AgentRevision；只有运行授权，没有市场授权 |
-| [GEA MCP bridge](../../../packages/web-host/src/gea-mcp-bridge.ts) | 把 Gateway tools 动态映射成本地 MCP | tool call 返回时丢弃 auditId、sourceCode 和原始 toolName |
-| Desktop GEA 服务 | 启动 loopback bridge 并注册内建 gea-gateway MCP | 共享单一 GEA_AGENT_CODE，默认 sales_forecast，不能按 Agent 或 Team 成员动态绑定 |
-| [Assistant 类型](../../../packages/desktop/src/common/types/agent/assistantTypes.ts) | 保存 enabled_skills、defaults.skills、defaults.mcps | 只有裸名称或 ID，没有 package、release、digest、grant 和 binding revision |
-| AionCore conversation | 将 Skill 与 MCP 冻结到会话，再由 aionrs / ACP 消费 | 快照没有市场来源和精确 Release，无法证明某个获授权版本实际运行 |
-| enterprise-agent-platform | Agent、Skill、Tool Policy 管理 CRUD | SkillRecord 缺 publisher/package/release/digest/review/install/revoke；保存的 agent_skills 未进入 runtime；前端和路由仍硬编码 sales_forecast |
+| 现有资产                                                                             | 已有能力                                                                                              | 关键断点                                                                                                                                     |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| [AionHub](https://github.com/iOfficeAI/AionHub) manifest                             | semver、engine/apiVersion、dependencies、license、permissions；可贡献 Agent、Skill、MCP 等            | 当前公开仓内容仍以 ACP Adapter 为主，不是完整商品目录；静态 index 没有 GEA 租户、审核、entitlement 和撤回语义                                |
+| AionCore extension / Hub                                                             | 本地包发现、manifest 解析、安装路由；本地主工作树另有远端下载、完整性校验、安全解压和原子替换候选实现 | 已提交基线的远端安装能力仍不完整；dirty worktree 候选不能当成已发布事实；缺 durable job、version lock、used-by guard 和长期 rollback         |
+| GEA 登录与 Gateway                                                                   | agentCode 授权会话、delegation token、MCP list/call、auditId                                          | agentCode 没绑定市场 Entitlement、Deployment 或 AgentRevision；只有运行授权，没有市场授权                                                    |
+| [GEA MCP bridge](../../../packages/web-host/src/gea-mcp-bridge.ts)                   | 把 Gateway tools 动态映射成本地 MCP                                                                   | tool call 返回时丢弃 auditId、sourceCode 和原始 toolName                                                                                     |
+| Desktop GEA 服务                                                                     | 启动 loopback bridge 并注册内建 gea-gateway MCP                                                       | 共享单一 GEA_AGENT_CODE，默认 sales_forecast，不能按 Agent 或 Team 成员动态绑定                                                              |
+| [Assistant 类型](../../../packages/desktop/src/common/types/agent/assistantTypes.ts) | 保存 enabled_skills、defaults.skills、defaults.mcps                                                   | 只有裸名称或 ID，没有 package、release、digest、grant 和 binding revision                                                                    |
+| AionCore conversation                                                                | 将 Skill 与 MCP 冻结到会话，再由 aionrs / ACP 消费                                                    | 快照没有市场来源和精确 Release，无法证明某个获授权版本实际运行                                                                               |
+| enterprise-agent-platform                                                            | Agent、Skill、Tool Policy 管理 CRUD                                                                   | SkillRecord 缺 publisher/package/release/digest/review/install/revoke；保存的 agent_skills 未进入 runtime；前端和路由仍硬编码 sales_forecast |
 
 需要特别说明：
 
@@ -96,15 +96,15 @@ Jiuwen 不是一个完整统一市场，但有三组很值得借鉴的组件：
 
 ## 4. 目标架构
 
-| 层 | 负责 | 不负责 |
-| --- | --- | --- |
-| GEA Market Control Plane | publisher、listing、release、自动校验、安全扫描、人工审核、搜索、组织策略、entitlement、下架和运营 | 修改本机运行目录、持有用户本地密钥 |
-| Artifact / Delivery Plane | 不可变 artifact、digest、签名、SBOM、短期下载票据、分发缓存 | Agent 运行决策 |
-| GEA Agent Registry / Resolver | AgentRevision、CapabilityBinding、Tool Policy、Entitlement 解析、逻辑 RuntimeBundle | 安装本地二进制或直接渲染 UI |
-| GEA Gateway | session access decision、短期 delegation、MCP tool resolution/call、权威 auditId | 商品详情、发布审核、tarball 安装 |
-| AionCore | 本地执行目标的验签与 digest 校验、事务安装、SecretRef 代理、binding 投影、preflight、conversation snapshot 和 receipt | 市场运营、发布者审核、托管 MCP 的虚假本地安装 |
-| aionrs / ACP | 消费已解析 Skill/MCP/Prompt 并执行 | 市场、购买、授权和版本升级 |
-| AionUi / GEA Workbench | 市场浏览、详情、权限确认、安装/绑定交互、运行证据和问题修复 | 信任判定、明文密钥、运行时注入 |
+| 层                            | 负责                                                                                                                  | 不负责                                        |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| GEA Market Control Plane      | publisher、listing、release、自动校验、安全扫描、人工审核、搜索、组织策略、entitlement、下架和运营                    | 修改本机运行目录、持有用户本地密钥            |
+| Artifact / Delivery Plane     | 不可变 artifact、digest、签名、SBOM、短期下载票据、分发缓存                                                           | Agent 运行决策                                |
+| GEA Agent Registry / Resolver | AgentRevision、CapabilityBinding、Tool Policy、Entitlement 解析、逻辑 RuntimeBundle                                   | 安装本地二进制或直接渲染 UI                   |
+| GEA Gateway                   | session access decision、短期 delegation、MCP tool resolution/call、权威 auditId                                      | 商品详情、发布审核、tarball 安装              |
+| AionCore                      | 本地执行目标的验签与 digest 校验、事务安装、SecretRef 代理、binding 投影、preflight、conversation snapshot 和 receipt | 市场运营、发布者审核、托管 MCP 的虚假本地安装 |
+| aionrs / ACP                  | 消费已解析 Skill/MCP/Prompt 并执行                                                                                    | 市场、购买、授权和版本升级                    |
+| AionUi / GEA Workbench        | 市场浏览、详情、权限确认、安装/绑定交互、运行证据和问题修复                                                           | 信任判定、明文密钥、运行时注入                |
 
 GEA 有两条运行交付路径，但只能有一套市场与版本合同：
 
@@ -127,25 +127,25 @@ GEA 有两条运行交付路径，但只能有一套市场与版本合同：
 
 ## 5. 规划主表：Jiuwen 市场能力如何进入 GEA
 
-| 市场旅程 / 对象 | Jiuwen 值得借鉴的能力 | GEA 当前需要补什么 | 主责 / 目标组件 | 产品交互，不只是页面 | 保留 / 重塑 / 停止 | 优先级 | Jiuwen 官方需求、Issue / PR 状态 | 向官方投稿概率与前提 | 最小验收 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 统一包身份 | SkillHub version、SkillNet 多源、AionHub manifest | source + publisher + slug + version + digest 的稳定 identity；同版本不可覆盖 | GEA Market shared contract | 详情页明确来源、版本、digest、兼容范围；同名不同源可并列 | 保留 Aion extension 格式；重塑为 GEA CapabilityPackage / Release；停止按 name 去重 | P0 | [JiuwenSwarm #2659](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2659) Open major，未发现关联 PR | 中高；先补多源同名 fixture 和 canonical identity，不扩大到全市场重构 | 三个同名多源 Skill 可独立安装、更新和绑定；刷新后身份稳定 |
-| 发布与版本 | SkillHub 的 PENDING / APPROVED / REJECTED、public_latest_version | immutable release、digest、signature、SBOM、兼容和权限差异；待审版本不替换稳定版 | GEA Market / Artifact Store | 发布中心按 Draft → Validate → Submit → Review → Approved 展示；失败可回到具体字段 | 保留审核状态机；停止 force 覆盖同版本 | P1 | [SkillHub #49](https://github.com/openJiuwen-ai/skillhub/issues/49) Open major，要求模板和插件成为平级市场资产 | 完整功能低；Maintainer 先确认 schema 后，独立 validator/API 切片中 | 已批准 v1 持续可安装；v2 待审不影响 v1；同版本不同 digest 被拒 |
-| 自动校验与人工审核 | SkillHub 系统审查 + 人工审核 | 分开安全扫描、维护者审核、运行验证和用户口碑 | GEA Market Review | 审核页显示权限 diff、依赖、风险、测试证据；不合并成一个模糊分数 | 重塑；停止用点赞或 review_count 代替安全可信度 | P1 | SkillHub #49 的一部分，未见独立小 Issue | 低到中；先提审核契约 RFC 或纯 validator，小步认领 | 每个通过项可追到规则、执行时间和 reviewer；权限扩大必须重审 |
-| 发现与市场源 | SkillNet、ClawHub、SwarmSkills 的 Source Adapter | GEA catalog adapter、来源优先级、兼容过滤、租户可见性 | GEA Market Catalog | 一个统一市场，以能力类型和兼容性筛选；来源作为标签，不建立多个“市场页” | 保留 adapter 模式；停止 Skill/MCP/Agent 三个互不相干的市场 | P2 | 暂无适合的原子 JiuwenSwarm 空缺 | 不适用；属于 GEA 产品架构 | 同一搜索可返回多种资产且来源可追溯；不兼容项默认不提供安装 |
-| 租户与组织授权 | SkillHub 群组 pending / active / rejected / revoked | tenant/org/team/user/agentCode 分层 Entitlement、发布者白名单、权限预算、到期和撤回 | GEA IAM / Policy | 激活或安装前先显示“谁能用、给哪个 Agent、需要哪些权限”；管理员审批在同一订单轨迹 | 保留授权状态机；重塑为 GEA IAM；停止把下载等同授权 | P0 | [SkillHub #7](https://github.com/openJiuwen-ai/skillhub/issues/7) Open，PR #21 仅部分覆盖删除通知 | 中高；只补群组删除后的授权失效事件、通知和测试 | 无 Entitlement 不出现在可用列表；撤回后新 session fail-closed；历史审批仍可查 |
-| 安装 Job 与错误回执 | SkillNet 异步安装、Agent Studio 失败补偿 | durable install job、requestId、idempotencyKey、结构化错误、安全 staging、原子激活和 rollback token | AionCore extension + AionUi | 操作后进入可恢复进度，不只 Toast；失败给可执行修复项，刷新不丢状态 | 保留异步交互；停止进程内 job 和“下载成功=安装成功” | P0 | [JiuwenSwarm #2656](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2656) Open，未发现关联 PR | 高；先捕获真实 payload，再补 error envelope、UI 和测试 | transport、校验、权限、安装四类错误均有稳定 code；不泄露 secret/堆栈 |
-| Agent / Team Template 市场 | Studio 的导入、复制和“安装为草稿” | AgentBundle：模板 DSL、依赖锁、secret schema、兼容条件；安装后 fork 成 Agent draft | GEA Agent Registry / Workbench | 详情页先看角色、依赖和权限；“使用模板”进入 Builder 预检，不直接运行 | 保留 copy-as-draft；停止把模板静默写成可运行 Agent | P2 | [SkillHub #49](https://github.com/openJiuwen-ai/skillhub/issues/49) 明确包含智能体和团队模板 | 完整实现低；schema 或导入 adapter 经评审后中 | 安装模板不会修改原发布物；缺依赖时阻止发布 AgentRevision |
-| Skill 市场 | SkillHub 发布/版本/下载；SkillNet 指定来源与启停；SkillDev 测试/回退思路 | signed release、安装账本、精确版本锁、materialize、runtime load receipt、升级和回滚 | GEA Market + GEA/AionCore runtime adapters | 详情 → 权限/文件 diff → 安装 → 绑定 Agent → Build Preview → 真实运行；每步状态独立 | 保留现有 Skill loader；重塑 Skills Hub 为“已安装”；停止裸 name 绑定 | P1 | [JiuwenSwarm #2533](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2533) Open major；指定版本和回退。[#2031](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2031) Open；本地更新 | 完整多版本低，拆分后中；显式刷新中 | 旧会话固定 v1；新 AgentRevision 可切 v2；失败一键回退且 runtime receipt 证明实际加载版本 |
-| GEA 托管 MCP 市场 | MCP manifest、连接/启停分离、trust、tool discovery；Studio 凭据配置思路 | Entitlement 与 agentCode 绑定、HostedActivation、ConnectionTemplate、SecretBinding、toolSetRevision、Gateway audit receipt | GEA Market/IAM + Agent Resolver + Gateway | 详情显示工具、数据范围和权限；获得后直接选择目标 Agent；运行中可展开实际 source/tool/auditId | 保留 GEA Gateway；重塑 gea-gateway 从全局 bridge 为按 Binding 解析；停止硬编码 sales_forecast | P0 | [JiuwenSwarm #2184](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2184) 有大型 WIP [PR #2574](https://github.com/openJiuwen-ai/jiuwenswarm/pull/2574) | 低，不开平行 PR；可以 review 或补独立测试 | 无 Entitlement 时 list 不出现工具，直接 call 被拒；tenant/agent/session 错配 fail-closed；auditId 到达 UI |
-| 自托管 MCP / REST Plugin | Agent Studio Market Adapter、original_market_plugin_id、失败补偿 | 隔离 staging、依赖安装策略、initialize、tools/list、smoke test、health、原子启用 | GEA Market + target runtime adapter | 安装向导在 secret binding 后现场验证；连接成功和可用分开显示 | 保留 adapter/补偿；停止 CLI 解压后即“已安装” | P2 | [Agent Studio #305](https://github.com/openJiuwen-ai/agent-studio/issues/305) Open major，插件版本回退 | 中低；先确认 AgentArts 版本存储和运行切换契约 | 不启动未知包进入主运行目录；smoke test 失败不激活；可回退 |
-| Knowledge Pack / Connector | LLMWiki source/hash、DeepSearch citation、index fingerprint | 数据源契约、ingestion job、immutable source、citation span、index revision；数据授权与代码包授权分离 | GEA Knowledge/Data Services | 市场安装 Connector；随后在工作区授权数据范围并预览同步状态，不能一步“接入全部数据” | 借来源、索引与 citation；停止把知识文件直接塞进 Skill 包或默认写回 | P2 | Jiuwen 主仓相关项多为运行正确性，不是成熟市场 Issue；详见能力矩阵 K-01 至 K-06 | 不适用或低；先在 GEA 建域 | 重复导入去重；每段回答可追到 source/span；撤权后新检索不可见 |
-| Workflow / Task Template | ExecutionPlan、PersonalTodo、TeamTask 三域语义 | 市场只分发模板；运行实例仍由 GEA/AionCore 创建并持久化 | GEA Workflow runtime + AionCore Team Work | “使用模板”先预览将创建的计划、权限和 Agent；运行后进入原工作区，不跳到市场管理 | 保留三域边界；停止把真实 Task/Todo 作为可安装商品或复制第二套 task store | P2 | Todo 恢复 [#2091](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2091) 与市场只间接相关 | 市场 PR 不适用；运行恢复修复需另行复现 | 模板版本可追溯，但 Task/Run/Receipt 使用运行域 ID 和权威状态 |
-| Interaction Component | structured question、permission、fixed registry A2UI、channel fallback | 只允许签名、版本化、固定 registry 的 UI contribution；action 仍过 policy | GEA UI Registry + runtime policy | 市场详情预览组件能力；运行中就地回答/审批，失败降级为文本，不让用户切页面 | 借固定组件 registry；停止 arbitrary DOM/script 和“市场组件直接发业务请求” | P3 | 相关 Jiuwen 项多已有实现或活跃 PR，不建议抢占 | 低或不适用 | 未注册组件和越权 action 被拒；回答、拒绝、过期均有 terminal receipt |
-| Agent Binding 与 Build Preview | Jiuwen 的声明/实例分离、build seed、Team scope | AgentRevision、CapabilityBinding、Entitlement/Release 锁、Tool Policy 和 capability diff | enterprise-agent-platform Registry/Resolver + AionCore adapter | Market 负责获得；Builder 侧栏负责装配；保存前显示最终清单、冲突、secret 和权限差异 | 保留现有 Assistant 编辑；重塑为版本化 Builder；停止在多选框中保存裸 ID 后直接成功 | P0 | 属于 GEA/Aion 契约，不是 Jiuwen 原子缺陷 | 不适用 | 同一 revision 解析出稳定 RuntimeBundle；任何 missing/degraded binding 都能定位和修复 |
-| 运行与过程回执 | Jiuwen 的 tool/subtask/final 渐进披露、结构化交互 | ProcessEvent 关联 package/release/binding/run/auditId；final 与工具过程分离 | GEA Gateway/runtime + AionCore + clients | 对话仍是中心；Run Rail 显示本次加载能力、调用、审批和产物；点击市场能力可回看证据 | 保留对话；重塑 message type switch；停止只显示通用成功/失败 Toast | P0 | 安装错误 #2656 可投稿；完整 GEA receipt 不适用 | GEA 本地高价值；上游仅小错误合同高 | 一次真实调用能从消息追到 exact release、policy decision、GEA auditId 和终态 |
-| 更新、下架、撤回和回滚 | SkillHub entitlement revoke；多版本诉求 | approved / yanked / suspended 三态、used-by、影响预览、分阶段激活、旧会话策略 | GEA Market/IAM + target runtime | 更新前展示 Agent/Team 使用方和权限 diff；撤回给出新旧 session 语义；一键回滚 | 保留 revoke ledger；停止硬 DELETE Release 和静默自动升级 | P1 | SkillHub #36 Open；历史群组状态修复。Jiuwen #2533 版本回退 | 数据迁移中；完整回滚拆分后中 | yank 禁止新装但不破坏已固定会话；suspend 按策略 fail-closed；全部动作可审计 |
-| 可信度与运营 | SkillHub 点赞、收藏、浏览和推荐 | 分开安全审核、维护状态、组织采用、真实运行成功率、用户反馈 | GEA Market Analytics / Workbench | 先展示可解释证据，评分与评论在反作弊和申诉机制就绪后再开放 | 保留弱信号；停止把占位 average_rating 当可信度 | P3 | SkillHub 推荐 [#28](https://github.com/openJiuwen-ai/skillhub/issues/28) 已由 [PR #23](https://github.com/openJiuwen-ai/skillhub/pull/23) 合入 | 不重复投稿 | 所有可信度指标标明来源、时间窗和样本量；不影响 P0 运行闭环 |
+| 市场旅程 / 对象                | Jiuwen 值得借鉴的能力                                                    | GEA 当前需要补什么                                                                                                         | 主责 / 目标组件                                                | 产品交互，不只是页面                                                                         | 保留 / 重塑 / 停止                                                                            | 优先级 | Jiuwen 官方需求、Issue / PR 状态                                                                                                                                                           | 向官方投稿概率与前提                                                 | 最小验收                                                                                                  |
+| ------------------------------ | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 统一包身份                     | SkillHub version、SkillNet 多源、AionHub manifest                        | source + publisher + slug + version + digest 的稳定 identity；同版本不可覆盖                                               | GEA Market shared contract                                     | 详情页明确来源、版本、digest、兼容范围；同名不同源可并列                                     | 保留 Aion extension 格式；重塑为 GEA CapabilityPackage / Release；停止按 name 去重            | P0     | [JiuwenSwarm #2659](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2659) Open major，未发现关联 PR                                                                                    | 中高；先补多源同名 fixture 和 canonical identity，不扩大到全市场重构 | 三个同名多源 Skill 可独立安装、更新和绑定；刷新后身份稳定                                                 |
+| 发布与版本                     | SkillHub 的 PENDING / APPROVED / REJECTED、public_latest_version         | immutable release、digest、signature、SBOM、兼容和权限差异；待审版本不替换稳定版                                           | GEA Market / Artifact Store                                    | 发布中心按 Draft → Validate → Submit → Review → Approved 展示；失败可回到具体字段            | 保留审核状态机；停止 force 覆盖同版本                                                         | P1     | [SkillHub #49](https://github.com/openJiuwen-ai/skillhub/issues/49) Open major，要求模板和插件成为平级市场资产                                                                             | 完整功能低；Maintainer 先确认 schema 后，独立 validator/API 切片中   | 已批准 v1 持续可安装；v2 待审不影响 v1；同版本不同 digest 被拒                                            |
+| 自动校验与人工审核             | SkillHub 系统审查 + 人工审核                                             | 分开安全扫描、维护者审核、运行验证和用户口碑                                                                               | GEA Market Review                                              | 审核页显示权限 diff、依赖、风险、测试证据；不合并成一个模糊分数                              | 重塑；停止用点赞或 review_count 代替安全可信度                                                | P1     | SkillHub #49 的一部分，未见独立小 Issue                                                                                                                                                    | 低到中；先提审核契约 RFC 或纯 validator，小步认领                    | 每个通过项可追到规则、执行时间和 reviewer；权限扩大必须重审                                               |
+| 发现与市场源                   | SkillNet、ClawHub、SwarmSkills 的 Source Adapter                         | GEA catalog adapter、来源优先级、兼容过滤、租户可见性                                                                      | GEA Market Catalog                                             | 一个统一市场，以能力类型和兼容性筛选；来源作为标签，不建立多个“市场页”                       | 保留 adapter 模式；停止 Skill/MCP/Agent 三个互不相干的市场                                    | P2     | 暂无适合的原子 JiuwenSwarm 空缺                                                                                                                                                            | 不适用；属于 GEA 产品架构                                            | 同一搜索可返回多种资产且来源可追溯；不兼容项默认不提供安装                                                |
+| 租户与组织授权                 | SkillHub 群组 pending / active / rejected / revoked                      | tenant/org/team/user/agentCode 分层 Entitlement、发布者白名单、权限预算、到期和撤回                                        | GEA IAM / Policy                                               | 激活或安装前先显示“谁能用、给哪个 Agent、需要哪些权限”；管理员审批在同一订单轨迹             | 保留授权状态机；重塑为 GEA IAM；停止把下载等同授权                                            | P0     | [SkillHub #7](https://github.com/openJiuwen-ai/skillhub/issues/7) Open，PR #21 仅部分覆盖删除通知                                                                                          | 中高；只补群组删除后的授权失效事件、通知和测试                       | 无 Entitlement 不出现在可用列表；撤回后新 session fail-closed；历史审批仍可查                             |
+| 安装 Job 与错误回执            | SkillNet 异步安装、Agent Studio 失败补偿                                 | durable install job、requestId、idempotencyKey、结构化错误、安全 staging、原子激活和 rollback token                        | AionCore extension + AionUi                                    | 操作后进入可恢复进度，不只 Toast；失败给可执行修复项，刷新不丢状态                           | 保留异步交互；停止进程内 job 和“下载成功=安装成功”                                            | P0     | [JiuwenSwarm #2656](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2656) Open，未发现关联 PR                                                                                          | 高；先捕获真实 payload，再补 error envelope、UI 和测试               | transport、校验、权限、安装四类错误均有稳定 code；不泄露 secret/堆栈                                      |
+| Agent / Team Template 市场     | Studio 的导入、复制和“安装为草稿”                                        | AgentBundle：模板 DSL、依赖锁、secret schema、兼容条件；安装后 fork 成 Agent draft                                         | GEA Agent Registry / Workbench                                 | 详情页先看角色、依赖和权限；“使用模板”进入 Builder 预检，不直接运行                          | 保留 copy-as-draft；停止把模板静默写成可运行 Agent                                            | P2     | [SkillHub #49](https://github.com/openJiuwen-ai/skillhub/issues/49) 明确包含智能体和团队模板                                                                                               | 完整实现低；schema 或导入 adapter 经评审后中                         | 安装模板不会修改原发布物；缺依赖时阻止发布 AgentRevision                                                  |
+| Skill 市场                     | SkillHub 发布/版本/下载；SkillNet 指定来源与启停；SkillDev 测试/回退思路 | signed release、安装账本、精确版本锁、materialize、runtime load receipt、升级和回滚                                        | GEA Market + GEA/AionCore runtime adapters                     | 详情 → 权限/文件 diff → 安装 → 绑定 Agent → Build Preview → 真实运行；每步状态独立           | 保留现有 Skill loader；重塑 Skills Hub 为“已安装”；停止裸 name 绑定                           | P1     | [JiuwenSwarm #2533](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2533) Open major；指定版本和回退。[#2031](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2031) Open；本地更新 | 完整多版本低，拆分后中；显式刷新中                                   | 旧会话固定 v1；新 AgentRevision 可切 v2；失败一键回退且 runtime receipt 证明实际加载版本                  |
+| GEA 托管 MCP 市场              | MCP manifest、连接/启停分离、trust、tool discovery；Studio 凭据配置思路  | Entitlement 与 agentCode 绑定、HostedActivation、ConnectionTemplate、SecretBinding、toolSetRevision、Gateway audit receipt | GEA Market/IAM + Agent Resolver + Gateway                      | 详情显示工具、数据范围和权限；获得后直接选择目标 Agent；运行中可展开实际 source/tool/auditId | 保留 GEA Gateway；重塑 gea-gateway 从全局 bridge 为按 Binding 解析；停止硬编码 sales_forecast | P0     | [JiuwenSwarm #2184](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2184) 有大型 WIP [PR #2574](https://github.com/openJiuwen-ai/jiuwenswarm/pull/2574)                                | 低，不开平行 PR；可以 review 或补独立测试                            | 无 Entitlement 时 list 不出现工具，直接 call 被拒；tenant/agent/session 错配 fail-closed；auditId 到达 UI |
+| 自托管 MCP / REST Plugin       | Agent Studio Market Adapter、original_market_plugin_id、失败补偿         | 隔离 staging、依赖安装策略、initialize、tools/list、smoke test、health、原子启用                                           | GEA Market + target runtime adapter                            | 安装向导在 secret binding 后现场验证；连接成功和可用分开显示                                 | 保留 adapter/补偿；停止 CLI 解压后即“已安装”                                                  | P2     | [Agent Studio #305](https://github.com/openJiuwen-ai/agent-studio/issues/305) Open major，插件版本回退                                                                                     | 中低；先确认 AgentArts 版本存储和运行切换契约                        | 不启动未知包进入主运行目录；smoke test 失败不激活；可回退                                                 |
+| Knowledge Pack / Connector     | LLMWiki source/hash、DeepSearch citation、index fingerprint              | 数据源契约、ingestion job、immutable source、citation span、index revision；数据授权与代码包授权分离                       | GEA Knowledge/Data Services                                    | 市场安装 Connector；随后在工作区授权数据范围并预览同步状态，不能一步“接入全部数据”           | 借来源、索引与 citation；停止把知识文件直接塞进 Skill 包或默认写回                            | P2     | Jiuwen 主仓相关项多为运行正确性，不是成熟市场 Issue；详见能力矩阵 K-01 至 K-06                                                                                                             | 不适用或低；先在 GEA 建域                                            | 重复导入去重；每段回答可追到 source/span；撤权后新检索不可见                                              |
+| Workflow / Task Template       | ExecutionPlan、PersonalTodo、TeamTask 三域语义                           | 市场只分发模板；运行实例仍由 GEA/AionCore 创建并持久化                                                                     | GEA Workflow runtime + AionCore Team Work                      | “使用模板”先预览将创建的计划、权限和 Agent；运行后进入原工作区，不跳到市场管理               | 保留三域边界；停止把真实 Task/Todo 作为可安装商品或复制第二套 task store                      | P2     | Todo 恢复 [#2091](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2091) 与市场只间接相关                                                                                               | 市场 PR 不适用；运行恢复修复需另行复现                               | 模板版本可追溯，但 Task/Run/Receipt 使用运行域 ID 和权威状态                                              |
+| Interaction Component          | structured question、permission、fixed registry A2UI、channel fallback   | 只允许签名、版本化、固定 registry 的 UI contribution；action 仍过 policy                                                   | GEA UI Registry + runtime policy                               | 市场详情预览组件能力；运行中就地回答/审批，失败降级为文本，不让用户切页面                    | 借固定组件 registry；停止 arbitrary DOM/script 和“市场组件直接发业务请求”                     | P3     | 相关 Jiuwen 项多已有实现或活跃 PR，不建议抢占                                                                                                                                              | 低或不适用                                                           | 未注册组件和越权 action 被拒；回答、拒绝、过期均有 terminal receipt                                       |
+| Agent Binding 与 Build Preview | Jiuwen 的声明/实例分离、build seed、Team scope                           | AgentRevision、CapabilityBinding、Entitlement/Release 锁、Tool Policy 和 capability diff                                   | enterprise-agent-platform Registry/Resolver + AionCore adapter | Market 负责获得；Builder 侧栏负责装配；保存前显示最终清单、冲突、secret 和权限差异           | 保留现有 Assistant 编辑；重塑为版本化 Builder；停止在多选框中保存裸 ID 后直接成功             | P0     | 属于 GEA/Aion 契约，不是 Jiuwen 原子缺陷                                                                                                                                                   | 不适用                                                               | 同一 revision 解析出稳定 RuntimeBundle；任何 missing/degraded binding 都能定位和修复                      |
+| 运行与过程回执                 | Jiuwen 的 tool/subtask/final 渐进披露、结构化交互                        | ProcessEvent 关联 package/release/binding/run/auditId；final 与工具过程分离                                                | GEA Gateway/runtime + AionCore + clients                       | 对话仍是中心；Run Rail 显示本次加载能力、调用、审批和产物；点击市场能力可回看证据            | 保留对话；重塑 message type switch；停止只显示通用成功/失败 Toast                             | P0     | 安装错误 #2656 可投稿；完整 GEA receipt 不适用                                                                                                                                             | GEA 本地高价值；上游仅小错误合同高                                   | 一次真实调用能从消息追到 exact release、policy decision、GEA auditId 和终态                               |
+| 更新、下架、撤回和回滚         | SkillHub entitlement revoke；多版本诉求                                  | approved / yanked / suspended 三态、used-by、影响预览、分阶段激活、旧会话策略                                              | GEA Market/IAM + target runtime                                | 更新前展示 Agent/Team 使用方和权限 diff；撤回给出新旧 session 语义；一键回滚                 | 保留 revoke ledger；停止硬 DELETE Release 和静默自动升级                                      | P1     | SkillHub #36 Open；历史群组状态修复。Jiuwen #2533 版本回退                                                                                                                                 | 数据迁移中；完整回滚拆分后中                                         | yank 禁止新装但不破坏已固定会话；suspend 按策略 fail-closed；全部动作可审计                               |
+| 可信度与运营                   | SkillHub 点赞、收藏、浏览和推荐                                          | 分开安全审核、维护状态、组织采用、真实运行成功率、用户反馈                                                                 | GEA Market Analytics / Workbench                               | 先展示可解释证据，评分与评论在反作弊和申诉机制就绪后再开放                                   | 保留弱信号；停止把占位 average_rating 当可信度                                                | P3     | SkillHub 推荐 [#28](https://github.com/openJiuwen-ai/skillhub/issues/28) 已由 [PR #23](https://github.com/openJiuwen-ai/skillhub/pull/23) 合入                                             | 不重复投稿                                                           | 所有可信度指标标明来源、时间窗和样本量；不影响 P0 运行闭环                                                |
 
 ## 6. 产品体验：市场、装配和运行是一条旅程
 
@@ -165,16 +165,16 @@ Skill、MCP、Agent、Knowledge 是同一市场中的商品类型，不再分别
 
 ### 6.2 用户主旅程
 
-| 阶段 | 用户看见什么 | 系统必须证明什么 |
-| --- | --- | --- |
-| 发现 | 来源、发布者、最新 approved version、权限、兼容、依赖、运行验证 | Listing 指向哪个不可变 Release |
-| 获得 | 适用租户、组织策略、目标 Agent、所需权限 | Entitlement 已创建，revision 可追溯 |
-| 部署 | 托管激活，或本地 staging、校验、初始化、health、失败修复 | Hosted Activation 或 Local Installation 的终态和 exact digest |
-| 绑定 | 已安装能力 Drawer、Agent 影响 diff、SecretRef 缺口 | 新 AgentRevision 引用了哪个 Binding |
-| 预检 | resolved capabilities、tool policy、secret、兼容和 degraded 项 | RuntimeBundle revision 与后续会话一致 |
-| 运行 | 对话为主，Run Rail 展示加载、工具调用、审批和产物 | 实际调用的 release、tool、policy、auditId |
-| 交付 | final、验证、产物、OperationReceipt 和 ExecutionReceipt | 成功不是模型自述，而是服务端终态 |
-| 治理 | used-by、更新 diff、回滚、yank、revoke | 新旧 session 的策略明确且有 receipt |
+| 阶段 | 用户看见什么                                                    | 系统必须证明什么                                              |
+| ---- | --------------------------------------------------------------- | ------------------------------------------------------------- |
+| 发现 | 来源、发布者、最新 approved version、权限、兼容、依赖、运行验证 | Listing 指向哪个不可变 Release                                |
+| 获得 | 适用租户、组织策略、目标 Agent、所需权限                        | Entitlement 已创建，revision 可追溯                           |
+| 部署 | 托管激活，或本地 staging、校验、初始化、health、失败修复        | Hosted Activation 或 Local Installation 的终态和 exact digest |
+| 绑定 | 已安装能力 Drawer、Agent 影响 diff、SecretRef 缺口              | 新 AgentRevision 引用了哪个 Binding                           |
+| 预检 | resolved capabilities、tool policy、secret、兼容和 degraded 项  | RuntimeBundle revision 与后续会话一致                         |
+| 运行 | 对话为主，Run Rail 展示加载、工具调用、审批和产物               | 实际调用的 release、tool、policy、auditId                     |
+| 交付 | final、验证、产物、OperationReceipt 和 ExecutionReceipt         | 成功不是模型自述，而是服务端终态                              |
+| 治理 | used-by、更新 diff、回滚、yank、revoke                          | 新旧 session 的策略明确且有 receipt                           |
 
 ### 6.3 状态必须分开
 
@@ -300,43 +300,43 @@ Secret 只允许以 credentialRequirements 和 secretRefs 出现。市场 manife
 
 ### 9.1 F0 / P0：冻结跨仓合同并让 registry 真正进入 runtime
 
-| 顺序 | Ticket / 交付物 | Owner / 目标仓或服务 | 前置合同 | 完成标准 |
-| ---: | --- | --- | --- | --- |
-| 1 | FND-01 Release identity：Publisher、Package、Listing、不可变 Release schema、稳定 ID 和 digest 规则 | GEA Market（服务仓待确认）+ enterprise-agent-platform shared contracts | 无 | 同 version 不同 digest 被拒；多源同名不冲突；Aion manifest 可无损映射 |
-| 2 | FND-02 Entitlement / Deployment：Entitlement、HostedActivation、LocalInstallation、SecretBinding、Revocation 状态机 | GEA IAM / Market + AionCore extension | FND-01 | hosted/local 权威清楚；secret 只有 ref；revoke/yank/suspend 语义分开 |
-| 3 | FND-03 Agent assembly：AgentRevision、CapabilityBinding、逻辑 RuntimeBundle 与 target adapter contract | enterprise-agent-platform agent-runtime | FND-01、02 | 同一 revision 解析稳定；Renderer 不拼 Bundle；目标 adapter 不建立第二套市场身份 |
-| 4 | FND-04 Receipt envelope：OperationReceipt、ExecutionReceipt、error envelope、idempotency 和关联 ID | GEA Gateway / runtime + AionCore + AionUi common contract | FND-01 至 03 | publish 到 invoke 共用 envelope；auditId 可关联；敏感字段有明确禁止清单 |
-| 5 | RUN-01 GEA native consumption：动态 Agent registry，Skill/MCP/Tool Policy 注入 FastAPI/LangGraph graph | enterprise-agent-platform backend/agent-runtime 与 app API | FND-03、04 | 删除硬编码 sales_forecast；保存 binding 会真实改变可用工具/Skill；两个 Agent 结果不同 |
-| 6 | RUN-02 Desktop target adapter：动态 agentCode，RuntimeBundle 映射到 AionCore conversation snapshot | AionUi web-host/desktop + AionCore conversation | FND-03、04 | 不再共享全局 agentCode；与 GEA 原生路径冻结同一 release/entitlement/binding revision |
+| 顺序 | Ticket / 交付物                                                                                                     | Owner / 目标仓或服务                                                   | 前置合同     | 完成标准                                                                              |
+| ---: | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------- |
+|    1 | FND-01 Release identity：Publisher、Package、Listing、不可变 Release schema、稳定 ID 和 digest 规则                 | GEA Market（服务仓待确认）+ enterprise-agent-platform shared contracts | 无           | 同 version 不同 digest 被拒；多源同名不冲突；Aion manifest 可无损映射                 |
+|    2 | FND-02 Entitlement / Deployment：Entitlement、HostedActivation、LocalInstallation、SecretBinding、Revocation 状态机 | GEA IAM / Market + AionCore extension                                  | FND-01       | hosted/local 权威清楚；secret 只有 ref；revoke/yank/suspend 语义分开                  |
+|    3 | FND-03 Agent assembly：AgentRevision、CapabilityBinding、逻辑 RuntimeBundle 与 target adapter contract              | enterprise-agent-platform agent-runtime                                | FND-01、02   | 同一 revision 解析稳定；Renderer 不拼 Bundle；目标 adapter 不建立第二套市场身份       |
+|    4 | FND-04 Receipt envelope：OperationReceipt、ExecutionReceipt、error envelope、idempotency 和关联 ID                  | GEA Gateway / runtime + AionCore + AionUi common contract              | FND-01 至 03 | publish 到 invoke 共用 envelope；auditId 可关联；敏感字段有明确禁止清单               |
+|    5 | RUN-01 GEA native consumption：动态 Agent registry，Skill/MCP/Tool Policy 注入 FastAPI/LangGraph graph              | enterprise-agent-platform backend/agent-runtime 与 app API             | FND-03、04   | 删除硬编码 sales_forecast；保存 binding 会真实改变可用工具/Skill；两个 Agent 结果不同 |
+|    6 | RUN-02 Desktop target adapter：动态 agentCode，RuntimeBundle 映射到 AionCore conversation snapshot                  | AionUi web-host/desktop + AionCore conversation                        | FND-03、04   | 不再共享全局 agentCode；与 GEA 原生路径冻结同一 release/entitlement/binding revision  |
 
 ### 9.2 F1 / P1：第一条 private hosted MCP 市场闭环
 
-| 顺序 | Ticket / 交付物 | Owner / 目标仓或服务 | 前置合同 | 完成标准 |
-| ---: | --- | --- | --- | --- |
-| 7 | MCP-01 Minimal supply：Publisher、private Package/Release submission、schema/permission validate、人工 approve | GEA Market（服务仓待确认） | FND-01、04 | 未审核 Release 不可见不可授权；审批证据可查询；这不是完整运营后台 |
-| 8 | MCP-02 Entitlement / Activation / Resolve：对 agentCode 授权并生成 toolSetRevision | GEA Market/IAM + Agent Resolver | FND-02、03，MCP-01 | 无 Entitlement 不产生 RuntimeBundle；HostedActivation 不伪造本地安装 |
-| 9 | MCP-03 Gateway execution proof：list/call 复核、auditId/source/tool 保留、ExecutionReceipt | GEA Gateway + enterprise-agent-platform runtime + AionUi GEA bridge | RUN-01、02，MCP-02 | 绕过 list 的 call 仍 fail-closed；一次真实调用可追到 exact Release 和 auditId |
-| 10 | MCP-04 Market-to-Builder UX：private Listing、权限确认、目标 Agent、Binding / Build Preview、运行证据 | GEA Workbench + AionUi | MCP-01 至 03 | 用户不跨多个设置页；available、entitled、activated、bound、ready、invoked 分态 |
-| 11 | MCP-05 Revoke E2E：tenant/agent/session 错配、新旧 session 策略、双 runtime 一致性、secret 泄漏 | GEA QA + AionUi/AionCore integration | MCP-01 至 04 | 全部 fail-closed；receipt 完整；GEA 原生和 Desktop 解析同一市场版本 |
+| 顺序 | Ticket / 交付物                                                                                                | Owner / 目标仓或服务                                                | 前置合同           | 完成标准                                                                       |
+| ---: | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------ |
+|    7 | MCP-01 Minimal supply：Publisher、private Package/Release submission、schema/permission validate、人工 approve | GEA Market（服务仓待确认）                                          | FND-01、04         | 未审核 Release 不可见不可授权；审批证据可查询；这不是完整运营后台              |
+|    8 | MCP-02 Entitlement / Activation / Resolve：对 agentCode 授权并生成 toolSetRevision                             | GEA Market/IAM + Agent Resolver                                     | FND-02、03，MCP-01 | 无 Entitlement 不产生 RuntimeBundle；HostedActivation 不伪造本地安装           |
+|    9 | MCP-03 Gateway execution proof：list/call 复核、auditId/source/tool 保留、ExecutionReceipt                     | GEA Gateway + enterprise-agent-platform runtime + AionUi GEA bridge | RUN-01、02，MCP-02 | 绕过 list 的 call 仍 fail-closed；一次真实调用可追到 exact Release 和 auditId  |
+|   10 | MCP-04 Market-to-Builder UX：private Listing、权限确认、目标 Agent、Binding / Build Preview、运行证据          | GEA Workbench + AionUi                                              | MCP-01 至 03       | 用户不跨多个设置页；available、entitled、activated、bound、ready、invoked 分态 |
+|   11 | MCP-05 Revoke E2E：tenant/agent/session 错配、新旧 session 策略、双 runtime 一致性、secret 泄漏                | GEA QA + AionUi/AionCore integration                                | MCP-01 至 04       | 全部 fail-closed；receipt 完整；GEA 原生和 Desktop 解析同一市场版本            |
 
 ### 9.3 F2 / P2：第二条 signed Skill 闭环
 
-| 顺序 | Ticket / 交付物 | Owner / 目标仓或服务 | 前置合同 | 完成标准 |
-| ---: | --- | --- | --- | --- |
-| 12 | SKL-01 Signed Release：Aion extension manifest 映射、artifact ticket、digest、签名、兼容和权限 | GEA Market / Artifact Store + AionCore extension | FND-01、02，MCP-01 的审核 seam | 同版本不可覆盖；approved 指针稳定；下载票据短期有效 |
-| 13 | SKL-02 Durable LocalInstallation：安全 staging、原子激活、job/OperationReceipt、used-by guard | AionCore extension；现有 dirty HubInstaller 先独立审计 | SKL-01、FND-04 | 断线刷新可恢复；失败不污染旧版；不把候选实现当已发布能力 |
-| 14 | SKL-03 Dual runtime load proof：GEA native loader 与 AionCore snapshot/aionrs loader | enterprise-agent-platform runtime + AionCore/aionrs | RUN-01、02，SKL-02 | 两条路径用真实 turn 证明 exact Release 被 loaded、selected 和 invoked |
-| 15 | SKL-04 Upgrade / rollback / yank | GEA Market + Agent Registry + AionCore | SKL-03 | 旧会话固定；新 revision 显式升级；回滚离线可用；yank 不硬删 |
+| 顺序 | Ticket / 交付物                                                                                | Owner / 目标仓或服务                                   | 前置合同                       | 完成标准                                                              |
+| ---: | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------ | --------------------------------------------------------------------- |
+|   12 | SKL-01 Signed Release：Aion extension manifest 映射、artifact ticket、digest、签名、兼容和权限 | GEA Market / Artifact Store + AionCore extension       | FND-01、02，MCP-01 的审核 seam | 同版本不可覆盖；approved 指针稳定；下载票据短期有效                   |
+|   13 | SKL-02 Durable LocalInstallation：安全 staging、原子激活、job/OperationReceipt、used-by guard  | AionCore extension；现有 dirty HubInstaller 先独立审计 | SKL-01、FND-04                 | 断线刷新可恢复；失败不污染旧版；不把候选实现当已发布能力              |
+|   14 | SKL-03 Dual runtime load proof：GEA native loader 与 AionCore snapshot/aionrs loader           | enterprise-agent-platform runtime + AionCore/aionrs    | RUN-01、02，SKL-02             | 两条路径用真实 turn 证明 exact Release 被 loaded、selected 和 invoked |
+|   15 | SKL-04 Upgrade / rollback / yank                                                               | GEA Market + Agent Registry + AionCore                 | SKL-03                         | 旧会话固定；新 revision 显式升级；回滚离线可用；yank 不硬删           |
 
 ### 9.4 F3 / P3：产品化 private enterprise market
 
-| 顺序 | Ticket / 交付物 | Owner / 目标仓或服务 | 前置合同 | 完成标准 |
-| ---: | --- | --- | --- | --- |
-| 16 | GOV-01 Full Publisher / Review Center：版本历史、安全扫描、权限 diff、撤回 | GEA Market + GEA Workbench | MCP-01、SKL-01 | 审核、运行验证和用户口碑分开；权限扩大触发重审 |
-| 17 | GOV-02 Org Distribution：org/team/agentCode Entitlement、白名单、权限预算、到期和通知 | GEA IAM / Market | MCP-05 | 授权变化影响新解析；历史决策与通知仍可查 |
-| 18 | UX-01 Unified Storefront：发现、详情、已部署、used-by、修复路径 | GEA Workbench + AionUi | MCP、Skill 两条闭环 | UI 状态都来自权威合同，不建立本地假状态 |
-| 19 | AST-01 AgentBundle：Agent/Team Template 安装为 draft、依赖锁、Build Preview | GEA Agent Registry / Workbench | FND-03、GOV-01 | 模板不直接运行；缺依赖不能发布 AgentRevision |
-| 20 | AST-02 Knowledge / Workflow assets：Connector、KnowledgePack、WorkflowTemplate | GEA Market + 对应数据/运行服务 | GOV-01、02 | 数据授权与代码包授权分开；Task 实例仍由运行域权威管理 |
+| 顺序 | Ticket / 交付物                                                                       | Owner / 目标仓或服务           | 前置合同            | 完成标准                                              |
+| ---: | ------------------------------------------------------------------------------------- | ------------------------------ | ------------------- | ----------------------------------------------------- |
+|   16 | GOV-01 Full Publisher / Review Center：版本历史、安全扫描、权限 diff、撤回            | GEA Market + GEA Workbench     | MCP-01、SKL-01      | 审核、运行验证和用户口碑分开；权限扩大触发重审        |
+|   17 | GOV-02 Org Distribution：org/team/agentCode Entitlement、白名单、权限预算、到期和通知 | GEA IAM / Market               | MCP-05              | 授权变化影响新解析；历史决策与通知仍可查              |
+|   18 | UX-01 Unified Storefront：发现、详情、已部署、used-by、修复路径                       | GEA Workbench + AionUi         | MCP、Skill 两条闭环 | UI 状态都来自权威合同，不建立本地假状态               |
+|   19 | AST-01 AgentBundle：Agent/Team Template 安装为 draft、依赖锁、Build Preview           | GEA Agent Registry / Workbench | FND-03、GOV-01      | 模板不直接运行；缺依赖不能发布 AgentRevision          |
+|   20 | AST-02 Knowledge / Workflow assets：Connector、KnowledgePack、WorkflowTemplate        | GEA Market + 对应数据/运行服务 | GOV-01、02          | 数据授权与代码包授权分开；Task 实例仍由运行域权威管理 |
 
 F4 再考虑公共市场、收费、评论、反作弊、外部市场联邦、自动升级和可安装 A2UI。它们不应进入下一阶段关键路径。
 
@@ -344,16 +344,16 @@ F4 再考虑公共市场、收费、评论、反作弊、外部市场联邦、�
 
 状态冻结于 2026-08-11。GitHub 是 openJiuwen 的同步镜像，正式认领和投稿仍应从 Issue 指向的 GitCode 入口进入，并在开始前重新查重。
 
-| 顺序 | 官方项 | 未解决部分 / 占坑 | 建议最小 PR | 预计接纳概率 |
-| ---: | --- | --- | --- | --- |
-| 1 | [JiuwenSwarm #2656](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2656) | Open，未发现关联 PR；市场安装失败缺错误码和详情 | 真实 payload fixture、统一安全 error envelope、UI 展示和测试 | 高 |
-| 2 | [JiuwenSwarm #2659](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2659) | Open major，未发现关联 PR；多源同名 Skill 投影错误 | canonical source identity、唯一投影纯函数、多源安装测试 | 中高 |
-| 3 | [SkillHub #7](https://github.com/openJiuwen-ai/skillhub/issues/7) | Open；PR #21 仅部分修复，群组删除后的失效通知仍缺 | 授权失效事件、提交者/成员/pending 用户通知及测试 | 中高 |
-| 4 | [SkillHub #36](https://github.com/openJiuwen-ai/skillhub/issues/36) | Open，未发现关联 PR；升级后历史群组状态未修复 | 幂等数据迁移或兼容读取，覆盖旧数据 fixture | 中 |
-| 5 | [JiuwenSwarm #2031](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2031) | Open，未发现关联 PR；本地 Skill 更新要卸载重装 | source fingerprint、显式差异检测和重新导入 | 中 |
-| 6 | [JiuwenSwarm #2533](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2533) | Open major，未发现有效关联 PR；版本与回退范围大 | 先提交安装账本、版本解析和 rollback contract，小步实现 | 完整功能低，拆分后中 |
-| 7 | [SkillHub #49](https://github.com/openJiuwen-ai/skillhub/issues/49) | Open major，未占坑；要求 Agent/Team Template、Plugin 成为平级市场资产 | 先与 Maintainer 对齐 manifest/schema，再做 validator、CLI 或 API 原子切片 | 完整功能低，评审后小切片中 |
-| 8 | [Agent Studio #305](https://github.com/openJiuwen-ai/agent-studio/issues/305) | Open major；插件版本回退与 AgentArts 语义耦合 | 先确认版本存储和运行态切换契约，再补单一回退 seam | 中低 |
+| 顺序 | 官方项                                                                        | 未解决部分 / 占坑                                                     | 建议最小 PR                                                               | 预计接纳概率               |
+| ---: | ----------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------- |
+|    1 | [JiuwenSwarm #2656](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2656) | Open，未发现关联 PR；市场安装失败缺错误码和详情                       | 真实 payload fixture、统一安全 error envelope、UI 展示和测试              | 高                         |
+|    2 | [JiuwenSwarm #2659](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2659) | Open major，未发现关联 PR；多源同名 Skill 投影错误                    | canonical source identity、唯一投影纯函数、多源安装测试                   | 中高                       |
+|    3 | [SkillHub #7](https://github.com/openJiuwen-ai/skillhub/issues/7)             | Open；PR #21 仅部分修复，群组删除后的失效通知仍缺                     | 授权失效事件、提交者/成员/pending 用户通知及测试                          | 中高                       |
+|    4 | [SkillHub #36](https://github.com/openJiuwen-ai/skillhub/issues/36)           | Open，未发现关联 PR；升级后历史群组状态未修复                         | 幂等数据迁移或兼容读取，覆盖旧数据 fixture                                | 中                         |
+|    5 | [JiuwenSwarm #2031](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2031) | Open，未发现关联 PR；本地 Skill 更新要卸载重装                        | source fingerprint、显式差异检测和重新导入                                | 中                         |
+|    6 | [JiuwenSwarm #2533](https://github.com/openJiuwen-ai/jiuwenswarm/issues/2533) | Open major，未发现有效关联 PR；版本与回退范围大                       | 先提交安装账本、版本解析和 rollback contract，小步实现                    | 完整功能低，拆分后中       |
+|    7 | [SkillHub #49](https://github.com/openJiuwen-ai/skillhub/issues/49)           | Open major，未占坑；要求 Agent/Team Template、Plugin 成为平级市场资产 | 先与 Maintainer 对齐 manifest/schema，再做 validator、CLI 或 API 原子切片 | 完整功能低，评审后小切片中 |
+|    8 | [Agent Studio #305](https://github.com/openJiuwen-ai/agent-studio/issues/305) | Open major；插件版本回退与 AgentArts 语义耦合                         | 先确认版本存储和运行态切换契约，再补单一回退 seam                         | 中低                       |
 
 不应重复投稿：
 
