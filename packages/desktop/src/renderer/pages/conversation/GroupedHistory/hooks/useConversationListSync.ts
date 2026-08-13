@@ -142,6 +142,8 @@ let conversation_idsState = new Set<string>();
 // backfilled); a missing key = not loaded yet (caller placeholders).
 let projectIdByIdState = new Map<string, string | null>();
 let activeConversationIdState: string | null = null;
+let conversationRefreshInFlight = false;
+let conversationRefreshQueued = false;
 let snapshotState: ConversationListSyncSnapshot = {
   conversations: conversationsState,
   generatingConversationIds: generatingConversationIdsState,
@@ -185,6 +187,12 @@ export const setConversationProjectMapForTest = (entries: Array<[string, string 
 };
 
 const refreshConversations = () => {
+  if (conversationRefreshInFlight) {
+    conversationRefreshQueued = true;
+    return;
+  }
+
+  conversationRefreshInFlight = true;
   void ipcBridge.database.getUserConversations
     .invoke({ limit: 10000 })
     .then((result) => {
@@ -219,6 +227,12 @@ const refreshConversations = () => {
       conversation_idsState = new Set();
       projectIdByIdState = new Map();
       emitStoreChange();
+    })
+    .finally(() => {
+      conversationRefreshInFlight = false;
+      if (!conversationRefreshQueued) return;
+      conversationRefreshQueued = false;
+      refreshConversations();
     });
 };
 
