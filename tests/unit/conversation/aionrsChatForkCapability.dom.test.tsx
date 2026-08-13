@@ -77,6 +77,7 @@ const renderChat = (forkCapability?: { at_turn: boolean }) =>
       workspace='/workspace/demo'
       modelSelection={{} as AionrsModelSelection}
       forkCapability={forkCapability}
+      hideConversationResources
     />
   );
 
