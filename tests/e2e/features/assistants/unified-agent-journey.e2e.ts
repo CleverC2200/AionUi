@@ -356,6 +356,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
     electronApp,
   }) => {
     let enterpriseWriteCount = 0;
+    let enterpriseSyncRequestCount = 0;
     let standardCreateRequest: Record<string, unknown> | undefined;
     const standardConversation = {
       id: STANDARD_CONVERSATION_ID,
@@ -456,6 +457,9 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
     await page.route('**/api/assistants**', assistantHandler);
     await page.route('**/api/conversations**', conversationHandler);
     await page.route('**/api/interaction-requests**', interactionHandler);
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/api/client-resources/sync') enterpriseSyncRequestCount += 1;
+    });
     try {
       await setZoomFactor(electronApp, 1);
       await setElectronContentSize(electronApp, page, 1440, 900);
@@ -466,6 +470,10 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
       });
       await page.reload();
       await goToAssistantSettings(page);
+      await page.getByTestId('btn-create-assistant').click();
+      await expect(page.getByTestId('btn-create-assistant-gea')).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await expect(page.getByTestId('btn-create-assistant-manual')).not.toBeVisible();
       await page.locator('[data-testid="settings-tab-official"]').click();
 
       const card = page.getByTestId(`official-card-${STANDARD_ASSISTANT_ID}`);
@@ -491,6 +499,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
       );
       expect(standardCreateRequest).not.toHaveProperty('preparation');
       expect(enterpriseWriteCount).toBe(0);
+      expect(enterpriseSyncRequestCount).toBe(0);
       await page.waitForFunction(
         (id) =>
           Boolean(
@@ -529,7 +538,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
           assignment_id: managedMetadata.assignment_id,
           template_version: managedMetadata.template_version,
           revision: 'extensions-e2e-r2',
-          skills: ['auxiliary-audit'],
+          skills: ['skill-auxiliary-audit'],
           mcps: [],
         });
         return;
@@ -542,6 +551,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
     const skillsHandler = async (route: Route): Promise<void> => {
       await fulfillJson(route, [
         {
+          skill_id: 'finance-close',
           name: 'finance-close',
           description: 'Enterprise required capability',
           location: '/tmp/finance-close',
@@ -550,6 +560,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
           source: 'builtin',
         },
         {
+          skill_id: 'skill-auxiliary-audit',
           name: 'auxiliary-audit',
           description: 'Local auxiliary review',
           location: '/tmp/auxiliary-audit',
@@ -613,7 +624,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
           assignment_id: managedMetadata.assignment_id,
           template_version: managedMetadata.template_version,
           expected_revision: managedMetadata.catalog_revision,
-          skills: ['auxiliary-audit'],
+          skills: ['skill-auxiliary-audit'],
           mcps: [],
         })
       );

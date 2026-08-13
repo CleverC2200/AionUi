@@ -15,6 +15,7 @@ const hooks = vi.hoisted(() => ({
   getClientBusinessSetting: vi.fn(() => Promise.resolve(undefined)),
   refreshMcpServers: vi.fn(() => Promise.resolve(true)),
   syncFromGea: vi.fn(),
+  catalog: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -96,6 +97,7 @@ vi.mock('@/renderer/services/clientBusinessSettings', () => ({
 vi.mock('@/common', () => ({
   ipcBridge: {
     clientResources: { syncFromGea: { invoke: hooks.syncFromGea } },
+    assistants: { catalog: { invoke: hooks.catalog } },
   },
 }));
 
@@ -113,6 +115,8 @@ describe('ToolsModalContent image model guide', () => {
     hooks.refreshMcpServers.mockClear();
     hooks.syncFromGea.mockReset();
     hooks.syncFromGea.mockResolvedValue({ status: 'completed', changed: 1, skipped: 0, failed: 0 });
+    hooks.catalog.mockReset();
+    hooks.catalog.mockResolvedValue({ assistants: [], mode: 'managed', sync_status: 'fresh' });
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -162,12 +166,22 @@ describe('ToolsModalContent image model guide', () => {
   it('fetches MCP resources from GEA from the add-server menu', async () => {
     render(<ToolsModalContent />);
 
+    await waitFor(() => expect(hooks.catalog).toHaveBeenCalled());
     fireEvent.click(await screen.findByTestId('add-mcp-server-menu'));
     const marker = await screen.findByTestId('add-mcp-server-menu-gea');
     fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
 
     await waitFor(() => expect(hooks.syncFromGea).toHaveBeenCalledWith({ resources: ['mcps'] }));
     await waitFor(() => expect(hooks.refreshMcpServers).toHaveBeenCalledTimes(1));
+  });
+
+  it('keeps the GEA sync action out of a standard MCP catalog', async () => {
+    hooks.catalog.mockResolvedValue({ assistants: [], mode: 'standard', sync_status: 'fresh' });
+    render(<ToolsModalContent />);
+
+    await waitFor(() => expect(hooks.catalog).toHaveBeenCalled());
+    fireEvent.click(await screen.findByTestId('add-mcp-server-menu'));
+    expect(screen.queryByTestId('add-mcp-server-menu-gea')).not.toBeInTheDocument();
   });
 
   it('renders GEA-managed MCP servers without local edit or delete controls', async () => {

@@ -9,7 +9,7 @@ import { ipcBridge } from '@/common';
 import { useMessageList } from '@/renderer/pages/conversation/Messages/hooks';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview/context/PreviewContext';
 import type { TMessage } from '@/common/chat/chatLib';
-import { ConversationRecords } from '@/common/adapter/conversationRecords';
+import { ConversationRecords } from '@/common/adapter/conversation-records';
 import type { ConversationRecord, ConversationRecordEvent } from '@/common/types/conversationRecord';
 import { iconColors } from '@/renderer/styles/colors';
 import { loadAllConversationMessagesPaged } from '@/renderer/utils/chat/messagePagination';

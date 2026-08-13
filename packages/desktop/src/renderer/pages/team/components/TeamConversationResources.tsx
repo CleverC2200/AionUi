@@ -1,5 +1,5 @@
 import { ipcBridge } from '@/common';
-import { ConversationRecords } from '@/common/adapter/conversationRecords';
+import { ConversationRecords } from '@/common/adapter/conversation-records';
 import type { ConversationRecord, ConversationRecordEvent } from '@/common/types/conversationRecord';
 import type { TeamAssistant } from '@/common/types/team/teamTypes';
 import { useLocalFilePreview } from '@/renderer/pages/conversation/Preview/hooks/useLocalFilePreview';

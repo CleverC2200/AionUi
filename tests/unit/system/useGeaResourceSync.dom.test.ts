@@ -30,13 +30,25 @@ describe('useGeaResourceSync', () => {
     mocks.syncFromGea.mockResolvedValue({ status: 'completed', changed: 2, skipped: 0, failed: 0 });
     const message = { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() };
     const refresh = vi.fn().mockResolvedValue(true);
-    const { result } = renderHook(() => useGeaResourceSync({ message, refresh, resource: 'skills' }));
+    const { result } = renderHook(() => useGeaResourceSync({ available: true, message, refresh, resource: 'skills' }));
 
     await act(async () => result.current.syncFromGea());
 
     expect(mocks.syncFromGea).toHaveBeenCalledWith({ resources: ['skills'] });
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(message.success).toHaveBeenCalledWith('settings.geaResourceFetchSuccess:2');
+  });
+
+  it('does not post a sync command when the assistant catalog is standard', async () => {
+    const message = { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() };
+    const refresh = vi.fn().mockResolvedValue(true);
+    const { result } = renderHook(() => useGeaResourceSync({ available: false, message, refresh, resource: 'skills' }));
+
+    await act(async () => result.current.syncFromGea());
+
+    expect(mocks.syncFromGea).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+    expect(message.warning).toHaveBeenCalledWith('settings.geaResourceUnavailable');
   });
 
   it('does not refresh when GEA authentication is missing', async () => {
@@ -48,7 +60,9 @@ describe('useGeaResourceSync', () => {
     });
     const message = { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() };
     const refresh = vi.fn().mockResolvedValue(true);
-    const { result } = renderHook(() => useGeaResourceSync({ message, refresh, resource: 'assistants' }));
+    const { result } = renderHook(() =>
+      useGeaResourceSync({ available: true, message, refresh, resource: 'assistants' })
+    );
 
     await act(async () => result.current.syncFromGea());
 
@@ -58,11 +72,16 @@ describe('useGeaResourceSync', () => {
 
   it('shows a compatibility error when the current AionCore has no sync route', async () => {
     mocks.syncFromGea.mockRejectedValue(
-      Object.assign(new Error('missing'), { name: 'BackendHttpError', status: 404, code: 'NOT_FOUND' })
+      Object.assign(new Error('missing'), {
+        name: 'BackendHttpError',
+        status: 404,
+        code: 'NOT_FOUND',
+        backendMessage: 'Route not found.',
+      })
     );
     const message = { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() };
     const refresh = vi.fn().mockResolvedValue(true);
-    const { result } = renderHook(() => useGeaResourceSync({ message, refresh, resource: 'mcps' }));
+    const { result } = renderHook(() => useGeaResourceSync({ available: true, message, refresh, resource: 'mcps' }));
 
     await act(async () => result.current.syncFromGea());
 
@@ -70,11 +89,31 @@ describe('useGeaResourceSync', () => {
     expect(message.error).toHaveBeenCalledWith('settings.geaResourceUnavailable');
   });
 
+  it('does not hide an object-level 404 as an unsupported sync route', async () => {
+    mocks.syncFromGea.mockRejectedValue(
+      Object.assign(new Error('missing resource'), {
+        name: 'BackendHttpError',
+        status: 404,
+        code: 'NOT_FOUND',
+        backendMessage: 'Resource assignment was not found.',
+      })
+    );
+    const message = { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() };
+    const refresh = vi.fn().mockResolvedValue(true);
+    const { result } = renderHook(() => useGeaResourceSync({ available: true, message, refresh, resource: 'mcps' }));
+
+    await act(async () => result.current.syncFromGea());
+
+    expect(message.error).toHaveBeenCalledWith('settings.geaResourceFetchFailed');
+  });
+
   it('does not report sync success when the refreshed projection is unavailable', async () => {
     mocks.syncFromGea.mockResolvedValue({ status: 'completed', changed: 2, skipped: 0, failed: 0 });
     const message = { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() };
     const refresh = vi.fn().mockResolvedValue(false);
-    const { result } = renderHook(() => useGeaResourceSync({ message, refresh, resource: 'assistants' }));
+    const { result } = renderHook(() =>
+      useGeaResourceSync({ available: true, message, refresh, resource: 'assistants' })
+    );
 
     await act(async () => result.current.syncFromGea());
 
@@ -93,7 +132,7 @@ describe('useGeaResourceSync', () => {
     );
     const message = { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() };
     const refresh = vi.fn().mockResolvedValue(true);
-    const { result } = renderHook(() => useGeaResourceSync({ message, refresh, resource: 'mcps' }));
+    const { result } = renderHook(() => useGeaResourceSync({ available: true, message, refresh, resource: 'mcps' }));
 
     let first: Promise<void> | undefined;
     let second: Promise<void> | undefined;

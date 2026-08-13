@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   importSkills: vi.fn(),
   deleteSkill: vi.fn(),
   syncFromGea: vi.fn(),
+  catalog: vi.fn(),
   showOpen: vi.fn(),
   messageError: vi.fn(),
   messageSuccess: vi.fn(),
@@ -49,6 +50,9 @@ vi.mock('@/common', () => ({
     },
     clientResources: {
       syncFromGea: { invoke: mocks.syncFromGea },
+    },
+    assistants: {
+      catalog: { invoke: mocks.catalog },
     },
   },
 }));
@@ -120,6 +124,7 @@ describe('SkillsHubSettings', () => {
     });
     mocks.listSkillImportHistory.mockResolvedValue([]);
     mocks.syncFromGea.mockResolvedValue({ status: 'completed', changed: 1, skipped: 0, failed: 0 });
+    mocks.catalog.mockResolvedValue({ assistants: [], mode: 'managed', sync_status: 'fresh' });
   });
 
   it('exports a component (smoke)', () => {
@@ -149,6 +154,7 @@ describe('SkillsHubSettings', () => {
     render(<SkillsHubSettings withWrapper={false} />);
 
     await waitFor(() => expect(mocks.listAvailableSkills).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.catalog).toHaveBeenCalled());
     await triggerManualImport();
 
     await waitFor(() =>
@@ -178,6 +184,15 @@ describe('SkillsHubSettings', () => {
       )
     );
     await waitFor(() => expect(mocks.listAvailableSkills.mock.calls.length).toBeGreaterThan(initialFetchCount));
+  });
+
+  it('keeps the GEA sync action out of a standard skill catalog', async () => {
+    mocks.catalog.mockResolvedValue({ assistants: [], mode: 'standard', sync_status: 'fresh' });
+    render(<SkillsHubSettings withWrapper={false} />);
+
+    await waitFor(() => expect(mocks.catalog).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId('btn-add-skill'));
+    expect(screen.queryByTestId('btn-add-skill-gea')).not.toBeInTheDocument();
   });
 
   it('renders import history failure detail in the secondary view', async () => {

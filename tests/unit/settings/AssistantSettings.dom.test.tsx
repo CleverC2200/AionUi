@@ -260,7 +260,7 @@ describe('AssistantSettings', () => {
       <ConfigProvider>
         <AssistantHomeTabs
           assistants={[]}
-          catalogView={null}
+          catalogView={{ assistants: [], mode: 'managed', sync_status: 'fresh' }}
           catalogError={null}
           catalogLoading={false}
           assistantOrder={[]}
@@ -284,6 +284,34 @@ describe('AssistantSettings', () => {
     fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
 
     expect(onSyncFromGea).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the GEA sync action out of a standard assistant catalog', async () => {
+    render(
+      <ConfigProvider>
+        <AssistantHomeTabs
+          assistants={[]}
+          catalogView={{ assistants: [], mode: 'standard', sync_status: 'fresh' }}
+          catalogError={null}
+          catalogLoading={false}
+          assistantOrder={[]}
+          localeKey='en-US'
+          onOpenDetail={vi.fn()}
+          onOpenSettings={vi.fn()}
+          onDuplicate={vi.fn()}
+          onDelete={vi.fn()}
+          onCreate={vi.fn()}
+          onToggleEnabled={vi.fn()}
+          onReorderEnabled={vi.fn()}
+          onStartChat={vi.fn()}
+          onReloadCatalog={vi.fn()}
+          onSyncFromGea={vi.fn()}
+        />
+      </ConfigProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('btn-create-assistant'));
+    expect(screen.queryByTestId('btn-create-assistant-gea')).not.toBeInTheDocument();
   });
 
   it('disables enabled-assistant dragging while search is active', () => {

@@ -257,7 +257,7 @@ describe('AssistantEditorSections', () => {
     ).toBeInTheDocument();
   });
 
-  it('locks enterprise core fields while keeping allowed auxiliary capabilities editable', () => {
+  it('locks enterprise core fields and selects auxiliary skills by stable ID', async () => {
     const setSelectedSkills = vi.fn();
     const setSelectedMcpIds = vi.fn();
     const managed = {
@@ -275,7 +275,7 @@ describe('AssistantEditorSections', () => {
         user_extensions: { mode: 'additive' as const, allow_skills: true, allow_mcps: true },
         extensions: {
           revision: 'extension-r1',
-          skill_ids: ['spreadsheet-helper'],
+          skill_ids: ['skill-spreadsheet-helper'],
           mcp_ids: ['local-files-readonly'],
           status: 'attention' as const,
           violations: [{ code: 'CAPABILITY_CONFLICT' as const, capability_id: 'local-files-readonly' }],
@@ -311,6 +311,7 @@ describe('AssistantEditorSections', () => {
           skills: {
             availableSkills: [
               {
+                skill_id: 'finance-close',
                 name: 'finance-close',
                 description: 'Core',
                 location: '',
@@ -319,6 +320,7 @@ describe('AssistantEditorSections', () => {
                 source: 'builtin',
               },
               {
+                skill_id: 'skill-spreadsheet-helper',
                 name: 'spreadsheet-helper',
                 description: 'Helper',
                 location: '',
@@ -326,8 +328,16 @@ describe('AssistantEditorSections', () => {
                 is_auto_inject: false,
                 source: 'custom',
               },
+              {
+                name: 'name-only-local-skill',
+                description: 'Legacy local skill without a stable ID',
+                location: '',
+                is_custom: true,
+                is_auto_inject: false,
+                source: 'custom',
+              },
             ],
-            selectedSkills: ['spreadsheet-helper'],
+            selectedSkills: [],
             setSelectedSkills,
             pendingSkills: [],
             setDeletePendingSkillName: vi.fn(),
@@ -366,6 +376,11 @@ describe('AssistantEditorSections', () => {
     );
     expect(screen.getByTestId('managed-mcp-violations')).toHaveTextContent('local-files-readonly');
     expect(screen.queryByTestId('managed-skill-violations')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('select-assistant-managed-skill-extensions'));
+    expect(screen.queryByText('name-only-local-skill')).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByTestId('managed-skill-option-skill-spreadsheet-helper'));
+    expect(setSelectedSkills).toHaveBeenCalledWith(['skill-spreadsheet-helper']);
   });
 
   it('renders auto defaults consistently for model, permission, skills, and MCP', () => {

@@ -141,7 +141,7 @@ describe('useAssistantEditor', () => {
     user_extensions: { mode: 'additive', allow_skills: true, allow_mcps: true },
     extensions: {
       revision: 'extension-r0',
-      skill_ids: ['existing-helper'],
+      skill_ids: ['skill-existing-helper'],
       mcp_ids: [],
       status: 'active',
       violations: [],
@@ -194,7 +194,7 @@ describe('useAssistantEditor', () => {
       assignment_id: metadata.assignment_id,
       template_version: metadata.template_version,
       revision: 'extension-r1',
-      skills: ['existing-helper', 'spreadsheet-helper'],
+      skills: ['skill-existing-helper', 'skill-spreadsheet-helper'],
       mcps: ['local-files-readonly'],
     });
 
@@ -202,11 +202,11 @@ describe('useAssistantEditor', () => {
       useAssistantEditor({ ...defaultParams, activeAssistant: assistant, assistants: [assistant] })
     );
     await act(async () => result.current.handleEdit(assistant));
-    expect(result.current.selectedSkills).toEqual(['existing-helper']);
+    expect(result.current.selectedSkills).toEqual(['skill-existing-helper']);
     expect(result.current.managedMetadata).toEqual(metadata);
 
     act(() => {
-      result.current.setSelectedSkills(['existing-helper', 'spreadsheet-helper']);
+      result.current.setSelectedSkills(['skill-existing-helper', 'skill-spreadsheet-helper']);
       result.current.setSelectedMcpIds(['local-files-readonly']);
     });
     await act(async () => result.current.handleSave());
@@ -217,7 +217,7 @@ describe('useAssistantEditor', () => {
       template_version: metadata.template_version,
       expected_revision: metadata.catalog_revision,
       idempotency_key: expect.any(String),
-      skills: ['existing-helper', 'spreadsheet-helper'],
+      skills: ['skill-existing-helper', 'skill-spreadsheet-helper'],
       mcps: ['local-files-readonly'],
     });
     expect(ipcBridge.assistants.update.invoke).not.toHaveBeenCalled();

@@ -1,4 +1,4 @@
-import { InteractionRequestActions } from '@/common/adapter/interactionRequest';
+import { InteractionRequestActions } from '@/common/adapter/interaction-request';
 import { describe, expect, it, vi } from 'vitest';
 
 const accepted = {

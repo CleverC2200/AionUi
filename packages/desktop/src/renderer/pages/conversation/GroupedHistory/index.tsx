@@ -707,7 +707,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                             unmountOnExit={false}
                           >
                             <span
-                              aria-label='Project actions'
+                              aria-label={t('conversation.history.projectActions', { name: group.displayName })}
                               className={classNames(
                                 'flex-center cursor-pointer transition-colors text-t-secondary hover:text-t-primary size-20px rd-4px sider-action-btn',
                                 isMobile ? 'flex' : 'hidden group-hover:flex'

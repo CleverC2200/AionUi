@@ -223,7 +223,11 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     }
   }, [loadSkillsProjection]);
 
-  const { syncing: geaSyncing, syncFromGea } = useGeaResourceSync({
+  const {
+    available: geaAvailable,
+    syncing: geaSyncing,
+    syncFromGea,
+  } = useGeaResourceSync({
     message: Message,
     refresh: refreshSkillsProjection,
     resource: 'skills',
@@ -1043,13 +1047,19 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
               }
               loading={geaSyncing}
               chatLabel={t('settings.talkToButler.addViaChat', { defaultValue: 'Add via chat' })}
-              extraActions={[
-                {
-                  key: 'gea',
-                  label: geaSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea'),
-                  onClick: () => void syncFromGea(),
-                },
-              ]}
+              extraActions={
+                geaAvailable
+                  ? [
+                      {
+                        key: 'gea',
+                        label: geaSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea'),
+                        onClick: (): void => {
+                          void syncFromGea();
+                        },
+                      },
+                    ]
+                  : []
+              }
               onManual={handleManualImport}
               manualLabel={t('settings.skillsHub.manualImport', { defaultValue: 'Import Skills' })}
               prompt={t('settings.talkToButler.prompt.addSkill', {

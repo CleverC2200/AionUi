@@ -234,27 +234,33 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
   const editableSkillOptions = useMemo(() => {
     const optionMap = new Map<string, { value: string; label: string; isAuto?: boolean; disabled?: boolean }>();
 
-    pendingSkills.forEach((skill) => {
-      optionMap.set(skill.name, { value: skill.name, label: skill.name });
-    });
+    if (!isManaged) {
+      pendingSkills.forEach((skill) => {
+        optionMap.set(skill.name, { value: skill.name, label: skill.name });
+      });
+    }
 
     availableSkills.forEach((skill) => {
-      optionMap.set(skill.name, {
-        value: skill.name,
+      const value = isManaged ? skill.skill_id : skill.name;
+      if (!value) return;
+      optionMap.set(value, {
+        value,
         label: skill.name,
       });
     });
 
-    builtinAutoSkills.forEach((skill) => {
-      optionMap.set(skill.name, {
-        value: skill.name,
-        label: skill.name,
-        isAuto: true,
+    if (!isManaged) {
+      builtinAutoSkills.forEach((skill) => {
+        optionMap.set(skill.name, {
+          value: skill.name,
+          label: skill.name,
+          isAuto: true,
+        });
       });
-    });
+    }
 
     return Array.from(optionMap.values());
-  }, [availableSkills, builtinAutoSkills, pendingSkills, t]);
+  }, [availableSkills, builtinAutoSkills, isManaged, pendingSkills]);
   const selectedSkillValues = useMemo(
     () =>
       isManaged

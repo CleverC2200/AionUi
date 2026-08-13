@@ -1,5 +1,5 @@
 import { ipcBridge } from '@/common';
-import { InteractionRequestActions } from '@/common/adapter/interactionRequest';
+import { InteractionRequestActions } from '@/common/adapter/interaction-request';
 import type { InteractionRequestReceipt } from '@/common/types/interactionRequest';
 
 export const interactionRequestActions = new InteractionRequestActions({

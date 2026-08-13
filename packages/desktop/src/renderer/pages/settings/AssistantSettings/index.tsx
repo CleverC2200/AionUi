@@ -73,6 +73,7 @@ const AssistantSettings: React.FC = () => {
   } = useAssistantList();
   const managedAgentRuntimeCatalog = useManagedAgentRuntimeCatalog();
   const { syncing: catalogSyncing, syncFromGea } = useGeaResourceSync({
+    available: catalogView?.mode === 'managed',
     message,
     refresh: loadAssistants,
     resource: 'assistants',

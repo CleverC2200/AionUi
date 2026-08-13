@@ -1,4 +1,4 @@
-import { ConversationRecords } from '@/common/adapter/conversationRecords';
+import { ConversationRecords } from '@/common/adapter/conversation-records';
 import { conversationRecordSnapshot } from '../../fixtures/conversationRecords';
 import { describe, expect, it } from 'vitest';
 

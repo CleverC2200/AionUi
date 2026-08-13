@@ -99,7 +99,7 @@ const ManagedCapabilityEditor: React.FC<ManagedCapabilityEditorProps> = ({
           data-testid={`select-assistant-managed-${kind}-extensions`}
         >
           {extensionOptions.map((option) => (
-            <Select.Option key={option.id} value={option.id}>
+            <Select.Option key={option.id} value={option.id} data-testid={`managed-${kind}-option-${option.id}`}>
               {option.label}
             </Select.Option>
           ))}

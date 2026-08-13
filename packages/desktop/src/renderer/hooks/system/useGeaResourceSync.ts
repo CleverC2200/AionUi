@@ -1,23 +1,57 @@
 import { ipcBridge } from '@/common';
 import { isBackendHttpError } from '@/common/adapter/httpBridge';
 import type { GeaClientResourceKind } from '@/common/adapter/ipcBridge';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type MessageInstance = ReturnType<typeof import('@arco-design/web-react').Message.useMessage>[0];
 
 type UseGeaResourceSyncOptions = {
+  available?: boolean;
   message: Pick<MessageInstance, 'error' | 'info' | 'success' | 'warning'>;
   refresh: () => Promise<boolean>;
   resource: GeaClientResourceKind;
 };
 
-export const useGeaResourceSync = ({ message, refresh, resource }: UseGeaResourceSyncOptions) => {
+export const useGeaResourceSync = ({
+  available: availableOverride,
+  message,
+  refresh,
+  resource,
+}: UseGeaResourceSyncOptions) => {
   const { t } = useTranslation();
+  const [detectedAvailable, setDetectedAvailable] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const syncingRef = useRef(false);
+  const available = availableOverride ?? detectedAvailable;
+
+  useEffect(() => {
+    if (availableOverride !== undefined) return;
+
+    let active = true;
+    void ipcBridge.assistants.catalog.invoke().then(
+      (catalog) => {
+        if (!active) return;
+        const managed = Array.isArray(catalog)
+          ? catalog.some((assistant) => assistant.source === 'managed')
+          : catalog.mode === 'managed';
+        setDetectedAvailable(managed);
+      },
+      () => {
+        if (active) setDetectedAvailable(false);
+      }
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [availableOverride]);
 
   const syncFromGea = useCallback(async () => {
+    if (!available) {
+      message.warning(t('settings.geaResourceUnavailable'));
+      return;
+    }
     if (syncingRef.current) return;
     syncingRef.current = true;
     setSyncing(true);
@@ -46,13 +80,17 @@ export const useGeaResourceSync = ({ message, refresh, resource }: UseGeaResourc
         message.info(t('settings.geaResourceNoChanges'));
       }
     } catch (error) {
-      const unsupportedRoute = isBackendHttpError(error) && error.status === 404 && error.code === 'NOT_FOUND';
+      const unsupportedRoute =
+        isBackendHttpError(error) &&
+        error.status === 404 &&
+        error.code === 'NOT_FOUND' &&
+        error.backendMessage === 'Route not found.';
       message.error(unsupportedRoute ? t('settings.geaResourceUnavailable') : t('settings.geaResourceFetchFailed'));
     } finally {
       syncingRef.current = false;
       setSyncing(false);
     }
-  }, [message, refresh, resource, t]);
+  }, [available, message, refresh, resource, t]);
 
-  return { syncing, syncFromGea };
+  return { available, syncing, syncFromGea };
 };

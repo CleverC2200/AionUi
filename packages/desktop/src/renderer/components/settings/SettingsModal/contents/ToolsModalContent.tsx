@@ -142,7 +142,11 @@ const ModalMcpManagementSection: React.FC<{
   );
 
   const [importMode, setImportMode] = useState<'json' | 'oneclick'>('json');
-  const { syncing: geaSyncing, syncFromGea } = useGeaResourceSync({
+  const {
+    available: geaAvailable,
+    syncing: geaSyncing,
+    syncFromGea,
+  } = useGeaResourceSync({
     message,
     refresh: refreshMcpServers,
     resource: 'mcps',
@@ -174,11 +178,17 @@ const ModalMcpManagementSection: React.FC<{
         chatLabel={t('settings.talkToButler.addViaChat', { defaultValue: 'Add via chat' })}
         prompt={t('settings.talkToButler.prompt.addMcp', { defaultValue: 'Help me set up an MCP server.' })}
         extraActions={[
-          {
-            key: 'gea',
-            label: geaSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea'),
-            onClick: () => void syncFromGea(),
-          },
+          ...(geaAvailable
+            ? [
+                {
+                  key: 'gea',
+                  label: geaSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea'),
+                  onClick: (): void => {
+                    void syncFromGea();
+                  },
+                },
+              ]
+            : []),
           {
             key: 'json',
             label: t('settings.mcpImportFromJSON'),

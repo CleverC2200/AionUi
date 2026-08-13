@@ -141,13 +141,21 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
                   }
                   loading={catalogSyncing}
                   chatLabel={t('settings.talkToButler.createViaChat', { defaultValue: 'Create via chat' })}
-                  extraActions={[
-                    {
-                      key: 'gea',
-                      label: catalogSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea'),
-                      onClick: () => void onSyncFromGea(),
-                    },
-                  ]}
+                  extraActions={
+                    managedMode
+                      ? [
+                          {
+                            key: 'gea',
+                            label: catalogSyncing
+                              ? t('settings.geaResourceFetching')
+                              : t('settings.geaResourceFetchFromGea'),
+                            onClick: (): void => {
+                              void onSyncFromGea();
+                            },
+                          },
+                        ]
+                      : []
+                  }
                   onManual={onCreate}
                   manualLabel={t('settings.talkToButler.createManually', { defaultValue: 'Create manually' })}
                   prompt={t('settings.talkToButler.prompt.createAssistant', {
