@@ -1091,7 +1091,24 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
         'team-member-conversation',
         { timeout: 15_000 }
       );
-      await page.getByTestId('attention-inbox-trigger').click();
+      const attentionTrigger = page.getByTestId('attention-inbox-trigger');
+      const attentionCount = page.getByTestId('attention-inbox-count');
+      await expect(attentionCount).toBeVisible();
+      await expect
+        .poll(async () => {
+          const [triggerBox, countBox] = await Promise.all([
+            attentionTrigger.boundingBox(),
+            attentionCount.boundingBox(),
+          ]);
+          return Boolean(
+            triggerBox &&
+            countBox &&
+            countBox.y >= triggerBox.y &&
+            countBox.y + countBox.height <= triggerBox.y + triggerBox.height
+          );
+        })
+        .toBe(true);
+      await attentionTrigger.click();
       const attentionDrawer = page.getByTestId('attention-inbox-drawer');
       await expect(attentionDrawer).toBeVisible();
       const attentionPanel = attentionDrawer.locator('.arco-drawer');

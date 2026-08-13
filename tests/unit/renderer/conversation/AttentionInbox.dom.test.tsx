@@ -72,6 +72,7 @@ describe('AttentionInbox', () => {
 
     const trigger = await screen.findByTestId('attention-inbox-trigger');
     expect(trigger).toHaveAttribute('aria-label', 'conversation.attention.open:1');
+    expect(trigger).toContainElement(screen.getByTestId('attention-inbox-count'));
     fireEvent.click(trigger);
     fireEvent.click(await screen.findByTestId('attention-request-request-1'));
 

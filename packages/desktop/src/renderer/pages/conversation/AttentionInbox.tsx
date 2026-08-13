@@ -65,20 +65,21 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
   return (
     <>
       <div className='px-4px pb-6px'>
-        <Badge count={items.length} maxCount={99} dotStyle={{ boxShadow: '0 0 0 2px var(--bg-2)' }}>
-          <Button
-            ref={triggerRef}
-            long
-            type='text'
-            className='!h-34px !px-10px !justify-start !text-t-primary hover:!bg-fill-2'
-            icon={<Attention theme='outline' size='17' />}
-            onClick={() => setVisible(true)}
-            aria-label={t('conversation.attention.open', { count: items.length })}
-            data-testid='attention-inbox-trigger'
-          >
-            <span className='flex-1 text-left'>{t('conversation.attention.title')}</span>
-          </Button>
-        </Badge>
+        <Button
+          ref={triggerRef}
+          long
+          type='text'
+          className='!h-34px !px-10px !justify-start !text-t-primary hover:!bg-fill-2'
+          icon={<Attention theme='outline' size='17' />}
+          onClick={() => setVisible(true)}
+          aria-label={t('conversation.attention.open', { count: items.length })}
+          data-testid='attention-inbox-trigger'
+        >
+          <span className='flex-1 text-left'>{t('conversation.attention.title')}</span>
+          {items.length > 0 ? (
+            <Badge count={items.length} maxCount={99} className='shrink-0' data-testid='attention-inbox-count' />
+          ) : null}
+        </Button>
       </div>
       <Drawer
         width='min(420px, 100vw)'
