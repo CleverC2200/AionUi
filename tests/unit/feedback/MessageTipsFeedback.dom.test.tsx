@@ -14,6 +14,10 @@ import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
+vi.mock('@/common/config/geaManagedServices', () => ({
+  GEA_REMOTE_SERVICE_POLICY: { autoUpdateEnabled: false, feedbackSubmissionEnabled: true },
+}));
+
 const enConversation = JSON.parse(
   readFileSync(
     path.join(process.cwd(), 'packages/desktop/src/renderer/services/i18n/locales/en-US/conversation.json'),

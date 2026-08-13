@@ -8,6 +8,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 
+vi.mock('@/common/config/geaManagedServices', () => ({
+  GEA_REMOTE_SERVICE_POLICY: { autoUpdateEnabled: false, feedbackSubmissionEnabled: true },
+}));
+
 // Representative English copy for the keys under test so the forbidden-phrase
 // assertions are meaningful; every other key echoes so it stays assertable.
 const COPY: Record<string, string> = {

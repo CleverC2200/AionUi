@@ -1,14 +1,11 @@
 /**
- * Feedback button scenarios — walks each place in the product where the
- * "一键反馈" pill appears, verifies the pill shows up, clicks it, and
- * confirms the feedback modal opens with the correct module preselected.
+ * Feedback-disabled scenarios — verifies error surfaces remain usable without
+ * exposing the upstream feedback channel.
  *
  * Covered scenarios:
- *   1. About → Bug Report (no module)
- *   3. MCP server connection error → mcp-tools
- *   4. System settings dir-change cancel → system-settings
- *   5. Agent test connection (CLI not found) → alert has NO feedback pill
- *   6. Agent test connection (CLI exists, ACP fails) → alert has NO feedback pill
+ *   1. About keeps only the GEA reservation marker
+ *   2. Agent test connection (CLI not found) → alert has NO feedback pill
+ *   3. Agent test connection (CLI exists, ACP fails) → alert has NO feedback pill
  *      (the pill was removed from InlineAgentEditor in #3448; the unit test
  *      feedbackMountPoints.test.ts asserts the same at source level)
  *
@@ -22,25 +19,6 @@ import { goToSettings } from '../helpers';
 
 // Label comes from i18n key settings.oneClickFeedback.
 const FEEDBACK_PILL = 'button:has-text("反馈问题"), button:has-text("Report Issue")';
-// The app can hold several FeedbackReportModal instances (FeedbackProvider's
-// plus per-page ones like About's), and Arco keeps closed modals mounted but
-// hidden — so always scope to the *visible* body, not the first in the DOM.
-const MODAL_BODY = '[data-testid="feedback-report-scroll-body"]';
-const VISIBLE_MODAL_BODY = `${MODAL_BODY}:visible`;
-
-/** Close the feedback modal (AionModal sets closable=false so Escape is a no-op). */
-async function closeFeedbackModal(page: Page) {
-  // The feedback modal is an AionModal (standard variant); its header close
-  // button carries aria-label='Close'. Scope to the modal that owns the
-  // visible feedback scroll body so we never match another (hidden) instance.
-  await page
-    .locator('.arco-modal-wrapper', { has: page.locator(VISIBLE_MODAL_BODY) })
-    .locator('button[aria-label="Close"]')
-    .first()
-    .click();
-  await expect(page.locator(VISIBLE_MODAL_BODY)).toHaveCount(0, { timeout: 5_000 });
-}
-
 /** Close any open AionModal (e.g. the Agent editor) so the next test starts clean. */
 async function closeAgentEditor(page: Page) {
   const closeBtn = page.locator('.arco-modal button[aria-label="Close"]').first();
@@ -63,22 +41,11 @@ test.beforeEach(async ({ page }) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Scenario 1: About → Bug Report
-// ─────────────────────────────────────────────────────────────────────────────
-
-test('[1] About → Bug Report entry opens feedback modal', async ({ page }) => {
+test('[1] About keeps the GEA placeholder without feedback entry', async ({ page }) => {
   await goToSettings(page, 'about');
-
-  const bugReportRow = page
-    .locator('div')
-    .filter({ hasText: /^Report Issue$|^反馈问题$|^問題を報告$|^문제 보고$/ })
-    .first();
-  await expect(bugReportRow).toBeVisible({ timeout: 10_000 });
-  await bugReportRow.click();
-
-  await expect(page.locator(VISIBLE_MODAL_BODY).first()).toBeVisible({ timeout: 5_000 });
-  await closeFeedbackModal(page);
+  await expect(page.locator('[data-testid="gea-remote-services-placeholder"]')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator(FEEDBACK_PILL)).toHaveCount(0);
+  await expect(page.locator('[data-testid="feedback-report-scroll-body"]:visible')).toHaveCount(0);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -140,7 +107,7 @@ async function openCustomAgentEditor(page: Page, command: string) {
 // Scenario 5: Agent test connection — fail_cli → agent-detection
 // ─────────────────────────────────────────────────────────────────────────────
 
-test('[5] Agent fail_cli alert shows without feedback pill', async ({ page }) => {
+test('[2] Agent fail_cli alert shows without feedback pill', async ({ page }) => {
   await openCustomAgentEditor(page, 'aionui-e2e-missing-binary-xyz');
 
   // Expect the fail_cli alert to appear — without the feedback pill, which
@@ -157,7 +124,7 @@ test('[5] Agent fail_cli alert shows without feedback pill', async ({ page }) =>
 // Scenario 6: Agent test connection — fail_acp → agent-detection
 // ─────────────────────────────────────────────────────────────────────────────
 
-test('[6] Agent fail_acp warning shows without feedback pill', async ({ page }) => {
+test('[3] Agent fail_acp warning shows without feedback pill', async ({ page }) => {
   await openCustomAgentEditor(page, '/bin/echo');
 
   // Expect the fail_acp warning alert (warning, not error) — also without

@@ -26,12 +26,6 @@ vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
 vi.mock('@/renderer/hooks/context/NavigationHistoryContext', () => ({
   useNavigationHistory: () => null,
 }));
-vi.mock('@/renderer/hooks/context/FeedbackContext', () => ({
-  useFeedback: () => ({ openFeedback: vi.fn() }),
-}));
-vi.mock('@/renderer/services/feedback/resolveFeedbackModule', () => ({
-  resolveFeedbackModule: () => 'conversation-session',
-}));
 vi.mock('@/renderer/utils/platform', () => ({
   isElectronDesktop: () => platform.desktop,
   isMacOS: () => platform.mac,
@@ -46,28 +40,27 @@ describe('Titlebar workspace toggle', () => {
     platform.mac = false;
   });
 
-  it('places the Windows workspace toggle directly after Bug Report', () => {
+  it('omits feedback and places Windows controls after the workspace toggle', () => {
     render(<Titlebar workspaceAvailable />);
 
-    const report = screen.getByRole('button', { name: 'conversation.welcome.quickActionFeedback' });
     const workspace = screen.getByRole('button', { name: 'common.expandMore' });
 
-    expect(report.nextElementSibling).toBe(workspace);
+    expect(screen.queryByRole('button', { name: 'conversation.welcome.quickActionFeedback' })).not.toBeInTheDocument();
     expect(workspace.nextElementSibling).toBe(screen.getByTestId('window-controls'));
   });
 
   it.each([
     { runtime: 'macOS desktop', desktop: true, mac: true },
     { runtime: 'WebUI', desktop: false, mac: false },
-  ])('keeps the workspace toggle after Bug Report on $runtime', ({ desktop, mac }) => {
+  ])('keeps only the workspace action on $runtime', ({ desktop, mac }) => {
     platform.desktop = desktop;
     platform.mac = mac;
     render(<Titlebar workspaceAvailable />);
 
-    const report = screen.getByRole('button', { name: 'conversation.welcome.quickActionFeedback' });
     const workspace = screen.getByRole('button', { name: 'common.expandMore' });
 
-    expect(report.nextElementSibling).toBe(workspace);
+    expect(screen.queryByRole('button', { name: 'conversation.welcome.quickActionFeedback' })).not.toBeInTheDocument();
+    expect(workspace).toBeInTheDocument();
     expect(screen.queryByTestId('window-controls')).not.toBeInTheDocument();
   });
 

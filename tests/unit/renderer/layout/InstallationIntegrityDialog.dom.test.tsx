@@ -9,6 +9,10 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/common/config/geaManagedServices', () => ({
+  GEA_REMOTE_SERVICE_POLICY: { autoUpdateEnabled: false, feedbackSubmissionEnabled: true },
+}));
+
 // Representative English copy for the keys under test. Every other key echoes so
 // unmapped lookups stay assertable.
 const RDC = 'common.backendStartup.recoverableDatabaseCorruption';

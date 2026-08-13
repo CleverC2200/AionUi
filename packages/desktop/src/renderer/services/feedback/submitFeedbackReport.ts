@@ -1,5 +1,6 @@
 import type { FeedbackDiagnosticsContextInput } from '@/common/types/feedbackDiagnostics';
 import { httpRequest } from '@/common/adapter/httpBridge';
+import { GEA_REMOTE_SERVICE_POLICY } from '@/common/config/geaManagedServices';
 
 const SUMMARY_PREVIEW_LENGTH = 60;
 const LOG_PREFIX = '[FeedbackReport]';
@@ -237,6 +238,13 @@ function buildSummary(moduleLabel: string, description: string): string {
 }
 
 export async function submitFeedbackReport(input: SubmitFeedbackReportInput): Promise<void> {
+  if (!GEA_REMOTE_SERVICE_POLICY.feedbackSubmissionEnabled) {
+    logFeedbackReport('warn', 'Submission blocked until a GEA-managed feedback service is configured', {
+      module: input.module,
+    });
+    throw new Error('GEA feedback service is not configured');
+  }
+
   const attachments = [...(input.attachments ?? [])];
   let eventId: string | undefined;
   let logAttachmentStatus: FeedbackLogAttachmentStatus = input.collectLogs ? 'empty' : 'skipped';

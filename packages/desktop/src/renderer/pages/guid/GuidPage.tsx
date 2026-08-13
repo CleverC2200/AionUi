@@ -14,14 +14,12 @@ import type { AssistantDetail } from '@/common/types/agent/assistantTypes';
 import { useInputFocusRing } from '@/renderer/hooks/chat/useInputFocusRing';
 import { appendPromptToDraft } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { getFuzzyMatchIndices, useSlashCommandController } from '@/renderer/hooks/chat/useSlashCommandController';
-import { openExternalUrl } from '@/renderer/utils/platform';
 import SlashCommandMenu, { type SlashCommandMenuItem } from '@/renderer/components/chat/SlashCommandMenu';
 import AssistantSelectionArea from './components/AssistantSelectionArea';
 import GuidActionRow from './components/GuidActionRow';
 import GuidInputCard from './components/GuidInputCard';
 import GuidModelSelector from './components/GuidModelSelector';
 import QuickActionButtons from './components/QuickActionButtons';
-import FeedbackReportModal from '@/renderer/components/settings/SettingsModal/contents/FeedbackReportModal';
 import { useGuidAssistantSelection } from './hooks/useGuidAssistantSelection';
 import { useGuidInput } from './hooks/useGuidInput';
 import { useGuidModelSelection } from './hooks/useGuidModelSelection';
@@ -83,16 +81,6 @@ const GuidPage: React.FC = () => {
   const { activeBorderColor, inactiveBorderColor, activeShadow } = useInputFocusRing();
 
   const localeKey = resolveLocaleKey(i18n.language);
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-
-  // Open external link
-  const openLink = useCallback(async (url: string) => {
-    try {
-      await openExternalUrl(url);
-    } catch (error) {
-      console.error('Failed to open external link:', error);
-    }
-  }, []);
 
   // --- Skills state ---
   // Skill metadata comes from the database-backed catalog. Built-in auto-inject
@@ -778,13 +766,14 @@ const GuidPage: React.FC = () => {
                   </Button>
                 ) : null}
                 {send.preparationIssues[0]?.action === 'update_client' ? (
-                  <Button size='mini' onClick={() => navigate('/settings/about')}>
-                    {t('conversation.configurationPreparation.openUpdate', { defaultValue: 'Check for updates' })}
+                  <span className='text-12px text-t-tertiary'>
+                    GEA · {t('settings.channels.comingSoon', { defaultValue: 'Coming Soon' })}
+                  </span>
+                ) : (
+                  <Button size='mini' type='primary' onClick={send.sendMessageHandler}>
+                    {t('common.retry', { defaultValue: 'Retry' })}
                   </Button>
-                ) : null}
-                <Button size='mini' type='primary' onClick={send.sendMessageHandler}>
-                  {t('common.retry', { defaultValue: 'Retry' })}
-                </Button>
+                )}
               </div>
             </div>
           ) : null}
@@ -818,13 +807,7 @@ const GuidPage: React.FC = () => {
           ) : null}
         </div>
 
-        <QuickActionButtons
-          onOpenLink={openLink}
-          onOpenBugReport={() => setShowFeedbackModal(true)}
-          inactiveBorderColor={inactiveBorderColor}
-          activeShadow={activeShadow}
-        />
-        <FeedbackReportModal visible={showFeedbackModal} onCancel={() => setShowFeedbackModal(false)} />
+        <QuickActionButtons inactiveBorderColor={inactiveBorderColor} activeShadow={activeShadow} />
       </div>
     </ConfigProvider>
   );
