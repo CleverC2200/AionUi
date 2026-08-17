@@ -107,7 +107,7 @@ afterEach(() => {
 });
 
 describe('prepare-aioncore GitHub Actions artifact resolver', () => {
-  it('writes the gh api response when curl cannot download an artifact', () => {
+  posixFakeToolchainIt('writes the gh api response when curl cannot download an artifact', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-download-'));
     const fakeBin = createFakeToolchain(tmp, { curlFails: true });
     const previousPath = process.env.PATH;
