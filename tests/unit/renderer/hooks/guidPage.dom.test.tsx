@@ -602,7 +602,38 @@ describe('GuidPage', () => {
 
     await vi.waitFor(() => {
       expect(capturedGuidSendDeps.at(-1)?.selectedMcpServerIds).toEqual(['gea-gateway']);
-      expect(capturedGuidActionRowProps.at(-1)?.mcpServers).toEqual([expect.objectContaining({ id: 'legacy-gea' })]);
+      expect(capturedGuidSendDeps.at(-1)?.assistantDefaultMcpIds).toEqual(['gea-gateway']);
+      expect(capturedGuidActionRowProps.at(-1)?.mcpServers).toEqual([]);
+      expect(capturedGuidActionRowProps.at(-1)?.selectedMcpServerIds).toEqual([]);
+    });
+  });
+
+  it('drops unavailable and legacy GEA defaults when the managed gateway is unavailable', async () => {
+    ensureBackendMcpCatalogMock.mockResolvedValue({
+      allServers: [
+        {
+          id: 'legacy-gea',
+          name: 'gea',
+          builtin: false,
+          enabled: true,
+          transport: {
+            type: 'sse',
+            url: 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse',
+          },
+        },
+      ],
+    });
+    swrMock.useSWRMock.mockReturnValue({ data: assistantDetailFixture });
+    resolveGuidAssistantDefaultsMock.mockReturnValue({
+      disabledBuiltinSkillIds: [],
+      skillIds: [],
+      mcpIds: ['legacy-gea', 'missing-mcp'],
+    });
+
+    render(<GuidPage />);
+
+    await vi.waitFor(() => {
+      expect(capturedGuidSendDeps.at(-1)?.selectedMcpServerIds).toEqual([]);
       expect(capturedGuidActionRowProps.at(-1)?.selectedMcpServerIds).toEqual([]);
     });
   });

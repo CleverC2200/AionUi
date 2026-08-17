@@ -54,22 +54,18 @@ type GuidNavigationState = {
 const LEGACY_GEA_MCP_NAME = 'gea';
 const LEGACY_GEA_MCP_URL = 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse';
 
+const isLegacyGeaMcpServer = (server: IMcpServer): boolean =>
+  server.name === LEGACY_GEA_MCP_NAME &&
+  server.transport.type === 'sse' &&
+  server.transport.url.replace(/\/+$/, '') === LEGACY_GEA_MCP_URL;
+
 const resolveGuidMcpDefaults = (mcpIds: string[], servers: IMcpServer[]): string[] => {
+  const availableIds = new Set(servers.map((server) => server.id));
   const gateway = servers.find((server) => server.builtin === true && server.name === INTERNAL_GEA_MCP_NAME);
-  if (!gateway) return mcpIds;
+  const legacyIds = new Set(servers.filter(isLegacyGeaMcpServer).map((server) => server.id));
+  const validMcpIds = mcpIds.filter((id) => availableIds.has(id) && !legacyIds.has(id));
 
-  const legacyIds = new Set(
-    servers
-      .filter(
-        (server) =>
-          server.name === LEGACY_GEA_MCP_NAME &&
-          server.transport.type === 'sse' &&
-          server.transport.url.replace(/\/+$/, '') === LEGACY_GEA_MCP_URL
-      )
-      .map((server) => server.id)
-  );
-
-  return [...new Set([...mcpIds.filter((id) => !legacyIds.has(id)), gateway.id])];
+  return [...new Set(gateway ? [...validMcpIds, gateway.id] : validMcpIds)];
 };
 
 const GuidPage: React.FC = () => {
@@ -185,7 +181,10 @@ const GuidPage: React.FC = () => {
     () => resolveGuidMcpDefaults(resolvedAssistantDefaults.mcpIds, availableMcpServers),
     [availableMcpServers, resolvedAssistantDefaults.mcpIds]
   );
-  const selectableMcpServers = useMemo(() => visibleMcpServers(availableMcpServers), [availableMcpServers]);
+  const selectableMcpServers = useMemo(
+    () => visibleMcpServers(availableMcpServers).filter((server) => !isLegacyGeaMcpServer(server)),
+    [availableMcpServers]
+  );
   const selectableMcpServerIds = useMemo(
     () => new Set(selectableMcpServers.map((server) => server.id)),
     [selectableMcpServers]
@@ -294,7 +293,7 @@ const GuidPage: React.FC = () => {
     assistantDefaultDisabledBuiltinSkillIds: resolvedAssistantDefaults.disabledBuiltinSkillIds,
     availableMcpServers,
     selectedMcpServerIds: guidSelectedMcpServerIds,
-    assistantDefaultMcpIds: resolvedAssistantDefaults.mcpIds,
+    assistantDefaultMcpIds: resolvedMcpDefaults,
     isGoogleAuth: modelSelection.isGoogleAuth,
 
     // Mention state reset
