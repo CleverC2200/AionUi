@@ -23,6 +23,7 @@ const { verifyBundledAioncoreResources } = require('./verify-bundled-aioncore-re
 
 const GITHUB_OWNER = 'iOfficeAI';
 const GITHUB_REPO = 'AionCore';
+const DEFAULT_ACTIONS_REPOSITORY = `${GITHUB_OWNER}/${GITHUB_REPO}`;
 
 const ACTIONS_ARTIFACT_TARGETS = {
   'darwin-arm64': {
@@ -96,6 +97,14 @@ function getActionsTarget(platform, arch) {
 
 function getActionsArtifactName(platform, arch) {
   return getActionsTarget(platform, arch)?.artifactName || null;
+}
+
+function getActionsRepository() {
+  const repository = (process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY || DEFAULT_ACTIONS_REPOSITORY).trim();
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
+    throw new Error(`Invalid AionCore Actions repository: ${repository}`);
+  }
+  return repository;
 }
 
 function getActionsManualPlatform(platform, arch) {
@@ -332,10 +341,8 @@ function downloadFileWithAuth(url, outputPath) {
   });
 }
 
-function listActionsArtifacts(runId) {
-  const response = githubApiGetJson(
-    `repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/runs/${runId}/artifacts?per_page=100`
-  );
+function listActionsArtifacts(runId, repository) {
+  const response = githubApiGetJson(`repos/${repository}/actions/runs/${runId}/artifacts?per_page=100`);
   return Array.isArray(response?.artifacts) ? response.artifacts : [];
 }
 
@@ -345,7 +352,8 @@ function downloadAndExtractActionsArtifact(platform, arch, runId) {
     throw new Error(`Unsupported AionCore Actions artifact target: ${platform}-${arch}`);
   }
 
-  const artifacts = listActionsArtifacts(runId);
+  const repository = getActionsRepository();
+  const artifacts = listActionsArtifacts(runId, repository);
   const availableArtifactNames = artifacts
     .map((artifact) => artifact.name)
     .filter(Boolean)
@@ -372,8 +380,7 @@ function downloadAndExtractActionsArtifact(platform, arch, runId) {
   ensureDirectory(tempDir);
 
   const downloadUrl =
-    artifact.archive_download_url ||
-    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/artifacts/${artifact.id}/zip`;
+    artifact.archive_download_url || `https://api.github.com/repos/${repository}/actions/artifacts/${artifact.id}/zip`;
   console.log(`  Downloading aioncore from AionCore run ${runId} artifact ${expectedArtifactName}`);
   downloadFileWithAuth(downloadUrl, artifactZipPath);
   extractArchive(artifactZipPath, artifactExtractDir, platform);
@@ -395,6 +402,7 @@ function downloadAndExtractActionsArtifact(platform, arch, runId) {
     binaryPath,
     tempDir,
     artifactName: expectedArtifactName,
+    repository,
     archivePath,
     url: downloadUrl,
   };
@@ -514,6 +522,7 @@ function prepareAioncore(options) {
     sourceType = 'actions-artifact';
     sourceDetail = {
       runId: actionsRunId,
+      repository: result.repository,
       artifactName: result.artifactName,
       url: result.url,
     };
@@ -586,6 +595,7 @@ function prepareAioncore(options) {
 module.exports = {
   getActionsArtifactMissingMessage,
   getActionsArtifactName,
+  getActionsRepository,
   prepareAioncore,
   verifyPreparedAioncoreBundle,
 };

@@ -27,6 +27,10 @@ on:
         description: 'Optional AionCore Manual Build workflow run id to bundle instead of the pinned release'
         type: string
         default: ''
+      aioncore_repository:
+        description: 'Repository that owns the optional AionCore workflow run'
+        type: string
+        default: 'iOfficeAI/AionCore'
 
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
@@ -369,6 +373,7 @@ jobs:
           # Version is pinned in repo-root package.json (aioncoreVersion).
           # Set AIONUI_BACKEND_VERSION here only to override for ad-hoc builds.
           AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          AIONUI_BACKEND_ACTIONS_REPOSITORY: ${{ inputs.aioncore_repository }}
           AIONUI_BACKEND_ARCH: ${{ matrix.arch }}
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -400,6 +405,7 @@ jobs:
         env:
           WINDOWS_BUILD_COMMAND: ${{ matrix.command }}
           AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          AIONUI_BACKEND_ACTIONS_REPOSITORY: ${{ inputs.aioncore_repository }}
           # Node.js memory limit for vite bundling (prevents OOM during build)
           # Node.js 内存限制，防止 vite 打包时内存不足
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -503,6 +509,7 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          AIONUI_BACKEND_ACTIONS_REPOSITORY: ${{ inputs.aioncore_repository }}
           npm_config_arch: ${{ matrix.arch }}
           APP_ID: ${{ secrets.APP_ID }}
           appleId: ${{ secrets.APPLE_ID }}
@@ -541,6 +548,7 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          AIONUI_BACKEND_ACTIONS_REPOSITORY: ${{ inputs.aioncore_repository }}
           npm_config_arch: ${{ matrix.arch }}
           npm_config_cache: ${{ runner.temp }}/.npm
           ELECTRON_CACHE: ${{ runner.temp }}/.cache/electron

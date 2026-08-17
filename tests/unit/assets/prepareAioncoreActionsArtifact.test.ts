@@ -6,6 +6,7 @@ import { delimiter, dirname, join } from 'node:path';
 const {
   getActionsArtifactName,
   getActionsArtifactMissingMessage,
+  getActionsRepository,
   prepareAioncore,
 } = require('../../../packages/shared-scripts/src/prepare-aioncore');
 
@@ -98,12 +99,25 @@ chmod +x "$out/aioncore"
 
 afterEach(() => {
   delete process.env.AIONUI_BACKEND_RUN_ID;
+  delete process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY;
   delete process.env.AIONUI_BACKEND_LOCAL_BINARY;
   rmSync(join(tmpdir(), 'aioncore-prepare', 'v0.1.46'), { recursive: true, force: true });
   rmSync(join(tmpdir(), 'aioncore-prepare-actions', '123'), { recursive: true, force: true });
 });
 
 describe('prepare-aioncore GitHub Actions artifact resolver', () => {
+  it('uses the official repository by default and accepts an explicit workflow repository', () => {
+    expect(getActionsRepository()).toBe('iOfficeAI/AionCore');
+
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    expect(getActionsRepository()).toBe('CleverC2200/AionCore');
+  });
+
+  it('rejects malformed workflow repositories', () => {
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'https://github.com/CleverC2200/AionCore';
+    expect(() => getActionsRepository()).toThrow(/Invalid AionCore Actions repository/);
+  });
+
   it.each([
     ['win32', 'x64', 'aioncore-manual-windows-x64'],
     ['win32', 'arm64', 'aioncore-manual-windows-arm64'],
