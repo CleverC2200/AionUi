@@ -474,7 +474,7 @@ describe('GuidPage', () => {
     );
   });
 
-  it('renders example prompts with wrapping text for long assistant suggestions', () => {
+  it('limits example prompt hit areas to their wrapping text', () => {
     agentSelectionMock.assistants = [
       {
         id: 'bare-aionrs',
@@ -519,6 +519,10 @@ describe('GuidPage', () => {
 
     expect(promptButton.className).toContain('!whitespace-normal');
     expect(promptButton.className).toContain('!break-words');
+    expect(promptButton.className).toContain('!w-fit');
+    expect(promptButton.className).toContain('!max-w-full');
+    expect(promptButton.className).toContain('self-start');
+    expect(promptButton.className).not.toContain('!w-full');
   });
 
   it('falls back to default instruction prompts when the selected assistant has no recommendations', () => {
