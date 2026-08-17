@@ -22,6 +22,7 @@ import {
   logoutSharedLarkAuthSession,
   pollSharedLarkAuthSession,
   resolveDesktopLarkAuthStatus,
+  syncSharedGeaSessionToBackend,
   syncSharedPersonalModels,
 } from '@process/services/LarkAuthService';
 import type { LarkAuthErrorCode, LarkAuthResult } from '@/common/types/platform/larkAuth';
@@ -126,7 +127,10 @@ export function initApplicationBridge(): void {
   );
   ipcBridge.larkAuth.syncPersonalModels.provider(() => withLarkAuthResult(syncSharedPersonalModels));
   ipcBridge.larkAuth.status.provider(() =>
-    withLarkAuthResult(() => resolveDesktopLarkAuthStatus(app.isPackaged, larkAuthService.getStatus()))
+    withLarkAuthResult(async () => {
+      await syncSharedGeaSessionToBackend().catch(() => false);
+      return resolveDesktopLarkAuthStatus(app.isPackaged, larkAuthService.getStatus());
+    })
   );
   ipcBridge.larkAuth.logout.provider(() =>
     withLarkAuthResult(async () => {

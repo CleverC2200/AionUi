@@ -14,6 +14,14 @@ type BackendMcpPayload = {
 
 const isBuiltinServer = (server: IMcpServer) => server.builtin === true;
 
+export const INTERNAL_GEA_MCP_NAME = 'gea-gateway';
+
+export const isInternalMcpServer = (server: Pick<IMcpServer, 'name' | 'builtin'>): boolean =>
+  server.builtin === true && server.name.trim().toLowerCase() === INTERNAL_GEA_MCP_NAME;
+
+export const visibleMcpServers = (servers: IMcpServer[]): IMcpServer[] =>
+  servers.filter((server) => !isInternalMcpServer(server));
+
 const normalizeServerName = (name: string) => name.trim().toLowerCase();
 
 const getCatalogServerKey = (server: Pick<IMcpServer, 'id' | 'name' | 'builtin'>) => {

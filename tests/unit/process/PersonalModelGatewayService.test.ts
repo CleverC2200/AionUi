@@ -141,6 +141,59 @@ describe('PersonalModelGatewayService', () => {
     });
   });
 
+  it('suspends enabled managed providers without changing user-disabled providers and restores them after login', async () => {
+    const vault = new MemoryVault();
+    const providerStore = new MemoryProviderStore();
+    providerStore.providers.push({
+      id: 'custom-provider',
+      platform: 'openai',
+      name: 'Custom',
+      base_url: 'https://example.test/v1',
+      api_key: 'custom-key',
+      models: ['custom-model'],
+      enabled: true,
+    });
+    const proxy: PersonalModelProxy = {
+      deactivate: vi.fn().mockResolvedValue(undefined),
+      register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
+    };
+    const service = new PersonalModelGatewayService(vault, providerStore, proxy);
+    const user = { id: 'user-1', username: 'zhangsan', realname: '张三' };
+    await service.sync(user, createAuthClient());
+    const managed = providerStore.providers.find((provider) => provider.id.startsWith('gea-personal-'))!;
+    providerStore.providers.push({
+      ...managed,
+      id: 'gea-personal-user-disabled',
+      enabled: false,
+    });
+
+    await service.deactivate();
+
+    expect(providerStore.providers.find((provider) => provider.id === managed.id)).toMatchObject({
+      enabled: false,
+      model_health: {
+        'deepseek-v4-flash': {
+          status: 'unhealthy',
+          error: 'GEA_PERSONAL_LOGIN_REQUIRED',
+        },
+      },
+    });
+    expect(providerStore.providers.find((provider) => provider.id === 'gea-personal-user-disabled')?.enabled).toBe(
+      false
+    );
+    expect(providerStore.providers.find((provider) => provider.id === 'custom-provider')?.enabled).toBe(true);
+
+    await service.sync(user, createAuthClient('ENABLED'));
+
+    expect(providerStore.providers.find((provider) => provider.id === managed.id)).toMatchObject({
+      enabled: true,
+      model_health: undefined,
+    });
+    expect(providerStore.providers.find((provider) => provider.id === 'gea-personal-user-disabled')?.enabled).toBe(
+      false
+    );
+  });
+
   it('reports an enabled credential with no local secret as a sync failure', async () => {
     const vault = new MemoryVault();
     const providerStore = new MemoryProviderStore();

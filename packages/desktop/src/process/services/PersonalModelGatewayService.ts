@@ -15,6 +15,8 @@ import type { IProvider } from '@/common/config/storage';
 import type { LarkAuthUser, PersonalModelSyncResult } from '@/common/types/platform/larkAuth';
 import type { GeaClaimedPersonalModelCredential, GeaPersonalModelCredential } from '@aionui/web-host';
 
+const GEA_PERSONAL_LOGIN_REQUIRED = 'GEA_PERSONAL_LOGIN_REQUIRED';
+
 export type PersonalModelSecretRecord = {
   accessKeyId: string;
   agentCode: string;
@@ -69,6 +71,29 @@ export class PersonalModelGatewayService {
 
   async deactivate(): Promise<void> {
     await this.proxy.deactivate();
+    let providers: IProvider[];
+    try {
+      providers = await this.providerStore.list();
+    } catch {
+      return;
+    }
+    const updates = providers
+      .filter((provider) => provider.enabled !== false && provider.id.startsWith(GEA_PERSONAL_PROVIDER_PREFIX))
+      .map((provider) =>
+        Object.assign({}, provider, {
+          enabled: false,
+          model_health: Object.fromEntries(
+            provider.models.map((model) => [
+              model,
+              {
+                status: 'unhealthy' as const,
+                error: GEA_PERSONAL_LOGIN_REQUIRED,
+              },
+            ])
+          ),
+        })
+      );
+    await Promise.all(updates.map((provider) => this.providerStore.save(provider, true).catch(() => {})));
   }
 
   private async runSync(user: LarkAuthUser, authClient: PersonalModelAuthClient): Promise<PersonalModelSyncResult> {
@@ -249,6 +274,16 @@ function buildManagedProvider(
 ): IProvider {
   const modelSet = new Set(models);
   const modelEnabled = Object.fromEntries(models.map((model) => [model, existing?.model_enabled?.[model] !== false]));
+  const wasSuspendedForLogin = Object.values(existing?.model_health ?? {}).some(
+    (health) => health.error === GEA_PERSONAL_LOGIN_REQUIRED
+  );
+  const modelHealth = existing?.model_health
+    ? Object.fromEntries(
+        Object.entries(existing.model_health).filter(
+          ([model, health]) => modelSet.has(model) && health.error !== GEA_PERSONAL_LOGIN_REQUIRED
+        )
+      )
+    : undefined;
   return {
     id: providerId,
     platform: 'openai',
@@ -256,12 +291,10 @@ function buildManagedProvider(
     base_url: proxyConfig.baseUrl,
     api_key: proxyConfig.apiKey,
     models,
-    enabled: existing?.enabled ?? true,
+    enabled: wasSuspendedForLogin ? true : (existing?.enabled ?? true),
     model_enabled: modelEnabled,
     capabilities: [{ type: 'text' }, { type: 'function_calling' }],
-    model_health: existing?.model_health
-      ? Object.fromEntries(Object.entries(existing.model_health).filter(([model]) => modelSet.has(model)))
-      : undefined,
+    model_health: modelHealth && Object.keys(modelHealth).length > 0 ? modelHealth : undefined,
     model_settings: Object.fromEntries(
       models.map((model) => [
         model,

@@ -149,6 +149,9 @@ vi.mock('@/common', () => ({
 
 vi.mock('@/renderer/hooks/mcp/catalog', () => ({
   ensureBackendMcpCatalog: (...args: unknown[]) => ensureBackendMcpCatalogMock(...args),
+  INTERNAL_GEA_MCP_NAME: 'gea-gateway',
+  visibleMcpServers: (servers: Array<{ name: string; builtin?: boolean }>) =>
+    servers.filter((server) => !(server.builtin === true && server.name === 'gea-gateway')),
 }));
 
 vi.mock('@/renderer/hooks/chat/useInputFocusRing', () => ({
@@ -595,7 +598,8 @@ describe('GuidPage', () => {
 
     await vi.waitFor(() => {
       expect(capturedGuidSendDeps.at(-1)?.selectedMcpServerIds).toEqual(['gea-gateway']);
-      expect(capturedGuidActionRowProps.at(-1)?.selectedMcpServerIds).toEqual(['gea-gateway']);
+      expect(capturedGuidActionRowProps.at(-1)?.mcpServers).toEqual([expect.objectContaining({ id: 'legacy-gea' })]);
+      expect(capturedGuidActionRowProps.at(-1)?.selectedMcpServerIds).toEqual([]);
     });
   });
 

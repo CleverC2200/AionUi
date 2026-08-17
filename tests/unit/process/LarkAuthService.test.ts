@@ -7,7 +7,7 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LarkAuthServiceError } from '@/process/services/LarkAuthService';
 import {
   configureSharedPersonalModelGateway,
@@ -18,7 +18,15 @@ import {
   type LarkAuthSafeStorageAdapter,
   pollSharedLarkAuthSession,
   resolveDesktopLarkAuthStatus,
+  resolveLarkAuthSessionFileName,
+  syncSharedGeaSessionToBackend,
 } from '@/process/services/LarkAuthService';
+
+const httpRequestMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
+vi.mock('@/common/adapter/httpBridge', () => ({
+  httpRequest: httpRequestMock,
+}));
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -29,7 +37,25 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 const xor = (value: Buffer): Buffer => Buffer.from(value.map((byte) => byte ^ 0xa5));
 
+beforeEach(() => {
+  httpRequestMock.mockClear();
+  httpRequestMock.mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe('LarkAuthService', () => {
+  it('isolates persisted login sessions by GEA environment', () => {
+    expect(resolveLarkAuthSessionFileName('https://gea.synear.cn/gea-boot')).toBe('lark-auth-session.bin');
+    expect(resolveLarkAuthSessionFileName('https://gea.synear.cn/gea-boot/')).toBe('lark-auth-session.bin');
+
+    const testFile = resolveLarkAuthSessionFileName('https://gea.synear.cn:4443/gea-boot');
+    expect(testFile).toMatch(/^lark-auth-session-[a-f0-9]{12}\.bin$/);
+    expect(testFile).not.toBe(resolveLarkAuthSessionFileName('https://gea.synear.cn:5555/gea-boot'));
+  });
+
   it('uses the local system user in desktop development', () => {
     expect(resolveDesktopLarkAuthStatus(false, { authenticated: false })).toEqual({
       authenticated: true,
@@ -39,6 +65,13 @@ describe('LarkAuthService', () => {
         username: 'admin',
       },
     });
+  });
+
+  it('can require real GEA authentication during desktop development', () => {
+    vi.stubEnv('AIONUI_GEA_REQUIRE_AUTH', '1');
+    const status = { authenticated: false };
+
+    expect(resolveDesktopLarkAuthStatus(false, status)).toBe(status);
   });
 
   it('preserves the authenticated GEA user in desktop development', () => {
@@ -63,6 +96,11 @@ describe('LarkAuthService', () => {
     const service = getSharedLarkAuthService();
     const user = { id: '10086', realname: '张三', username: 'zhangsan' };
     const pollSpy = vi.spyOn(service, 'pollQrSession').mockResolvedValue({ status: 'authenticated', user });
+    const statusSpy = vi.spyOn(service, 'getStatus').mockReturnValue({ authenticated: true, user });
+    const forwardSpy = vi.spyOn(service, 'forwardGatewayAuthSession').mockImplementation(async (forward) => {
+      await forward({ accessToken: 'sensitive-token', tenantId: 'tenant-1' });
+      return true;
+    });
     const sync = vi.fn().mockResolvedValue({ configured: 1, failed: 0, skipped: 0, status: 'completed' });
     configureSharedPersonalModelGateway({ deactivate: vi.fn(), sync });
 
@@ -72,7 +110,67 @@ describe('LarkAuthService', () => {
       personalModelSync: { configured: 1, failed: 0, skipped: 0, status: 'completed' },
     });
     expect(sync).toHaveBeenCalledWith(user, service);
+    expect(httpRequestMock).toHaveBeenCalledWith('PUT', '/api/gea/auth/session', {
+      accessToken: 'sensitive-token',
+      tenantId: 'tenant-1',
+    });
     pollSpy.mockRestore();
+    statusSpy.mockRestore();
+    forwardSpy.mockRestore();
+  });
+
+  it('clears the persisted desktop session when AionCore reports upstream reauthentication is required', async () => {
+    const service = getSharedLarkAuthService();
+    const statusSpy = vi.spyOn(service, 'getStatus').mockReturnValue({
+      authenticated: true,
+      user: { id: '10086', realname: '张三', username: 'zhangsan' },
+    });
+    const forwardSpy = vi.spyOn(service, 'forwardGatewayAuthSession').mockImplementation(async (forward) => {
+      await forward({ accessToken: 'expired-token', tenantId: 'tenant-1' });
+      return true;
+    });
+    const logoutSpy = vi.spyOn(service, 'logout').mockResolvedValue(undefined);
+    const deactivate = vi.fn().mockResolvedValue(undefined);
+    configureSharedPersonalModelGateway({ deactivate, sync: vi.fn() });
+    httpRequestMock.mockResolvedValueOnce({ authenticated: false, reauthRequired: true });
+
+    await expect(syncSharedGeaSessionToBackend()).resolves.toBe(false);
+
+    expect(httpRequestMock).toHaveBeenCalledWith('GET', '/api/gea/auth/session');
+    expect(forwardSpy).not.toHaveBeenCalled();
+    expect(logoutSpy).toHaveBeenCalledOnce();
+    expect(deactivate).toHaveBeenCalledOnce();
+    statusSpy.mockRestore();
+    forwardSpy.mockRestore();
+    logoutSpy.mockRestore();
+  });
+
+  it('re-forwards the persisted desktop session when AionCore restarted without rejecting the token', async () => {
+    const service = getSharedLarkAuthService();
+    const statusSpy = vi.spyOn(service, 'getStatus').mockReturnValue({
+      authenticated: true,
+      user: { id: '10086', realname: '张三', username: 'zhangsan' },
+    });
+    const forwardSpy = vi.spyOn(service, 'forwardGatewayAuthSession').mockImplementation(async (forward) => {
+      await forward({ accessToken: 'persisted-token', tenantId: 'tenant-1' });
+      return true;
+    });
+    const logoutSpy = vi.spyOn(service, 'logout').mockResolvedValue(undefined);
+    httpRequestMock
+      .mockResolvedValueOnce({ authenticated: false, reauthRequired: false })
+      .mockResolvedValueOnce(undefined);
+
+    await expect(syncSharedGeaSessionToBackend()).resolves.toBe(true);
+
+    expect(httpRequestMock).toHaveBeenNthCalledWith(1, 'GET', '/api/gea/auth/session');
+    expect(httpRequestMock).toHaveBeenNthCalledWith(2, 'PUT', '/api/gea/auth/session', {
+      accessToken: 'persisted-token',
+      tenantId: 'tenant-1',
+    });
+    expect(logoutSpy).not.toHaveBeenCalled();
+    statusSpy.mockRestore();
+    forwardSpy.mockRestore();
+    logoutSpy.mockRestore();
   });
 
   it('restores personal model routes for an authenticated session during startup', async () => {
@@ -91,6 +189,24 @@ describe('LarkAuthService', () => {
     statusSpy.mockRestore();
   });
 
+  it('deactivates stale personal model routes when startup has no authenticated GEA session', async () => {
+    const service = getSharedLarkAuthService();
+    const statusSpy = vi.spyOn(service, 'getStatus').mockReturnValue({ authenticated: false });
+    const deactivate = vi.fn().mockResolvedValue(undefined);
+    const sync = vi.fn();
+
+    await expect(initializeSharedPersonalModelGateway({ deactivate, sync })).resolves.toEqual({
+      configured: 0,
+      failed: 0,
+      reason: 'notAuthenticated',
+      skipped: 0,
+      status: 'notAuthenticated',
+    });
+    expect(deactivate).toHaveBeenCalledOnce();
+    expect(sync).not.toHaveBeenCalled();
+    statusSpy.mockRestore();
+  });
+
   it('creates a QR session using the GEA state format', async () => {
     const fetchImpl = vi.fn(async () =>
       jsonResponse({ success: true, result: { qrcodeId: 'QRCODELOGIN:1234567890' } })
@@ -104,6 +220,19 @@ describe('LarkAuthService', () => {
     expect(session.qrcodeId).toBe('QRCODELOGIN:1234567890');
     expect(state.searchParams.get('feishuScanQrcodeId')).toBe('QRCODELOGIN:1234567890');
     expect(loginUrl.searchParams.get('tenantId')).toBe('0');
+  });
+
+  it('uses the same configured GEA base URL as AionCore for QR login', async () => {
+    vi.stubEnv('AIONUI_GEA_BASE_URL', 'https://gea.example:4443/gea-boot');
+    vi.stubEnv('AUTH_BROKER_PUBLIC_URL', 'https://gea.example/gea-boot');
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ success: true, result: { qrcodeId: 'QRCODELOGIN:1234567890' } })
+    );
+    const service = new LarkAuthService({ fetchImpl });
+
+    await service.createQrSession();
+
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe('https://gea.example:4443/gea-boot/sys/getLoginQrcode');
   });
 
   it.each([
@@ -202,6 +331,27 @@ describe('LarkAuthService', () => {
     expect(storedSession).toBeNull();
   });
 
+  it('does not report login success when the authenticated session cannot be persisted', async () => {
+    const sessionStore = {
+      load: vi.fn().mockResolvedValue(null),
+      save: vi.fn().mockRejectedValue(new Error('secure storage unavailable')),
+      clear: vi.fn(),
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ success: true, result: { success: true, token: 'sensitive-token' } }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          success: true,
+          result: { userInfo: { id: '10086', username: 'zhangsan', realname: '张三', loginTenantId: 1 } },
+        })
+      );
+    const service = new LarkAuthService({ fetchImpl, sessionStore });
+
+    await expect(service.pollQrSession('QRCODELOGIN:1')).rejects.toThrow('secure storage unavailable');
+    expect(service.getStatus()).toEqual({ authenticated: false });
+  });
+
   it('clears a persisted session when GEA rejects the token', async () => {
     const sessionStore = {
       load: vi.fn().mockResolvedValue({ accessToken: 'expired-token' }),
@@ -287,6 +437,18 @@ describe('LarkAuthService', () => {
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it('rejects desktop session persistence when secure storage is unavailable', async () => {
+    const storage: LarkAuthSafeStorageAdapter = {
+      isEncryptionAvailable: () => false,
+      getSelectedStorageBackend: () => 'basic_text',
+      encryptString: vi.fn(),
+      decryptString: vi.fn(),
+    };
+    const store = new ElectronLarkAuthSessionStore('/tmp/aionui-unavailable-session.bin', storage);
+
+    await expect(store.save({ accessToken: 'sensitive-token' })).rejects.toThrow('secure storage unavailable');
   });
 
   it('rejects an invalid GEA response without accepting an empty token', async () => {

@@ -21,7 +21,7 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
   mcpService: mcpServiceMock,
 }));
 
-import { ensureBackendMcpCatalog } from '@/renderer/hooks/mcp/catalog';
+import { ensureBackendMcpCatalog, visibleMcpServers } from '@/renderer/hooks/mcp/catalog';
 
 describe('ensureBackendMcpCatalog', () => {
   beforeEach(() => {
@@ -82,5 +82,32 @@ describe('ensureBackendMcpCatalog', () => {
     expect(result.userServers).toEqual([]);
     expect(result.builtinServers).toEqual([]);
     expect(result.allServers).toEqual([]);
+  });
+
+  it('keeps the internal GEA bridge out of user-visible MCP lists', () => {
+    expect(
+      visibleMcpServers([
+        {
+          id: 'gea-gateway',
+          name: 'gea-gateway',
+          enabled: true,
+          transport: { type: 'stdio', command: 'aioncore', args: ['mcp-gea-stdio'] },
+          created_at: 1,
+          updated_at: 1,
+          original_json: '{}',
+          builtin: true,
+        },
+        {
+          id: 'chrome-devtools',
+          name: 'chrome-devtools',
+          enabled: true,
+          transport: { type: 'stdio', command: 'npx', args: [] },
+          created_at: 1,
+          updated_at: 1,
+          original_json: '{}',
+          builtin: true,
+        },
+      ])
+    ).toEqual([expect.objectContaining({ id: 'chrome-devtools' })]);
   });
 });
