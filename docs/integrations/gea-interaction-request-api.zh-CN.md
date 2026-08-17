@@ -232,6 +232,7 @@ permission 示例只允许提交服务端当前版本 `allowedActions` 中的值
 - permission 的每个 option.value 必须存在于当前版本 `allowedActions`。
 - 动作必须校验 tenant、登录用户、Gateway session、delegation、request、`expectedVersion` 和 `allowedActions`。
 - 相同 `request + version + action` 的并发或重放最多执行一次来源系统写入；相同 `idempotencyKey` 必须返回相同回执。
+- 对由 Aionrs 工具调用创建的待办，GEA 在返回 `accepted` 或 `already_resolved` 前必须释放原先等待该待办结果的 Gateway 工具调用，并把同一份权威回执返回给该调用。AionCore 会校验原 Turn 仍存活，但不会再注入第二条消息；否则会造成原 Turn 无法继续或重复消费结果。
 - `unknown_external_write` 未完成核验前，不得再次调用来源系统，也不得报告成功。
 
 ## 4. 敏感信息边界
