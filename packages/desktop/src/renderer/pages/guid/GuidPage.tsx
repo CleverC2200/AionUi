@@ -25,7 +25,7 @@ import { useGuidInput } from './hooks/useGuidInput';
 import { useGuidModelSelection } from './hooks/useGuidModelSelection';
 import { useGuidSend } from './hooks/useGuidSend';
 import { useTypewriterPlaceholder } from './hooks/useTypewriterPlaceholder';
-import { ensureBackendMcpCatalog } from '@/renderer/hooks/mcp/catalog';
+import { ensureBackendMcpCatalog, INTERNAL_GEA_MCP_NAME, visibleMcpServers } from '@/renderer/hooks/mcp/catalog';
 import { resolveGuidAssistantDefaults } from './utils/assistantDefaults';
 import SpeechInputButton from '@/renderer/components/chat/SpeechInputButton';
 import { chatFileRefPath, uploadFileRef } from '@/common/types/chatFile';
@@ -51,12 +51,11 @@ type GuidNavigationState = {
   [key: string]: unknown;
 };
 
-const BUILTIN_GEA_MCP_NAME = 'gea-gateway';
 const LEGACY_GEA_MCP_NAME = 'gea';
 const LEGACY_GEA_MCP_URL = 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse';
 
 const resolveGuidMcpDefaults = (mcpIds: string[], servers: IMcpServer[]): string[] => {
-  const gateway = servers.find((server) => server.builtin === true && server.name === BUILTIN_GEA_MCP_NAME);
+  const gateway = servers.find((server) => server.builtin === true && server.name === INTERNAL_GEA_MCP_NAME);
   if (!gateway) return mcpIds;
 
   const legacyIds = new Set(
@@ -185,6 +184,15 @@ const GuidPage: React.FC = () => {
   const resolvedMcpDefaults = useMemo(
     () => resolveGuidMcpDefaults(resolvedAssistantDefaults.mcpIds, availableMcpServers),
     [availableMcpServers, resolvedAssistantDefaults.mcpIds]
+  );
+  const selectableMcpServers = useMemo(() => visibleMcpServers(availableMcpServers), [availableMcpServers]);
+  const selectableMcpServerIds = useMemo(
+    () => new Set(selectableMcpServers.map((server) => server.id)),
+    [selectableMcpServers]
+  );
+  const visibleSelectedMcpServerIds = useMemo(
+    () => (guidSelectedMcpServerIds ?? []).filter((id) => selectableMcpServerIds.has(id)),
+    [guidSelectedMcpServerIds, selectableMcpServerIds]
   );
   const selectedSkillNames = useMemo(() => {
     const disabledBuiltinSkillSet = new Set(
@@ -650,8 +658,8 @@ const GuidPage: React.FC = () => {
       disabledBuiltinSkills={guidDisabledBuiltinSkills ?? []}
       enabledSkills={guidEnabledSkills ?? []}
       onToggleSkill={handleToggleSkill}
-      mcpServers={availableMcpServers}
-      selectedMcpServerIds={guidSelectedMcpServerIds ?? []}
+      mcpServers={selectableMcpServers}
+      selectedMcpServerIds={visibleSelectedMcpServerIds}
       onToggleMcpServer={handleToggleMcpServer}
       speechInputNode={
         <SpeechInputButton onLiveTranscript={handleLiveTranscript} onTranscript={handleSpeechTranscript} />

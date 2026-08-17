@@ -21,6 +21,8 @@ vi.mock('@/common', () => ({
 
 vi.mock('@/renderer/hooks/mcp/catalog', () => ({
   ensureBackendMcpCatalog: ensureBackendMcpCatalogMock,
+  visibleMcpServers: (servers: Array<{ name: string; builtin?: boolean }>) =>
+    servers.filter((server) => !(server.builtin === true && server.name === 'gea-gateway')),
 }));
 
 import { useMcpServers } from '@/renderer/hooks/mcp/useMcpServers';
@@ -51,6 +53,28 @@ describe('useMcpServers', () => {
 
     await waitFor(() => expect(result.current.isMcpServersLoading).toBe(false));
 
+    expect(result.current.mcpServers).toEqual([]);
+  });
+
+  it('hides the internal GEA bridge from settings-facing MCP state', async () => {
+    ensureBackendMcpCatalogMock.mockResolvedValue({
+      allServers: [
+        {
+          id: 'gea-gateway',
+          name: 'gea-gateway',
+          builtin: true,
+          enabled: true,
+          transport: { type: 'stdio', command: 'aioncore', args: ['mcp-gea-stdio'] },
+          created_at: 1,
+          updated_at: 1,
+          original_json: '{}',
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useMcpServers());
+
+    await waitFor(() => expect(result.current.isMcpServersLoading).toBe(false));
     expect(result.current.mcpServers).toEqual([]);
   });
 

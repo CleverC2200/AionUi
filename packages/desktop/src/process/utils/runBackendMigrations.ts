@@ -16,7 +16,7 @@ import {
   type ImageGenerationMcpEnvResolveResult,
 } from '@/common/config/imageGenerationMcpEnv';
 import { BUILTIN_IMAGE_GEN_NAME, type IMcpServer, type IProvider } from '@/common/config/storage';
-import { ensureGeaMcpBridgeStarted } from '@process/services/LarkAuthService';
+import { resolveBinaryPath } from '@process/backend';
 import { getBuiltinMcpScriptPath, type ProcessConfig as ProcessConfigType } from './initStorage';
 import { migrateAssistantsToBackend } from './migrateAssistants';
 
@@ -202,7 +202,14 @@ function buildBuiltinBrowserServer(): McpImportServer {
   };
 }
 
-function buildDefaultMcpServers(geaMcpUrl: string): McpImportServer[] {
+function buildDefaultMcpServers(): McpImportServer[] {
+  const geaConfig = {
+    command: resolveBinaryPath(),
+    args: ['mcp-gea-stdio'],
+    env: {
+      AIONUI_GEA_AGENT_CODE: process.env.GEA_AGENT_CODE?.trim() || 'sales_forecast',
+    },
+  };
   const chromeConfig = {
     command: 'npx',
     args: ['-y', 'chrome-devtools-mcp@latest'],
@@ -214,10 +221,12 @@ function buildDefaultMcpServers(geaMcpUrl: string): McpImportServer[] {
       enabled: true,
       builtin: true,
       transport: {
-        type: 'http',
-        url: geaMcpUrl,
+        type: 'stdio',
+        command: geaConfig.command,
+        args: geaConfig.args,
+        env: geaConfig.env,
       },
-      original_json: JSON.stringify({ mcpServers: { [BUILTIN_GEA_MCP_NAME]: { url: geaMcpUrl } } }, null, 2),
+      original_json: JSON.stringify({ mcpServers: { [BUILTIN_GEA_MCP_NAME]: geaConfig } }, null, 2),
     },
     {
       name: BUILTIN_CHROME_DEVTOOLS_NAME,
@@ -305,11 +314,10 @@ function buildOriginalJsonFromTransport(server: Pick<IMcpServer, 'name' | 'descr
 }
 
 async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<void> {
-  const [backendPrefs, fileImageConfig, providers, geaMcpBridge] = await Promise.all([
+  const [backendPrefs, fileImageConfig, providers] = await Promise.all([
     fetchBackendClientPreferences(),
     configFile.get('tools.imageGenerationModel').catch((): undefined => undefined),
     fetchProviders(),
-    ensureGeaMcpBridgeStarted(),
   ]);
   const imageConfig = resolveImageGenerationMigrationConfig(backendPrefs, fileImageConfig);
   const imageConfigSource = resolveImageGenerationMigrationConfigSource(backendPrefs, fileImageConfig);
@@ -321,7 +329,7 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
   const imageEnvResolution = resolveImageGenerationMcpEnv(imageConfig, providers, existingImageEnv);
   logImageGenerationEnvResolution(imageEnvResolution, 'bootstrap');
   const imageServer = buildBuiltinImageGenerationServer(imageEnvResolution, imageConfig);
-  const defaultServers = buildDefaultMcpServers(geaMcpBridge.url);
+  const defaultServers = buildDefaultMcpServers();
   const missing = [...defaultServers, imageServer].filter((server) => !existingByName.has(server.name));
   let imageServerUpdated = false;
 
@@ -352,8 +360,11 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
     existingGeaMcp &&
     expectedGeaMcp &&
     (existingGeaMcp.builtin !== true ||
-      existingGeaMcp.transport.type !== 'http' ||
-      existingGeaMcp.transport.url !== geaMcpBridge.url ||
+      existingGeaMcp.transport.type !== 'stdio' ||
+      expectedGeaMcp.transport.type !== 'stdio' ||
+      existingGeaMcp.transport.command !== expectedGeaMcp.transport.command ||
+      JSON.stringify(existingGeaMcp.transport.args ?? []) !== JSON.stringify(expectedGeaMcp.transport.args ?? []) ||
+      JSON.stringify(existingGeaMcp.transport.env ?? {}) !== JSON.stringify(expectedGeaMcp.transport.env ?? {}) ||
       existingGeaMcp.original_json !== expectedGeaMcp.original_json)
   ) {
     await mcpService.updateServer.invoke({

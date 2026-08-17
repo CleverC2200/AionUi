@@ -21,6 +21,11 @@ export type GeaLarkAuthSession = {
   accessToken: string;
 };
 
+export type GeaGatewayAuthSession = {
+  accessToken: string;
+  tenantId: string;
+};
+
 export type GeaLarkAuthSessionStore = {
   clear: () => Promise<void>;
   load: () => Promise<GeaLarkAuthSession | null>;
@@ -211,7 +216,9 @@ export class GeaLarkAuthService {
   private currentUser: WebHostLarkAuthUser | null = null;
 
   constructor(options: { baseUrl?: string; fetchImpl?: FetchLike; sessionStore?: GeaLarkAuthSessionStore } = {}) {
-    this.baseUrl = normalizeBaseUrl(options.baseUrl ?? process.env.AUTH_BROKER_PUBLIC_URL ?? DEFAULT_GEA_BASE_URL);
+    this.baseUrl = normalizeBaseUrl(
+      options.baseUrl ?? process.env.AIONUI_GEA_BASE_URL ?? process.env.AUTH_BROKER_PUBLIC_URL ?? DEFAULT_GEA_BASE_URL
+    );
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.sessionStore = options.sessionStore ?? null;
   }
@@ -282,8 +289,8 @@ export class GeaLarkAuthService {
     }
 
     const { tenantId, user } = await this.fetchCurrentUser(token);
+    await this.sessionStore?.save({ accessToken: token });
     this.acceptAuthenticatedSession(token, tenantId, user);
-    await this.sessionStore?.save({ accessToken: token }).catch(() => {});
     return { status: 'authenticated', user };
   }
 
@@ -299,6 +306,20 @@ export class GeaLarkAuthService {
     this.authGeneration += 1;
     this.currentTenantId = DEFAULT_GEA_TENANT_ID;
     this.currentUser = null;
+  }
+
+  /**
+   * Hands the current credential to a trusted process callback without
+   * returning it to renderer code. The callback is expected to transfer the
+   * credential directly into AionCore's protected GEA boundary.
+   */
+  async forwardGatewayAuthSession(forward: (session: GeaGatewayAuthSession) => Promise<void>): Promise<boolean> {
+    const generation = this.authGeneration;
+    const accessToken = this.accessToken;
+    if (!accessToken || !this.currentUser) return false;
+    await forward({ accessToken, tenantId: this.currentTenantId });
+    this.requireAccessToken(generation);
+    return true;
   }
 
   async listPersonalModelCredentials(): Promise<GeaPersonalModelCredential[]> {

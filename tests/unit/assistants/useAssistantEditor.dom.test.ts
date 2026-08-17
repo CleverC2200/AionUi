@@ -47,6 +47,7 @@ vi.mock('swr', () => ({
 }));
 
 vi.mock('@/renderer/hooks/mcp/catalog', () => ({
+  visibleMcpServers: (servers: unknown[]) => servers,
   ensureBackendMcpCatalog: vi.fn(async () => ({
     userServers: [{ id: 'mcp-a', name: 'Server A', enabled: true }],
     builtinServers: [],

@@ -79,6 +79,7 @@ import {
   getSharedLarkAuthSessionStore,
   initializeSharedLarkAuthSession,
   initializeSharedPersonalModelGateway,
+  syncSharedGeaSessionToBackend,
 } from './process/services/LarkAuthService';
 import { getPersonalModelGatewayRuntime } from './process/services/PersonalModelGatewayRuntime';
 // @ts-expect-error - electron-squirrel-startup doesn't have types
@@ -851,6 +852,9 @@ const handleAppReady = async (): Promise<void> => {
     const bootBackendPort = (globalThis as typeof globalThis & { __backendPort?: number }).__backendPort;
     if (backendStartedOk && bootBackendPort) {
       await ensureAdminUserOnce(bootBackendPort);
+      await syncSharedGeaSessionToBackend().catch((error) => {
+        console.warn('[AionUi] Failed to restore GEA session in AionCore:', error);
+      });
     }
   }
 
