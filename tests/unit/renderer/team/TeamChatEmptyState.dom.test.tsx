@@ -1,10 +1,12 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useSWRMock = vi.fn();
 const usePresetAssistantInfoMock = vi.fn();
 const getConversationOrNullMock = vi.fn();
+const acpDraftMutateMock = vi.fn();
+const aionrsDraftMutateMock = vi.fn();
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -25,6 +27,12 @@ vi.mock('@/renderer/pages/conversation/utils/conversationCache', () => ({
   getConversationOrNull: (...args: unknown[]) => getConversationOrNullMock(...args),
 }));
 
+vi.mock('@renderer/hooks/chat/useSendBoxDraft', () => ({
+  getSendBoxDraftHook: (kind: 'acp' | 'aionrs') => () => ({
+    mutate: kind === 'aionrs' ? aionrsDraftMutateMock : acpDraftMutateMock,
+  }),
+}));
+
 vi.mock('@renderer/utils/model/agentLogo', () => ({
   useAgentLogos: () => ({}),
   resolveAgentLogo: () => null,
@@ -42,6 +50,8 @@ describe('TeamChatEmptyState', () => {
     useSWRMock.mockReset();
     usePresetAssistantInfoMock.mockReset();
     getConversationOrNullMock.mockReset();
+    acpDraftMutateMock.mockReset();
+    aionrsDraftMutateMock.mockReset();
   });
 
   it('prefers assistant props over legacy runtime extra metadata when preset info is unavailable', () => {
@@ -106,6 +116,44 @@ describe('TeamChatEmptyState', () => {
     expect(screen.getByText('Organize a debate with assistants taking different sides')).toBeInTheDocument();
     // Middle suggestion is now the "ask the Leader to add a member" prompt.
     expect(screen.getByText('Help me add a member good at ___ to the team')).toBeInTheDocument();
+  });
+
+  it('prefers the leader assistant recommended prompts over generic team suggestions', () => {
+    useSWRMock.mockReturnValue({
+      data: {
+        id: 'conv-1',
+        type: 'acp',
+        name: 'Team - Supply Chain Leader',
+        extra: { team_id: 'team-1', backend: 'aionrs' },
+      },
+    });
+    usePresetAssistantInfoMock.mockReturnValue({
+      info: {
+        name: 'Supply Chain Leader',
+        logo: '🤖',
+        isEmoji: true,
+        backend: 'aionrs',
+        recommendedPrompts: [
+          'Review demand, safety stock, and dealer replenishment risks',
+          'Prioritize shortages, excess stock, aging, and plan variance',
+          'Coordinate a cross-domain review for a selected site or product',
+        ],
+      },
+    });
+
+    render(<TeamChatEmptyState conversation_id='conv-1' isLeader />);
+
+    expect(screen.getByText('Review demand, safety stock, and dealer replenishment risks')).toBeInTheDocument();
+    expect(screen.getByText('Prioritize shortages, excess stock, aging, and plan variance')).toBeInTheDocument();
+    expect(screen.getByText('Coordinate a cross-domain review for a selected site or product')).toBeInTheDocument();
+    expect(screen.queryByText('Organize a debate with assistants taking different sides')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Review demand, safety stock, and dealer replenishment risks'));
+    expect(acpDraftMutateMock).toHaveBeenCalledOnce();
+    const updateDraft = acpDraftMutateMock.mock.calls[0][0] as (draft: { content: string }) => { content: string };
+    expect(updateDraft({ content: '' })).toEqual({
+      content: 'Review demand, safety stock, and dealer replenishment risks',
+    });
   });
 
   it('shows a member greeting for non-leader members', () => {

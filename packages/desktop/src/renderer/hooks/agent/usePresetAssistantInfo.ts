@@ -24,6 +24,7 @@ export interface PresetAssistantInfo {
   isFallback?: boolean;
   backend?: string;
   assistantId?: string;
+  recommendedPrompts?: string[];
 }
 
 /**
@@ -214,6 +215,32 @@ function hasMatchingEnabledSkills(candidateSkills: string[] | undefined, enabled
   return normalizedCandidate.every((skill, index) => skill === normalizedEnabled[index]);
 }
 
+function resolveRecommendedPrompts(assistant: Assistant, locale: string): string[] {
+  const localeKey = resolveLocaleKey(locale);
+  const candidates = [assistant.prompts_i18n?.[localeKey], assistant.prompts_i18n?.[locale], assistant.prompts];
+
+  for (const prompts of candidates) {
+    if (!Array.isArray(prompts)) continue;
+    const normalized = prompts
+      .filter((prompt): prompt is string => typeof prompt === 'string')
+      .map((prompt) => prompt.trim())
+      .filter(Boolean);
+    if (normalized.length > 0) return normalized;
+  }
+
+  return [];
+}
+
+function addRecommendedPrompts(
+  info: PresetAssistantInfo,
+  assistant: Assistant | undefined,
+  locale: string
+): PresetAssistantInfo {
+  if (!assistant) return info;
+  const recommendedPrompts = resolveRecommendedPrompts(assistant, locale);
+  return recommendedPrompts.length > 0 ? { ...info, recommendedPrompts } : info;
+}
+
 /**
  * Build assistant info from a backend-provided Assistant record.
  */
@@ -227,14 +254,18 @@ function buildPresetInfoFromAssistant(assistant: Assistant, locale: string): Pre
     source: assistant.source,
     backend,
   });
-  return {
-    name,
-    logo: normalized.logo,
-    isEmoji: normalized.isEmoji,
-    isFallback: normalized.isFallback,
-    backend,
-    assistantId: assistant.id,
-  };
+  return addRecommendedPrompts(
+    {
+      name,
+      logo: normalized.logo,
+      isEmoji: normalized.isEmoji,
+      isFallback: normalized.isFallback,
+      backend,
+      assistantId: assistant.id,
+    },
+    assistant,
+    locale
+  );
 }
 
 function buildPresetInfoFromConversationAssistant(
@@ -321,13 +352,14 @@ export function usePresetAssistantInfo(conversation: TChatConversation | undefin
     if (conversation.assistant) {
       const snapshotAvatar =
         typeof conversation.assistant.avatar === 'string' ? conversation.assistant.avatar.trim() : '';
+      const snapshotCandidates = [
+        conversation.assistant.id,
+        ...collectExplicitAssistantIdentityCandidates(conversation),
+        ...collectLegacyAssistantIdentityCandidates(conversation),
+      ].filter((value, index, values) => Boolean(value) && values.indexOf(value) === index);
+      const catalogAssistant = findAssistantByIdentityCandidates(assistantsList, snapshotCandidates);
+
       if (snapshotAvatar && isLikelyLocalFilePath(snapshotAvatar)) {
-        const snapshotCandidates = [
-          conversation.assistant.id,
-          ...collectExplicitAssistantIdentityCandidates(conversation),
-          ...collectLegacyAssistantIdentityCandidates(conversation),
-        ].filter((value, index, values) => Boolean(value) && values.indexOf(value) === index);
-        const catalogAssistant = findAssistantByIdentityCandidates(assistantsList, snapshotCandidates);
         if (catalogAssistant) {
           return { info: buildPresetInfoFromAssistant(catalogAssistant, locale), isLoading: false };
         }
@@ -335,7 +367,11 @@ export function usePresetAssistantInfo(conversation: TChatConversation | undefin
       }
 
       return {
-        info: buildPresetInfoFromConversationAssistant(conversation.assistant),
+        info: addRecommendedPrompts(
+          buildPresetInfoFromConversationAssistant(conversation.assistant),
+          catalogAssistant,
+          locale
+        ),
         isLoading: false,
       };
     }

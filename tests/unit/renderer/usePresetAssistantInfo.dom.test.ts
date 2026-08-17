@@ -177,6 +177,53 @@ describe('usePresetAssistantInfo', () => {
     });
   });
 
+  it('enriches an explicit conversation assistant with catalog recommended prompts', () => {
+    useSWRMock.mockImplementation((key: unknown) => {
+      if (key === 'assistants.list') {
+        return {
+          data: [
+            {
+              id: 'assistant-supply-chain',
+              name: 'Supply Chain Leader',
+              avatar: '🤖',
+              name_i18n: {},
+              prompts: ['Review supply chain risks', 'Coordinate the specialist assistants'],
+              prompts_i18n: {},
+            },
+          ],
+          isLoading: false,
+        };
+      }
+      if (key === 'extensions.acpAdapters') return { data: [], isLoading: false };
+      return { data: undefined, isLoading: false };
+    });
+
+    const conversation = {
+      ...makeConversation({
+        assistant_id: 'assistant-supply-chain',
+        backend: 'aionrs',
+      }),
+      assistant: {
+        id: 'assistant-supply-chain',
+        source: 'user',
+        name: 'Supply Chain Leader',
+        avatar: '🤖',
+        backend: 'aionrs',
+      },
+    } as TChatConversation;
+
+    const { result } = renderHook(() => usePresetAssistantInfo(conversation));
+
+    expect(result.current.info).toEqual({
+      name: 'Supply Chain Leader',
+      logo: '🤖',
+      isEmoji: true,
+      backend: 'aionrs',
+      assistantId: 'assistant-supply-chain',
+      recommendedPrompts: ['Review supply chain risks', 'Coordinate the specialist assistants'],
+    });
+  });
+
   it('restores local absolute assistant snapshot avatars from the backend assistant catalog', () => {
     useSWRMock.mockImplementation((key: unknown) => {
       if (key === 'assistants.list') {

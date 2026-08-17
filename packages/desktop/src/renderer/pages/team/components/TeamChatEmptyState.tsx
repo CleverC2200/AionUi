@@ -101,6 +101,17 @@ const TeamChatEmptyState: React.FC<Props> = ({
   const assistantBackend = resolveConversationBackend(conversation, assistant_backend || presetInfo?.backend) || 'acp';
   const assistantName = resolveAssistantName(conversation, presetInfo?.name ?? null, assistant_name);
   const agentAvatar = resolveAgentAvatar(logos, { icon, backend: assistantBackend });
+  const recommendedPrompts = presetInfo?.recommendedPrompts?.slice(0, 3) ?? [];
+  const leaderSuggestions =
+    recommendedPrompts.length > 0
+      ? recommendedPrompts.map((label, index) => ({ key: `recommended-${index}`, icon: '💡', label }))
+      : SUGGESTIONS.map((suggestion) => ({
+          key: suggestion.key,
+          icon: suggestion.icon,
+          label: t(`team.emptyState.suggestions.${suggestion.key}`, {
+            defaultValue: SUGGESTION_DEFAULTS[suggestion.key],
+          }),
+        }));
 
   const renderAvatar = () => {
     if (presetInfo) {
@@ -172,20 +183,17 @@ const TeamChatEmptyState: React.FC<Props> = ({
       </div>
       {isLeader && (
         <div className='flex flex-col gap-6px w-full'>
-          {SUGGESTIONS.map((s) => {
-            const label = t(`team.emptyState.suggestions.${s.key}`, { defaultValue: SUGGESTION_DEFAULTS[s.key] });
-            return (
-              <div
-                key={s.key}
-                data-testid={`team-chat-empty-state-suggestion-${s.key}`}
-                onClick={() => fillDraft(label)}
-                className='flex items-center gap-10px px-14px py-10px rd-10px bg-fill-2 hover:bg-fill-3 cursor-pointer transition-colors text-left border border-transparent hover:border-[var(--color-border-2)]'
-              >
-                <span className='text-15px shrink-0'>{s.icon}</span>
-                <span className='text-13px text-t-secondary'>{label}</span>
-              </div>
-            );
-          })}
+          {leaderSuggestions.map((suggestion) => (
+            <div
+              key={suggestion.key}
+              data-testid={`team-chat-empty-state-suggestion-${suggestion.key}`}
+              onClick={() => fillDraft(suggestion.label)}
+              className='flex items-center gap-10px px-14px py-10px rd-10px bg-fill-2 hover:bg-fill-3 cursor-pointer transition-colors text-left border border-transparent hover:border-[var(--color-border-2)]'
+            >
+              <span className='text-15px shrink-0'>{suggestion.icon}</span>
+              <span className='text-13px text-t-secondary'>{suggestion.label}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
