@@ -155,9 +155,6 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     const selectedUserMcpServerIds = availableMcpServers
       .filter((server) => selectedMcpServerIdSet.has(server.id) && server.builtin !== true)
       .map((server) => server.id);
-    const selectedAllSessionMcpServers = availableMcpServers
-      .filter((server) => selectedMcpServerIdSet.has(server.id))
-      .map((server) => toSessionMcpServer(server));
     const selectedSessionMcpServers = availableMcpServers
       .filter((server) => selectedMcpServerIdSet.has(server.id) && server.builtin === true)
       .map((server) => toSessionMcpServer(server));
@@ -171,9 +168,9 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       selectedMcpServerIds !== undefined ? selectedUserMcpServerIds : defaultSelectedUserMcpServerIds;
     const selectedSessionMcpServersToSend =
       selectedMcpServerIds !== undefined
-        ? selectedAllSessionMcpServers
+        ? selectedSessionMcpServers
         : availableMcpServers
-            .filter((server) => (defaultSelectedMcpServerIds ?? []).includes(server.id))
+            .filter((server) => (defaultSelectedMcpServerIds ?? []).includes(server.id) && server.builtin === true)
             .map((server) => toSessionMcpServer(server));
 
     // `current_model` is the aionrs provider selection and means nothing to a
@@ -307,8 +304,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             custom_workspace: isCustomWorkspace,
             default_files: files.map(chatFileRefPath),
             selected_mcp_server_ids: selectedUserMcpServerIdsToSend,
-            selected_session_mcp_servers:
-              selectedMcpServerIds !== undefined ? selectedSessionMcpServers : selectedSessionMcpServersToSend,
+            selected_session_mcp_servers: selectedSessionMcpServersToSend,
           },
         }
       );

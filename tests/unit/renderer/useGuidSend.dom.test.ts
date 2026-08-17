@@ -281,6 +281,28 @@ describe('useGuidSend', () => {
     expect(payload.extra.selected_session_mcp_servers).toEqual([expect.objectContaining({ id: 'builtin-mcp' })]);
   });
 
+  it('does not freeze user MCP transports into generated Aion CLI conversation snapshots', async () => {
+    const deps = createDeps();
+    deps.selectedAssistantId = 'bare:aionrs';
+    deps.selectedAssistantBackend = 'aionrs';
+    deps.current_model = { provider_id: 'openai', model: 'gpt-4.1', use_model: 'gpt-4.1' } as never;
+    deps.availableMcpServers = [
+      { id: 'mcp-user', name: 'User MCP', enabled: true, builtin: false } as IMcpServer,
+      { id: 'builtin-mcp', name: 'Builtin MCP', enabled: true, builtin: true } as IMcpServer,
+    ];
+    deps.selectedMcpServerIds = ['mcp-user', 'builtin-mcp'];
+
+    const { result } = renderHook(() => useGuidSend(deps));
+
+    await act(async () => {
+      await result.current.handleSend();
+    });
+
+    const payload = createConversationInvokeMock.mock.calls[0][0];
+    expect(payload.extra.selected_mcp_server_ids).toEqual(['mcp-user']);
+    expect(payload.extra.selected_session_mcp_servers).toEqual([expect.objectContaining({ id: 'builtin-mcp' })]);
+  });
+
   it('does not write legacy preset_assistant_id for preset assistant sends', async () => {
     const deps = createDeps();
 

@@ -11,6 +11,7 @@ const {
   httpRequestMock,
   listServersMock,
   testMcpConnectionMock,
+  toggleServerMock,
   updateServerMock,
 } = vi.hoisted(() => ({
   batchImportServersMock: vi.fn(),
@@ -19,6 +20,7 @@ const {
   httpRequestMock: vi.fn(),
   listServersMock: vi.fn(),
   testMcpConnectionMock: vi.fn(),
+  toggleServerMock: vi.fn(),
   updateServerMock: vi.fn(),
 }));
 
@@ -31,6 +33,7 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     listServers: { invoke: listServersMock },
     batchImportServers: { invoke: batchImportServersMock },
     updateServer: { invoke: updateServerMock },
+    toggleServer: { invoke: toggleServerMock },
     testMcpConnection: { invoke: testMcpConnectionMock },
   },
 }));
@@ -100,6 +103,20 @@ const imageServer = (): IMcpServer => ({
   ),
 });
 
+const legacyGeaServer = (): IMcpServer => ({
+  id: 'legacy-gea-id',
+  name: 'gea',
+  enabled: true,
+  builtin: false,
+  transport: {
+    type: 'sse',
+    url: 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse',
+  },
+  created_at: 1,
+  updated_at: 1,
+  original_json: '{}',
+});
+
 const configFile = {
   get: configFileGetMock,
   set: configFileSetMock,
@@ -152,6 +169,14 @@ describe('resolveImageGenerationMigrationConfig', () => {
 });
 
 describe('runBackendMigrations', () => {
+  it('disables the obsolete GEA SSE entry when the managed gateway is bootstrapped', async () => {
+    listServersMock.mockResolvedValue([legacyGeaServer()]);
+
+    await runBackendMigrations(configFile as never);
+
+    expect(toggleServerMock).toHaveBeenCalledWith({ id: 'legacy-gea-id' });
+  });
+
   it('does not write image generation business config back to local config storage', async () => {
     listServersMock.mockResolvedValue([imageServer()]);
     configFileGetMock.mockImplementation(async (key: string) => {
