@@ -26,6 +26,8 @@ type McpImportServer = Partial<IMcpServer> & Pick<IMcpServer, 'name' | 'transpor
 type BackendClientPreferences = Record<string, unknown>;
 const BUILTIN_CHROME_DEVTOOLS_NAME = 'chrome-devtools';
 const BUILTIN_GEA_MCP_NAME = 'gea-gateway';
+const LEGACY_GEA_MCP_NAME = 'gea';
+const LEGACY_GEA_MCP_URL = 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse';
 
 /**
  * 内置「应用内浏览器」MCP。
@@ -375,6 +377,16 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
         original_json: expectedGeaMcp.original_json,
       },
     });
+  }
+
+  const legacyGeaMcp = existing.find(
+    (server) =>
+      server.name === LEGACY_GEA_MCP_NAME &&
+      server.transport.type === 'sse' &&
+      server.transport.url.replace(/\/+$/, '') === LEGACY_GEA_MCP_URL
+  );
+  if (legacyGeaMcp && legacyGeaMcp.enabled !== false) {
+    await mcpService.toggleServer.invoke({ id: legacyGeaMcp.id });
   }
 
   const refreshedServers = await mcpService.listServers.invoke();
