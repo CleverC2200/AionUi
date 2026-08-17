@@ -567,7 +567,7 @@ export const interactionRequest = {
     (p) => `/api/interaction-requests/${encodeURIComponent(p.request_id)}/actions`,
     ({ request_id: _requestId, ...command }) => command
   ),
-  changed: wsEmitter<{ revision: string }>('interaction_request.changed'),
+  changed: wsEmitter<{ revision: string }>('interactionRequest.changed'),
 };
 
 export const conversationRecords = {

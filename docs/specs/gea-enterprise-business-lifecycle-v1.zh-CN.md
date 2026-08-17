@@ -68,7 +68,7 @@ sequenceDiagram
 
     Core->>ERP: 查询付款材料
     ERP-->>Core: 缺少成本中心，需要人工补充
-    Core-->>UI: interaction_request.changed
+    Core-->>UI: interactionRequest.changed
     UI->>Core: GET pending
     UI-->>User: 统一待处理显示 ERP 来源
     User->>UI: 回到原消息并回答
@@ -157,15 +157,15 @@ context_evidence
 
 ## 6. AionCore 对客户端的最小契约组合
 
-| 目的         | HTTP                                                             | 实时事件                                              |
-| ------------ | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| 显式同步     | `POST /api/client-resources/sync`                                | 可选 `client_catalog.changed`                         |
-| 刷新资源投影 | `GET /api/assistants`、`GET /api/skills`、`GET /api/mcp/servers` | —                                                     |
-| 原子启动     | `POST /api/conversations/prepare`、`POST /api/conversations`     | —                                                     |
-| 发起任务     | `POST /api/conversations/{id}/messages`                          | Agent/runtime 消息流                                  |
-| 聚合待办     | `GET /api/interaction-requests?status=pending`                   | `interaction_request.changed`、`realtime.reconnected` |
-| 处理待办     | `POST /api/interaction-requests/{id}/actions`                    | 后续原 Turn 消息/状态                                 |
-| 核验交付     | `GET /api/conversations/{id}/records`                            | `conversation.record`                                 |
+| 目的         | HTTP                                                             | 实时事件                                             |
+| ------------ | ---------------------------------------------------------------- | ---------------------------------------------------- |
+| 显式同步     | `POST /api/client-resources/sync`                                | 可选 `client_catalog.changed`                        |
+| 刷新资源投影 | `GET /api/assistants`、`GET /api/skills`、`GET /api/mcp/servers` | —                                                    |
+| 原子启动     | `POST /api/conversations/prepare`、`POST /api/conversations`     | —                                                    |
+| 发起任务     | `POST /api/conversations/{id}/messages`                          | Agent/runtime 消息流                                 |
+| 聚合待办     | `GET /api/interaction-requests?status=pending`                   | `interactionRequest.changed`、`realtime.reconnected` |
+| 处理待办     | `POST /api/interaction-requests/{id}/actions`                    | 后续原 Turn 消息/状态                                |
+| 核验交付     | `GET /api/conversations/{id}/records`                            | `conversation.record`                                |
 
 业务系统将待办交给 AionCore 时，至少要提供稳定 request ID、版本、来源、关联上下文、允许动作和更新时间。业务系统返回生产结果时，AionCore 必须先记录外部结果和验证证据，再发布 verified completion receipt。
 
