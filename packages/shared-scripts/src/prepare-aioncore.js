@@ -15,7 +15,7 @@
  * @module prepare-aioncore
  */
 
-const { execSync, execFileSync } = require('child_process');
+const { execSync, execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -332,13 +332,21 @@ function downloadFileWithAuth(url, outputPath) {
     // curl may be unavailable in some local environments; try gh before failing.
   }
 
-  execFileSync('gh', ['api', url, '--output', outputPath], {
-    timeout: 120000,
-    env: {
-      ...process.env,
-      GH_TOKEN: token || process.env.GH_TOKEN,
-    },
-  });
+  const outputFd = fs.openSync(outputPath, 'w');
+  try {
+    const result = spawnSync('gh', ['api', url], {
+      timeout: 120000,
+      stdio: ['ignore', outputFd, 'inherit'],
+      env: {
+        ...process.env,
+        GH_TOKEN: token || process.env.GH_TOKEN,
+      },
+    });
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error(`gh api artifact download failed with exit code ${result.status}`);
+  } finally {
+    fs.closeSync(outputFd);
+  }
 }
 
 function listActionsArtifacts(runId, repository) {
@@ -593,6 +601,7 @@ function prepareAioncore(options) {
 }
 
 module.exports = {
+  downloadFileWithAuth,
   getActionsArtifactMissingMessage,
   getActionsArtifactName,
   getActionsRepository,

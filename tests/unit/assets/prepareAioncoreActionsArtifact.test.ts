@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 
 const {
+  downloadFileWithAuth,
   getActionsArtifactName,
   getActionsArtifactMissingMessage,
   getActionsRepository,
@@ -106,6 +107,23 @@ afterEach(() => {
 });
 
 describe('prepare-aioncore GitHub Actions artifact resolver', () => {
+  it('writes the gh api response when curl cannot download an artifact', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-download-'));
+    const fakeBin = createFakeToolchain(tmp, { curlFails: true });
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
+
+    try {
+      const outputPath = join(tmp, 'artifact.zip');
+      downloadFileWithAuth('https://api.github.com/repos/example/repo/actions/artifacts/123/zip', outputPath);
+      expect(readFileSync(outputPath, 'utf8')).toContain('aioncore-manual-linux-x64');
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it('uses the official repository by default and accepts an explicit workflow repository', () => {
     expect(getActionsRepository()).toBe('iOfficeAI/AionCore');
 
