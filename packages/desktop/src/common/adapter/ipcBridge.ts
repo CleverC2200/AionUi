@@ -273,6 +273,19 @@ export const assistants = {
 
 export type GeaClientResourceKind = 'assistants' | 'skills' | 'mcps';
 
+export type GeaAuthSessionStatus = {
+  authenticated: boolean;
+  reauthRequired: boolean;
+  tenantId?: string;
+};
+
+export type GeaMcpTool = {
+  name: string;
+  sourceCode: string;
+  description?: string;
+  inputSchema?: unknown;
+};
+
 export type SkillSource = 'builtin' | 'custom' | 'cron' | 'extension' | 'managed';
 
 export type AvailableSkill = {
@@ -300,6 +313,11 @@ export const clientResources = {
   syncFromGea: httpPost<GeaClientResourceSyncResult, { resources: GeaClientResourceKind[] }>(
     '/api/client-resources/sync'
   ),
+};
+
+export const geaAuth = {
+  status: httpGet<GeaAuthSessionStatus, void>('/api/gea/auth/session'),
+  testMcpConnection: httpPost<GeaMcpTool[], { consumerCode: string }>('/api/gea/mcp/test'),
 };
 
 // ---------------------------------------------------------------------------

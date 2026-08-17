@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ipcBridge } from '@/common';
 import type { IMcpServer } from '@/common/config/storage';
-import { ensureBackendMcpCatalog, visibleMcpServers } from './catalog';
+import { ensureBackendMcpCatalog, isInternalMcpServer } from './catalog';
 
 /**
  * MCP server state hook.
@@ -16,7 +16,11 @@ export const useMcpServers = () => {
     setIsMcpServersLoading(true);
     try {
       const { allServers } = await ensureBackendMcpCatalog();
-      setMcpServers(visibleMcpServers(allServers));
+      setMcpServers(
+        allServers.map((server) =>
+          isInternalMcpServer(server) ? { ...server, last_test_status: 'disconnected' as const } : server
+        )
+      );
       return true;
     } catch (error) {
       console.error('[useMcpServers] Failed to load MCP catalog:', error);

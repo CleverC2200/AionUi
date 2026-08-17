@@ -36,9 +36,18 @@ vi.mock('@/renderer/pages/settings/components/AddMcpServerModal', () => ({
 }));
 
 vi.mock('@/renderer/pages/settings/ToolsSettings/McpServerItem', () => ({
-  default: ({ server, isConfigurationReadOnly }: { server: { id: string }; isConfigurationReadOnly?: boolean }) => (
+  default: ({
+    server,
+    isReadOnly,
+    isConfigurationReadOnly,
+  }: {
+    server: { id: string };
+    isReadOnly?: boolean;
+    isConfigurationReadOnly?: boolean;
+  }) => (
     <div
       data-testid={`mcp-server-${server.id}`}
+      data-readonly={isReadOnly ? 'true' : 'false'}
       data-configuration-readonly={isConfigurationReadOnly ? 'true' : 'false'}
     />
   ),
@@ -163,25 +172,31 @@ describe('ToolsModalContent image model guide', () => {
     expect(links).toHaveLength(0);
   });
 
-  it('fetches MCP resources from GEA from the add-server menu', async () => {
+  it('does not advertise unsupported managed MCP catalog synchronization', async () => {
     render(<ToolsModalContent />);
 
-    await waitFor(() => expect(hooks.catalog).toHaveBeenCalled());
-    fireEvent.click(await screen.findByTestId('add-mcp-server-menu'));
-    const marker = await screen.findByTestId('add-mcp-server-menu-gea');
-    fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
-
-    await waitFor(() => expect(hooks.syncFromGea).toHaveBeenCalledWith({ resources: ['mcps'] }));
-    await waitFor(() => expect(hooks.refreshMcpServers).toHaveBeenCalledTimes(1));
-  });
-
-  it('keeps the GEA sync action out of a standard MCP catalog', async () => {
-    hooks.catalog.mockResolvedValue({ assistants: [], mode: 'standard', sync_status: 'fresh' });
-    render(<ToolsModalContent />);
-
-    await waitFor(() => expect(hooks.catalog).toHaveBeenCalled());
     fireEvent.click(await screen.findByTestId('add-mcp-server-menu'));
     expect(screen.queryByTestId('add-mcp-server-menu-gea')).not.toBeInTheDocument();
+  });
+
+  it('renders the builtin GEA gateway as visible read-only configuration', async () => {
+    hooks.mcpServers = [
+      {
+        id: 'gea-gateway',
+        name: 'gea-gateway',
+        enabled: true,
+        builtin: true,
+        transport: { type: 'stdio', command: 'aioncore', args: ['mcp-gea-stdio'] },
+        created_at: 1,
+        updated_at: 1,
+        original_json: '{}',
+      },
+    ];
+
+    render(<ToolsModalContent />);
+
+    expect(await screen.findByTestId('mcp-server-gea-gateway')).toHaveAttribute('data-configuration-readonly', 'true');
+    expect(screen.getByTestId('mcp-server-gea-gateway')).toHaveAttribute('data-readonly', 'false');
   });
 
   it('renders GEA-managed MCP servers without local edit or delete controls', async () => {

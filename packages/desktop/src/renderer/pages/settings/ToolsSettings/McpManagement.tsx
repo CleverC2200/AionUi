@@ -6,6 +6,7 @@ import { BUILTIN_IMAGE_GEN_ID, BUILTIN_IMAGE_GEN_NAME, type IMcpServer } from '@
 import { useMcpConnection, useMcpModal, useMcpOAuth, useMcpServerCRUD, useMcpServers } from '@/renderer/hooks/mcp';
 import AddMcpServerModal from '../components/AddMcpServerModal';
 import McpServerItem from './McpServerItem';
+import { isInternalMcpServer } from '@/renderer/hooks/mcp/catalog';
 
 interface McpManagementProps {
   message: ReturnType<typeof import('@arco-design/web-react').Message.useMessage>[0];
@@ -183,7 +184,7 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
                 onEditServer={showEditMcpModal}
                 onDeleteServer={showDeleteConfirm}
                 onOAuthLogin={handleOAuthLogin}
-                isConfigurationReadOnly={server.source === 'managed'}
+                isConfigurationReadOnly={server.source === 'managed' || isInternalMcpServer(server)}
               />
             ))
           )}

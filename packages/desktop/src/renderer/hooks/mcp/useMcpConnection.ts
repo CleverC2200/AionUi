@@ -3,8 +3,9 @@ import { useState, useCallback } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { isBackendHttpError } from '@/common/adapter/httpBridge';
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { geaAuth, mcpService } from '@/common/adapter/ipcBridge';
 import type { IMcpServer } from '@/common/config/storage';
+import { isInternalMcpServer } from './catalog';
 import { globalMessageQueue } from './messageQueue';
 
 /**
@@ -22,6 +23,18 @@ type McpErrorPayload = {
   error?: string;
   code?: string;
   details?: unknown;
+};
+
+type McpTestResult = McpErrorPayload & {
+  success: boolean;
+  tools?: Array<{
+    name: string;
+    description?: string;
+    input_schema?: unknown;
+    _meta?: Record<string, unknown>;
+  }>;
+  needsAuth?: boolean;
+  needs_auth?: boolean;
 };
 
 type McpErrorDetails = {
@@ -160,7 +173,23 @@ export const useMcpConnection = (
       await updateServerStatus('testing');
 
       try {
-        const result = await mcpService.testMcpConnection.invoke({ ...server, runtime_scope_id: server.id });
+        const result: McpTestResult = isInternalMcpServer(server)
+          ? {
+              success: true,
+              tools: (
+                await geaAuth.testMcpConnection.invoke({
+                  consumerCode:
+                    server.transport.type === 'stdio'
+                      ? server.transport.env?.AIONUI_GEA_AGENT_CODE || 'sales_forecast'
+                      : 'sales_forecast',
+                })
+              ).map((tool) => ({
+                name: tool.name,
+                description: tool.description,
+                input_schema: tool.inputSchema,
+              })),
+            }
+          : await mcpService.testMcpConnection.invoke({ ...server, runtime_scope_id: server.id });
         const needsAuth = result.needsAuth ?? result.needs_auth;
 
         // 检查是否需要认证

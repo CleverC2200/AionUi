@@ -205,6 +205,7 @@ permission 示例只允许提交服务端当前版本 `allowedActions` 中的值
     "requestId": "ir_01K2...",
     "version": "v2",
     "status": "accepted",
+    "turnContinuation": "original_tool_call_released",
     "resolvedAt": "2026-08-17T10:01:00+08:00",
     "resolvedBy": "user-123",
     "auditId": "audit-456"
@@ -221,6 +222,10 @@ permission 示例只允许提交服务端当前版本 `allowedActions` 中的值
 - `forbidden`：身份、session 或动作不允许。
 - `unknown_external_write`：外部写入结果未知，必须进入核验状态，禁止自动重试。
 
+`turnContinuation` 当前只允许 `original_tool_call_released`。对于由 Aionrs 工具调用创建的待办，`accepted` 和 `already_resolved` 回执必须带上该字段；缺少该字段时，AionCore 不会把原 Turn 视为已恢复。
+
+GEA 已接受动作，但 AionCore 无法确认原 Turn 是否收到结果时，客户端会收到 `409` 和错误码 `GEA_INTERACTION_RESUME_UNKNOWN`。该状态禁止自动重投 Turn 消息或再次调用 GEA action；用户应回到原会话核验，避免同一决定被消费两次。
+
 `conflict`、`expired`、`forbidden` 建议在回执的 `request` 字段返回最新完整请求；若不返回，AionCore 会立即重新调用 list 获取权威快照。
 
 ## 3. 强制校验规则
@@ -232,7 +237,7 @@ permission 示例只允许提交服务端当前版本 `allowedActions` 中的值
 - permission 的每个 option.value 必须存在于当前版本 `allowedActions`。
 - 动作必须校验 tenant、登录用户、Gateway session、delegation、request、`expectedVersion` 和 `allowedActions`。
 - 相同 `request + version + action` 的并发或重放最多执行一次来源系统写入；相同 `idempotencyKey` 必须返回相同回执。
-- 对由 Aionrs 工具调用创建的待办，GEA 在返回 `accepted` 或 `already_resolved` 前必须释放原先等待该待办结果的 Gateway 工具调用，并把同一份权威回执返回给该调用。AionCore 会校验原 Turn 仍存活，但不会再注入第二条消息；否则会造成原 Turn 无法继续或重复消费结果。
+- 对由 Aionrs 工具调用创建的待办，GEA 在返回 `accepted` 或 `already_resolved` 前必须释放原先等待该待办结果的 Gateway 工具调用，并把同一份权威回执返回给该调用，同时返回 `turnContinuation=original_tool_call_released`。AionCore 只在收到这个显式证明后把原 Turn 视为已恢复，且不会再注入第二条消息；否则会造成原 Turn 无法继续或重复消费结果。
 - `unknown_external_write` 未完成核验前，不得再次调用来源系统，也不得报告成功。
 
 ## 4. 敏感信息边界
