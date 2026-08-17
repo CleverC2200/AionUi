@@ -97,5 +97,8 @@
   "askDeclined": "Ignoré",
   "askOther": "Autre",
   "askOtherPlaceholder": "Saisissez votre réponse",
-  "requestDetails": "Détails de la demande :"
+  "requestDetails": "Détails de la demande :",
+  "delivery": {
+    "pending": "Non lu"
+  }
 }
