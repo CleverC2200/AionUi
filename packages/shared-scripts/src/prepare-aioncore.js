@@ -15,7 +15,7 @@
  * @module prepare-aioncore
  */
 
-const { execSync, execFileSync } = require('child_process');
+const { execSync, execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -23,6 +23,7 @@ const { verifyBundledAioncoreResources } = require('./verify-bundled-aioncore-re
 
 const GITHUB_OWNER = 'iOfficeAI';
 const GITHUB_REPO = 'AionCore';
+const DEFAULT_ACTIONS_REPOSITORY = `${GITHUB_OWNER}/${GITHUB_REPO}`;
 
 const ACTIONS_ARTIFACT_TARGETS = {
   'darwin-arm64': {
@@ -96,6 +97,14 @@ function getActionsTarget(platform, arch) {
 
 function getActionsArtifactName(platform, arch) {
   return getActionsTarget(platform, arch)?.artifactName || null;
+}
+
+function getActionsRepository() {
+  const repository = (process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY || DEFAULT_ACTIONS_REPOSITORY).trim();
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
+    throw new Error(`Invalid AionCore Actions repository: ${repository}`);
+  }
+  return repository;
 }
 
 function getActionsManualPlatform(platform, arch) {
@@ -323,19 +332,25 @@ function downloadFileWithAuth(url, outputPath) {
     // curl may be unavailable in some local environments; try gh before failing.
   }
 
-  execFileSync('gh', ['api', url, '--output', outputPath], {
-    timeout: 120000,
-    env: {
-      ...process.env,
-      GH_TOKEN: token || process.env.GH_TOKEN,
-    },
-  });
+  const outputFd = fs.openSync(outputPath, 'w');
+  try {
+    const result = spawnSync('gh', ['api', url], {
+      timeout: 120000,
+      stdio: ['ignore', outputFd, 'inherit'],
+      env: {
+        ...process.env,
+        GH_TOKEN: token || process.env.GH_TOKEN,
+      },
+    });
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error(`gh api artifact download failed with exit code ${result.status}`);
+  } finally {
+    fs.closeSync(outputFd);
+  }
 }
 
-function listActionsArtifacts(runId) {
-  const response = githubApiGetJson(
-    `repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/runs/${runId}/artifacts?per_page=100`
-  );
+function listActionsArtifacts(runId, repository) {
+  const response = githubApiGetJson(`repos/${repository}/actions/runs/${runId}/artifacts?per_page=100`);
   return Array.isArray(response?.artifacts) ? response.artifacts : [];
 }
 
@@ -345,7 +360,8 @@ function downloadAndExtractActionsArtifact(platform, arch, runId) {
     throw new Error(`Unsupported AionCore Actions artifact target: ${platform}-${arch}`);
   }
 
-  const artifacts = listActionsArtifacts(runId);
+  const repository = getActionsRepository();
+  const artifacts = listActionsArtifacts(runId, repository);
   const availableArtifactNames = artifacts
     .map((artifact) => artifact.name)
     .filter(Boolean)
@@ -372,8 +388,7 @@ function downloadAndExtractActionsArtifact(platform, arch, runId) {
   ensureDirectory(tempDir);
 
   const downloadUrl =
-    artifact.archive_download_url ||
-    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/artifacts/${artifact.id}/zip`;
+    artifact.archive_download_url || `https://api.github.com/repos/${repository}/actions/artifacts/${artifact.id}/zip`;
   console.log(`  Downloading aioncore from AionCore run ${runId} artifact ${expectedArtifactName}`);
   downloadFileWithAuth(downloadUrl, artifactZipPath);
   extractArchive(artifactZipPath, artifactExtractDir, platform);
@@ -395,6 +410,7 @@ function downloadAndExtractActionsArtifact(platform, arch, runId) {
     binaryPath,
     tempDir,
     artifactName: expectedArtifactName,
+    repository,
     archivePath,
     url: downloadUrl,
   };
@@ -514,6 +530,7 @@ function prepareAioncore(options) {
     sourceType = 'actions-artifact';
     sourceDetail = {
       runId: actionsRunId,
+      repository: result.repository,
       artifactName: result.artifactName,
       url: result.url,
     };
@@ -584,8 +601,10 @@ function prepareAioncore(options) {
 }
 
 module.exports = {
+  downloadFileWithAuth,
   getActionsArtifactMissingMessage,
   getActionsArtifactName,
+  getActionsRepository,
   prepareAioncore,
   verifyPreparedAioncoreBundle,
 };

@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 
 const {
+  downloadFileWithAuth,
   getActionsArtifactName,
   getActionsArtifactMissingMessage,
+  getActionsRepository,
   prepareAioncore,
 } = require('../../../packages/shared-scripts/src/prepare-aioncore');
 
@@ -98,12 +100,42 @@ chmod +x "$out/aioncore"
 
 afterEach(() => {
   delete process.env.AIONUI_BACKEND_RUN_ID;
+  delete process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY;
   delete process.env.AIONUI_BACKEND_LOCAL_BINARY;
   rmSync(join(tmpdir(), 'aioncore-prepare', 'v0.1.46'), { recursive: true, force: true });
   rmSync(join(tmpdir(), 'aioncore-prepare-actions', '123'), { recursive: true, force: true });
 });
 
 describe('prepare-aioncore GitHub Actions artifact resolver', () => {
+  posixFakeToolchainIt('writes the gh api response when curl cannot download an artifact', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-download-'));
+    const fakeBin = createFakeToolchain(tmp, { curlFails: true });
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
+
+    try {
+      const outputPath = join(tmp, 'artifact.zip');
+      downloadFileWithAuth('https://api.github.com/repos/example/repo/actions/artifacts/123/zip', outputPath);
+      expect(readFileSync(outputPath, 'utf8')).toContain('aioncore-manual-linux-x64');
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('uses the official repository by default and accepts an explicit workflow repository', () => {
+    expect(getActionsRepository()).toBe('iOfficeAI/AionCore');
+
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    expect(getActionsRepository()).toBe('CleverC2200/AionCore');
+  });
+
+  it('rejects malformed workflow repositories', () => {
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'https://github.com/CleverC2200/AionCore';
+    expect(() => getActionsRepository()).toThrow(/Invalid AionCore Actions repository/);
+  });
+
   it.each([
     ['win32', 'x64', 'aioncore-manual-windows-x64'],
     ['win32', 'arm64', 'aioncore-manual-windows-arm64'],
