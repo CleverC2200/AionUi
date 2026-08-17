@@ -76,10 +76,11 @@ import {
 } from './process/utils/tray';
 import { readCloseToTraySetting } from './process/utils/closeToTraySetting';
 import {
+  configureSharedPersonalModelGateway,
   getSharedLarkAuthSessionStore,
   initializeSharedLarkAuthSession,
-  initializeSharedPersonalModelGateway,
   syncSharedGeaSessionToBackend,
+  syncSharedPersonalModels,
 } from './process/services/LarkAuthService';
 import { getPersonalModelGatewayRuntime } from './process/services/PersonalModelGatewayRuntime';
 // @ts-expect-error - electron-squirrel-startup doesn't have types
@@ -220,7 +221,9 @@ let backendStartedOk = false;
 let backendStartupFailed = false;
 let backendStartupFailureInfo: BackendStartupFailureInfo | null = null;
 let rendererInitialLanguage: string | null = null;
+let rendererDidFinishLoad = false;
 let backendMigrationsScheduled = false;
+let personalModelRestoreScheduled = false;
 let ensureAdminUserPromise: Promise<void> | null = null;
 
 ipcMain.on('get-backend-port', (event) => {
@@ -342,7 +345,7 @@ function registerCronResumeBridge(backendPort: number): void {
  * main process. Called from did-finish-load.
  */
 const scheduleBackendMigrations = (): void => {
-  if (backendMigrationsScheduled || !backendStartedOk) return;
+  if (backendMigrationsScheduled || !backendStartedOk || !rendererDidFinishLoad) return;
   backendMigrationsScheduled = true;
   void (async () => {
     try {
@@ -353,6 +356,22 @@ const scheduleBackendMigrations = (): void => {
       console.error('[AionUi] Backend migration hook threw:', error);
     }
   })();
+};
+
+/**
+ * Provider persistence is implemented by the renderer-side ConfigStorage bridge.
+ * Restoring the per-login local proxy before the renderer has loaded leaves the
+ * request waiting forever and the persisted provider pointing at the previous
+ * process's random port. Gate all renderer-backed startup work on both sides.
+ */
+const scheduleRendererBackedStartupWork = (): void => {
+  if (!backendStartedOk || !rendererDidFinishLoad) return;
+  scheduleBackendMigrations();
+  if (personalModelRestoreScheduled) return;
+  personalModelRestoreScheduled = true;
+  void syncSharedPersonalModels().catch((error) => {
+    console.warn('[AionUi] Failed to restore GEA personal models:', error);
+  });
 };
 
 function exposeBackendPort(backendPort: number): void {
@@ -381,9 +400,7 @@ function markBackendReady(backendPort: number, source: string): void {
   if (backendStartedOk) return;
   console.log(`[AionUi] ${source} ready (port=${backendPort})`);
   exposeBackendPort(backendPort);
-  void initializeSharedPersonalModelGateway(getPersonalModelGatewayRuntime()).catch((error) => {
-    console.warn('[AionUi] Failed to restore GEA personal models:', error);
-  });
+  configureSharedPersonalModelGateway(getPersonalModelGatewayRuntime());
   registerCronResumeBridge(backendPort);
   backendStartedOk = true;
   backendStartupFailed = false;
@@ -392,7 +409,7 @@ function markBackendReady(backendPort: number, source: string): void {
   // Backend is ready: tell the renderer to drop any "starting" view and show the App.
   broadcastBackendStartupState(null);
   void ensureAdminUserOnce(backendPort);
-  scheduleBackendMigrations();
+  scheduleRendererBackedStartupWork();
 }
 
 function resolveDebugBackendStartupFailure(): BackendStartupFailureInfo | null {
@@ -505,6 +522,12 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
 
   scheduleStartupLogReport(mainWindow);
 
+  mainWindow.webContents.once('did-finish-load', () => {
+    console.log('[AionUi] Renderer did-finish-load');
+    rendererDidFinishLoad = true;
+    scheduleRendererBackedStartupWork();
+  });
+
   // Show window after content is ready to prevent FOUC (Flash of Unstyled Content)
   // Use 'ready-to-show' which fires when renderer has painted first frame,
   // combined with 'did-finish-load' as belt-and-suspenders approach.
@@ -522,9 +545,7 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
     });
     // Belt-and-suspenders: also show on did-finish-load in case ready-to-show already fired
     mainWindow.webContents.once('did-finish-load', () => {
-      console.log('[AionUi] Renderer did-finish-load');
       showWindow();
-      scheduleBackendMigrations();
     });
     // Fallback: show window after 5s even if events don't fire (e.g. loadURL failure)
     setTimeout(showWindow, 5000);
