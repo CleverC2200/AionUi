@@ -48,6 +48,74 @@ function resultText(value: unknown): string {
 }
 
 const MAX_TOOL_NAME_LENGTH = 64;
+const BUSINESS_DATA_TOOL_NAME = 'query_business_data';
+
+const LEGACY_BUSINESS_DATA_INPUT_SCHEMA: Record<string, unknown> = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    action: {
+      type: 'string',
+      enum: ['inspect', 'query'],
+      description: 'inspect reads the semantic-model catalog; query executes one to eight named Cube queries.',
+    },
+    queries: {
+      type: 'array',
+      maxItems: 8,
+      description: 'Use an empty array for inspect. For query, provide one to eight named query objects.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name', 'query'],
+        properties: {
+          name: {
+            type: 'string',
+            minLength: 1,
+            description: 'Stable name for this query in the returned result.',
+          },
+          query: {
+            type: 'object',
+            additionalProperties: true,
+            description: 'Cube JSON Query. Put all query fields inside this object.',
+            properties: {
+              measures: { type: 'array', items: { type: 'string' } },
+              dimensions: { type: 'array', items: { type: 'string' } },
+              filters: { type: 'array', items: { type: 'object' } },
+              timeDimensions: { type: 'array', items: { type: 'object' } },
+              segments: { type: 'array', items: { type: 'string' } },
+              limit: { type: 'integer', minimum: 0 },
+              order: {
+                oneOf: [
+                  { type: 'object', additionalProperties: { type: 'string', enum: ['asc', 'desc'] } },
+                  { type: 'array', items: { type: 'object' } },
+                ],
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  required: ['action', 'queries'],
+};
+
+function usesLegacyBusinessDataArguments(tool: GeaMcpGatewayTool): boolean {
+  if (tool.name !== BUSINESS_DATA_TOOL_NAME) return false;
+  const properties = tool.inputSchema.properties;
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return false;
+  const queries = (properties as Record<string, unknown>).queries;
+  if (!queries || typeof queries !== 'object' || Array.isArray(queries)) return false;
+  return (queries as Record<string, unknown>).type === 'string';
+}
+
+function exposedInputSchema(tool: GeaMcpGatewayTool): Record<string, unknown> {
+  return usesLegacyBusinessDataArguments(tool) ? LEGACY_BUSINESS_DATA_INPUT_SCHEMA : tool.inputSchema;
+}
+
+function gatewayArguments(tool: GeaMcpGatewayTool, argumentsValue: Record<string, unknown>): Record<string, unknown> {
+  if (!usesLegacyBusinessDataArguments(tool) || !Array.isArray(argumentsValue.queries)) return argumentsValue;
+  return { ...argumentsValue, queries: JSON.stringify(argumentsValue.queries) };
+}
 
 function createCompatibleToolName(name: string, usedNames: Set<string>): string {
   const sanitized = name.replace(/[^a-zA-Z0-9_-]/g, '_') || 'gea_tool';
@@ -95,7 +163,7 @@ function createMcpServer(authService: GeaLarkAuthService, agentCode: string): Se
     return {
       tools: tools.map(({ exposedName, tool }) => ({
         name: exposedName,
-        inputSchema: tool.inputSchema,
+        inputSchema: exposedInputSchema(tool),
         ...(tool.description ? { description: tool.description } : {}),
       })),
     };
@@ -112,7 +180,7 @@ function createMcpServer(authService: GeaLarkAuthService, agentCode: string): Se
       }
       const argumentsValue =
         request.params.arguments && typeof request.params.arguments === 'object' ? request.params.arguments : {};
-      const result = await gatewaySession.callTool(tool, argumentsValue);
+      const result = await gatewaySession.callTool(tool, gatewayArguments(tool, argumentsValue));
       return { content: [{ type: 'text', text: resultText(result.result) }] };
     } catch (error) {
       return { isError: true, content: [{ type: 'text', text: errorCode(error) }] };
