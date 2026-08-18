@@ -198,6 +198,28 @@ describe('ToolsModalContent image model guide', () => {
     await waitFor(() => expect(screen.queryByTestId('mcp-server-gea-gateway')).not.toBeInTheDocument());
   });
 
+  it('hides the retired no-session GEA endpoint', async () => {
+    hooks.mcpServers = [
+      {
+        id: 'legacy-gea',
+        name: 'gea',
+        enabled: false,
+        builtin: false,
+        transport: {
+          type: 'sse',
+          url: 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse',
+        },
+        created_at: 1,
+        updated_at: 1,
+        original_json: '{}',
+      },
+    ];
+
+    render(<ToolsModalContent />);
+
+    await waitFor(() => expect(screen.queryByTestId('mcp-server-legacy-gea')).not.toBeInTheDocument());
+  });
+
   it('renders GEA-managed MCP servers without local edit or delete controls', async () => {
     hooks.mcpServers = [
       {

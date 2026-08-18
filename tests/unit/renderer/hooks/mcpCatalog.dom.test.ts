@@ -110,4 +110,34 @@ describe('ensureBackendMcpCatalog', () => {
       ])
     ).toEqual([expect.objectContaining({ id: 'chrome-devtools' })]);
   });
+
+  it('hides only the retired no-session GEA endpoint from user-visible MCP lists', () => {
+    expect(
+      visibleMcpServers([
+        {
+          id: 'legacy-gea',
+          name: 'gea',
+          enabled: false,
+          transport: {
+            type: 'sse',
+            url: 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse/',
+          },
+          created_at: 1,
+          updated_at: 1,
+          original_json: '{}',
+          builtin: false,
+        },
+        {
+          id: 'user-gea',
+          name: 'gea',
+          enabled: true,
+          transport: { type: 'sse', url: 'https://example.com/mcp/sse' },
+          created_at: 1,
+          updated_at: 1,
+          original_json: '{}',
+          builtin: false,
+        },
+      ])
+    ).toEqual([expect.objectContaining({ id: 'user-gea' })]);
+  });
 });

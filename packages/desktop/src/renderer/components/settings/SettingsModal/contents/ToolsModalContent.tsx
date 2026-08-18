@@ -34,7 +34,7 @@ import {
 } from '@/renderer/services/clientBusinessSettings';
 import classNames from 'classnames';
 import { useSettingsTabNavigate, useSettingsViewMode } from '../settingsViewContext';
-import { isInternalMcpServer } from '@/renderer/hooks/mcp/catalog';
+import { isInternalMcpServer, isLegacyGeaMcpServer } from '@/renderer/hooks/mcp/catalog';
 
 type MessageInstance = ReturnType<typeof Message.useMessage>[0];
 
@@ -56,7 +56,10 @@ const ModalMcpManagementSection: React.FC<{
   const { t } = useTranslation();
   const { oauthStatus, loggingIn, checkOAuthStatus, markLoginRequired, clearLoginRequired, login } = useMcpOAuth();
   const visibleMcpServers = useMemo(
-    () => mcpServers.filter((server) => !isBuiltinImageGenServer(server) && !isInternalMcpServer(server)),
+    () =>
+      mcpServers.filter(
+        (server) => !isBuiltinImageGenServer(server) && !isInternalMcpServer(server) && !isLegacyGeaMcpServer(server)
+      ),
     [mcpServers]
   );
 

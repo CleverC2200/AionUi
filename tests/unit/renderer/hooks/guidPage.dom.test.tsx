@@ -150,8 +150,20 @@ vi.mock('@/common', () => ({
 vi.mock('@/renderer/hooks/mcp/catalog', () => ({
   ensureBackendMcpCatalog: (...args: unknown[]) => ensureBackendMcpCatalogMock(...args),
   INTERNAL_GEA_MCP_NAME: 'gea-gateway',
-  visibleMcpServers: (servers: Array<{ name: string; builtin?: boolean }>) =>
-    servers.filter((server) => !(server.builtin === true && server.name === 'gea-gateway')),
+  isLegacyGeaMcpServer: (server: { name: string; transport: { type: string; url?: string } }) =>
+    server.name === 'gea' &&
+    server.transport.type === 'sse' &&
+    server.transport.url?.replace(/\/+$/, '') === 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse',
+  visibleMcpServers: (servers: Array<{ name: string; builtin?: boolean; transport: { type: string; url?: string } }>) =>
+    servers.filter(
+      (server) =>
+        !(server.builtin === true && server.name === 'gea-gateway') &&
+        !(
+          server.name === 'gea' &&
+          server.transport.type === 'sse' &&
+          server.transport.url?.replace(/\/+$/, '') === 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse'
+        )
+    ),
 }));
 
 vi.mock('@/renderer/hooks/chat/useInputFocusRing', () => ({
