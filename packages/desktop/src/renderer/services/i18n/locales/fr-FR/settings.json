@@ -1338,6 +1338,7 @@
   "personalModelFetchFromGea": "Récupérer depuis GEA",
   "personalModelFetching": "Récupération depuis GEA…",
   "personalModelFetchFailed": "Impossible de récupérer les modèles personnels depuis GEA. Réessayez plus tard ou contactez l'administrateur.",
+  "personalModelCredentialRecoveryRequired": "Cet identifiant de modèle personnel a été réclamé par une autre installation. Demandez à votre administrateur GEA de le renouveler, puis réessayez.",
   "personalModelLoginRequired": "Connectez-vous avant de récupérer les modèles personnels depuis GEA.",
   "personalModelNoneAvailable": "Aucune autorisation de modèle personnel n'est disponible à synchroniser depuis GEA.",
   "geaResourceFetchFromGea": "Récupérer depuis GEA",

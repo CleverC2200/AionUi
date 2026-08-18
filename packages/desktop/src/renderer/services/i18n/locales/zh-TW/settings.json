@@ -1395,6 +1395,7 @@
   "personalModelFetchFromGea": "從 GEA 取得",
   "personalModelFetching": "正在從 GEA 取得…",
   "personalModelFetchFailed": "從 GEA 取得個人模型失敗，請稍後重試或聯絡管理員。",
+  "personalModelCredentialRecoveryRequired": "此個人模型憑證已由其他安裝領取。請聯絡 GEA 管理員輪換憑證，然後重新取得。",
   "personalModelLoginRequired": "請先登入，再從 GEA 取得個人模型。",
   "personalModelNoneAvailable": "GEA 中沒有可同步的個人模型授權。",
   "geaResourceFetchFromGea": "從 GEA 取得",

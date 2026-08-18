@@ -1337,6 +1337,7 @@
   "personalModelFetchFromGea": "Отримати з GEA",
   "personalModelFetching": "Отримання з GEA…",
   "personalModelFetchFailed": "Не вдалося отримати персональні моделі з GEA. Спробуйте пізніше або зверніться до адміністратора.",
+  "personalModelCredentialRecoveryRequired": "Ці облікові дані персональної моделі вже отримала інша інсталяція. Попросіть адміністратора GEA виконати ротацію та повторіть отримання.",
   "personalModelLoginRequired": "Увійдіть перед отриманням персональних моделей з GEA.",
   "personalModelNoneAvailable": "У GEA немає доступних для синхронізації дозволів на персональні моделі.",
   "geaResourceFetchFromGea": "Отримати з GEA",

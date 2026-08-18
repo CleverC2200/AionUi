@@ -1341,6 +1341,7 @@
   "personalModelFetchFromGea": "Buscar no GEA",
   "personalModelFetching": "Buscando no GEA…",
   "personalModelFetchFailed": "Não foi possível buscar os modelos pessoais no GEA. Tente novamente mais tarde ou contate o administrador.",
+  "personalModelCredentialRecoveryRequired": "Esta credencial de modelo pessoal foi reivindicada por outra instalação. Peça ao administrador do GEA para rotacioná-la e busque novamente.",
   "personalModelLoginRequired": "Entre antes de buscar modelos pessoais no GEA.",
   "personalModelNoneAvailable": "Não há autorização de modelo pessoal disponível para sincronizar no GEA.",
   "geaResourceFetchFromGea": "Buscar no GEA",

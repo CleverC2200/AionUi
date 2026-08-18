@@ -1338,6 +1338,7 @@
   "personalModelFetchFromGea": "Von GEA abrufen",
   "personalModelFetching": "Wird von GEA abgerufen…",
   "personalModelFetchFailed": "Persönliche Modelle konnten nicht von GEA abgerufen werden. Versuchen Sie es später erneut oder wenden Sie sich an den Administrator.",
+  "personalModelCredentialRecoveryRequired": "Diese persönliche Modellanmeldung wurde von einer anderen Installation beansprucht. Bitten Sie Ihren GEA-Administrator, sie zu rotieren, und rufen Sie sie dann erneut ab.",
   "personalModelLoginRequired": "Melden Sie sich an, bevor Sie persönliche Modelle von GEA abrufen.",
   "personalModelNoneAvailable": "In GEA ist keine synchronisierbare persönliche Modellautorisierung verfügbar.",
   "geaResourceFetchFromGea": "Von GEA abrufen",

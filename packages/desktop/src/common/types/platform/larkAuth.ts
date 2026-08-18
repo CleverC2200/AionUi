@@ -27,6 +27,7 @@ export type PersonalModelSyncResult = {
   reason?:
     | 'credentialListFailed'
     | 'credentialClaimFailed'
+    | 'credentialRecoveryRequired'
     | 'credentialSyncFailed'
     | 'localProxyFailed'
     | 'modelDiscoveryFailed'

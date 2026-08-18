@@ -1338,6 +1338,7 @@
   "personalModelFetchFromGea": "GEA'dan al",
   "personalModelFetching": "GEA'dan alınıyor…",
   "personalModelFetchFailed": "Kişisel modeller GEA'dan alınamadı. Daha sonra tekrar deneyin veya yöneticinize başvurun.",
+  "personalModelCredentialRecoveryRequired": "Bu kişisel model kimlik bilgisi başka bir kurulum tarafından alındı. GEA yöneticinizden döndürmesini isteyin ve tekrar alın.",
   "personalModelLoginRequired": "GEA'dan kişisel modelleri almadan önce oturum açın.",
   "personalModelNoneAvailable": "GEA'da eşitlenebilecek kişisel model yetkisi yok.",
   "geaResourceFetchFromGea": "GEA'dan al",

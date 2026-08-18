@@ -81,6 +81,8 @@ const LarkQrLogin = () => {
           const sync = result.data.personalModelSync;
           if (sync.status === 'unavailable') {
             Message.warning(t('login.lark.personalModels.unavailable'));
+          } else if (sync.reason === 'credentialRecoveryRequired') {
+            Message.warning(t('settings.personalModelCredentialRecoveryRequired'));
           } else if (sync.status === 'partial') {
             Message.warning(t('login.lark.personalModels.partial'));
           } else if (sync.configured > 0) {

@@ -2265,6 +2265,7 @@ export type I18nKey =
   | 'settings.pdfToPptAssistantName'
   | 'settings.pending'
   | 'settings.personalAuth'
+  | 'settings.personalModelCredentialRecoveryRequired'
   | 'settings.personalModelFetchFailed'
   | 'settings.personalModelFetchFromGea'
   | 'settings.personalModelFetching'

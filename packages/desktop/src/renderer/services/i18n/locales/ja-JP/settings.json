@@ -1340,6 +1340,7 @@
   "personalModelFetchFromGea": "GEA から取得",
   "personalModelFetching": "GEA から取得中…",
   "personalModelFetchFailed": "GEA から個人モデルを取得できませんでした。後でもう一度試すか、管理者に連絡してください。",
+  "personalModelCredentialRecoveryRequired": "この個人モデル資格情報は別のインストールで取得済みです。GEA 管理者にローテーションを依頼してから、もう一度取得してください。",
   "personalModelLoginRequired": "ログインしてから GEA の個人モデルを取得してください。",
   "personalModelNoneAvailable": "GEA に同期可能な個人モデル認可がありません。",
   "geaResourceFetchFromGea": "GEA から取得",

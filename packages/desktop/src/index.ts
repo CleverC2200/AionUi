@@ -369,9 +369,21 @@ const scheduleRendererBackedStartupWork = (): void => {
   scheduleBackendMigrations();
   if (personalModelRestoreScheduled) return;
   personalModelRestoreScheduled = true;
-  void syncSharedPersonalModels().catch((error) => {
-    console.warn('[AionUi] Failed to restore GEA personal models:', error);
-  });
+  void syncSharedPersonalModels()
+    .then((result) => {
+      if (result.status !== 'completed') {
+        console.warn('[AionUi] GEA personal model restore did not complete:', {
+          configured: result.configured,
+          failed: result.failed,
+          reason: result.reason,
+          skipped: result.skipped,
+          status: result.status,
+        });
+      }
+    })
+    .catch((error) => {
+      console.warn('[AionUi] Failed to restore GEA personal models:', error);
+    });
 };
 
 function exposeBackendPort(backendPort: number): void {
