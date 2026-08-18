@@ -25,7 +25,7 @@ import { useGuidInput } from './hooks/useGuidInput';
 import { useGuidModelSelection } from './hooks/useGuidModelSelection';
 import { useGuidSend } from './hooks/useGuidSend';
 import { useTypewriterPlaceholder } from './hooks/useTypewriterPlaceholder';
-import { ensureBackendMcpCatalog, INTERNAL_GEA_MCP_NAME } from '@/renderer/hooks/mcp/catalog';
+import { ensureBackendMcpCatalog, INTERNAL_GEA_MCP_NAME, visibleMcpServers } from '@/renderer/hooks/mcp/catalog';
 import { resolveGuidAssistantDefaults } from './utils/assistantDefaults';
 import SpeechInputButton from '@/renderer/components/chat/SpeechInputButton';
 import { chatFileRefPath, uploadFileRef } from '@/common/types/chatFile';
@@ -182,7 +182,7 @@ const GuidPage: React.FC = () => {
     [availableMcpServers, resolvedAssistantDefaults.mcpIds]
   );
   const selectableMcpServers = useMemo(
-    () => availableMcpServers.filter((server) => !isLegacyGeaMcpServer(server)),
+    () => visibleMcpServers(availableMcpServers).filter((server) => !isLegacyGeaMcpServer(server)),
     [availableMcpServers]
   );
   const selectableMcpServerIds = useMemo(

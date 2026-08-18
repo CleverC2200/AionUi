@@ -603,10 +603,8 @@ describe('GuidPage', () => {
     await vi.waitFor(() => {
       expect(capturedGuidSendDeps.at(-1)?.selectedMcpServerIds).toEqual(['gea-gateway']);
       expect(capturedGuidSendDeps.at(-1)?.assistantDefaultMcpIds).toEqual(['gea-gateway']);
-      expect(capturedGuidActionRowProps.at(-1)?.mcpServers).toEqual([
-        expect.objectContaining({ id: 'gea-gateway', name: 'gea-gateway' }),
-      ]);
-      expect(capturedGuidActionRowProps.at(-1)?.selectedMcpServerIds).toEqual(['gea-gateway']);
+      expect(capturedGuidActionRowProps.at(-1)?.mcpServers).toEqual([]);
+      expect(capturedGuidActionRowProps.at(-1)?.selectedMcpServerIds).toEqual([]);
     });
   });
 

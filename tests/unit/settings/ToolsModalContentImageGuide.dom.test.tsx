@@ -179,7 +179,7 @@ describe('ToolsModalContent image model guide', () => {
     expect(screen.queryByTestId('add-mcp-server-menu-gea')).not.toBeInTheDocument();
   });
 
-  it('renders the builtin GEA gateway as visible read-only configuration', async () => {
+  it('hides the builtin GEA gateway implementation detail', async () => {
     hooks.mcpServers = [
       {
         id: 'gea-gateway',
@@ -195,8 +195,7 @@ describe('ToolsModalContent image model guide', () => {
 
     render(<ToolsModalContent />);
 
-    expect(await screen.findByTestId('mcp-server-gea-gateway')).toHaveAttribute('data-configuration-readonly', 'true');
-    expect(screen.getByTestId('mcp-server-gea-gateway')).toHaveAttribute('data-readonly', 'false');
+    await waitFor(() => expect(screen.queryByTestId('mcp-server-gea-gateway')).not.toBeInTheDocument());
   });
 
   it('renders GEA-managed MCP servers without local edit or delete controls', async () => {
