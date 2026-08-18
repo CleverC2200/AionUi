@@ -91,8 +91,8 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
     });
   });
 
-  it('labels a GEA-managed server and hides local configuration actions', () => {
-    const { container } = render(
+  it('labels a GEA-managed server and keeps a disabled edit placeholder', () => {
+    render(
       <ConfigProvider>
         <McpServerHeader
           server={{ ...buildServer('connected'), source: 'managed' }}
@@ -103,7 +103,7 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
     );
 
     expect(screen.getByText('settings.enterpriseManagedBadge')).toBeInTheDocument();
-    expect(container.querySelector('.i-icon-setting-one')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'settings.mcpEditServer' })).toBeDisabled();
   });
 
   it('uses the user-facing GEA MCP name for the internal session gateway', () => {
@@ -125,6 +125,7 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
 
     expect(screen.getByText('settings.geaMcpDisplayName')).toBeInTheDocument();
     expect(screen.queryByText('gea-gateway')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'settings.mcpEditServer' })).toBeDisabled();
   });
 
   it('allows the internal gateway to be disabled without exposing its configuration', async () => {
@@ -138,7 +139,7 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
       transport: { type: 'stdio' as const, command: 'aioncore', args: ['mcp-gea-stdio'] },
     };
 
-    const { container } = render(
+    render(
       <ConfigProvider>
         <McpServerHeader server={server} {...commonProps} isConfigurationReadOnly onToggleEnabled={onToggleEnabled} />
       </ConfigProvider>
@@ -147,6 +148,12 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
     await user.click(screen.getByRole('switch', { name: 'settings.mcpDisableServer' }));
 
     expect(onToggleEnabled).toHaveBeenCalledWith(server, false);
-    expect(container.querySelector('.i-icon-setting-one')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'settings.mcpEditServer' })).toBeDisabled();
+  });
+
+  it('keeps the edit control enabled for a user-added MCP server', () => {
+    renderHeader('connected');
+
+    expect(screen.getByRole('button', { name: 'settings.mcpEditServer' })).toBeEnabled();
   });
 });

@@ -171,6 +171,7 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
   const displayName = isInternalMcpServer(server) ? t('settings.geaMcpDisplayName') : server.name;
   const isEnabled = server.enabled !== false;
   const canToggleEnabled = !isReadOnly && server.source !== 'managed' && Boolean(onToggleEnabled);
+  const canEditConfiguration = !isReadOnly && !isConfigurationReadOnly && !server.builtin;
 
   const isError = server.last_test_status === 'error';
   const managedBadge =
@@ -217,47 +218,55 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
           />
         )}
       </div>
-      {!isReadOnly && (canToggleEnabled || !isConfigurationReadOnly) && (
-        <div className='flex items-center gap-2' onClick={(e) => e.stopPropagation()}>
-          {canToggleEnabled && (
-            <Tooltip
-              content={isEnabled ? t('settings.mcpDisableServer') : t('settings.mcpEnableServer')}
-              position='top'
-            >
-              <Switch
-                size='small'
-                checked={isEnabled}
-                loading={isTogglingEnabled}
-                aria-label={isEnabled ? t('settings.mcpDisableServer') : t('settings.mcpEnableServer')}
-                onChange={(checked) => onToggleEnabled?.(server, checked)}
-              />
-            </Tooltip>
-          )}
-          {!isConfigurationReadOnly && !server.builtin && (
-            <Dropdown
-              trigger='hover'
-              droplist={
-                <Menu>
-                  <Menu.Item key='edit' onClick={() => onEditServer(server)}>
-                    <div className='flex items-center gap-2'>
-                      <Write size={'14'} />
-                      {t('settings.mcpEditServer')}
-                    </div>
-                  </Menu.Item>
-                  <Menu.Item key='delete' onClick={() => onDeleteServer(server.id)}>
-                    <div className='flex items-center gap-2 text-red-500'>
-                      <DeleteFour size={'14'} />
-                      {t('settings.mcpDeleteServer')}
-                    </div>
-                  </Menu.Item>
-                </Menu>
-              }
-            >
-              <Button className='invisible group-hover:visible' size='mini' icon={<SettingOne size={'14'} />} />
-            </Dropdown>
-          )}
-        </div>
-      )}
+      <div className='flex items-center gap-2' onClick={(e) => e.stopPropagation()}>
+        {canToggleEnabled && (
+          <Tooltip content={isEnabled ? t('settings.mcpDisableServer') : t('settings.mcpEnableServer')} position='top'>
+            <Switch
+              size='small'
+              checked={isEnabled}
+              loading={isTogglingEnabled}
+              aria-label={isEnabled ? t('settings.mcpDisableServer') : t('settings.mcpEnableServer')}
+              onChange={(checked) => onToggleEnabled?.(server, checked)}
+            />
+          </Tooltip>
+        )}
+        {canEditConfiguration ? (
+          <Dropdown
+            trigger='hover'
+            droplist={
+              <Menu>
+                <Menu.Item key='edit' onClick={() => onEditServer(server)}>
+                  <div className='flex items-center gap-2'>
+                    <Write size={'14'} />
+                    {t('settings.mcpEditServer')}
+                  </div>
+                </Menu.Item>
+                <Menu.Item key='delete' onClick={() => onDeleteServer(server.id)}>
+                  <div className='flex items-center gap-2 text-red-500'>
+                    <DeleteFour size={'14'} />
+                    {t('settings.mcpDeleteServer')}
+                  </div>
+                </Menu.Item>
+              </Menu>
+            }
+          >
+            <Button
+              size='mini'
+              title={t('settings.mcpEditServer')}
+              aria-label={t('settings.mcpEditServer')}
+              icon={<SettingOne size={'14'} />}
+            />
+          </Dropdown>
+        ) : (
+          <Button
+            size='mini'
+            disabled
+            title={t('settings.mcpEditServer')}
+            aria-label={t('settings.mcpEditServer')}
+            icon={<SettingOne size={'14'} />}
+          />
+        )}
+      </div>
     </div>
   );
 };
