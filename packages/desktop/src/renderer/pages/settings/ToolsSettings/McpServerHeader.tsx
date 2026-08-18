@@ -252,6 +252,7 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
           >
             <Button
               size='mini'
+              className='!border-border-1 !bg-base !text-t-primary hover:!bg-fill-1'
               title={t('settings.mcpEditServer')}
               aria-label={t('settings.mcpEditServer')}
               icon={<SettingOne size={'14'} />}
@@ -261,6 +262,7 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
           <Button
             size='mini'
             disabled
+            className='!cursor-not-allowed !border-border-2 !bg-fill-2 !text-t-disabled opacity-50'
             title={t('settings.mcpEditServer')}
             aria-label={t('settings.mcpEditServer')}
             icon={<SettingOne size={'14'} />}

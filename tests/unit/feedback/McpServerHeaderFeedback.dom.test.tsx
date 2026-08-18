@@ -103,7 +103,9 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
     );
 
     expect(screen.getByText('settings.enterpriseManagedBadge')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'settings.mcpEditServer' })).toBeDisabled();
+    const editButton = screen.getByRole('button', { name: 'settings.mcpEditServer' });
+    expect(editButton).toBeDisabled();
+    expect(editButton).toHaveClass('!cursor-not-allowed', '!bg-fill-2', '!text-t-disabled', 'opacity-50');
   });
 
   it('uses the user-facing GEA MCP name for the internal session gateway', () => {
@@ -154,6 +156,9 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
   it('keeps the edit control enabled for a user-added MCP server', () => {
     renderHeader('connected');
 
-    expect(screen.getByRole('button', { name: 'settings.mcpEditServer' })).toBeEnabled();
+    const editButton = screen.getByRole('button', { name: 'settings.mcpEditServer' });
+    expect(editButton).toBeEnabled();
+    expect(editButton).toHaveClass('!border-border-1', '!bg-base', '!text-t-primary');
+    expect(editButton).not.toHaveClass('!cursor-not-allowed', 'opacity-50');
   });
 });
