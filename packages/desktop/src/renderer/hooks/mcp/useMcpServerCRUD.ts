@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { mcpService } from '@/common/adapter/ipcBridge';
 import { isBackendHttpError } from '@/common/adapter/httpBridge';
 import type { IMcpServer } from '@/common/config/storage';
-import { toBackendMcpPayload } from './catalog';
+import { notifyMcpCatalogChanged, toBackendMcpPayload } from './catalog';
 
 const mergeServerState = (persisted: IMcpServer, fallback?: Partial<IMcpServer>): IMcpServer => ({
   ...persisted,
@@ -53,6 +53,7 @@ export const useMcpServerCRUD = (
 
         const nextServer = mergeServerState(persisted, serverData);
         await saveMcpServers((prevServers) => replaceUserServer(prevServers, nextServer));
+        notifyMcpCatalogChanged();
         return nextServer;
       } catch (error) {
         Message.error(getMcpRequestErrorMessage(error, t('settings.mcpImportFailed')));
@@ -93,6 +94,7 @@ export const useMcpServerCRUD = (
           return nextServers;
         });
 
+        notifyMcpCatalogChanged();
         return finalServers;
       } catch (error) {
         Message.error(getMcpRequestErrorMessage(error, t('settings.mcpImportFailed')));
@@ -126,6 +128,7 @@ export const useMcpServerCRUD = (
           prevServers.map((server) => (server.id === editingMcpServer.id ? nextServer : server))
         );
 
+        notifyMcpCatalogChanged();
         Message.success(t('settings.mcpImportSuccess'));
         return nextServer;
       } catch (error) {
@@ -140,7 +143,30 @@ export const useMcpServerCRUD = (
     async (serverId: string) => {
       await mcpService.deleteServer.invoke({ id: serverId });
       await saveMcpServers((prevServers) => prevServers.filter((server) => server.id !== serverId));
+      notifyMcpCatalogChanged();
       Message.success(t('settings.mcpDeleted'));
+    },
+    [saveMcpServers, t]
+  );
+
+  const handleToggleMcpServerEnabled = useCallback(
+    async (server: IMcpServer, enabled: boolean): Promise<IMcpServer | undefined> => {
+      if ((server.enabled !== false) === enabled) {
+        return server;
+      }
+
+      try {
+        const persisted = await mcpService.toggleServer.invoke({ id: server.id });
+        const nextServer = mergeServerState(persisted, server);
+        await saveMcpServers((prevServers) =>
+          prevServers.map((currentServer) => (currentServer.id === server.id ? nextServer : currentServer))
+        );
+        notifyMcpCatalogChanged();
+        return nextServer;
+      } catch (error) {
+        Message.error(getMcpRequestErrorMessage(error, t('settings.mcpToggleFailed')));
+        return undefined;
+      }
     },
     [saveMcpServers, t]
   );
@@ -150,5 +176,6 @@ export const useMcpServerCRUD = (
     handleBatchImportMcpServers,
     handleEditMcpServer,
     handleDeleteMcpServer,
+    handleToggleMcpServerEnabled,
   };
 };

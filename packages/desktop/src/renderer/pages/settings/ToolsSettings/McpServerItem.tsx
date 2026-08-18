@@ -15,11 +15,13 @@ interface McpServerItemProps {
   isReadOnly?: boolean;
   /** Server-owned configuration still permits local authentication and connection checks. */
   isConfigurationReadOnly?: boolean;
+  isTogglingEnabled?: boolean;
   onToggleCollapse: () => void;
   onTestConnection: (server: IMcpServer) => void;
   onEditServer: (server: IMcpServer) => void;
   onDeleteServer: (serverId: string) => void;
   onOAuthLogin?: (server: IMcpServer) => void;
+  onToggleEnabled?: (server: IMcpServer, enabled: boolean) => void;
 }
 
 const McpServerItem: React.FC<McpServerItemProps> = ({
@@ -30,11 +32,13 @@ const McpServerItem: React.FC<McpServerItemProps> = ({
   isLoggingIn,
   isReadOnly,
   isConfigurationReadOnly,
+  isTogglingEnabled,
   onToggleCollapse,
   onTestConnection,
   onEditServer,
   onDeleteServer,
   onOAuthLogin,
+  onToggleEnabled,
 }) => {
   return (
     <Collapse
@@ -52,10 +56,12 @@ const McpServerItem: React.FC<McpServerItemProps> = ({
             isLoggingIn={isLoggingIn}
             isReadOnly={isReadOnly}
             isConfigurationReadOnly={isConfigurationReadOnly}
+            isTogglingEnabled={isTogglingEnabled}
             onTestConnection={onTestConnection}
             onEditServer={onEditServer}
             onDeleteServer={onDeleteServer}
             onOAuthLogin={onOAuthLogin}
+            onToggleEnabled={onToggleEnabled}
           />
         }
         name='1'

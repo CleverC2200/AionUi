@@ -29,7 +29,8 @@ import {
   ensureBackendMcpCatalog,
   INTERNAL_GEA_MCP_NAME,
   isLegacyGeaMcpServer,
-  visibleMcpServers,
+  MCP_CATALOG_CHANGED_EVENT,
+  selectableConversationMcpServers,
 } from '@/renderer/hooks/mcp/catalog';
 import { resolveGuidAssistantDefaults } from './utils/assistantDefaults';
 import SpeechInputButton from '@/renderer/components/chat/SpeechInputButton';
@@ -57,8 +58,9 @@ type GuidNavigationState = {
 };
 
 const resolveGuidMcpDefaults = (mcpIds: string[], servers: IMcpServer[]): string[] => {
-  const availableIds = new Set(servers.map((server) => server.id));
-  const gateway = servers.find((server) => server.builtin === true && server.name === INTERNAL_GEA_MCP_NAME);
+  const selectableServers = selectableConversationMcpServers(servers);
+  const availableIds = new Set(selectableServers.map((server) => server.id));
+  const gateway = selectableServers.find((server) => server.builtin === true && server.name === INTERNAL_GEA_MCP_NAME);
   const legacyIds = new Set(servers.filter(isLegacyGeaMcpServer).map((server) => server.id));
   const validMcpIds = mcpIds.filter((id) => availableIds.has(id) && !legacyIds.has(id));
 
@@ -100,14 +102,20 @@ const GuidPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    void ensureBackendMcpCatalog()
-      .then(({ allServers }) => {
-        setAvailableMcpServers(allServers);
-      })
-      .catch((error) => {
-        console.error('[GuidPage] Failed to load MCP catalog:', error);
-        setAvailableMcpServers([]);
-      });
+    const loadMcpCatalog = () => {
+      void ensureBackendMcpCatalog()
+        .then(({ allServers }) => {
+          setAvailableMcpServers(allServers);
+        })
+        .catch((error) => {
+          console.error('[GuidPage] Failed to load MCP catalog:', error);
+          setAvailableMcpServers([]);
+        });
+    };
+
+    loadMcpCatalog();
+    window.addEventListener(MCP_CATALOG_CHANGED_EVENT, loadMcpCatalog);
+    return () => window.removeEventListener(MCP_CATALOG_CHANGED_EVENT, loadMcpCatalog);
   }, []);
 
   const handleToggleSkill = useCallback((skillName: string, isAuto: boolean) => {
@@ -178,7 +186,10 @@ const GuidPage: React.FC = () => {
     () => resolveGuidMcpDefaults(resolvedAssistantDefaults.mcpIds, availableMcpServers),
     [availableMcpServers, resolvedAssistantDefaults.mcpIds]
   );
-  const selectableMcpServers = useMemo(() => visibleMcpServers(availableMcpServers), [availableMcpServers]);
+  const selectableMcpServers = useMemo(
+    () => selectableConversationMcpServers(availableMcpServers),
+    [availableMcpServers]
+  );
   const selectableMcpServerIds = useMemo(
     () => new Set(selectableMcpServers.map((server) => server.id)),
     [selectableMcpServers]
@@ -285,8 +296,8 @@ const GuidPage: React.FC = () => {
     guidEnabledSkills,
     assistantDefaultSkillIds: resolvedAssistantDefaults.skillIds,
     assistantDefaultDisabledBuiltinSkillIds: resolvedAssistantDefaults.disabledBuiltinSkillIds,
-    availableMcpServers,
-    selectedMcpServerIds: guidSelectedMcpServerIds,
+    availableMcpServers: selectableMcpServers,
+    selectedMcpServerIds: guidSelectedMcpServerIds === undefined ? undefined : visibleSelectedMcpServerIds,
     assistantDefaultMcpIds: resolvedMcpDefaults,
     isGoogleAuth: modelSelection.isGoogleAuth,
 

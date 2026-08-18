@@ -126,4 +126,27 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
     expect(screen.getByText('settings.geaMcpDisplayName')).toBeInTheDocument();
     expect(screen.queryByText('gea-gateway')).not.toBeInTheDocument();
   });
+
+  it('allows the internal gateway to be disabled without exposing its configuration', async () => {
+    const user = userEvent.setup();
+    const onToggleEnabled = vi.fn();
+    const server = {
+      ...buildServer('connected'),
+      id: 'gea-gateway',
+      name: 'gea-gateway',
+      builtin: true,
+      transport: { type: 'stdio' as const, command: 'aioncore', args: ['mcp-gea-stdio'] },
+    };
+
+    const { container } = render(
+      <ConfigProvider>
+        <McpServerHeader server={server} {...commonProps} isConfigurationReadOnly onToggleEnabled={onToggleEnabled} />
+      </ConfigProvider>
+    );
+
+    await user.click(screen.getByRole('switch', { name: 'settings.mcpDisableServer' }));
+
+    expect(onToggleEnabled).toHaveBeenCalledWith(server, false);
+    expect(container.querySelector('.i-icon-setting-one')).not.toBeInTheDocument();
+  });
 });

@@ -92,8 +92,27 @@ const ModalMcpManagementSection: React.FC<{
     hideDeleteConfirm,
     toggleServerCollapse,
   } = useMcpModal();
-  const { handleAddMcpServer, handleBatchImportMcpServers, handleEditMcpServer, handleDeleteMcpServer } =
-    useMcpServerCRUD(saveMcpServers);
+  const {
+    handleAddMcpServer,
+    handleBatchImportMcpServers,
+    handleEditMcpServer,
+    handleDeleteMcpServer,
+    handleToggleMcpServerEnabled,
+  } = useMcpServerCRUD(saveMcpServers);
+  const [togglingServers, setTogglingServers] = useState<Record<string, boolean>>({});
+
+  const handleToggleEnabled = useCallback(
+    async (server: IMcpServer, enabled: boolean) => {
+      if (togglingServers[server.id]) return;
+      setTogglingServers((current) => ({ ...current, [server.id]: true }));
+      try {
+        await handleToggleMcpServerEnabled(server, enabled);
+      } finally {
+        setTogglingServers((current) => ({ ...current, [server.id]: false }));
+      }
+    },
+    [handleToggleMcpServerEnabled, togglingServers]
+  );
 
   const handleOAuthLogin = useCallback(
     async (server: IMcpServer) => {
@@ -218,6 +237,8 @@ const ModalMcpManagementSection: React.FC<{
                   onEditServer={showEditMcpModal}
                   onDeleteServer={showDeleteConfirm}
                   onOAuthLogin={handleOAuthLogin}
+                  onToggleEnabled={handleToggleEnabled}
+                  isTogglingEnabled={togglingServers[server.id] || false}
                   isConfigurationReadOnly={server.source === 'managed' || isInternalMcpServer(server)}
                 />
               ))}

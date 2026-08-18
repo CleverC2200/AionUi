@@ -4,13 +4,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { act, renderHook } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { IMcpServer } from '@/common/config/storage';
 
 const { getClientBusinessSettingMock, mcpServiceMock } = vi.hoisted(() => ({
   getClientBusinessSettingMock: vi.fn(),
   mcpServiceMock: {
     listServers: { invoke: vi.fn() },
+    toggleServer: { invoke: vi.fn() },
   },
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 vi.mock('@/renderer/services/clientBusinessSettings', () => ({
@@ -21,7 +28,12 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
   mcpService: mcpServiceMock,
 }));
 
-import { ensureBackendMcpCatalog, visibleMcpServers } from '@/renderer/hooks/mcp/catalog';
+import {
+  ensureBackendMcpCatalog,
+  selectableConversationMcpServers,
+  visibleMcpServers,
+} from '@/renderer/hooks/mcp/catalog';
+import { useMcpServerCRUD } from '@/renderer/hooks/mcp/useMcpServerCRUD';
 
 describe('ensureBackendMcpCatalog', () => {
   beforeEach(() => {
@@ -139,5 +151,72 @@ describe('ensureBackendMcpCatalog', () => {
         },
       ])
     ).toEqual([expect.objectContaining({ id: 'user-gea' })]);
+  });
+
+  it('shows only enabled conversation MCP servers, including the internal GEA gateway', () => {
+    expect(
+      selectableConversationMcpServers([
+        {
+          id: 'gea-gateway',
+          name: 'gea-gateway',
+          enabled: true,
+          transport: { type: 'stdio', command: 'aioncore', args: ['mcp-gea-stdio'] },
+          created_at: 1,
+          updated_at: 1,
+          original_json: '{}',
+          builtin: true,
+        },
+        {
+          id: 'disabled-user',
+          name: 'disabled-user',
+          enabled: false,
+          transport: { type: 'stdio', command: 'disabled', args: [] },
+          created_at: 1,
+          updated_at: 1,
+          original_json: '{}',
+          builtin: false,
+        },
+        {
+          id: 'legacy-gea',
+          name: 'gea',
+          enabled: true,
+          transport: { type: 'sse', url: 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse' },
+          created_at: 1,
+          updated_at: 1,
+          original_json: '{}',
+          builtin: false,
+        },
+      ])
+    ).toEqual([expect.objectContaining({ id: 'gea-gateway' })]);
+  });
+
+  it('persists the settings switch and notifies the open conversation catalog', async () => {
+    const server = {
+      id: 'gea-gateway',
+      name: 'gea-gateway',
+      enabled: true,
+      transport: { type: 'stdio' as const, command: 'aioncore', args: ['mcp-gea-stdio'] },
+      created_at: 1,
+      updated_at: 1,
+      original_json: '{}',
+      builtin: true,
+    };
+    const disabledServer = { ...server, enabled: false };
+    const saveMcpServers = vi.fn(async (updater: IMcpServer[] | ((servers: IMcpServer[]) => IMcpServer[])) => {
+      expect(typeof updater).toBe('function');
+      expect((updater as (servers: IMcpServer[]) => IMcpServer[])([server])).toEqual([disabledServer]);
+    });
+    const catalogChanged = vi.fn();
+    window.addEventListener('aionui:mcp-catalog-changed', catalogChanged);
+    mcpServiceMock.toggleServer.invoke.mockResolvedValue(disabledServer);
+    const { result } = renderHook(() => useMcpServerCRUD(saveMcpServers));
+
+    await act(async () => {
+      await result.current.handleToggleMcpServerEnabled(server, false);
+    });
+
+    expect(mcpServiceMock.toggleServer.invoke).toHaveBeenCalledWith({ id: 'gea-gateway' });
+    expect(catalogChanged).toHaveBeenCalledTimes(1);
+    window.removeEventListener('aionui:mcp-catalog-changed', catalogChanged);
   });
 });

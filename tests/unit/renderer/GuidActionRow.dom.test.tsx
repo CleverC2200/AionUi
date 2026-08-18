@@ -270,4 +270,29 @@ describe('GuidActionRow skill/MCP submenu search', () => {
 
     expect(onToggleSkill).toHaveBeenCalledWith('skill-3', false);
   });
+
+  it('shows the friendly GEA MCP name and toggles the internal gateway', () => {
+    const onToggleMcpServer = vi.fn();
+    renderActionRow({
+      mcpServers: [
+        {
+          id: 'gea-gateway',
+          name: 'gea-gateway',
+          enabled: true,
+          builtin: true,
+          transport: { type: 'stdio', command: 'aioncore', args: ['mcp-gea-stdio'] },
+          created_at: 1,
+          updated_at: 1,
+          original_json: '{}',
+        },
+      ],
+      onToggleMcpServer,
+    });
+
+    const displayName = screen.getByText('settings.geaMcpDisplayName');
+    fireEvent.click(displayName.closest('[role="menuitem"]')!);
+
+    expect(screen.queryByText('gea-gateway')).not.toBeInTheDocument();
+    expect(onToggleMcpServer).toHaveBeenCalledWith('gea-gateway');
+  });
 });

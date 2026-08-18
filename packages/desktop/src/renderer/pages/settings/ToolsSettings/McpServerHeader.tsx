@@ -1,5 +1,5 @@
 import type { IMcpServer } from '@/common/config/storage';
-import { Button, Dropdown, Menu, Popover, Tooltip } from '@arco-design/web-react';
+import { Button, Dropdown, Menu, Popover, Switch, Tooltip } from '@arco-design/web-react';
 import { Check, CloseSmall, Info, LoadingOne, Refresh, Write, DeleteFour, SettingOne, Login } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,10 +17,12 @@ interface McpServerHeaderProps {
   isReadOnly?: boolean;
   /** Hide edit/delete while keeping runtime authentication and connection checks available. */
   isConfigurationReadOnly?: boolean;
+  isTogglingEnabled?: boolean;
   onTestConnection: (server: IMcpServer) => void;
   onEditServer: (server: IMcpServer) => void;
   onDeleteServer: (serverId: string) => void;
   onOAuthLogin?: (server: IMcpServer) => void;
+  onToggleEnabled?: (server: IMcpServer, enabled: boolean) => void;
 }
 
 const getStatusIcon = (
@@ -152,10 +154,12 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
   isLoggingIn,
   isReadOnly,
   isConfigurationReadOnly,
+  isTogglingEnabled,
   onTestConnection,
   onEditServer,
   onDeleteServer,
   onOAuthLogin,
+  onToggleEnabled,
 }) => {
   const { t } = useTranslation();
 
@@ -165,6 +169,8 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
   const statusIcon = getStatusIcon(server.last_test_status, oauthStatus, isTestingConnection);
   const statusPopoverContent = getStatusPopoverContent(server, t);
   const displayName = isInternalMcpServer(server) ? t('settings.geaMcpDisplayName') : server.name;
+  const isEnabled = server.enabled !== false;
+  const canToggleEnabled = !isReadOnly && server.source !== 'managed' && Boolean(onToggleEnabled);
 
   const isError = server.last_test_status === 'error';
   const managedBadge =
@@ -211,9 +217,23 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
           />
         )}
       </div>
-      {!isReadOnly && !isConfigurationReadOnly && (
-        <div className='flex items-center gap-2 invisible group-hover:visible' onClick={(e) => e.stopPropagation()}>
-          {!server.builtin && (
+      {!isReadOnly && (canToggleEnabled || !isConfigurationReadOnly) && (
+        <div className='flex items-center gap-2' onClick={(e) => e.stopPropagation()}>
+          {canToggleEnabled && (
+            <Tooltip
+              content={isEnabled ? t('settings.mcpDisableServer') : t('settings.mcpEnableServer')}
+              position='top'
+            >
+              <Switch
+                size='small'
+                checked={isEnabled}
+                loading={isTogglingEnabled}
+                aria-label={isEnabled ? t('settings.mcpDisableServer') : t('settings.mcpEnableServer')}
+                onChange={(checked) => onToggleEnabled?.(server, checked)}
+              />
+            </Tooltip>
+          )}
+          {!isConfigurationReadOnly && !server.builtin && (
             <Dropdown
               trigger='hover'
               droplist={
@@ -233,7 +253,7 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
                 </Menu>
               }
             >
-              <Button size='mini' icon={<SettingOne size={'14'} />} />
+              <Button className='invisible group-hover:visible' size='mini' icon={<SettingOne size={'14'} />} />
             </Dropdown>
           )}
         </div>

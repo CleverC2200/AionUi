@@ -29,6 +29,17 @@ export const isLegacyGeaMcpServer = (server: Pick<IMcpServer, 'name' | 'transpor
 export const visibleMcpServers = (servers: IMcpServer[]): IMcpServer[] =>
   servers.filter((server) => !isInternalMcpServer(server) && !isLegacyGeaMcpServer(server));
 
+export const selectableConversationMcpServers = (servers: IMcpServer[]): IMcpServer[] =>
+  servers.filter((server) => server.enabled !== false && !isLegacyGeaMcpServer(server));
+
+export const MCP_CATALOG_CHANGED_EVENT = 'aionui:mcp-catalog-changed';
+
+export const notifyMcpCatalogChanged = (): void => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(MCP_CATALOG_CHANGED_EVENT));
+  }
+};
+
 const normalizeServerName = (name: string) => name.trim().toLowerCase();
 
 const getCatalogServerKey = (server: Pick<IMcpServer, 'id' | 'name' | 'builtin'>) => {
