@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import type { McpOAuthStatus } from '@/renderer/hooks/mcp/useMcpOAuth';
 import FeedbackButton from '@/renderer/components/base/FeedbackButton';
 import { iconColors } from '@/renderer/styles/colors';
+import { isInternalMcpServer } from '@/renderer/hooks/mcp/catalog';
 
 interface McpServerHeaderProps {
   server: IMcpServer;
@@ -163,6 +164,7 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
   const statusText = getStatusText(server, server.last_test_status, oauthStatus, isTestingConnection, t);
   const statusIcon = getStatusIcon(server.last_test_status, oauthStatus, isTestingConnection);
   const statusPopoverContent = getStatusPopoverContent(server, t);
+  const displayName = isInternalMcpServer(server) ? t('settings.geaMcpDisplayName') : server.name;
 
   const isError = server.last_test_status === 'error';
   const managedBadge =
@@ -175,7 +177,7 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
   return (
     <div className='flex items-center justify-between group'>
       <div className='flex items-center gap-2'>
-        <span>{server.name}</span>
+        <span>{displayName}</span>
         {managedBadge}
         {statusPopoverContent ? (
           <Popover content={statusPopoverContent} trigger='hover' position='top'>

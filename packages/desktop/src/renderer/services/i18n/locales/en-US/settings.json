@@ -765,6 +765,7 @@
   "noAvailable": "No available image models. ",
   "goToModelSettings": "Go to configure",
   "mcpSettings": "MCP Tools Configuration",
+  "geaMcpDisplayName": "GEA MCP",
   "mcpServerList": "MCP Servers",
   "mcpStatus": "Status",
   "mcpAddServer": "Add MCP",

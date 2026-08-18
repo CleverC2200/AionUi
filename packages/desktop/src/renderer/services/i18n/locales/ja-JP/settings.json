@@ -668,6 +668,7 @@
   "noAvailable": "利用可能な画像モデルがありません。",
   "goToModelSettings": "設定へ移動",
   "mcpSettings": "MCPツール設定",
+  "geaMcpDisplayName": "GEA MCP",
   "mcpServerList": "MCP サーバー",
   "mcpStatus": "ステータス",
   "mcpAddServer": "MCP を追加",

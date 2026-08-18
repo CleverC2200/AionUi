@@ -105,4 +105,25 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
     expect(screen.getByText('settings.enterpriseManagedBadge')).toBeInTheDocument();
     expect(container.querySelector('.i-icon-setting-one')).not.toBeInTheDocument();
   });
+
+  it('uses the user-facing GEA MCP name for the internal session gateway', () => {
+    render(
+      <ConfigProvider>
+        <McpServerHeader
+          server={{
+            ...buildServer('connected'),
+            id: 'gea-gateway',
+            name: 'gea-gateway',
+            builtin: true,
+            transport: { type: 'stdio', command: 'aioncore', args: ['mcp-gea-stdio'] },
+          }}
+          {...commonProps}
+          isConfigurationReadOnly
+        />
+      </ConfigProvider>
+    );
+
+    expect(screen.getByText('settings.geaMcpDisplayName')).toBeInTheDocument();
+    expect(screen.queryByText('gea-gateway')).not.toBeInTheDocument();
+  });
 });

@@ -660,6 +660,7 @@
   "noAvailable": "Нет доступных моделей изображений. ",
   "goToModelSettings": "Перейти к настройке",
   "mcpSettings": "Настройка инструментов MCP",
+  "geaMcpDisplayName": "GEA MCP",
   "mcpServerList": "Серверы MCP",
   "mcpStatus": "Статус",
   "mcpAddServer": "Добавить MCP",

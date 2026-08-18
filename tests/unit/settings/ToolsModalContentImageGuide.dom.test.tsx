@@ -41,12 +41,13 @@ vi.mock('@/renderer/pages/settings/ToolsSettings/McpServerItem', () => ({
     isReadOnly,
     isConfigurationReadOnly,
   }: {
-    server: { id: string };
+    server: { id: string; name: string };
     isReadOnly?: boolean;
     isConfigurationReadOnly?: boolean;
   }) => (
     <div
       data-testid={`mcp-server-${server.id}`}
+      data-server-name={server.name}
       data-readonly={isReadOnly ? 'true' : 'false'}
       data-configuration-readonly={isConfigurationReadOnly ? 'true' : 'false'}
     />
@@ -179,7 +180,7 @@ describe('ToolsModalContent image model guide', () => {
     expect(screen.queryByTestId('add-mcp-server-menu-gea')).not.toBeInTheDocument();
   });
 
-  it('hides the builtin GEA gateway implementation detail', async () => {
+  it('shows the builtin GEA gateway as a read-only GEA MCP entry', async () => {
     hooks.mcpServers = [
       {
         id: 'gea-gateway',
@@ -195,7 +196,7 @@ describe('ToolsModalContent image model guide', () => {
 
     render(<ToolsModalContent />);
 
-    await waitFor(() => expect(screen.queryByTestId('mcp-server-gea-gateway')).not.toBeInTheDocument());
+    expect(await screen.findByTestId('mcp-server-gea-gateway')).toHaveAttribute('data-configuration-readonly', 'true');
   });
 
   it('hides the retired no-session GEA endpoint', async () => {

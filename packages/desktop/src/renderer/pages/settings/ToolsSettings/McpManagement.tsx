@@ -13,7 +13,6 @@ interface McpManagementProps {
 }
 
 const isVisibleMcpServer = (server: IMcpServer) =>
-  !isInternalMcpServer(server) &&
   !isLegacyGeaMcpServer(server) &&
   !(server.builtin === true && (server.id === BUILTIN_IMAGE_GEN_ID || server.name === BUILTIN_IMAGE_GEN_NAME));
 

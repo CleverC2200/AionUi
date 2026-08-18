@@ -765,6 +765,7 @@
   "noAvailable": "暂无可用图像模型，",
   "goToModelSettings": "前往配置",
   "mcpSettings": "MCP 工具配置",
+  "geaMcpDisplayName": "GEA MCP",
   "mcpServerList": "MCP 服务器",
   "mcpStatus": "状态",
   "mcpAddServer": "添加 MCP",

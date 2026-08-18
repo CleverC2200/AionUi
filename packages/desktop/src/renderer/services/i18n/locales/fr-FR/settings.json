@@ -668,6 +668,7 @@
   "noAvailable": "Aucun modèle d'image disponible, veuillez d'abord configurer.",
   "goToModelSettings": "Allez configurer",
   "mcpSettings": "Configuration des outils MCP",
+  "geaMcpDisplayName": "GEA MCP",
   "mcpServerList": "Serveurs MCP",
   "mcpStatus": "Statut",
   "mcpAddServer": "Ajout manuel",

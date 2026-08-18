@@ -2021,6 +2021,7 @@ export type I18nKey =
   | 'settings.fullUrlMode'
   | 'settings.game3dAssistantDesc'
   | 'settings.game3dAssistantName'
+  | 'settings.geaMcpDisplayName'
   | 'settings.geaResourceFetchFailed'
   | 'settings.geaResourceFetchFromGea'
   | 'settings.geaResourceFetchSuccess'

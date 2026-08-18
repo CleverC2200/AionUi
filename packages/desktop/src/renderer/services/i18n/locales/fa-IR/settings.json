@@ -668,6 +668,7 @@
   "noAvailable": "مدل تصویری موجود نیست. ",
   "goToModelSettings": "رفتن به پیکربندی",
   "mcpSettings": "پیکربندی ابزارهای MCP",
+  "geaMcpDisplayName": "GEA MCP",
   "mcpServerList": "سرورهای MCP",
   "mcpStatus": "وضعیت",
   "mcpAddServer": "افزودن MCP",

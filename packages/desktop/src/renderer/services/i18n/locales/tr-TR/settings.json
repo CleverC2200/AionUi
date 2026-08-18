@@ -668,6 +668,7 @@
   "noAvailable": "Mevcut görüntü modeli yok. ",
   "goToModelSettings": "Yapılandırmaya git",
   "mcpSettings": "MCP Araçları Yapılandırması",
+  "geaMcpDisplayName": "GEA MCP",
   "mcpServerList": "MCP Sunucuları",
   "mcpStatus": "Durum",
   "mcpAddServer": "MCP Ekle",

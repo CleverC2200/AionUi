@@ -56,10 +56,7 @@ const ModalMcpManagementSection: React.FC<{
   const { t } = useTranslation();
   const { oauthStatus, loggingIn, checkOAuthStatus, markLoginRequired, clearLoginRequired, login } = useMcpOAuth();
   const visibleMcpServers = useMemo(
-    () =>
-      mcpServers.filter(
-        (server) => !isBuiltinImageGenServer(server) && !isInternalMcpServer(server) && !isLegacyGeaMcpServer(server)
-      ),
+    () => mcpServers.filter((server) => !isBuiltinImageGenServer(server) && !isLegacyGeaMcpServer(server)),
     [mcpServers]
   );
 
