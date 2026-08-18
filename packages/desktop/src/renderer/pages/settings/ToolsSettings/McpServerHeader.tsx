@@ -265,7 +265,7 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
             className='!cursor-not-allowed !border-border-2 !bg-fill-2 !text-t-disabled opacity-50'
             title={t('settings.mcpEditServer')}
             aria-label={t('settings.mcpEditServer')}
-            icon={<SettingOne size={'14'} />}
+            icon={<SettingOne className='pointer-events-none' size={'14'} />}
           />
         )}
       </div>

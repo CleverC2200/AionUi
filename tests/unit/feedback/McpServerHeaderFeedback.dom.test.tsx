@@ -106,6 +106,7 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
     const editButton = screen.getByRole('button', { name: 'settings.mcpEditServer' });
     expect(editButton).toBeDisabled();
     expect(editButton).toHaveClass('!cursor-not-allowed', '!bg-fill-2', '!text-t-disabled', 'opacity-50');
+    expect(editButton.querySelector('.i-icon-setting-one')).toHaveClass('pointer-events-none');
   });
 
   it('uses the user-facing GEA MCP name for the internal session gateway', () => {
