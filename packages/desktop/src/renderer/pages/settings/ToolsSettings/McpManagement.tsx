@@ -23,6 +23,7 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
   const { t } = useTranslation();
   const { mcpServers, extensionMcpServers, saveMcpServers, setMcpServers } = useMcpServers();
   const visibleMcpServers = React.useMemo(() => mcpServers.filter(isVisibleMcpServer), [mcpServers]);
+  const geaGateway = React.useMemo(() => mcpServers.find(isInternalMcpServer), [mcpServers]);
   const { oauthStatus, loggingIn, checkOAuthStatus, markLoginRequired, clearLoginRequired, login } = useMcpOAuth();
   const handleAuthRequired = React.useCallback(
     (server: IMcpServer) => {
@@ -156,6 +157,21 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
               trigger='click'
               droplist={
                 <Menu>
+                  {geaGateway ? (
+                    <Menu.Item
+                      key='gea'
+                      data-testid='fetch-gea-mcp-menu-item'
+                      disabled={testingServers[geaGateway.id]}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleTestMcpConnection(geaGateway);
+                      }}
+                    >
+                      {testingServers[geaGateway.id]
+                        ? t('settings.geaResourceFetching')
+                        : t('settings.geaResourceFetchFromGea')}
+                    </Menu.Item>
+                  ) : null}
                   <Menu.Item
                     key='json'
                     onClick={(e) => {
@@ -179,7 +195,13 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
                 </Menu>
               }
             >
-              <Button type='outline' icon={<Plus size='14' />} shape='round' onClick={(e) => e.stopPropagation()}>
+              <Button
+                data-testid='add-mcp-server-dropdown'
+                type='outline'
+                icon={<Plus size='14' />}
+                shape='round'
+                onClick={(e) => e.stopPropagation()}
+              >
                 {t('settings.mcpAddServer')} <Down size='12' />
               </Button>
             </Dropdown>

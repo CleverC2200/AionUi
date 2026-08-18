@@ -59,6 +59,7 @@ const ModalMcpManagementSection: React.FC<{
     () => mcpServers.filter((server) => !isBuiltinImageGenServer(server) && !isLegacyGeaMcpServer(server)),
     [mcpServers]
   );
+  const geaGateway = useMemo(() => mcpServers.find(isInternalMcpServer), [mcpServers]);
 
   const handleAuthRequired = useCallback(
     (server: IMcpServer) => {
@@ -185,6 +186,21 @@ const ModalMcpManagementSection: React.FC<{
         chatLabel={t('settings.talkToButler.addViaChat', { defaultValue: 'Add via chat' })}
         prompt={t('settings.talkToButler.prompt.addMcp', { defaultValue: 'Help me set up an MCP server.' })}
         extraActions={[
+          ...(geaGateway
+            ? [
+                {
+                  key: 'gea',
+                  label: testingServers[geaGateway.id]
+                    ? t('settings.geaResourceFetching')
+                    : t('settings.geaResourceFetchFromGea'),
+                  onClick: (): void => {
+                    if (!testingServers[geaGateway.id]) {
+                      void handleTestMcpConnection(geaGateway);
+                    }
+                  },
+                },
+              ]
+            : []),
           {
             key: 'json',
             label: t('settings.mcpImportFromJSON'),

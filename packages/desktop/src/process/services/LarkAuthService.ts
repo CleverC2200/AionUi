@@ -27,7 +27,8 @@ import type { PersonalModelAuthClient } from './PersonalModelGatewayService';
 export { GeaLarkAuthService as LarkAuthService, GeaLarkAuthServiceError as LarkAuthServiceError };
 
 const LARK_AUTH_SESSION_FILE_NAME = 'lark-auth-session.bin';
-const DEFAULT_GEA_BASE_URL = 'https://gea.synear.cn/gea-boot';
+const LEGACY_GEA_BASE_URL = 'https://gea.synear.cn/gea-boot';
+const DEFAULT_GEA_BASE_URL = 'https://gea.synear.cn:4443/gea-boot';
 const REQUIRE_GEA_AUTH_ENV = 'AIONUI_GEA_REQUIRE_AUTH';
 // Desktop development uses AionCore's local identity so restarts do not require
 // another QR scan. Live GEA integration can opt into the real authentication UI.
@@ -164,7 +165,7 @@ export function getSharedLarkAuthSessionStore(): ElectronLarkAuthSessionStore {
 
 export function resolveLarkAuthSessionFileName(baseUrl: string): string {
   const normalizedBaseUrl = new URL(baseUrl).toString().replace(/\/$/, '');
-  if (normalizedBaseUrl === DEFAULT_GEA_BASE_URL) return LARK_AUTH_SESSION_FILE_NAME;
+  if (normalizedBaseUrl === LEGACY_GEA_BASE_URL) return LARK_AUTH_SESSION_FILE_NAME;
   const environmentKey = createHash('sha256').update(normalizedBaseUrl).digest('hex').slice(0, 12);
   return `lark-auth-session-${environmentKey}.bin`;
 }

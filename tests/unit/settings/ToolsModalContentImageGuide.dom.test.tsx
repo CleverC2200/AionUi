@@ -14,6 +14,7 @@ const hooks = vi.hoisted(() => ({
   mcpServers: [] as unknown[],
   getClientBusinessSetting: vi.fn(() => Promise.resolve(undefined)),
   refreshMcpServers: vi.fn(() => Promise.resolve(true)),
+  testMcpConnection: vi.fn(() => Promise.resolve()),
   syncFromGea: vi.fn(),
   catalog: vi.fn(),
 }));
@@ -67,7 +68,11 @@ vi.mock('@/renderer/hooks/mcp', () => ({
     isMcpServersLoading: false,
     refreshMcpServers: hooks.refreshMcpServers,
   }),
-  useMcpConnection: () => ({ testingServers: {}, handleTestMcpConnection: vi.fn(), handleTestMcpConnections: vi.fn() }),
+  useMcpConnection: () => ({
+    testingServers: {},
+    handleTestMcpConnection: hooks.testMcpConnection,
+    handleTestMcpConnections: vi.fn(),
+  }),
   useMcpModal: () => ({
     showMcpModal: false,
     editingMcpServer: undefined,
@@ -123,6 +128,7 @@ describe('ToolsModalContent image model guide', () => {
     hooks.mcpServers = [];
     hooks.getClientBusinessSetting.mockClear();
     hooks.refreshMcpServers.mockClear();
+    hooks.testMcpConnection.mockClear();
     hooks.syncFromGea.mockReset();
     hooks.syncFromGea.mockResolvedValue({ status: 'completed', changed: 1, skipped: 0, failed: 0 });
     hooks.catalog.mockReset();
@@ -173,11 +179,25 @@ describe('ToolsModalContent image model guide', () => {
     expect(links).toHaveLength(0);
   });
 
-  it('does not advertise unsupported managed MCP catalog synchronization', async () => {
+  it('refreshes the builtin GEA MCP tools from the add-server menu', async () => {
+    const geaServer = {
+      id: 'gea-gateway',
+      name: 'gea-gateway',
+      enabled: true,
+      builtin: true,
+      transport: { type: 'stdio', command: 'aioncore', args: ['mcp-gea-stdio'] },
+      created_at: 1,
+      updated_at: 1,
+      original_json: '{}',
+    };
+    hooks.mcpServers = [geaServer];
     render(<ToolsModalContent />);
 
     fireEvent.click(await screen.findByTestId('add-mcp-server-menu'));
-    expect(screen.queryByTestId('add-mcp-server-menu-gea')).not.toBeInTheDocument();
+    const marker = await screen.findByTestId('add-mcp-server-menu-gea');
+    fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
+
+    await waitFor(() => expect(hooks.testMcpConnection).toHaveBeenCalledWith(geaServer));
   });
 
   it('shows the builtin GEA gateway as a read-only GEA MCP entry', async () => {
