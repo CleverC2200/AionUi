@@ -101,6 +101,9 @@ export const buildTeamWorkStatusText = (
   }
 
   const queuedCount = getTeamWorkQueuedCount(work);
+  if (work?.state === 'paused') {
+    return undefined;
+  }
   if (hasActiveTeamWork(work)) {
     return queuedCount > 0 ? format.processingWithQueued(queuedCount) : undefined;
   }
@@ -175,7 +178,8 @@ export const buildTeamSendRuntime = ({
   // Stopped session: force the recoverable-stopped shape — keep the gate open
   // and suppress the spinner, overriding any residual fatal block or active work.
   const effectiveFatalBlock = sessionStopped ? false : fatalBlock;
-  const loading = sessionStopped ? false : hasActiveTeamWork(work) || (!fatalBlock && queuedCount > 0);
+  const loading =
+    sessionStopped || work?.state === 'paused' ? false : hasActiveTeamWork(work) || (!fatalBlock && queuedCount > 0);
   return {
     loading,
     queuedCount,

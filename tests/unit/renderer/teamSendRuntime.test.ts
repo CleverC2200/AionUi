@@ -89,6 +89,16 @@ describe('buildTeamSendRuntime', () => {
     expect(runtime.runtimeGate.canSendMessage).toBe(true);
   });
 
+  it('stops showing work after a successful pause even when queued intents remain', () => {
+    const runtime = buildTeamSendRuntime({
+      slot_id: 'lead',
+      runView: view(work({ state: 'paused', queued_background_count: 5 })),
+    });
+
+    expect(runtime.loading).toBe(false);
+    expect(runtime.queuedCount).toBe(5);
+  });
+
   it('allows sending while RuntimeStarting is blocked', () => {
     const runtime = buildTeamSendRuntime({
       slot_id: 'lead',
@@ -196,6 +206,10 @@ describe('buildTeamWorkStatusText', () => {
 
   it('hides queued count while work has not started yet', () => {
     expect(text(work({ state: 'queued', queued_foreground_count: 2 }))).toBe('processing');
+  });
+
+  it('does not describe paused queued work as processing', () => {
+    expect(text(work({ state: 'paused', queued_background_count: 5 }))).toBeUndefined();
   });
 });
 
