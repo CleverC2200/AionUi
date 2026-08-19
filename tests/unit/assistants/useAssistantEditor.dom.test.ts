@@ -47,11 +47,18 @@ vi.mock('swr', () => ({
 }));
 
 vi.mock('@/renderer/hooks/mcp/catalog', () => ({
-  visibleMcpServers: (servers: unknown[]) => servers,
+  visibleMcpServers: (servers: Array<{ name: string; builtin?: boolean }>) =>
+    servers.filter((server) => !(server.builtin === true && server.name === 'gea-gateway')),
+  selectableConversationMcpServers: (servers: Array<{ enabled?: boolean; name: string }>) =>
+    servers.filter((server) => server.enabled !== false && server.name !== 'gea'),
   ensureBackendMcpCatalog: vi.fn(async () => ({
     userServers: [{ id: 'mcp-a', name: 'Server A', enabled: true }],
-    builtinServers: [],
-    allServers: [{ id: 'mcp-a', name: 'Server A', enabled: true }],
+    builtinServers: [{ id: 'gea-gateway', name: 'gea-gateway', enabled: true, builtin: true }],
+    allServers: [
+      { id: 'mcp-a', name: 'Server A', enabled: true },
+      { id: 'gea-gateway', name: 'gea-gateway', enabled: true, builtin: true },
+      { id: 'disabled-mcp', name: 'Disabled MCP', enabled: false },
+    ],
   })),
 }));
 
@@ -472,6 +479,16 @@ describe('useAssistantEditor', () => {
     expect(result.current.defaultPermissionMode).toBe('auto');
     expect((result.current as any).defaultThoughtLevelMode).toBe('auto');
     expect(result.current.defaultMcpMode).toBe('auto');
+  });
+
+  it('offers the same enabled MCP catalog as a new conversation', async () => {
+    const { result } = renderHook(() => useAssistantEditor(defaultParams));
+
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    expect(result.current.availableMcpServers.map((server) => server.id)).toEqual(['mcp-a', 'gea-gateway']);
   });
 
   it('calls handleSave for creating new assistant', async () => {

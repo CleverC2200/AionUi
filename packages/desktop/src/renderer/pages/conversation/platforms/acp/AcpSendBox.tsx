@@ -1,5 +1,4 @@
 import { ipcBridge } from '@/common';
-import type { IConversationMcpStatus } from '@/common/config/storage';
 import { isBackendHttpError } from '@/common/adapter/httpBridge';
 import { isSideQuestionSupported } from '@/common/chat/sideQuestion';
 import { parseError, uuid } from '@/common/utils';
@@ -27,6 +26,7 @@ import { createSetUploadFile, useSendBoxFiles } from '@/renderer/hooks/chat/useS
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
+import { projectConversationMcpStatuses } from '@/renderer/hooks/mcp/catalog';
 import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
 import {
@@ -144,13 +144,10 @@ const AcpSendBox: React.FC<{
   const isMobile = Boolean(layout?.isMobile);
   const conversationContext = useConversationContextSafe();
   const loadedSkills = conversationContext?.loadedSkills ?? [];
-  const loadedMcpStatuses =
-    conversationContext?.loadedMcpStatuses ??
-    (conversationContext?.loadedMcpServers ?? []).map<IConversationMcpStatus>((name) => ({
-      id: name,
-      name,
-      status: 'loaded',
-    }));
+  const loadedMcpStatuses = projectConversationMcpStatuses(
+    conversationContext?.loadedMcpStatuses,
+    conversationContext?.loadedMcpServers
+  );
   const promptCapability = conversationContext?.promptCapability;
   // Hint shown on a media chip when the agent takes no native image/audio
   // blocks — the attachment then reaches it as a file path. SVG is never

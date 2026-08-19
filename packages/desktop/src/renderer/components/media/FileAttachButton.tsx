@@ -9,6 +9,7 @@ import { ipcBridge } from '@/common';
 import { Button, Message, Trigger } from '@arco-design/web-react';
 import { FolderOpen, Lightning, Paperclip, Plus, Right, Shield } from '@icon-park/react';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
+import { projectConversationMcpStatuses } from '@/renderer/hooks/mcp/catalog';
 import { iconColors } from '@/renderer/styles/colors';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { FileService } from '@/renderer/services/FileService';
@@ -57,21 +58,6 @@ const MCP_STATUS_CLASS_NAME: Record<IConversationMcpStatusKind, string> = {
   unsupported: 'text-[var(--color-warning-6)]',
 };
 
-const buildLoadedMcpStatuses = (
-  statuses?: IConversationMcpStatus[],
-  legacyNames?: string[]
-): IConversationMcpStatus[] => {
-  if (Array.isArray(statuses) && statuses.length > 0) {
-    return statuses;
-  }
-
-  return (legacyNames ?? []).map((name) => ({
-    id: name,
-    name,
-    status: 'loaded',
-  }));
-};
-
 const FileAttachButton: React.FC<FileAttachButtonProps> = ({
   openFileSelector,
   onLocalFilesAdded,
@@ -88,7 +74,7 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({
   const [mcpOpen, setMcpOpen] = useState(false);
 
   const skillNames = loadedSkills ?? conversationContext?.loadedSkills ?? [];
-  const mcpStatuses = buildLoadedMcpStatuses(
+  const mcpStatuses = projectConversationMcpStatuses(
     loadedMcpStatuses ?? conversationContext?.loadedMcpStatuses,
     conversationContext?.loadedMcpServers
   );

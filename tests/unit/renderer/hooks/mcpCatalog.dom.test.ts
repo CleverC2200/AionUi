@@ -30,6 +30,7 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
 
 import {
   ensureBackendMcpCatalog,
+  projectConversationMcpStatuses,
   selectableConversationMcpServers,
   visibleMcpServers,
 } from '@/renderer/hooks/mcp/catalog';
@@ -188,6 +189,22 @@ describe('ensureBackendMcpCatalog', () => {
         },
       ])
     ).toEqual([expect.objectContaining({ id: 'gea-gateway' })]);
+  });
+
+  it('projects refreshed conversation snapshots without the retired GEA server', () => {
+    expect(
+      projectConversationMcpStatuses(
+        [
+          { id: 'legacy-gea', name: 'gea', status: 'loaded' },
+          { id: 'cube', name: 'cube-data-query', status: 'loaded' },
+          { id: 'gateway', name: 'gea-gateway', status: 'loaded' },
+        ],
+        ['gea', 'cube-data-query', 'gea-gateway']
+      )
+    ).toEqual([
+      { id: 'cube', name: 'cube-data-query', status: 'loaded' },
+      { id: 'gateway', name: 'gea-gateway', status: 'loaded' },
+    ]);
   });
 
   it('persists the settings switch and notifies the open conversation catalog', async () => {
