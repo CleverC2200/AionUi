@@ -1,5 +1,10 @@
 import { mcpService } from '@/common/adapter/ipcBridge';
-import type { IMcpServer, IMcpServerTransport, ISessionMcpServer } from '@/common/config/storage';
+import type {
+  IConversationMcpStatus,
+  IMcpServer,
+  IMcpServerTransport,
+  ISessionMcpServer,
+} from '@/common/config/storage';
 import { getClientBusinessSetting } from '@/renderer/services/clientBusinessSettings';
 
 type BackendMcpTransport = Exclude<IMcpServerTransport, { type: 'streamable_http' }>;
@@ -31,6 +36,26 @@ export const visibleMcpServers = (servers: IMcpServer[]): IMcpServer[] =>
 
 export const selectableConversationMcpServers = (servers: IMcpServer[]): IMcpServer[] =>
   servers.filter((server) => server.enabled !== false && !isLegacyGeaMcpServer(server));
+
+export const projectConversationMcpStatuses = (
+  statuses?: IConversationMcpStatus[],
+  legacyNames?: string[]
+): IConversationMcpStatus[] => {
+  const source =
+    Array.isArray(statuses) && statuses.length > 0
+      ? statuses
+      : (legacyNames ?? []).map((name) => ({ id: name, name, status: 'loaded' as const }));
+  const seenNames = new Set<string>();
+
+  return source.filter((item) => {
+    const normalizedName = item.name.trim().toLowerCase();
+    if (!normalizedName || normalizedName === LEGACY_GEA_MCP_NAME || seenNames.has(normalizedName)) {
+      return false;
+    }
+    seenNames.add(normalizedName);
+    return true;
+  });
+};
 
 export const MCP_CATALOG_CHANGED_EVENT = 'aionui:mcp-catalog-changed';
 
