@@ -414,7 +414,7 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
           true
         );
 
-        dispatchE2EWsEvent('interaction_request.changed', { revision: `e2e:${requestId}:${version}` });
+        dispatchE2EWsEvent('interactionRequest.changed', { revision: `e2e:${requestId}:${version}` });
         dispatchE2EWsEvent('conversation.listChanged', {
           action: 'updated',
           conversation_id: conversationId,
@@ -459,7 +459,7 @@ const AcpE2EStreamInjector: React.FC<{ conversationId: string }> = ({ conversati
           true
         );
 
-        dispatchE2EWsEvent('interaction_request.changed', { revision: `e2e:${requestId}:${version}` });
+        dispatchE2EWsEvent('interactionRequest.changed', { revision: `e2e:${requestId}:${version}` });
         dispatchE2EWsEvent('conversation.listChanged', {
           action: 'updated',
           conversation_id: conversationId,

@@ -34,7 +34,7 @@ import {
 } from '@/renderer/services/clientBusinessSettings';
 import classNames from 'classnames';
 import { useSettingsTabNavigate, useSettingsViewMode } from '../settingsViewContext';
-import { useGeaResourceSync } from '@/renderer/hooks/system/useGeaResourceSync';
+import { isInternalMcpServer, isLegacyGeaMcpServer } from '@/renderer/hooks/mcp/catalog';
 
 type MessageInstance = ReturnType<typeof Message.useMessage>[0];
 
@@ -51,15 +51,15 @@ const ModalMcpManagementSection: React.FC<{
   extensionMcpServers: IMcpServer[];
   setMcpServers: React.Dispatch<React.SetStateAction<IMcpServer[]>>;
   saveMcpServers: (serversOrUpdater: IMcpServer[] | ((prev: IMcpServer[]) => IMcpServer[])) => Promise<void>;
-  refreshMcpServers: () => Promise<boolean>;
   isPageMode?: boolean;
-}> = ({ message, mcpServers, extensionMcpServers, setMcpServers, saveMcpServers, refreshMcpServers, isPageMode }) => {
+}> = ({ message, mcpServers, extensionMcpServers, setMcpServers, saveMcpServers, isPageMode }) => {
   const { t } = useTranslation();
   const { oauthStatus, loggingIn, checkOAuthStatus, markLoginRequired, clearLoginRequired, login } = useMcpOAuth();
   const visibleMcpServers = useMemo(
-    () => mcpServers.filter((server) => !isBuiltinImageGenServer(server)),
+    () => mcpServers.filter((server) => !isBuiltinImageGenServer(server) && !isLegacyGeaMcpServer(server)),
     [mcpServers]
   );
+  const geaGateway = useMemo(() => mcpServers.find(isInternalMcpServer), [mcpServers]);
 
   const handleAuthRequired = useCallback(
     (server: IMcpServer) => {
@@ -93,8 +93,27 @@ const ModalMcpManagementSection: React.FC<{
     hideDeleteConfirm,
     toggleServerCollapse,
   } = useMcpModal();
-  const { handleAddMcpServer, handleBatchImportMcpServers, handleEditMcpServer, handleDeleteMcpServer } =
-    useMcpServerCRUD(saveMcpServers);
+  const {
+    handleAddMcpServer,
+    handleBatchImportMcpServers,
+    handleEditMcpServer,
+    handleDeleteMcpServer,
+    handleToggleMcpServerEnabled,
+  } = useMcpServerCRUD(saveMcpServers);
+  const [togglingServers, setTogglingServers] = useState<Record<string, boolean>>({});
+
+  const handleToggleEnabled = useCallback(
+    async (server: IMcpServer, enabled: boolean) => {
+      if (togglingServers[server.id]) return;
+      setTogglingServers((current) => ({ ...current, [server.id]: true }));
+      try {
+        await handleToggleMcpServerEnabled(server, enabled);
+      } finally {
+        setTogglingServers((current) => ({ ...current, [server.id]: false }));
+      }
+    },
+    [handleToggleMcpServerEnabled, togglingServers]
+  );
 
   const handleOAuthLogin = useCallback(
     async (server: IMcpServer) => {
@@ -142,16 +161,6 @@ const ModalMcpManagementSection: React.FC<{
   );
 
   const [importMode, setImportMode] = useState<'json' | 'oneclick'>('json');
-  const {
-    available: geaAvailable,
-    syncing: geaSyncing,
-    syncFromGea,
-  } = useGeaResourceSync({
-    message,
-    refresh: refreshMcpServers,
-    resource: 'mcps',
-  });
-
   useEffect(() => {
     const httpServers = mcpServers.filter(
       (s) => s.transport.type === 'http' || s.transport.type === 'sse' || s.transport.type === 'streamable_http'
@@ -173,18 +182,21 @@ const ModalMcpManagementSection: React.FC<{
     return (
       <TalkToButlerButton
         data-testid='add-mcp-server-menu'
-        label={geaSyncing ? t('settings.geaResourceFetching') : t('settings.mcpAddServer')}
-        loading={geaSyncing}
+        label={t('settings.mcpAddServer')}
         chatLabel={t('settings.talkToButler.addViaChat', { defaultValue: 'Add via chat' })}
         prompt={t('settings.talkToButler.prompt.addMcp', { defaultValue: 'Help me set up an MCP server.' })}
         extraActions={[
-          ...(geaAvailable
+          ...(geaGateway
             ? [
                 {
                   key: 'gea',
-                  label: geaSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea'),
+                  label: testingServers[geaGateway.id]
+                    ? t('settings.geaResourceFetching')
+                    : t('settings.geaResourceFetchFromGea'),
                   onClick: (): void => {
-                    void syncFromGea();
+                    if (!testingServers[geaGateway.id]) {
+                      void handleTestMcpConnection(geaGateway);
+                    }
                   },
                 },
               ]
@@ -241,7 +253,9 @@ const ModalMcpManagementSection: React.FC<{
                   onEditServer={showEditMcpModal}
                   onDeleteServer={showDeleteConfirm}
                   onOAuthLogin={handleOAuthLogin}
-                  isConfigurationReadOnly={server.source === 'managed'}
+                  onToggleEnabled={handleToggleEnabled}
+                  isTogglingEnabled={togglingServers[server.id] || false}
+                  isConfigurationReadOnly={server.source === 'managed' || isInternalMcpServer(server)}
                 />
               ))}
               {extensionMcpServers.map((server) => (
@@ -300,8 +314,7 @@ const ToolsModalContent: React.FC = () => {
   const [imageGenerationModel, setImageGenerationModel] = useState<ImageGenerationModelSetting | undefined>();
   const [isUpdatingImageGeneration, setIsUpdatingImageGeneration] = useState(false);
   const { modelListWithImage: data } = useConfigModelListWithImage();
-  const { mcpServers, extensionMcpServers, saveMcpServers, setMcpServers, isMcpServersLoading, refreshMcpServers } =
-    useMcpServers();
+  const { mcpServers, extensionMcpServers, saveMcpServers, setMcpServers, isMcpServersLoading } = useMcpServers();
   const builtinImageGenServer = useMemo(() => mcpServers.find(isBuiltinImageGenServer), [mcpServers]);
   const isImageGenerationServerLoading = isMcpServersLoading && !builtinImageGenServer;
 
@@ -529,7 +542,6 @@ const ToolsModalContent: React.FC = () => {
                   extensionMcpServers={extensionMcpServers}
                   setMcpServers={setMcpServers}
                   saveMcpServers={saveMcpServers}
-                  refreshMcpServers={refreshMcpServers}
                   isPageMode={isPageMode}
                 />
               </AionScrollArea>

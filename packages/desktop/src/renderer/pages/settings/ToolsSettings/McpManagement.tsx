@@ -6,12 +6,14 @@ import { BUILTIN_IMAGE_GEN_ID, BUILTIN_IMAGE_GEN_NAME, type IMcpServer } from '@
 import { useMcpConnection, useMcpModal, useMcpOAuth, useMcpServerCRUD, useMcpServers } from '@/renderer/hooks/mcp';
 import AddMcpServerModal from '../components/AddMcpServerModal';
 import McpServerItem from './McpServerItem';
+import { isInternalMcpServer, isLegacyGeaMcpServer } from '@/renderer/hooks/mcp/catalog';
 
 interface McpManagementProps {
   message: ReturnType<typeof import('@arco-design/web-react').Message.useMessage>[0];
 }
 
 const isVisibleMcpServer = (server: IMcpServer) =>
+  !isLegacyGeaMcpServer(server) &&
   !(server.builtin === true && (server.id === BUILTIN_IMAGE_GEN_ID || server.name === BUILTIN_IMAGE_GEN_NAME));
 
 const isOAuthCapableServer = (server: IMcpServer) =>
@@ -21,6 +23,7 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
   const { t } = useTranslation();
   const { mcpServers, extensionMcpServers, saveMcpServers, setMcpServers } = useMcpServers();
   const visibleMcpServers = React.useMemo(() => mcpServers.filter(isVisibleMcpServer), [mcpServers]);
+  const geaGateway = React.useMemo(() => mcpServers.find(isInternalMcpServer), [mcpServers]);
   const { oauthStatus, loggingIn, checkOAuthStatus, markLoginRequired, clearLoginRequired, login } = useMcpOAuth();
   const handleAuthRequired = React.useCallback(
     (server: IMcpServer) => {
@@ -53,8 +56,27 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
     hideDeleteConfirm,
     toggleServerCollapse,
   } = useMcpModal();
-  const { handleAddMcpServer, handleBatchImportMcpServers, handleEditMcpServer, handleDeleteMcpServer } =
-    useMcpServerCRUD(saveMcpServers);
+  const {
+    handleAddMcpServer,
+    handleBatchImportMcpServers,
+    handleEditMcpServer,
+    handleDeleteMcpServer,
+    handleToggleMcpServerEnabled,
+  } = useMcpServerCRUD(saveMcpServers);
+  const [togglingServers, setTogglingServers] = React.useState<Record<string, boolean>>({});
+
+  const handleToggleEnabled = React.useCallback(
+    async (server: IMcpServer, enabled: boolean) => {
+      if (togglingServers[server.id]) return;
+      setTogglingServers((current) => ({ ...current, [server.id]: true }));
+      try {
+        await handleToggleMcpServerEnabled(server, enabled);
+      } finally {
+        setTogglingServers((current) => ({ ...current, [server.id]: false }));
+      }
+    },
+    [handleToggleMcpServerEnabled, togglingServers]
+  );
 
   const handleOAuthLogin = React.useCallback(
     async (server: IMcpServer) => {
@@ -135,6 +157,21 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
               trigger='click'
               droplist={
                 <Menu>
+                  {geaGateway ? (
+                    <Menu.Item
+                      key='gea'
+                      data-testid='fetch-gea-mcp-menu-item'
+                      disabled={testingServers[geaGateway.id]}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleTestMcpConnection(geaGateway);
+                      }}
+                    >
+                      {testingServers[geaGateway.id]
+                        ? t('settings.geaResourceFetching')
+                        : t('settings.geaResourceFetchFromGea')}
+                    </Menu.Item>
+                  ) : null}
                   <Menu.Item
                     key='json'
                     onClick={(e) => {
@@ -158,7 +195,13 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
                 </Menu>
               }
             >
-              <Button type='outline' icon={<Plus size='14' />} shape='round' onClick={(e) => e.stopPropagation()}>
+              <Button
+                data-testid='add-mcp-server-dropdown'
+                type='outline'
+                icon={<Plus size='14' />}
+                shape='round'
+                onClick={(e) => e.stopPropagation()}
+              >
                 {t('settings.mcpAddServer')} <Down size='12' />
               </Button>
             </Dropdown>
@@ -183,7 +226,9 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
                 onEditServer={showEditMcpModal}
                 onDeleteServer={showDeleteConfirm}
                 onOAuthLogin={handleOAuthLogin}
-                isConfigurationReadOnly={server.source === 'managed'}
+                onToggleEnabled={handleToggleEnabled}
+                isTogglingEnabled={togglingServers[server.id] || false}
+                isConfigurationReadOnly={server.source === 'managed' || isInternalMcpServer(server)}
               />
             ))
           )}

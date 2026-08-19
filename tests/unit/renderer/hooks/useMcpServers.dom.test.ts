@@ -21,6 +21,8 @@ vi.mock('@/common', () => ({
 
 vi.mock('@/renderer/hooks/mcp/catalog', () => ({
   ensureBackendMcpCatalog: ensureBackendMcpCatalogMock,
+  isInternalMcpServer: (server: { name: string; builtin?: boolean }) =>
+    server.builtin === true && server.name === 'gea-gateway',
   visibleMcpServers: (servers: Array<{ name: string; builtin?: boolean }>) =>
     servers.filter((server) => !(server.builtin === true && server.name === 'gea-gateway')),
 }));
@@ -56,7 +58,7 @@ describe('useMcpServers', () => {
     expect(result.current.mcpServers).toEqual([]);
   });
 
-  it('hides the internal GEA bridge from settings-facing MCP state', async () => {
+  it('keeps the internal GEA bridge visible in settings-facing MCP state', async () => {
     ensureBackendMcpCatalogMock.mockResolvedValue({
       allServers: [
         {
@@ -68,6 +70,7 @@ describe('useMcpServers', () => {
           created_at: 1,
           updated_at: 1,
           original_json: '{}',
+          last_test_status: 'error',
         },
       ],
     });
@@ -75,7 +78,9 @@ describe('useMcpServers', () => {
     const { result } = renderHook(() => useMcpServers());
 
     await waitFor(() => expect(result.current.isMcpServersLoading).toBe(false));
-    expect(result.current.mcpServers).toEqual([]);
+    expect(result.current.mcpServers).toEqual([
+      expect.objectContaining({ id: 'gea-gateway', last_test_status: 'disconnected' }),
+    ]);
   });
 
   it('updates local MCP state without persisting business data outside the backend catalog', async () => {

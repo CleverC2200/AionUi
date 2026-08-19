@@ -19,6 +19,10 @@
 
 完整的系统要求、平台命令和故障排查请阅读 [开发指南](docs/contributing/development.zh-CN.md)。
 
+<p align="center">
+  <strong>💬 Community:</strong> <a href="https://discord.gg/2QAwJn7Egx" target="_blank">Discord (English)</a> | <a href="./resources/wx-20.png" target="_blank">微信 (中文群)</a> | <a href="https://twitter.com/AionUI" target="_blank">Twitter</a>
+</p>
+
 ## 快速启动
 
 建议将两个仓库放在同一级目录：

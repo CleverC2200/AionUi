@@ -273,6 +273,19 @@ export const assistants = {
 
 export type GeaClientResourceKind = 'assistants' | 'skills' | 'mcps';
 
+export type GeaAuthSessionStatus = {
+  authenticated: boolean;
+  reauthRequired: boolean;
+  tenantId?: string;
+};
+
+export type GeaMcpTool = {
+  name: string;
+  sourceCode: string;
+  description?: string;
+  inputSchema?: unknown;
+};
+
 export type SkillSource = 'builtin' | 'custom' | 'cron' | 'extension' | 'managed';
 
 export type AvailableSkill = {
@@ -300,6 +313,11 @@ export const clientResources = {
   syncFromGea: httpPost<GeaClientResourceSyncResult, { resources: GeaClientResourceKind[] }>(
     '/api/client-resources/sync'
   ),
+};
+
+export const geaAuth = {
+  status: httpGet<GeaAuthSessionStatus, void>('/api/gea/auth/session'),
+  testMcpConnection: httpPost<GeaMcpTool[], { consumerCode: string }>('/api/gea/mcp/test'),
 };
 
 // ---------------------------------------------------------------------------
@@ -449,12 +467,29 @@ export const conversation = {
   userCreated: wsEmitter<{
     conversation_id: string;
     msg_id: string;
+    /** Present when the send request carried a client-generated id, letting
+     * callers correlate this row with the outgoing send without matching on
+     * text/time. Not the canonical id — `msg_id` (the server-assigned id) is
+     * what the message list keys on. */
+    client_msg_id?: string;
     content: string;
     position: 'right';
-    status: 'finish';
+    /** 'pending' for a message delivered mid-turn that the agent hasn't
+     * consumed yet (see `message.statusChanged`); 'finish' otherwise. */
+    status: 'finish' | 'pending';
     hidden: boolean;
     created_at: number;
   }>('message.userCreated'),
+  /** Fired when the agent actually consumes a mid-turn-delivered message
+   * (claude command_lifecycle Started; codex synthetic receipt). Flips the
+   * message row from 'pending' to 'finish'; correlate by `msg_id`, never by
+   * text/time. */
+  statusChanged: wsEmitter<{
+    user_id: string;
+    conversation_id: string;
+    msg_id: string;
+    status: 'finish' | 'pending' | 'error';
+  }>('message.statusChanged'),
   artifactStream: wsEmitter<IConversationArtifact>('conversation.artifact'),
   turnCompleted: wsMappedEmitter<IConversationTurnCompletedEvent>('turn.completed', (raw) => {
     const r = raw as Record<string, unknown>;
@@ -481,6 +516,9 @@ export const conversation = {
       is_processing: (rawRuntime.is_processing ?? rawRuntime.isProcessing ?? false) as boolean,
       pending_confirmations: (rawRuntime.pending_confirmations ?? rawRuntime.pendingConfirmations ?? 0) as number,
       turn_id: (rawRuntime.turn_id ?? rawRuntime.turnId ?? null) as string | null,
+      supports_midturn_delivery: (rawRuntime.supports_midturn_delivery ??
+        rawRuntime.supportsMidturnDelivery ??
+        false) as boolean,
     };
     const rawModel = (r.model ?? {}) as Record<string, unknown>;
     const model: IConversationTurnCompletedEvent['model'] = {
@@ -547,7 +585,7 @@ export const interactionRequest = {
     (p) => `/api/interaction-requests/${encodeURIComponent(p.request_id)}/actions`,
     ({ request_id: _requestId, ...command }) => command
   ),
-  changed: wsEmitter<{ revision: string }>('interaction_request.changed'),
+  changed: wsEmitter<{ revision: string }>('interactionRequest.changed'),
 };
 
 export const conversationRecords = {
@@ -1995,6 +2033,10 @@ export interface IConversationTurnCompletedEvent {
     is_processing: boolean;
     pending_confirmations: number;
     turn_id: string | null;
+    /** Whether a message sent right now reaches the agent without waiting for
+     * the current turn to end. The ONLY capability bit the frontend may gate
+     * mid-turn UI on. */
+    supports_midturn_delivery: boolean;
   };
   workspace: string;
   model: {

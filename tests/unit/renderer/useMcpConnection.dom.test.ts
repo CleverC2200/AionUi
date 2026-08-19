@@ -21,7 +21,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useMcpConnection } from '@/renderer/hooks/mcp/useMcpConnection';
 import { globalMessageQueue } from '@/renderer/hooks/mcp/messageQueue';
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { geaAuth, mcpService } from '@/common/adapter/ipcBridge';
 import type { IMcpServer } from '@/common/config/storage';
 
 vi.mock('react-i18next', () => ({
@@ -29,6 +29,10 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
+  geaAuth: {
+    status: { invoke: vi.fn() },
+    testMcpConnection: { invoke: vi.fn() },
+  },
   mcpService: {
     testMcpConnection: { invoke: vi.fn() },
   },
@@ -42,6 +46,13 @@ const server: IMcpServer = {
   id: 'srv-1',
   name: 'My Server',
   transport: { type: 'stdio', command: 'node', args: [] },
+} as unknown as IMcpServer;
+
+const geaGateway: IMcpServer = {
+  id: 'gea-gateway',
+  name: 'gea-gateway',
+  builtin: true,
+  transport: { type: 'stdio', command: 'aioncore', args: ['mcp-gea-stdio'] },
 } as unknown as IMcpServer;
 
 /**
@@ -62,6 +73,30 @@ const makeUnmountedMessage = () => {
 describe('useMcpConnection — ELECTRON-1A1 unmount race', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('tests the builtin GEA gateway by creating a temporary session and listing real tools', async () => {
+    vi.mocked(geaAuth.testMcpConnection.invoke).mockResolvedValue([
+      {
+        name: 'query_business_data',
+        sourceCode: 'cube',
+        description: 'Query business data',
+        inputSchema: { type: 'object' },
+      },
+    ]);
+    const setMcpServers = vi.fn();
+    const success = vi.fn();
+    const message = { warning: vi.fn(), success, error: vi.fn() } as unknown as Parameters<typeof useMcpConnection>[1];
+
+    const { result } = renderHook(() => useMcpConnection(setMcpServers, message));
+
+    await act(async () => {
+      await result.current.handleTestMcpConnection(geaGateway);
+    });
+
+    expect(geaAuth.testMcpConnection.invoke).toHaveBeenCalledWith({ consumerCode: 'sales_forecast' });
+    expect(mcpService.testMcpConnection.invoke).not.toHaveBeenCalled();
+    await waitFor(() => expect(success).toHaveBeenCalledWith(expect.stringContaining('gea-gateway')));
   });
 
   it('does not throw when the success message fires after the context unmounts', async () => {

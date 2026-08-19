@@ -154,7 +154,6 @@ describe('SkillsHubSettings', () => {
     render(<SkillsHubSettings withWrapper={false} />);
 
     await waitFor(() => expect(mocks.listAvailableSkills).toHaveBeenCalled());
-    await waitFor(() => expect(mocks.catalog).toHaveBeenCalled());
     await triggerManualImport();
 
     await waitFor(() =>
@@ -186,13 +185,15 @@ describe('SkillsHubSettings', () => {
     await waitFor(() => expect(mocks.listAvailableSkills.mock.calls.length).toBeGreaterThan(initialFetchCount));
   });
 
-  it('keeps the GEA sync action out of a standard skill catalog', async () => {
+  it('keeps the GEA sync action discoverable before a managed catalog is available', async () => {
     mocks.catalog.mockResolvedValue({ assistants: [], mode: 'standard', sync_status: 'fresh' });
     render(<SkillsHubSettings withWrapper={false} />);
 
-    await waitFor(() => expect(mocks.catalog).toHaveBeenCalled());
     fireEvent.click(screen.getByTestId('btn-add-skill'));
-    expect(screen.queryByTestId('btn-add-skill-gea')).not.toBeInTheDocument();
+    const marker = await screen.findByTestId('btn-add-skill-gea');
+    fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
+
+    await waitFor(() => expect(mocks.syncFromGea).toHaveBeenCalledWith({ resources: ['skills'] }));
   });
 
   it('renders import history failure detail in the secondary view', async () => {

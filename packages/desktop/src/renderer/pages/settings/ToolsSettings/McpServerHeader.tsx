@@ -1,11 +1,12 @@
 import type { IMcpServer } from '@/common/config/storage';
-import { Button, Dropdown, Menu, Popover, Tooltip } from '@arco-design/web-react';
+import { Button, Dropdown, Menu, Popover, Switch, Tooltip } from '@arco-design/web-react';
 import { Check, CloseSmall, Info, LoadingOne, Refresh, Write, DeleteFour, SettingOne, Login } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { McpOAuthStatus } from '@/renderer/hooks/mcp/useMcpOAuth';
 import FeedbackButton from '@/renderer/components/base/FeedbackButton';
 import { iconColors } from '@/renderer/styles/colors';
+import { isInternalMcpServer } from '@/renderer/hooks/mcp/catalog';
 
 interface McpServerHeaderProps {
   server: IMcpServer;
@@ -16,10 +17,12 @@ interface McpServerHeaderProps {
   isReadOnly?: boolean;
   /** Hide edit/delete while keeping runtime authentication and connection checks available. */
   isConfigurationReadOnly?: boolean;
+  isTogglingEnabled?: boolean;
   onTestConnection: (server: IMcpServer) => void;
   onEditServer: (server: IMcpServer) => void;
   onDeleteServer: (serverId: string) => void;
   onOAuthLogin?: (server: IMcpServer) => void;
+  onToggleEnabled?: (server: IMcpServer, enabled: boolean) => void;
 }
 
 const getStatusIcon = (
@@ -151,10 +154,12 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
   isLoggingIn,
   isReadOnly,
   isConfigurationReadOnly,
+  isTogglingEnabled,
   onTestConnection,
   onEditServer,
   onDeleteServer,
   onOAuthLogin,
+  onToggleEnabled,
 }) => {
   const { t } = useTranslation();
 
@@ -163,6 +168,10 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
   const statusText = getStatusText(server, server.last_test_status, oauthStatus, isTestingConnection, t);
   const statusIcon = getStatusIcon(server.last_test_status, oauthStatus, isTestingConnection);
   const statusPopoverContent = getStatusPopoverContent(server, t);
+  const displayName = isInternalMcpServer(server) ? t('settings.geaMcpDisplayName') : server.name;
+  const isEnabled = server.enabled !== false;
+  const canToggleEnabled = !isReadOnly && server.source !== 'managed' && Boolean(onToggleEnabled);
+  const canEditConfiguration = !isReadOnly && !isConfigurationReadOnly && !server.builtin;
 
   const isError = server.last_test_status === 'error';
   const managedBadge =
@@ -175,7 +184,7 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
   return (
     <div className='flex items-center justify-between group'>
       <div className='flex items-center gap-2'>
-        <span>{server.name}</span>
+        <span>{displayName}</span>
         {managedBadge}
         {statusPopoverContent ? (
           <Popover content={statusPopoverContent} trigger='hover' position='top'>
@@ -209,33 +218,57 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
           />
         )}
       </div>
-      {!isReadOnly && !isConfigurationReadOnly && (
-        <div className='flex items-center gap-2 invisible group-hover:visible' onClick={(e) => e.stopPropagation()}>
-          {!server.builtin && (
-            <Dropdown
-              trigger='hover'
-              droplist={
-                <Menu>
-                  <Menu.Item key='edit' onClick={() => onEditServer(server)}>
-                    <div className='flex items-center gap-2'>
-                      <Write size={'14'} />
-                      {t('settings.mcpEditServer')}
-                    </div>
-                  </Menu.Item>
-                  <Menu.Item key='delete' onClick={() => onDeleteServer(server.id)}>
-                    <div className='flex items-center gap-2 text-red-500'>
-                      <DeleteFour size={'14'} />
-                      {t('settings.mcpDeleteServer')}
-                    </div>
-                  </Menu.Item>
-                </Menu>
-              }
-            >
-              <Button size='mini' icon={<SettingOne size={'14'} />} />
-            </Dropdown>
-          )}
-        </div>
-      )}
+      <div className='flex items-center gap-2' onClick={(e) => e.stopPropagation()}>
+        {canToggleEnabled && (
+          <Tooltip content={isEnabled ? t('settings.mcpDisableServer') : t('settings.mcpEnableServer')} position='top'>
+            <Switch
+              size='small'
+              checked={isEnabled}
+              loading={isTogglingEnabled}
+              aria-label={isEnabled ? t('settings.mcpDisableServer') : t('settings.mcpEnableServer')}
+              onChange={(checked) => onToggleEnabled?.(server, checked)}
+            />
+          </Tooltip>
+        )}
+        {canEditConfiguration ? (
+          <Dropdown
+            trigger='hover'
+            droplist={
+              <Menu>
+                <Menu.Item key='edit' onClick={() => onEditServer(server)}>
+                  <div className='flex items-center gap-2'>
+                    <Write size={'14'} />
+                    {t('settings.mcpEditServer')}
+                  </div>
+                </Menu.Item>
+                <Menu.Item key='delete' onClick={() => onDeleteServer(server.id)}>
+                  <div className='flex items-center gap-2 text-red-500'>
+                    <DeleteFour size={'14'} />
+                    {t('settings.mcpDeleteServer')}
+                  </div>
+                </Menu.Item>
+              </Menu>
+            }
+          >
+            <Button
+              size='mini'
+              className='!border-border-1 !bg-base !text-t-primary hover:!bg-fill-1'
+              title={t('settings.mcpEditServer')}
+              aria-label={t('settings.mcpEditServer')}
+              icon={<SettingOne size={'14'} />}
+            />
+          </Dropdown>
+        ) : (
+          <Button
+            size='mini'
+            disabled
+            className='!cursor-not-allowed !border-border-2 !bg-fill-2 !text-t-disabled opacity-50'
+            title={t('settings.mcpEditServer')}
+            aria-label={t('settings.mcpEditServer')}
+            icon={<SettingOne className='pointer-events-none' size={'14'} />}
+          />
+        )}
+      </div>
     </div>
   );
 };

@@ -544,7 +544,7 @@ GEA 统一返回：
 - [ ] 同一 preparation 重复消费只创建一个会话。
 - [ ] 模板升级不修改历史会话快照，只影响尚未开始的新 Turn。
 - [ ] 所有目录、错误和增量响应经过敏感字段扫描。
-- [ ] ERP/其他业务系统产生的 question 待办能通过 `interaction_request.changed` 刷新并回到原 Turn。
+- [ ] ERP/其他业务系统产生的 question 待办能通过 `interactionRequest.changed` 刷新并回到原 Turn。
 - [ ] 生产 MCP 的 permission 待办只允许服务端下发的动作，重复点击不产生第二次写入。
 - [ ] 待办处理 accepted 后 Agent 继续原 Task，不创建新会话或新 Task。
 - [ ] 生产系统结果未知时停在 `verification_required`，不自动重发。

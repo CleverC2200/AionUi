@@ -150,8 +150,23 @@ vi.mock('@/common', () => ({
 vi.mock('@/renderer/hooks/mcp/catalog', () => ({
   ensureBackendMcpCatalog: (...args: unknown[]) => ensureBackendMcpCatalogMock(...args),
   INTERNAL_GEA_MCP_NAME: 'gea-gateway',
-  visibleMcpServers: (servers: Array<{ name: string; builtin?: boolean }>) =>
-    servers.filter((server) => !(server.builtin === true && server.name === 'gea-gateway')),
+  MCP_CATALOG_CHANGED_EVENT: 'aionui:mcp-catalog-changed',
+  isLegacyGeaMcpServer: (server: { name: string; transport: { type: string; url?: string } }) =>
+    server.name === 'gea' &&
+    server.transport.type === 'sse' &&
+    server.transport.url?.replace(/\/+$/, '') === 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse',
+  selectableConversationMcpServers: (
+    servers: Array<{ name: string; builtin?: boolean; enabled?: boolean; transport: { type: string; url?: string } }>
+  ) =>
+    servers.filter(
+      (server) =>
+        server.enabled !== false &&
+        !(
+          server.name === 'gea' &&
+          server.transport.type === 'sse' &&
+          server.transport.url?.replace(/\/+$/, '') === 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse'
+        )
+    ),
 }));
 
 vi.mock('@/renderer/hooks/chat/useInputFocusRing', () => ({
@@ -603,6 +618,59 @@ describe('GuidPage', () => {
     await vi.waitFor(() => {
       expect(capturedGuidSendDeps.at(-1)?.selectedMcpServerIds).toEqual(['gea-gateway']);
       expect(capturedGuidSendDeps.at(-1)?.assistantDefaultMcpIds).toEqual(['gea-gateway']);
+      expect(capturedGuidActionRowProps.at(-1)?.mcpServers).toEqual([expect.objectContaining({ id: 'gea-gateway' })]);
+      expect(capturedGuidActionRowProps.at(-1)?.selectedMcpServerIds).toEqual(['gea-gateway']);
+    });
+  });
+
+  it('does not show or select the GEA gateway when it is disabled in settings', async () => {
+    ensureBackendMcpCatalogMock.mockResolvedValue({
+      allServers: [
+        {
+          id: 'gea-gateway',
+          name: 'gea-gateway',
+          builtin: true,
+          enabled: false,
+          transport: { type: 'http', url: 'http://127.0.0.1:61170/mcp' },
+        },
+      ],
+    });
+    swrMock.useSWRMock.mockReturnValue({ data: assistantDetailFixture });
+    resolveGuidAssistantDefaultsMock.mockReturnValue({
+      disabledBuiltinSkillIds: [],
+      skillIds: [],
+      mcpIds: ['gea-gateway'],
+    });
+
+    render(<GuidPage />);
+
+    await vi.waitFor(() => {
+      expect(capturedGuidSendDeps.at(-1)?.selectedMcpServerIds).toEqual([]);
+      expect(capturedGuidActionRowProps.at(-1)?.mcpServers).toEqual([]);
+      expect(capturedGuidActionRowProps.at(-1)?.selectedMcpServerIds).toEqual([]);
+    });
+  });
+
+  it('refreshes the conversation MCP list immediately after the settings switch changes', async () => {
+    const gateway = {
+      id: 'gea-gateway',
+      name: 'gea-gateway',
+      builtin: true,
+      enabled: true,
+      transport: { type: 'http', url: 'http://127.0.0.1:61170/mcp' },
+    };
+    ensureBackendMcpCatalogMock.mockResolvedValue({ allServers: [gateway] });
+
+    render(<GuidPage />);
+
+    await vi.waitFor(() => {
+      expect(capturedGuidActionRowProps.at(-1)?.mcpServers).toEqual([expect.objectContaining({ id: 'gea-gateway' })]);
+    });
+
+    ensureBackendMcpCatalogMock.mockResolvedValue({ allServers: [{ ...gateway, enabled: false }] });
+    window.dispatchEvent(new Event('aionui:mcp-catalog-changed'));
+
+    await vi.waitFor(() => {
       expect(capturedGuidActionRowProps.at(-1)?.mcpServers).toEqual([]);
       expect(capturedGuidActionRowProps.at(-1)?.selectedMcpServerIds).toEqual([]);
     });

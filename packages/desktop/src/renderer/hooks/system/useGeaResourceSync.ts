@@ -1,7 +1,7 @@
 import { ipcBridge } from '@/common';
 import { isBackendRouteUnavailableError } from '@/common/adapter/httpBridge';
 import type { GeaClientResourceKind } from '@/common/adapter/ipcBridge';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type MessageInstance = ReturnType<typeof import('@arco-design/web-react').Message.useMessage>[0];
@@ -20,32 +20,11 @@ export const useGeaResourceSync = ({
   resource,
 }: UseGeaResourceSyncOptions) => {
   const { t } = useTranslation();
-  const [detectedAvailable, setDetectedAvailable] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const syncingRef = useRef(false);
-  const available = availableOverride ?? detectedAvailable;
-
-  useEffect(() => {
-    if (availableOverride !== undefined) return;
-
-    let active = true;
-    void ipcBridge.assistants.catalog.invoke().then(
-      (catalog) => {
-        if (!active) return;
-        const managed = Array.isArray(catalog)
-          ? catalog.some((assistant) => assistant.source === 'managed')
-          : catalog.mode === 'managed';
-        setDetectedAvailable(managed);
-      },
-      () => {
-        if (active) setDetectedAvailable(false);
-      }
-    );
-
-    return () => {
-      active = false;
-    };
-  }, [availableOverride]);
+  // Resource sync availability cannot be inferred from the current assistant catalog:
+  // a valid GEA session may have no managed assistants yet. The action response is authoritative.
+  const available = availableOverride ?? true;
 
   const syncFromGea = useCallback(async () => {
     if (!available) {

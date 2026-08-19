@@ -14,7 +14,7 @@
 ```text
 GET  /api/interaction-requests?status=pending
 POST /api/interaction-requests/{request_id}/actions
-WS   interaction_request.changed
+WS   interactionRequest.changed
 ```
 
 动作请求必须携带 `expected_version + idempotency_key + action_id`。路径中的 `request_id` 不重复进入请求体。相同 request、version、action 的重放必须返回同一业务结果，不得执行第二次外部写入。

@@ -60,6 +60,8 @@
     "exportFailed": "Ошибка экспорта",
     "pin": "Закрепить",
     "unpin": "Открепить",
+    "markAsUnread": "Пометить как непрочитанное",
+    "markAsRead": "Пометить как прочитанное",
     "pinned": "Закреплено",
     "pinFailed": "Не удалось закрепить",
     "pinnedSection": "Закреплённые",
@@ -510,7 +512,14 @@
     "mode": {
       "auto": "Авто-отправка",
       "manual": "Ручная отправка"
-    }
+    },
+    "addToQueue": "Добавить в черновики",
+    "addToQueueShortcut": "⌘ + Enter / Ctrl + Enter",
+    "midturnBlocked": "Вставка сообщений не поддерживается, пока этот агент отвечает. Используйте «Добавить в черновики».",
+    "enterShortcut": "Enter",
+    "actionMode": "Choose send action",
+    "midturnBlockedSendHint": "This agent is still working, so the message can’t be sent directly. Save it to Draft box and send it later.",
+    "addToQueueBusyHint": "Save to Draft box and send it later."
   },
   "contextUsage": {
     "contextUsed": "контекст использован",

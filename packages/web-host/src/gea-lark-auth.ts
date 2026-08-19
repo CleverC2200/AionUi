@@ -6,7 +6,7 @@ import type {
   WebHostLarkQrLoginSession,
 } from './types.js';
 
-const DEFAULT_GEA_BASE_URL = 'https://gea.synear.cn/gea-boot';
+const DEFAULT_GEA_BASE_URL = 'https://gea.synear.cn:4443/gea-boot';
 const DEFAULT_GEA_TENANT_ID = '0';
 const QR_CODE_EXPIRES_IN_SECONDS = 300;
 const SESSION_RESTORE_ATTEMPTS = 2;

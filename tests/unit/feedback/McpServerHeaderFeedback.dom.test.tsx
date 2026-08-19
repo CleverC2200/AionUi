@@ -91,8 +91,8 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
     });
   });
 
-  it('labels a GEA-managed server and hides local configuration actions', () => {
-    const { container } = render(
+  it('labels a GEA-managed server and keeps a disabled edit placeholder', () => {
+    render(
       <ConfigProvider>
         <McpServerHeader
           server={{ ...buildServer('connected'), source: 'managed' }}
@@ -103,6 +103,63 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
     );
 
     expect(screen.getByText('settings.enterpriseManagedBadge')).toBeInTheDocument();
-    expect(container.querySelector('.i-icon-setting-one')).not.toBeInTheDocument();
+    const editButton = screen.getByRole('button', { name: 'settings.mcpEditServer' });
+    expect(editButton).toBeDisabled();
+    expect(editButton).toHaveClass('!cursor-not-allowed', '!bg-fill-2', '!text-t-disabled', 'opacity-50');
+    expect(editButton.querySelector('.i-icon-setting-one')).toHaveClass('pointer-events-none');
+  });
+
+  it('uses the user-facing GEA MCP name for the internal session gateway', () => {
+    render(
+      <ConfigProvider>
+        <McpServerHeader
+          server={{
+            ...buildServer('connected'),
+            id: 'gea-gateway',
+            name: 'gea-gateway',
+            builtin: true,
+            transport: { type: 'stdio', command: 'aioncore', args: ['mcp-gea-stdio'] },
+          }}
+          {...commonProps}
+          isConfigurationReadOnly
+        />
+      </ConfigProvider>
+    );
+
+    expect(screen.getByText('settings.geaMcpDisplayName')).toBeInTheDocument();
+    expect(screen.queryByText('gea-gateway')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'settings.mcpEditServer' })).toBeDisabled();
+  });
+
+  it('allows the internal gateway to be disabled without exposing its configuration', async () => {
+    const user = userEvent.setup();
+    const onToggleEnabled = vi.fn();
+    const server = {
+      ...buildServer('connected'),
+      id: 'gea-gateway',
+      name: 'gea-gateway',
+      builtin: true,
+      transport: { type: 'stdio' as const, command: 'aioncore', args: ['mcp-gea-stdio'] },
+    };
+
+    render(
+      <ConfigProvider>
+        <McpServerHeader server={server} {...commonProps} isConfigurationReadOnly onToggleEnabled={onToggleEnabled} />
+      </ConfigProvider>
+    );
+
+    await user.click(screen.getByRole('switch', { name: 'settings.mcpDisableServer' }));
+
+    expect(onToggleEnabled).toHaveBeenCalledWith(server, false);
+    expect(screen.getByRole('button', { name: 'settings.mcpEditServer' })).toBeDisabled();
+  });
+
+  it('keeps the edit control enabled for a user-added MCP server', () => {
+    renderHeader('connected');
+
+    const editButton = screen.getByRole('button', { name: 'settings.mcpEditServer' });
+    expect(editButton).toBeEnabled();
+    expect(editButton).toHaveClass('!border-border-1', '!bg-base', '!text-t-primary');
+    expect(editButton).not.toHaveClass('!cursor-not-allowed', 'opacity-50');
   });
 });

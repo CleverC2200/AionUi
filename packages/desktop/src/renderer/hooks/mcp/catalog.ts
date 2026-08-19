@@ -15,12 +15,30 @@ type BackendMcpPayload = {
 const isBuiltinServer = (server: IMcpServer) => server.builtin === true;
 
 export const INTERNAL_GEA_MCP_NAME = 'gea-gateway';
+export const LEGACY_GEA_MCP_NAME = 'gea';
+export const LEGACY_GEA_MCP_URL = 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse';
 
 export const isInternalMcpServer = (server: Pick<IMcpServer, 'name' | 'builtin'>): boolean =>
   server.builtin === true && server.name.trim().toLowerCase() === INTERNAL_GEA_MCP_NAME;
 
+export const isLegacyGeaMcpServer = (server: Pick<IMcpServer, 'name' | 'transport'>): boolean =>
+  server.name.trim().toLowerCase() === LEGACY_GEA_MCP_NAME &&
+  server.transport.type === 'sse' &&
+  server.transport.url.replace(/\/+$/, '') === LEGACY_GEA_MCP_URL;
+
 export const visibleMcpServers = (servers: IMcpServer[]): IMcpServer[] =>
-  servers.filter((server) => !isInternalMcpServer(server));
+  servers.filter((server) => !isInternalMcpServer(server) && !isLegacyGeaMcpServer(server));
+
+export const selectableConversationMcpServers = (servers: IMcpServer[]): IMcpServer[] =>
+  servers.filter((server) => server.enabled !== false && !isLegacyGeaMcpServer(server));
+
+export const MCP_CATALOG_CHANGED_EVENT = 'aionui:mcp-catalog-changed';
+
+export const notifyMcpCatalogChanged = (): void => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(MCP_CATALOG_CHANGED_EVENT));
+  }
+};
 
 const normalizeServerName = (name: string) => name.trim().toLowerCase();
 

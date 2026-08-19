@@ -19,6 +19,7 @@ import type { AgentRuntimeDerivedOption } from '@/renderer/utils/model/agentRunt
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { getCleanFileNames, FileService } from '@/renderer/services/FileService';
 import { iconColors } from '@/renderer/styles/colors';
+import { isInternalMcpServer } from '@/renderer/hooks/mcp/catalog';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import type { AcpModelInfo } from '../types';
 import { getAvailableModels } from '../utils/modelUtils';
@@ -201,6 +202,8 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
 
   const activeSkillCount = allSkills.filter(isSkillChecked).length;
   const activeMcpCount = selectedMcpServerIds.length;
+  const getMcpDisplayName = (server: IMcpServer) =>
+    isInternalMcpServer(server) ? t('settings.geaMcpDisplayName') : server.name;
 
   const skillKeyword = skillQuery.trim().toLowerCase();
   const filteredSkills = skillKeyword
@@ -208,7 +211,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
     : allSkills;
   const mcpKeyword = mcpQuery.trim().toLowerCase();
   const filteredMcpServers = mcpKeyword
-    ? mcpServers.filter((server) => server.name.toLowerCase().includes(mcpKeyword))
+    ? mcpServers.filter((server) => getMcpDisplayName(server).toLowerCase().includes(mcpKeyword))
     : mcpServers;
   const showSkillSearch = allSkills.length > DROPDOWN_SEARCH_THRESHOLD;
   const showMcpSearch = mcpServers.length > DROPDOWN_SEARCH_THRESHOLD;
@@ -391,7 +394,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
           multiSelect: true,
           options: mcpServers.map((server) => ({
             key: server.id,
-            label: server.name,
+            label: getMcpDisplayName(server),
             description: server.tools?.length ? `${server.tools.length} ${t('mcp.tools')}` : undefined,
             active: selectedMcpServerIds.includes(server.id),
           })),
@@ -550,7 +553,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
                   onChange={() => onToggleMcpServer(server.id)}
                 >
                   <span className='text-13px'>
-                    {server.name}
+                    {getMcpDisplayName(server)}
                     {server.tools?.length ? ` (${server.tools.length} ${t('mcp.tools')})` : ''}
                   </span>
                 </Checkbox>

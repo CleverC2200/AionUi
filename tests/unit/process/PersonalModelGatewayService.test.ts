@@ -194,7 +194,7 @@ describe('PersonalModelGatewayService', () => {
     );
   });
 
-  it('reports an enabled credential with no local secret as a sync failure', async () => {
+  it('reports that an enabled credential without its one-time local secret needs recovery', async () => {
     const vault = new MemoryVault();
     const providerStore = new MemoryProviderStore();
     const proxy: PersonalModelProxy = {
@@ -207,7 +207,7 @@ describe('PersonalModelGatewayService', () => {
     await expect(service.sync({ id: 'user-1', username: 'zhangsan', realname: '张三' }, authClient)).resolves.toEqual({
       configured: 0,
       failed: 1,
-      reason: 'credentialSyncFailed',
+      reason: 'credentialRecoveryRequired',
       skipped: 0,
       status: 'partial',
     });
