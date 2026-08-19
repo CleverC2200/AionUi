@@ -41,7 +41,7 @@ export const InteractionRequestReceiptSchema = z.object({
   receipt_id: identifier,
   request_id: identifier,
   version: identifier,
-  status: z.enum(['accepted', 'already_resolved', 'conflict', 'expired', 'forbidden', 'unknown_external_write']),
+  status: z.enum(['accepted', 'already_resolved', 'conflict', 'expired', 'forbidden', 'cancelled', 'unknown_external_write']),
   resolved_at: z.string().datetime({ offset: true }).optional(),
   resolved_by: z.string().optional(),
   request: InteractionRequestSchema.optional(),
