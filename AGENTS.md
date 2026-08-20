@@ -27,6 +27,7 @@
 
 - 开发中优先运行最接近的定向测试或静态检查；同一 SHA 已通过的完整门禁直接复用记录，只有代码、依赖、配置或目标基线变化后才重跑。
 - 只有用户明确要求时才推送。泛称 push、publish 或创建 PR 时默认目标是 `origin` 个人 Fork，并在执行前说明 push remote 与 PR base；官方/upstream 目标必须由用户当轮明确指定。推送前使用 `just push`，不要直接执行 `git push`。
-- 技术计划、PRD、设计验收、可行性研究和执行记录默认只保留本地；只有用户逐份明确授权时才纳入公共 push 或 PR。
+- `docs/` 只保存长期有效、由团队维护的当前事实：已确认的集成说明放入 `docs/integrations/`，已冻结接口放入 `docs/specs/`，长期架构决策放入 `docs/adr/`。
+- 调查草稿、技术计划、PRD、设计验收、可行性研究、执行记录、验收 HTML 和截图默认放入已忽略的 `.workspace/docs/<主题>/<日期>/`；PR 前只提炼长期有效结论，只有用户逐份明确授权时才纳入公共 push 或 PR。不得通过忽略 `docs/**` 或削弱门禁隐藏过程文件。
 - 用户明确要求提交 PR 时，默认创建个人 Fork 的 Ready for review PR，并按 [贡献指南](CONTRIBUTING.zh.md) 的“Agent 管理的 PR 跟进”持续处理检查、审查、修复和合并；官方/upstream PR 或合并仍需用户当轮明确指定。
 - Commit 和 PR 标题使用英文 Conventional Commit 格式；不得添加 AI 签名。
