@@ -31,12 +31,13 @@ const MessagePermission: React.FC<MessagePermissionProps> = React.memo(({ messag
   const options = Array.isArray(content.options) ? content.options : [];
   const displayTitle = title || description || t('messages.permissionRequest');
   const [authoritativeRequest, setAuthoritativeRequest] = useState<InteractionRequest | null>(null);
-  const [authorityBlocked, setAuthorityBlocked] = useState(false);
+  const sourceProcessing = content.interaction_request?.status === 'processing';
+  const [authorityBlocked, setAuthorityBlocked] = useState(sourceProcessing);
 
   useEffect(() => {
     setAuthoritativeRequest(null);
-    setAuthorityBlocked(false);
-  }, [content.interaction_request?.id, content.interaction_request?.version]);
+    setAuthorityBlocked(sourceProcessing);
+  }, [content.interaction_request?.id, content.interaction_request?.version, sourceProcessing]);
 
   const panelOptions = useMemo<PermissionPanelOption[]>(
     () =>
@@ -71,7 +72,7 @@ const MessagePermission: React.FC<MessagePermissionProps> = React.memo(({ messag
           setAuthoritativeRequest(receipt.request);
           setAuthorityBlocked(receipt.request.status !== 'pending');
         } else {
-          setAuthorityBlocked(receipt.status === 'unknown_external_write');
+          setAuthorityBlocked(receipt.status === 'unknown_external_write' || receipt.status === 'processing');
         }
         requireAcceptedInteractionReceipt(receipt);
       } else {
@@ -98,6 +99,7 @@ const MessagePermission: React.FC<MessagePermissionProps> = React.memo(({ messag
       options={panelOptions}
       onConfirm={handleConfirm}
       authorityBlocked={authorityBlocked}
+      authorityProcessing={sourceProcessing || authoritativeRequest?.status === 'processing'}
     />
   );
 });

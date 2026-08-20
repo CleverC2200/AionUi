@@ -4,6 +4,9 @@
     "open": "打开 {{count}} 个待处理请求",
     "empty": "暂无待处理请求",
     "loadFailed": "待处理请求加载失败，当前工作没有被修改。",
+    "syncPartial": "有 {{count}} 个会话未完成同步。受影响的旧数据已标记，暂不可提交。",
+    "syncFailed": "无法确认待处理请求是否为最新状态。旧数据暂不可提交。",
+    "stale": "待同步",
     "source": {
       "agent": "助手",
       "team_agent": "团队成员",

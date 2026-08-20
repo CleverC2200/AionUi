@@ -8,6 +8,7 @@ import {
 export type InteractionRequestActionAdapter = {
   submit: (command: InteractionRequestActionCommand) => Promise<unknown>;
   refreshPending?: () => Promise<unknown>;
+  preflightActive?: () => Promise<unknown>;
 };
 
 type PendingAction = {
@@ -20,6 +21,18 @@ export class InteractionRequestActions {
   private readonly actions = new Map<string, PendingAction>();
 
   constructor(private readonly adapter: InteractionRequestActionAdapter) {}
+
+  private async assertFresh(requestId: string): Promise<void> {
+    if (!this.adapter.preflightActive) return;
+    const active = parseInteractionRequestList(await this.adapter.preflightActive());
+    const request = active.items.find((item) => item.id === requestId);
+    if (active.sync_state === 'failed' || request?.stale || (active.sync_state === 'partial' && !request)) {
+      throw new Error('INTERACTION_REQUEST_STALE');
+    }
+    if (active.sync_state === 'complete' && !request) {
+      throw new Error('INTERACTION_REQUEST_CHANGED');
+    }
+  }
 
   private async reconcile(receipt: InteractionRequestReceipt): Promise<InteractionRequestReceipt> {
     if (
@@ -52,8 +65,8 @@ export class InteractionRequestActions {
     if (current.promise) return current.promise;
 
     const command = parseInteractionRequestActionCommand({ ...input, idempotency_key: current.idempotencyKey });
-    current.promise = this.adapter
-      .submit(command)
+    current.promise = this.assertFresh(command.request_id)
+      .then(() => this.adapter.submit(command))
       .then(parseInteractionRequestReceipt)
       .then((receipt) => this.reconcile(receipt))
       .then((receipt) => {

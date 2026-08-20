@@ -4,6 +4,9 @@
     "open": "Open {{count}} pending requests",
     "empty": "No pending requests",
     "loadFailed": "Pending requests could not be loaded. Your work has not been changed.",
+    "syncPartial": "{{count}} sessions could not be synchronized. Affected cached items cannot be submitted yet.",
+    "syncFailed": "The latest pending requests could not be confirmed. Cached items cannot be submitted yet.",
+    "stale": "Sync pending",
     "source": {
       "agent": "Assistant",
       "team_agent": "Team member",

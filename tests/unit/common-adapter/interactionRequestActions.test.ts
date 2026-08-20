@@ -17,6 +17,48 @@ const command = {
 };
 
 describe('InteractionRequestActions', () => {
+  it('blocks a stale action when the active snapshot freshness is unconfirmed', async () => {
+    const submit = vi.fn();
+    const preflightActive = vi.fn().mockResolvedValue({
+      revision: 'active-failed',
+      items: [],
+      sync_state: 'failed',
+      failed_session_count: 1,
+      failure_codes: ['GEA_SESSION_REJECTED'],
+    });
+    const actions = new InteractionRequestActions({ submit, preflightActive });
+
+    await expect(actions.submit(command)).rejects.toThrow('INTERACTION_REQUEST_STALE');
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('allows a fresh item from a successful session during partial sync', async () => {
+    const submit = vi.fn().mockResolvedValue(accepted);
+    const preflightActive = vi.fn().mockResolvedValue({
+      revision: 'active-partial',
+      items: [
+        {
+          id: 'request-1',
+          version: 'v1',
+          kind: 'permission',
+          status: 'pending',
+          title: 'Run command',
+          source: { type: 'business_system' },
+          conversation_id: 'conversation-1',
+          allowed_actions: ['approve'],
+          stale: false,
+        },
+      ],
+      sync_state: 'partial',
+      failed_session_count: 1,
+      failure_codes: ['GEA_SESSION_REJECTED'],
+    });
+    const actions = new InteractionRequestActions({ submit, preflightActive });
+
+    await expect(actions.submit(command)).resolves.toEqual(accepted);
+    expect(submit).toHaveBeenCalledTimes(1);
+  });
+
   it('coalesces double submission and keeps one stable idempotency key', async () => {
     let resolve!: (value: unknown) => void;
     const pending = new Promise((resolvePromise) => {
@@ -52,6 +94,27 @@ describe('InteractionRequestActions', () => {
     await expect(actions.submit(command)).resolves.toEqual(unknown);
     await expect(actions.submit(command)).resolves.toEqual(unknown);
     expect(submit).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['processing', 'failed'] as const)('accepts the v1.1 %s receipt shape', async (status) => {
+    const receipt = {
+      ...accepted,
+      status,
+      resolved_at: undefined,
+      request: {
+        id: 'request-1',
+        version: 'v2',
+        kind: 'permission',
+        status: status === 'processing' ? 'processing' : 'pending',
+        title: 'Run command',
+        source: { type: 'business_system' },
+        conversation_id: 'conversation-1',
+        allowed_actions: ['approve'],
+      },
+    };
+    const actions = new InteractionRequestActions({ submit: vi.fn().mockResolvedValue(receipt) });
+
+    await expect(actions.submit(command)).resolves.toMatchObject({ status });
   });
 
   it('keeps the same idempotency key for an explicit retry after transport failure', async () => {
@@ -91,7 +154,10 @@ describe('InteractionRequestActions', () => {
     const refreshPending = vi.fn().mockResolvedValue({ revision: 'pending-r2', items: [authoritativeRequest] });
     const actions = new InteractionRequestActions({ submit: vi.fn().mockResolvedValue(receipt), refreshPending });
 
-    await expect(actions.submit(command)).resolves.toEqual({ ...receipt, request: authoritativeRequest });
+    await expect(actions.submit(command)).resolves.toEqual({
+      ...receipt,
+      request: { ...authoritativeRequest, stale: false },
+    });
     expect(refreshPending).toHaveBeenCalledTimes(1);
   });
 
@@ -116,7 +182,10 @@ describe('InteractionRequestActions', () => {
     const actions = new InteractionRequestActions({ submit, refreshPending });
 
     await expect(actions.submit(command)).resolves.toEqual(receipt);
-    await expect(actions.submit(command)).resolves.toEqual({ ...receipt, request: authoritativeRequest });
+    await expect(actions.submit(command)).resolves.toEqual({
+      ...receipt,
+      request: { ...authoritativeRequest, stale: false },
+    });
     expect(submit).toHaveBeenCalledTimes(1);
     expect(refreshPending).toHaveBeenCalledTimes(2);
   });

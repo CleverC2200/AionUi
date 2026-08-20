@@ -31,6 +31,7 @@ type PermissionRequestPanelProps = {
   options: PermissionPanelOption[];
   onConfirm: (optionValue: string) => Promise<void>;
   authorityBlocked?: boolean;
+  authorityProcessing?: boolean;
 };
 
 export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
@@ -44,12 +45,15 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
   options,
   onConfirm,
   authorityBlocked = false,
+  authorityProcessing = false,
 }) => {
   const { t } = useTranslation();
   const optionsIdentity = getPermissionOptionsIdentity(options);
   const [isResponding, setIsResponding] = useState(false);
   const [hasResponded, setHasResponded] = useState(false);
-  const [errorKind, setErrorKind] = useState<'changed' | 'ordinary' | 'verification' | null>(null);
+  const [errorKind, setErrorKind] = useState<'changed' | 'ordinary' | 'processing' | 'stale' | 'verification' | null>(
+    null
+  );
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const respondingRef = useRef(false);
   const requestEpochRef = useRef(0);
@@ -96,11 +100,15 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
         if (requestEpochRef.current === requestEpoch && optionsEpochRef.current === optionsEpoch) {
           const message = error instanceof Error ? error.message : String(error);
           setErrorKind(
-            message.includes('UNKNOWN_EXTERNAL_WRITE')
-              ? 'verification'
-              : message.includes('CONFLICT') || message.includes('EXPIRED') || message.includes('FORBIDDEN')
-                ? 'changed'
-                : 'ordinary'
+            message.includes('INTERACTION_REQUEST_STALE')
+              ? 'stale'
+              : message.includes('INTERACTION_REQUEST_PROCESSING')
+                ? 'processing'
+                : message.includes('UNKNOWN_EXTERNAL_WRITE')
+                  ? 'verification'
+                  : message.includes('CONFLICT') || message.includes('EXPIRED') || message.includes('FORBIDDEN')
+                    ? 'changed'
+                    : 'ordinary'
           );
         }
       } finally {
@@ -166,7 +174,7 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
               )}
             </fieldset>
 
-            {errorKind && (
+            {(errorKind || authorityProcessing) && (
               <div
                 className={classNames(styles.feedback, styles.error)}
                 role='alert'
@@ -176,11 +184,15 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
                 <Attention theme='outline' size='16' aria-hidden='true' />
                 <span>
                   {t(
-                    errorKind === 'verification'
-                      ? 'messages.interactionVerificationRequired'
-                      : errorKind === 'changed'
-                        ? 'messages.interactionRequestChanged'
-                        : 'messages.permissionResponseFailed'
+                    errorKind === 'stale'
+                      ? 'messages.interactionSyncRequired'
+                      : errorKind === 'processing' || authorityProcessing
+                        ? 'messages.interactionProcessing'
+                        : errorKind === 'verification'
+                          ? 'messages.interactionVerificationRequired'
+                          : errorKind === 'changed'
+                            ? 'messages.interactionRequestChanged'
+                            : 'messages.permissionResponseFailed'
                   )}
                 </span>
               </div>
