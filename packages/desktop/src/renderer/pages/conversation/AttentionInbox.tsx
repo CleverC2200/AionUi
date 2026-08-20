@@ -1,7 +1,6 @@
 import { ipcBridge } from '@/common';
-import { isRouteUnavailableError } from '@/common/adapter/sidebarCompatibility';
 import type { InteractionRequest } from '@/common/types/interactionRequest';
-import { Alert, Badge, Button, Drawer, Empty, Spin, Typography } from '@arco-design/web-react';
+import { Alert, Badge, Button, Drawer, Empty, Spin, Tag, Typography } from '@arco-design/web-react';
 import { Attention, Right } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,17 +16,11 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
   const navigate = useNavigate();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [visible, setVisible] = useState(false);
-  const { data, error, isLoading, isValidating, mutate } = useSWR('interaction-requests.pending', async () => {
-    try {
-      return await ipcBridge.interactionRequest.list.invoke();
-    } catch (requestError) {
-      if (isRouteUnavailableError(requestError)) {
-        return { revision: 'unsupported', items: [] };
-      }
-      throw requestError;
-    }
-  });
+  const { data, error, isLoading, isValidating, mutate } = useSWR('interaction-requests.active', () =>
+    ipcBridge.interactionRequest.list.invoke()
+  );
   const items = data?.items ?? [];
+  const syncWarning = data?.sync_state === 'partial' || data?.sync_state === 'failed';
 
   useEffect(() => {
     const refresh = (): void => {
@@ -108,34 +101,63 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
               </div>
             }
           />
-        ) : items.length === 0 ? (
-          <Empty description={t('conversation.attention.empty')} />
         ) : (
-          <div className='flex flex-col gap-8px' role='list'>
-            {items.map((request) => (
-              <Button
-                key={request.id}
-                type='secondary'
-                className='!h-auto !p-12px !justify-start !items-start !text-left'
-                onClick={() => openRequest(request)}
-                data-testid={`attention-request-${request.id}`}
-              >
-                <span className='flex min-w-0 w-full items-center gap-10px'>
-                  <span className='flex-1 min-w-0'>
-                    <Typography.Text className='block font-600 text-t-primary'>{request.title}</Typography.Text>
-                    {request.summary ? (
-                      <Typography.Text className='block mt-3px text-12px text-t-secondary' ellipsis>
-                        {request.summary}
-                      </Typography.Text>
-                    ) : null}
-                    <Typography.Text className='block mt-5px text-12px text-t-tertiary'>
-                      {request.source.label || t(`conversation.attention.source.${request.source.type}`)}
-                    </Typography.Text>
-                  </span>
-                  <Right theme='outline' size='16' className='shrink-0 text-t-tertiary' />
-                </span>
-              </Button>
-            ))}
+          <div className='flex flex-col gap-12px'>
+            {syncWarning ? (
+              <Alert
+                type='warning'
+                showIcon
+                content={t(
+                  data?.sync_state === 'failed'
+                    ? 'conversation.attention.syncFailed'
+                    : 'conversation.attention.syncPartial',
+                  { count: data?.failed_session_count ?? 0 }
+                )}
+                action={
+                  <Button size='mini' loading={isValidating} onClick={() => void mutate()}>
+                    {t('common.retry', { defaultValue: 'Retry' })}
+                  </Button>
+                }
+                data-testid='attention-sync-warning'
+              />
+            ) : null}
+            {items.length === 0 ? (
+              <Empty description={t('conversation.attention.empty')} />
+            ) : (
+              <div className='flex flex-col gap-8px' role='list'>
+                {items.map((request) => (
+                  <Button
+                    key={request.id}
+                    type='secondary'
+                    className='!h-auto !p-12px !justify-start !items-start !text-left'
+                    onClick={() => openRequest(request)}
+                    data-testid={`attention-request-${request.id}`}
+                  >
+                    <span className='flex min-w-0 w-full items-center gap-10px'>
+                      <span className='flex-1 min-w-0'>
+                        <span className='flex items-center gap-6px'>
+                          <Typography.Text className='font-600 text-t-primary'>{request.title}</Typography.Text>
+                          {request.stale ? (
+                            <Tag size='small' color='orange' data-testid={`attention-request-${request.id}-stale`}>
+                              {t('conversation.attention.stale')}
+                            </Tag>
+                          ) : null}
+                        </span>
+                        {request.summary ? (
+                          <Typography.Text className='block mt-3px text-12px text-t-secondary' ellipsis>
+                            {request.summary}
+                          </Typography.Text>
+                        ) : null}
+                        <Typography.Text className='block mt-5px text-12px text-t-tertiary'>
+                          {request.source.label || t(`conversation.attention.source.${request.source.type}`)}
+                        </Typography.Text>
+                      </span>
+                      <Right theme='outline' size='16' className='shrink-0 text-t-tertiary' />
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Drawer>

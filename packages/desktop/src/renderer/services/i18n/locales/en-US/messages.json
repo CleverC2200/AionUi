@@ -73,6 +73,9 @@
   "responseSentSuccessfully": "Response sent successfully",
   "permissionResponseFailed": "Could not send the response. Please try again.",
   "interactionVerificationRequired": "The outcome could not be confirmed. Verify it in the source system before trying again.",
+  "interactionSyncRequired": "Pending requests have not finished syncing. This action was not submitted; sync before retrying.",
+  "interactionProcessing": "GEA accepted the action and is processing it.",
+  "interactionDetailsUnavailable": "GEA has not provided actionable structured details yet. Wait for an update.",
   "interactionRequestChanged": "This request changed or was handled elsewhere. Refresh to view the authoritative result.",
   "confirmation": {
     "applyChange": "Apply this change?",

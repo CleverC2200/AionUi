@@ -87,6 +87,17 @@ const makeAcpMessage = (): IMessageAcpPermission => ({
   },
 });
 
+const activePermission = (id: string, version = 'v1') => ({
+  id,
+  version,
+  kind: 'permission',
+  status: 'pending',
+  title: 'Run command',
+  source: { type: 'agent' },
+  conversation_id: 'conversation-1',
+  allowed_actions: ['proceed_once'],
+});
+
 describe('permission message adapters', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -99,7 +110,15 @@ describe('permission message adapters', () => {
       status: 'accepted',
       resolved_at: '2026-08-12T00:00:00.000Z',
     });
-    interactionListInvoke.mockResolvedValue({ revision: 'pending-r1', items: [] });
+    interactionListInvoke.mockResolvedValue({
+      revision: 'active-r1',
+      items: [
+        activePermission('request-1'),
+        activePermission('request-conflict'),
+        activePermission('request-refresh'),
+        activePermission('request-late'),
+      ],
+    });
   });
 
   it('uses the versioned source-authoritative action path when a unified request is present', async () => {
@@ -109,12 +128,14 @@ describe('permission message adapters', () => {
 
     fireEvent.click(screen.getByTestId('message-permission-option-proceed_once'));
 
-    expect(interactionInvoke).toHaveBeenCalledWith({
-      request_id: 'request-1',
-      expected_version: 'v1',
-      idempotency_key: 'interaction:request-1:v1:proceed_once',
-      action_id: 'proceed_once',
-    });
+    await waitFor(() =>
+      expect(interactionInvoke).toHaveBeenCalledWith({
+        request_id: 'request-1',
+        expected_version: 'v1',
+        idempotency_key: 'interaction:request-1:v1:proceed_once',
+        action_id: 'proceed_once',
+      })
+    );
     expect(genericInvoke).not.toHaveBeenCalled();
     expect(await screen.findByTestId('message-permission-status')).toBeInTheDocument();
   });
@@ -201,7 +222,7 @@ describe('permission message adapters', () => {
     render(<MessagePermission message={message} />);
 
     fireEvent.click(screen.getByTestId('message-permission-option-proceed_once'));
-    await waitFor(() => expect(interactionListInvoke).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(interactionListInvoke).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(screen.getByTestId('message-permission-option-proceed_once')).toBeEnabled());
     fireEvent.click(screen.getByTestId('message-permission-option-proceed_once'));
 
@@ -241,25 +262,96 @@ describe('permission message adapters', () => {
       updated_at: '2026-08-12T00:00:01.000Z',
     };
     interactionListInvoke
-      .mockResolvedValueOnce({ revision: 'pending-r1', items: [] })
-      .mockResolvedValueOnce({ revision: 'pending-r2', items: [authoritativeRequest] });
+      .mockResolvedValueOnce({ revision: 'active-r1', items: [activePermission('request-late')] })
+      .mockResolvedValueOnce({ revision: 'active-r1', items: [] })
+      .mockResolvedValueOnce({ revision: 'active-r2', items: [authoritativeRequest] })
+      .mockResolvedValueOnce({ revision: 'active-r2', items: [authoritativeRequest] });
     render(<MessagePermission message={message} />);
 
     const option = screen.getByTestId('message-permission-option-proceed_once');
     fireEvent.click(option);
-    await waitFor(() => expect(interactionListInvoke).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(interactionListInvoke).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(option).toBeEnabled());
     fireEvent.click(option);
-    await waitFor(() => expect(interactionListInvoke).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(interactionListInvoke).toHaveBeenCalledTimes(3));
     expect(interactionInvoke).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(option).toBeEnabled());
     fireEvent.click(option);
 
     expect(await screen.findByTestId('message-permission-status')).toBeInTheDocument();
+    expect(interactionListInvoke).toHaveBeenCalledTimes(4);
     expect(interactionInvoke).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ request_id: 'request-late', expected_version: 'v2' })
     );
+  });
+
+  it('blocks submission and explains when the active projection is stale', async () => {
+    const message = makeGenericMessage('stale-message');
+    message.content.interaction_request = { id: 'request-stale', version: 'v1' };
+    interactionListInvoke.mockResolvedValue({
+      revision: 'active-failed',
+      items: [],
+      sync_state: 'failed',
+      failed_session_count: 1,
+      failure_codes: ['GEA_SESSION_REJECTED'],
+    });
+    render(<MessagePermission message={message} />);
+
+    fireEvent.click(screen.getByTestId('message-permission-option-proceed_once'));
+
+    expect(await screen.findByTestId('message-permission-error')).toHaveTextContent('messages.interactionSyncRequired');
+    expect(interactionInvoke).not.toHaveBeenCalled();
+  });
+
+  it('locks the card and explains when GEA reports processing', async () => {
+    const message = makeGenericMessage('processing-message');
+    message.content.interaction_request = { id: 'request-processing', version: 'v1' };
+    interactionListInvoke.mockResolvedValue({
+      revision: 'active-processing',
+      items: [activePermission('request-processing')],
+    });
+    interactionInvoke.mockResolvedValue({
+      receipt_id: 'receipt-processing',
+      request_id: 'request-processing',
+      version: 'v2',
+      status: 'processing',
+      request: {
+        ...activePermission('request-processing', 'v2'),
+        status: 'processing',
+      },
+    });
+    render(<MessagePermission message={message} />);
+
+    fireEvent.click(screen.getByTestId('message-permission-option-proceed_once'));
+
+    expect(await screen.findByTestId('message-permission-error')).toHaveTextContent('messages.interactionProcessing');
+    expect(screen.getByTestId('message-permission-option-proceed_once')).toBeDisabled();
+    expect(interactionInvoke).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the refreshed pending card retryable when GEA reports failed', async () => {
+    const message = makeGenericMessage('failed-message');
+    message.content.interaction_request = { id: 'request-failed', version: 'v1' };
+    interactionListInvoke.mockResolvedValue({
+      revision: 'active-failed-action',
+      items: [activePermission('request-failed')],
+    });
+    interactionInvoke.mockResolvedValue({
+      receipt_id: 'receipt-failed',
+      request_id: 'request-failed',
+      version: 'v2',
+      status: 'failed',
+      request: activePermission('request-failed', 'v2'),
+    });
+    render(<MessagePermission message={message} />);
+
+    fireEvent.click(screen.getByTestId('message-permission-option-proceed_once'));
+
+    expect(await screen.findByTestId('message-permission-error')).toHaveTextContent(
+      'messages.permissionResponseFailed'
+    );
+    expect(screen.getByTestId('message-permission-option-proceed_once')).toBeEnabled();
   });
 
   it('keeps the generic payload exact and defaults confirmation to proceed_once', async () => {

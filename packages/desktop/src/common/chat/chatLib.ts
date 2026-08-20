@@ -312,6 +312,13 @@ export interface IAskQuestion {
   options: Array<{ label: string; description?: string }>;
 }
 
+export interface IInteractionRequestMessageRef {
+  id: string;
+  version: string;
+  status?: 'pending' | 'processing' | 'resolved' | 'expired' | 'cancelled' | 'verification_required';
+  allowed_actions?: string[];
+}
+
 /** Structured question card (AgentStreamEvent::Ask, wire tag `ask`). Answered via
  *  confirmMessage with `{answers:[{question, labels[]}]}` or `{ask_decline:true}`;
  *  call_id = request_id (the claude control correlation key). */
@@ -320,8 +327,10 @@ export type IMessageAsk = IMessage<
   {
     session_id: string;
     request_id: string;
+    title?: string;
+    summary?: string;
     questions: IAskQuestion[];
-    interaction_request?: { id: string; version: string };
+    interaction_request?: IInteractionRequestMessageRef;
   }
 >;
 
@@ -434,7 +443,7 @@ export interface IConfirmation<Option extends any = any> {
   action?: string;
   description: string;
   call_id: string;
-  interaction_request?: { id: string; version: string };
+  interaction_request?: IInteractionRequestMessageRef;
   options: Array<{
     label: string;
     value: Option;

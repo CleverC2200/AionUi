@@ -5,6 +5,7 @@ import type { InteractionRequestReceipt } from '@/common/types/interactionReques
 export const interactionRequestActions = new InteractionRequestActions({
   submit: (command) => ipcBridge.interactionRequest.act.invoke(command),
   refreshPending: () => ipcBridge.interactionRequest.list.invoke(),
+  preflightActive: () => ipcBridge.interactionRequest.list.invoke(),
 });
 
 export const requireAcceptedInteractionReceipt = (receipt: InteractionRequestReceipt): void => {

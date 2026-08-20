@@ -73,6 +73,9 @@
   "responseSentSuccessfully": "响应已成功发送",
   "permissionResponseFailed": "未能发送响应，请重试。",
   "interactionVerificationRequired": "结果无法确认。请先到来源系统核验，不要直接重试。",
+  "interactionSyncRequired": "待处理状态尚未同步完成，当前操作未提交。请同步后重试。",
+  "interactionProcessing": "操作已由 GEA 受理，正在处理中。",
+  "interactionDetailsUnavailable": "GEA 尚未提供可作答的结构化详情，请等待待办更新。",
   "interactionRequestChanged": "请求已变化或已由他人处理，请刷新查看权威结果。",
   "confirmation": {
     "applyChange": "应用此更改？",

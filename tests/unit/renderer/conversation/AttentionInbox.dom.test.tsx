@@ -40,6 +40,9 @@ describe('AttentionInbox', () => {
     vi.clearAllMocks();
     listInvoke.mockResolvedValue({
       revision: 'attention-r1',
+      sync_state: 'complete',
+      failed_session_count: 0,
+      failure_codes: [],
       items: [
         {
           id: 'request-1',
@@ -88,7 +91,7 @@ describe('AttentionInbox', () => {
         {
           id: 'team-request-1',
           version: 'v1',
-          kind: 'approval',
+          kind: 'permission',
           status: 'pending',
           title: 'Review teammate output',
           source: { type: 'team_agent', label: 'Researcher' },
@@ -136,7 +139,7 @@ describe('AttentionInbox', () => {
     expect(await screen.findByText('conversation.attention.empty')).toBeInTheDocument();
   });
 
-  it('treats an unavailable interaction-request route as an unsupported empty inbox', async () => {
+  it('does not hide an unavailable interaction-request route as an empty inbox', async () => {
     listInvoke.mockRejectedValueOnce(
       Object.assign(new Error('route unavailable'), {
         name: 'BackendHttpError',
@@ -154,8 +157,45 @@ describe('AttentionInbox', () => {
     );
 
     fireEvent.click(await screen.findByTestId('attention-inbox-trigger'));
-    expect(await screen.findByText('conversation.attention.empty')).toBeInTheDocument();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('conversation.attention.loadFailed');
+    expect(screen.queryByText('conversation.attention.empty')).not.toBeInTheDocument();
+  });
+
+  it('shows partial sync health and marks affected cached items stale', async () => {
+    listInvoke.mockResolvedValueOnce({
+      revision: 'attention-partial-r1',
+      sync_state: 'partial',
+      failed_session_count: 1,
+      failure_codes: ['GEA_SESSION_REJECTED'],
+      items: [
+        {
+          id: 'request-stale',
+          version: 'v1',
+          kind: 'permission',
+          status: 'pending',
+          title: 'Confirm production submission',
+          source: { type: 'business_system', label: 'Finance' },
+          conversation_id: 'conversation-stale',
+          allowed_actions: ['proceed_once'],
+          stale: true,
+        },
+      ],
+    });
+    render(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <MemoryRouter>
+          <AttentionInbox />
+        </MemoryRouter>
+      </SWRConfig>
+    );
+
+    fireEvent.click(await screen.findByTestId('attention-inbox-trigger'));
+    expect(await screen.findByTestId('attention-sync-warning')).toHaveTextContent(
+      'conversation.attention.syncPartial:1'
+    );
+    expect(screen.getByTestId('attention-request-request-stale-stale')).toHaveTextContent(
+      'conversation.attention.stale'
+    );
   });
 
   it('reloads the authoritative pending list after realtime reconnect', async () => {
