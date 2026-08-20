@@ -22,11 +22,15 @@
  */
 import http from 'node:http';
 import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { WebSocket } from 'ws';
 import type { ElectronApplication } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { invokeBridge } from '../../helpers/bridge';
-import { SINGLE_TARGET_ID } from '@process/resources/builtinMcp/cdpTargetProtocol';
+import { goToGuid } from '../../helpers/navigation';
+import { SINGLE_SESSION_ID, SINGLE_TARGET_ID } from '@process/resources/builtinMcp/cdpTargetProtocol';
 
 /** The port Chromium's app-wide switch used to occupy. Must now be dead. */
 const LEGACY_APP_WIDE_PORT = 9230;
@@ -62,9 +66,9 @@ const readBridgeEnv = async (electronApp: ElectronApplication): Promise<BridgeEn
 };
 
 /** GET a path off the bridge from this process; null when nothing is listening. */
-const httpGetFromTestProcess = (port: number, path: string): Promise<string | null> =>
+const httpGetFromTestProcess = (port: number, requestPath: string): Promise<string | null> =>
   new Promise((resolve) => {
-    const req = http.get({ host: '127.0.0.1', port, path, timeout: 5_000 }, (res) => {
+    const req = http.get({ host: '127.0.0.1', port, path: requestPath, timeout: 5_000 }, (res) => {
       let body = '';
       res.on('data', (chunk) => (body += String(chunk)));
       res.on('end', () => resolve(body));
@@ -92,6 +96,72 @@ const tryWebSocket = (url: string): Promise<'open' | 'refused'> =>
     socket.on('error', () => settle('refused'));
     setTimeout(() => settle('refused'), 5_000);
   });
+
+const sendCdpCommand = <T>(
+  port: number,
+  token: string,
+  request: { id: number; method: string; params?: Record<string, unknown>; sessionId?: string }
+): Promise<{ result?: T; error?: { code: number; message: string } }> =>
+  new Promise((resolve, reject) => {
+    const socket = new WebSocket(`ws://127.0.0.1:${port}/aionui-cdp?token=${token}`);
+    const timeout = setTimeout(() => {
+      socket.close();
+      reject(new Error(`Timed out waiting for ${request.method}`));
+    }, 10_000);
+
+    socket.on('open', () => socket.send(JSON.stringify(request)));
+    socket.on('message', (data) => {
+      const response = JSON.parse(String(data)) as {
+        id?: number;
+        result?: T;
+        error?: { code: number; message: string };
+      };
+      if (response.id !== request.id) return;
+      clearTimeout(timeout);
+      socket.close();
+      resolve(response);
+    });
+    socket.on('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+  });
+
+const openProjectConversation = async (page: import('@playwright/test').Page) => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'aionui-agent-browser-'));
+  await goToGuid(page);
+  const conversationId = await page.evaluate(async (workspacePath) => {
+    const port = (window as { __backendPort?: number }).__backendPort;
+    if (!port) throw new Error('window.__backendPort is not available');
+    const created = await fetch(`http://127.0.0.1:${port}/api/conversations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'acp',
+        name: 'agent-browser-auto-open',
+        extra: { workspace: workspacePath, custom_workspace: true },
+      }),
+    });
+    if (!created.ok) throw new Error(`POST /api/conversations failed (${created.status})`);
+    const id = ((await created.json()) as { data?: { id?: string } }).data?.id;
+    if (!id) throw new Error('conversation create returned no id');
+    await fetch(`http://127.0.0.1:${port}/api/conversations/${id}`);
+    return id;
+  }, workspace);
+
+  await page.evaluate((id) => window.location.assign(`#/conversation/${id}`), conversationId);
+  await expect(page.locator('.workspace-tree').first()).toBeVisible({ timeout: 30_000 });
+
+  return async () => {
+    await page.evaluate(async (id) => {
+      const port = (window as { __backendPort?: number }).__backendPort;
+      if (port) {
+        await fetch(`http://127.0.0.1:${port}/api/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      }
+    }, conversationId);
+    fs.rmSync(workspace, { recursive: true, force: true });
+  };
+};
 
 test.describe('Agent browser control (single-target CDP bridge)', () => {
   test('publishes a bridge port and token to the process tree', async ({ electronApp }) => {
@@ -229,6 +299,79 @@ test.describe('Agent browser control (single-target CDP bridge)', () => {
      * it when the path is absolute.
      */
     expect(targets[0].webSocketDebuggerUrl).toContain('token=');
+  });
+
+  test('opens the visible browser panel when the first page command arrives', async ({ electronApp, page }) => {
+    test.setTimeout(90_000);
+    const cleanup = await openProjectConversation(page);
+    const { port, token } = await readBridgeEnv(electronApp);
+    expect(port).not.toBeNull();
+    expect(token).toBeTruthy();
+
+    const response = await sendCdpCommand<{ result: { value?: string } }>(port as number, token as string, {
+      id: 41,
+      method: 'Runtime.evaluate',
+      params: { expression: 'location.href', returnByValue: true },
+      sessionId: SINGLE_SESSION_ID,
+    });
+
+    expect(response.error).toBeUndefined();
+    expect(response.result?.result.value).toBe('about:blank');
+    await expect(page.locator('[data-project-preview-region] webview')).toBeVisible();
+    await cleanup();
+  });
+
+  test('routes page commands to the browser tab the user switched to', async ({ electronApp, page }) => {
+    test.setTimeout(90_000);
+    const cleanup = await openProjectConversation(page);
+    const { port, token } = await readBridgeEnv(electronApp);
+    expect(port).not.toBeNull();
+    expect(token).toBeTruthy();
+
+    const first = await sendCdpCommand<{ result: { value?: string } }>(port as number, token as string, {
+      id: 51,
+      method: 'Runtime.evaluate',
+      params: {
+        expression: "window.name = 'first'; document.title = 'First target'; window.name",
+        returnByValue: true,
+      },
+      sessionId: SINGLE_SESSION_ID,
+    });
+    expect(first.error).toBeUndefined();
+    await expect(page.locator('[data-project-preview-region] [title="First target"]')).toBeVisible();
+
+    await page.getByTitle(/New tab|新建标签页/).click();
+    await expect(page.locator('[data-project-preview-region] webview')).toHaveCount(2);
+    await expect
+      .poll(async () => {
+        const body = await httpGetFromTestProcess(port as number, '/json/list');
+        return body ? (JSON.parse(body) as Array<{ title?: string }>)[0]?.title : null;
+      })
+      .not.toBe('First target');
+
+    const second = await sendCdpCommand<{ result: { value?: string } }>(port as number, token as string, {
+      id: 52,
+      method: 'Runtime.evaluate',
+      params: {
+        expression: "window.name = 'second'; document.title = 'Second target'; window.name",
+        returnByValue: true,
+      },
+      sessionId: SINGLE_SESSION_ID,
+    });
+    expect(second.error).toBeUndefined();
+    await expect(page.locator('[data-project-preview-region] [title="Second target"]')).toBeVisible();
+
+    await page.locator('[data-project-preview-region] [title="First target"]').click();
+    const active = await sendCdpCommand<{ result: { value?: string } }>(port as number, token as string, {
+      id: 53,
+      method: 'Runtime.evaluate',
+      params: { expression: 'window.name', returnByValue: true },
+      sessionId: SINGLE_SESSION_ID,
+    });
+
+    expect(active.error).toBeUndefined();
+    expect(active.result?.result.value).toBe('first');
+    await cleanup();
   });
 
   test('refuses a WebSocket upgrade without a valid token', async ({ electronApp }) => {

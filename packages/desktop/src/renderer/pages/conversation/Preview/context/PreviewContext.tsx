@@ -863,6 +863,28 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [openPreview]
   );
 
+  useEffect(
+    () =>
+      ipcBridge.application.openBrowserForAgent.on(() => {
+        const currentTabs = tabsRef.current;
+        const currentBrowser = activeTabIdRef.current
+          ? currentTabs.find((tab) => tab.id === activeTabIdRef.current && tab.content_type === 'browser')
+          : undefined;
+        let target = currentBrowser;
+        for (let index = currentTabs.length - 1; !target && index >= 0; index -= 1) {
+          if (currentTabs[index].content_type === 'browser') target = currentTabs[index];
+        }
+        if (!target) {
+          openBrowserTab();
+          return;
+        }
+        activeTabIdRef.current = target.id;
+        setActiveTabId(target.id);
+        setIsOpen(true);
+      }),
+    [openBrowserTab]
+  );
+
   /**
    * Hide the preview panel, keeping its tabs.
    *

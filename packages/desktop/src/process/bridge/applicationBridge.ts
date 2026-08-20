@@ -260,7 +260,7 @@ export function initApplicationBridge(): void {
     }
   });
 
-  ipcBridge.application.reportBrowserWebContentsId.provider(async ({ webContentsId }) => {
+  ipcBridge.application.reportBrowserWebContentsId.provider(async ({ webContentsId, active = true }) => {
     /**
      * 把单目标 CDP 通道附加到侧边浏览器。
      *
@@ -277,6 +277,10 @@ export function initApplicationBridge(): void {
     try {
       const handle = getCdpBridgeHandle();
       if (!handle) return { success: false, msg: 'Agent browser control is not enabled.' };
+      if (!active) {
+        if (handle.attachedWebContentsId() === webContentsId) handle.detach();
+        return { success: true };
+      }
       const result = handle.attach(webContentsId);
       if (result.ok === false) return { success: false, msg: result.reason };
       return { success: true };

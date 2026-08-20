@@ -19,8 +19,22 @@ import React from 'react';
 import { act, render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mocks = vi.hoisted(() => ({
+  openBrowserForAgentHandler: null as (() => void) | null,
+}));
+
 vi.mock('@/common', () => ({
   ipcBridge: {
+    application: {
+      openBrowserForAgent: {
+        on: (handler: () => void) => {
+          mocks.openBrowserForAgentHandler = handler;
+          return () => {
+            if (mocks.openBrowserForAgentHandler === handler) mocks.openBrowserForAgentHandler = null;
+          };
+        },
+      },
+    },
     fileStream: { contentUpdate: { on: () => () => {} } },
     preview: { open: { on: () => () => {} } },
     conversation: { responseStream: { on: () => () => {} } },
@@ -57,6 +71,7 @@ const browserTabs = () => ctx.tabs.filter((tab) => tab.content_type === 'browser
 
 beforeEach(() => {
   localStorage.clear();
+  mocks.openBrowserForAgentHandler = null;
 });
 
 describe('PreviewContext browser tabs', () => {
@@ -75,6 +90,30 @@ describe('PreviewContext browser tabs', () => {
     act(() => ctx.openBrowserTab('https://example.com'));
 
     expect(browserTabs()[0].content).toBe('https://example.com');
+  });
+
+  it('opens a visible browser tab when the main process requests an agent target', () => {
+    renderProvider();
+
+    act(() => mocks.openBrowserForAgentHandler?.());
+
+    expect(browserTabs()).toHaveLength(1);
+    expect(ctx.activeTab?.content_type).toBe('browser');
+    expect(ctx.isOpen).toBe(true);
+  });
+
+  it('reveals an existing browser tab for the agent instead of creating another one', () => {
+    renderProvider();
+    act(() => ctx.openBrowserTab('https://example.com'));
+    const browserTabId = browserTabs()[0].id;
+    act(() => ctx.openPreview('document', 'code', { file_name: 'notes.txt' }));
+    act(() => ctx.closePreview());
+
+    act(() => mocks.openBrowserForAgentHandler?.());
+
+    expect(browserTabs()).toHaveLength(1);
+    expect(ctx.activeTabId).toBe(browserTabId);
+    expect(ctx.isOpen).toBe(true);
   });
 
   it('stacks multiple blank browser tabs instead of merging them', () => {

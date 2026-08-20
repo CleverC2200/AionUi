@@ -766,6 +766,8 @@ export const application = {
    * of every site the agent or user logged into.
    */
   clearBrowserData: bridge.buildProvider<IBridgeResponse<void>, void>('app.clear-browser-data'),
+  /** Ask the renderer to reveal an in-app browser target for the agent CDP bridge. */
+  openBrowserForAgent: bridge.buildEmitter<void>('app.open-browser-for-agent'),
   /**
    * 渲染进程把侧边浏览器 webview 的 webContents id 报给主进程，用于把单目标 CDP 通道
    * 附加到它。
@@ -780,7 +782,7 @@ export const application = {
    * in-app browser. Main validates getType() === 'webview', so even a misused call cannot
    * attach to the main window.
    */
-  reportBrowserWebContentsId: bridge.buildProvider<IBridgeResponse<void>, { webContentsId: number }>(
+  reportBrowserWebContentsId: bridge.buildProvider<IBridgeResponse<void>, { webContentsId: number; active?: boolean }>(
     'app.report-browser-webcontents-id'
   ),
   getStartOnBootStatus: bridge.buildProvider<IBridgeResponse<IStartOnBootStatus>, void>('app.get-start-on-boot-status'),
