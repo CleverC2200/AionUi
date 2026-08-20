@@ -47,6 +47,14 @@ export const BROWSER_SESSION_PARTITION = 'persist:aionui-browser';
  */
 export const BUILTIN_BROWSER_MCP_NAME = 'aionui-browser';
 
+/**
+ * 内置 lark-cli MCP 的注册名。
+ *
+ * 主进程在 runBackendMigrations 里用它注册内置 MCP，larkCliServer.ts 用它作为
+ * MCP 协议名。两边必须一致，避免各写一份漂移。
+ */
+export const BUILTIN_LARK_CLI_MCP_NAME = 'lark-cli';
+
 // ===== 文件处理相关常量 =====
 
 /** 临时文件时间戳分隔符 */

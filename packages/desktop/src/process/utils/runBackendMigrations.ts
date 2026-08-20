@@ -9,7 +9,7 @@ import { migrateConfigStorage, migrateLegacyMcpConfigToDb, migrateProviders } fr
 import { httpRequest } from '@/common/adapter/httpBridge';
 import { mcpService } from '@/common/adapter/ipcBridge';
 import type { ImageGenerationModelSetting } from '@/common/config/clientSettings';
-import { BUILTIN_BROWSER_MCP_NAME } from '@/common/config/constants';
+import { BUILTIN_BROWSER_MCP_NAME, BUILTIN_LARK_CLI_MCP_NAME } from '@/common/config/constants';
 import {
   removeImageGenerationEnvKeys,
   resolveImageGenerationMcpEnv,
@@ -204,6 +204,31 @@ function buildBuiltinBrowserServer(): McpImportServer {
   };
 }
 
+function buildBuiltinLarkCliServer(): McpImportServer {
+  const scriptPath = getBuiltinMcpScriptPath('builtin-mcp-lark-cli');
+  const serverConfig = {
+    command: 'node',
+    args: [scriptPath],
+  };
+
+  return {
+    name: BUILTIN_LARK_CLI_MCP_NAME,
+    description:
+      'Lark/Feishu operations via the official lark-cli: docs, sheets, base, calendar, mail, tasks, im, ' +
+      'approval, and more. Requires lark-cli installed and logged in (lark-cli auth login).',
+    // 默认关闭：需要用户先安装并登录 lark-cli，启用后才可用。
+    // Disabled by default: the user must install and log in to lark-cli first.
+    enabled: false,
+    builtin: true,
+    transport: {
+      type: 'stdio',
+      command: serverConfig.command,
+      args: serverConfig.args,
+    },
+    original_json: JSON.stringify({ mcpServers: { [BUILTIN_LARK_CLI_MCP_NAME]: serverConfig } }, null, 2),
+  };
+}
+
 function buildDefaultMcpServers(): McpImportServer[] {
   const geaConfig = {
     command: resolveBinaryPath(),
@@ -243,6 +268,7 @@ function buildDefaultMcpServers(): McpImportServer[] {
       original_json: JSON.stringify({ mcpServers: { [BUILTIN_CHROME_DEVTOOLS_NAME]: chromeConfig } }, null, 2),
     },
     buildBuiltinBrowserServer(),
+    buildBuiltinLarkCliServer(),
   ];
 }
 
@@ -490,11 +516,39 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
     }
   }
 
+  const existingLarkCliServer = existing.find((server) => server.name === BUILTIN_LARK_CLI_MCP_NAME);
+  let larkCliServerUpdated = false;
+  if (existingLarkCliServer) {
+    const desiredLarkCliServer = buildBuiltinLarkCliServer();
+    const larkCliTransportChanged = !isSameStdioTransport(
+      existingLarkCliServer.transport,
+      desiredLarkCliServer.transport
+    );
+    const larkCliJsonChanged = existingLarkCliServer.original_json !== desiredLarkCliServer.original_json;
+    if (larkCliTransportChanged || larkCliJsonChanged) {
+      console.info(
+        '[Migration] lark-cli MCP path drifted, server id: %s, transport changed: %s, json changed: %s',
+        existingLarkCliServer.id,
+        larkCliTransportChanged ? 'yes' : 'no',
+        larkCliJsonChanged ? 'yes' : 'no'
+      );
+      await mcpService.updateServer.invoke({
+        id: existingLarkCliServer.id,
+        data: {
+          transport: desiredLarkCliServer.transport,
+          original_json: desiredLarkCliServer.original_json,
+        },
+      });
+      larkCliServerUpdated = true;
+    }
+  }
+
   console.info(
-    '[Migration] MCP bootstrap completed, imported %d missing defaults, updated image server: %s, updated browser server: %s, image config source: %s, image enabled: %s',
+    '[Migration] MCP bootstrap completed, imported %d missing defaults, updated image server: %s, updated browser server: %s, updated lark-cli server: %s, image config source: %s, image enabled: %s',
     missing.length,
     imageServerUpdated ? 'yes' : 'no',
     browserServerUpdated ? 'yes' : 'no',
+    larkCliServerUpdated ? 'yes' : 'no',
     imageConfigSource,
     imageConfig?.switch === true ? 'yes' : 'no'
   );
