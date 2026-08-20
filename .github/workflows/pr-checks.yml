@@ -13,13 +13,9 @@ on:
         required: false
         default: false
   pull_request:
-    types: [opened, synchronize, edited, closed, ready_for_review]
+    # Title/body edits do not change the tested commit and should not restart the full matrix.
+    types: [opened, synchronize, closed, ready_for_review]
     branches: [main, dev]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - '.vscode/**'
-      - '.github/ISSUE_TEMPLATE/**'
 
 concurrency:
   group: pr-checks-${{ github.event.pull_request.number || inputs.pr_number }}
@@ -44,9 +40,45 @@ jobs:
     steps:
       - run: echo "PR closed, cancelling in-progress runs via concurrency."
 
+  # Keep one workflow authoritative for required checks. This prevents mixed
+  # code/docs PRs from receiving duplicate check names from separate workflows.
+  classify-changes:
+    name: Classify Changes
+    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.classify.outputs.docs_only }}
+    steps:
+      - name: Detect docs-only PR
+        id: classify
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          docs_only=false
+          if paths=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" --jq '.[].filename'); then
+            if [ -n "$paths" ]; then
+              docs_only=true
+              while IFS= read -r path; do
+                case "$path" in
+                  *.md|docs/*|.vscode/*|.github/ISSUE_TEMPLATE/*) ;;
+                  *) docs_only=false; break ;;
+                esac
+              done <<< "$paths"
+            else
+              echo "::warning::PR file list is empty; running the full CI suite."
+            fi
+          else
+            echo "::warning::Unable to read PR files; running the full CI suite."
+          fi
+          echo "docs_only=${docs_only}" >> "$GITHUB_OUTPUT"
+          echo "docs_only=${docs_only}" >> "$GITHUB_STEP_SUMMARY"
+
   # Job 1: Code quality checks (TypeScript, Oxlint, Oxfmt)
   code-quality:
     name: Code Quality
+    needs: classify-changes
     if: github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -88,7 +120,8 @@ jobs:
   # Job 2: Unit tests across all platforms
   unit-tests:
     name: Unit Tests (${{ matrix.os }})
-    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)
+    needs: classify-changes
+    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)) && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -136,7 +169,8 @@ jobs:
   # Job 3: Coverage test (Linux only)
   coverage-tests:
     name: Coverage Test
-    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)
+    needs: classify-changes
+    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)) && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -227,7 +261,8 @@ jobs:
 
   i18n-check:
     name: I18n Check
-    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)
+    needs: classify-changes
+    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)) && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -279,7 +314,8 @@ jobs:
   # Job 4: Build test across representative PR platforms (parallel with code-quality and unit-tests)
   build-test:
     name: Build Test (${{ matrix.platform }})
-    if: github.event.action != 'closed' && github.event.pull_request.draft == false && inputs.skip_build_test != true
+    needs: classify-changes
+    if: github.event.action != 'closed' && github.event.pull_request.draft == false && inputs.skip_build_test != true && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -521,7 +557,8 @@ jobs:
   # Job 5: Test release scripts (fast, no build required)
   release-script-test:
     name: Release Script Test
-    if: github.event.action != 'closed' && github.event.pull_request.draft == false
+    needs: classify-changes
+    if: github.event.action != 'closed' && github.event.pull_request.draft == false && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -541,3 +578,25 @@ jobs:
       - name: Validate script output
         shell: bash
         run: bash scripts/verify-release-assets.sh release-assets
+
+  # The main ruleset requires these eight contexts. For docs-only PRs, publish
+  # lightweight successes with the same names instead of leaving them Expected.
+  docs-only-required-checks:
+    name: ${{ matrix.context }}
+    needs: [classify-changes, code-quality]
+    if: needs.classify-changes.outputs.docs_only == 'true' && needs.code-quality.result == 'success'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        context:
+          - Unit Tests (ubuntu-latest)
+          - Unit Tests (macos-14)
+          - Unit Tests (windows-2022)
+          - Coverage Test
+          - Release Script Test
+          - Build Test (macos-arm64)
+          - Build Test (windows-x64)
+          - Build Test (linux-x64)
+    steps:
+      - run: echo "Docs-only PR; Code Quality is the applicable gate."

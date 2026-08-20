@@ -8,43 +8,23 @@
 
 ## 关联 Issue
 
-<!-- 请关联相关 Issue。合并时，“Closes #123”或“Fixes #123”会自动关闭对应 Issue。 -->
+<!-- 可选。合并时，“Closes #123”或“Fixes #123”会自动关闭对应 Issue。 -->
 
 - Closes #
 
-## 变更类型
+## 验证
 
-- [ ] `fix` — Bug 修复（修复问题且不引入破坏性变更）
-- [ ] `feat` — 新功能（增加功能且不引入破坏性变更）
-- [ ] `perf` — 性能改进
-- [ ] `refactor` — 代码重构（不改变行为）
-- [ ] 破坏性变更（会破坏现有功能的修复或新功能）
-- [ ] `docs` — 文档更新
+<!-- 写明 `just push` 和相关定向/运行时检查；适用时注明平台。 -->
 
-## 原子 PR 检查清单（规则 1）
+- `just push`
+- 定向/运行时检查：
 
-- [ ] 本 PR **只包含一个**无法继续拆分的功能或 Bug 修复
-- [ ] PR 标题遵循 Conventional Commit 格式：`<type>(<scope>): <subject>`（英文）
+## 最终检查
 
-## 本地检查（规则 3）
-
-<!-- 推送前请运行以下检查；如果失败，CI 将拒绝该 PR。 -->
-
-- [ ] `bun run format` — 格式化通过
-- [ ] `bun run lint` — 无 lint 错误（未修改 `.ts`/`.tsx` 时可跳过）
-- [ ] `bunx tsc --noEmit` — 无类型错误（未修改 `.ts`/`.tsx` 时可跳过）
-- [ ] `bunx vitest run` — 测试通过
-- [ ] 已验证 i18n（`bun run i18n:types` + `node scripts/check-i18n.js`）— 仅当修改了 `src/renderer/`、`locales/` 或 `src/common/config/i18n/` 时适用，否则填 N/A
-- [ ] 新增或修改的用户可见文本使用 i18n 键（没有硬编码字符串）
-
-## 运行时验证
-
-<!-- 实际在哪些平台运行并验证过？ -->
-
-- [ ] 已在 macOS 上验证
-- [ ] 已在 Windows 上验证
-- [ ] 已在 Linux 上验证
-- [ ] 已自行审查本次代码变更
+- [ ] PR 只包含一个原子变更，标题符合 Conventional Commit
+- [ ] 新增或修改的行为有相应测试，或已说明未添加测试的原因
+- [ ] 新增或修改的用户可见文本使用 i18n key
+- [ ] 已审查最终 diff，并说明剩余风险
 
 ## 截图
 

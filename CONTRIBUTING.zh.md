@@ -63,36 +63,25 @@ Commit message 和 PR 标题必须使用英文 Conventional Commit 格式：
 
 CI 会在这些检查失败时拒绝你的 PR。**推送前**在本地运行，节省时间。
 
-### 逐步执行
+### 推荐流程
 
 ```bash
-# 1. 格式化（必须运行 — 覆盖 .ts, .tsx, .css, .json, .md）
-bun run format
+# 只运行一次完整本地门禁，通过后自动推送
+just push <remote> <branch>
+```
 
-# 2. Lint 检查（如果没改 .ts/.tsx 文件可跳过）
-bun run lint
+`just push` 会依次执行格式检查、lint、类型检查、i18n 校验和单元测试，通过后再调用 `git push`。当前分支已有 upstream 时可省略 `<remote> <branch>`。
 
-# 3. 类型检查（如果没改 .ts/.tsx 文件可跳过）
-bunx tsc --noEmit
+只有门禁失败、需要定位或修复时，才单独运行下面的命令：
 
-# 4. i18n 校验（仅当修改了 src/renderer/、locales/ 或 src/common/config/i18n/ 下的文件时）
-bun run i18n:types
+```bash
+bun run format          # 修复格式
+bun run lint:fix        # 修复可自动修复的 lint 问题
+bunx tsc --noEmit       # 定位类型错误
+bun run i18n:types      # 重新生成 i18n 类型
 node scripts/check-i18n.js
-
-# 5. 测试
-bunx vitest run
+bunx vitest run         # 复现单元测试失败
 ```
-
-### 一条命令替代
-
-完全复刻 CI 质量检查，再跑测试：
-
-```bash
-prek run --from-ref origin/main --to-ref HEAD
-bunx vitest run
-```
-
-> `prek` 以只读模式运行 format-check + lint + tsc。如果报错，先运行上面的自动修复命令，再重新运行 prek。
 
 ### 常见失败及修复
 
@@ -103,6 +92,27 @@ bunx vitest run
 | 类型错误  | 修复 TypeScript 问题，重新运行 `bunx tsc --noEmit`     |
 | i18n 错误 | 检查缺失的 key，运行 `bun run i18n:types` 重新生成类型 |
 | 测试失败  | 修复失败的测试或实现，重新运行 `bunx vitest run`       |
+
+## 规则四：保持 Required CI Context 完整
+
+修改 Pull Request workflow 时：
+
+- 读取当前生效的 GitHub ruleset，按精确 job 名称覆盖每个 required status-check context。
+- Required checks 只保留一套权威 workflow；不得依赖路径过滤让 required workflow 不触发，否则 GitHub 可能让对应状态停在 `Expected`。
+- 文件分类必须安全回退：API 失败、文件列表为空或路径无法识别时运行完整 CI。
+- 交付前验证四条路线：纯代码、纯文档、代码与文档混合、分类失败。
+
+## 规则五：Agent 管理的 PR 跟进
+
+用户明确要求 Agent 提交 PR 时：
+
+1. 解析并说明 push remote 与 PR base。默认目标为用户个人 Fork；官方/upstream 目标必须由用户当轮明确授权。
+2. 只提交和推送本次目标文件，以 **Ready for review** 而非 Draft 状态创建 PR，并一次写好最终标题、说明、关联 Issue 和验证证据。
+3. 持续监控 required checks、审查意见、未解决 thread、冲突和可合并状态；有明确问题时在同一分支做聚焦修复，并持续更新同一 PR。
+4. Required checks 全部通过、没有未解决的阻断审查或 thread、分支已更新且可合并、最终 diff 已审计时，自动合并 PR。
+5. 重新查询已合并 PR，并按 `docs/agents/issue-tracker.md` 收口关联 Issue。
+
+权限、外部依赖或必须由人决定的事项阻止继续时，报告精确阻塞条件，不得降低或绕过门禁。
 
 ## 执行方式
 
