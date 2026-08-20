@@ -13,6 +13,12 @@
 - Pull Request 不作为需求或 triage 入口。
 - 不关闭或修改来源 parent issue。
 
+## PR 与 Issue 收口
+
+- 实现 PR 在正文使用 `Closes #<issue>` 关联对应 Issue。
+- PR 合并并完成验收后，重新查询关联 Issue；自动关闭未生效时，留下验收证据，移除过期的 `ready-for-agent`，再以 `completed` 关闭。
+- 按依赖顺序关闭 Issue，确保已完成工作不继续显示为 `Blocked`。
+
 ## Wayfinding operations
 
 - 地图：创建带 `wayfinder:map` 标签的 GitHub Issue，正文只保存 Destination、Notes、Decisions so far、Not yet specified 和 Out of scope。

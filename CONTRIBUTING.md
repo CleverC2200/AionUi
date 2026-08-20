@@ -63,36 +63,25 @@ Examples:
 
 CI will reject your PR if these checks fail. Run them locally **before pushing** to save time.
 
-### Step-by-step
+### Recommended workflow
 
 ```bash
-# 1. Format (always run — covers .ts, .tsx, .css, .json, .md)
-bun run format
+# Run the complete local gate once, then push.
+just push <remote> <branch>
+```
 
-# 2. Lint (skip if no .ts/.tsx files changed)
-bun run lint
+`just push` runs formatting checks, lint, type checking, i18n validation, and unit tests before calling `git push`. Omit `<remote> <branch>` when the current branch already has an upstream.
 
-# 3. Type check (skip if no .ts/.tsx files changed)
-bunx tsc --noEmit
+Use the individual commands below only to diagnose or fix a failed gate:
 
-# 4. i18n validation (only if you changed files in src/renderer/, locales/, or src/common/config/i18n/)
-bun run i18n:types
+```bash
+bun run format          # fix formatting
+bun run lint:fix        # fix auto-fixable lint issues
+bunx tsc --noEmit       # diagnose type errors
+bun run i18n:types      # regenerate i18n types
 node scripts/check-i18n.js
-
-# 5. Tests
-bunx vitest run
+bunx vitest run         # reproduce unit-test failures
 ```
-
-### One-command alternative
-
-This replicates the exact CI quality check, then runs tests:
-
-```bash
-prek run --from-ref origin/main --to-ref HEAD
-bunx vitest run
-```
-
-> `prek` runs format-check + lint + tsc in read-only mode. If it reports issues, run the auto-fix commands above first, then re-run prek.
 
 ### Common failures and fixes
 
@@ -103,6 +92,27 @@ bunx vitest run
 | Type errors   | Fix the TypeScript issue, then re-run `bunx tsc --noEmit`            |
 | i18n errors   | Check for missing keys; run `bun run i18n:types` to regenerate types |
 | Test failures | Fix the failing test or implementation; re-run `bunx vitest run`     |
+
+## Rule 4: Preserve Required CI Contexts
+
+When changing pull-request workflows:
+
+- Read the active GitHub ruleset and account for every required status-check context by its exact job name.
+- Keep one authoritative workflow for required checks. Do not rely on path-filtering a required workflow away; GitHub can leave its contexts in `Expected`.
+- Make change classification fail safe: API errors, empty file lists, and unknown paths must run the full CI suite.
+- Verify four routes before delivery: code-only, docs-only, mixed code/docs, and classification failure.
+
+## Rule 5: Agent-managed PR Follow-through
+
+When the user explicitly asks an agent to submit a PR:
+
+1. Resolve and state the push remote and PR base. The default target is the user's personal fork; an official/upstream target requires explicit authorization in the current request.
+2. Commit and push only the intended files, then create the PR as **Ready for review**, not Draft, with its final title, description, linked Issue, and validation evidence.
+3. Monitor required checks, review findings, unresolved threads, conflicts, and mergeability. Apply focused fixes to the same branch and keep the same PR under review.
+4. Merge automatically when required checks pass, no blocking review finding or thread remains, the branch is current and mergeable, and the final diff has been audited.
+5. Re-fetch the merged PR and close its linked Issue as described in `docs/agents/issue-tracker.md`.
+
+If permissions, an external dependency, or a required human decision prevents progress, report the exact blocker instead of weakening or bypassing the gate.
 
 ## Enforcement
 
