@@ -865,7 +865,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(
     () =>
-      ipcBridge.application.openBrowserForAgent.on(() => {
+      ipcBridge.application?.openBrowserForAgent?.on(() => {
         const currentTabs = tabsRef.current;
         const currentBrowser = activeTabIdRef.current
           ? currentTabs.find((tab) => tab.id === activeTabIdRef.current && tab.content_type === 'browser')
