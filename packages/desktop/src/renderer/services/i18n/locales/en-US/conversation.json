@@ -9,6 +9,16 @@
     "stale": "Sync pending",
     "interactionEmpty": "No assistant or team interaction requests",
     "interactionLoadFailed": "Assistant requests could not be loaded. Your work has not been changed.",
+    "demo": {
+      "label": "Demo data",
+      "description": "There are no live assistant requests. These 3 items are display-only and do not count as pending work or trigger business actions.",
+      "forecastTitle": "Confirm the demand forecast scope",
+      "forecastSummary": "Yunan sales region · September 2026 · 10 customers",
+      "customerReviewTitle": "Review exception customers before approval",
+      "customerReviewSummary": "2 customers have high inventory days and need a handling decision",
+      "dmsSubmitTitle": "DMS submission awaiting confirmation",
+      "dmsSubmitSummary": "Confirm forecast amount and quantity definitions before submitting; data is still syncing"
+    },
     "sourceTabs": {
       "approval": "Feishu approvals {{count}}",
       "interaction": "Assistant requests {{count}}"

@@ -3,7 +3,7 @@ import type { ApprovalTask } from '@/common/types/approval';
 import type { InteractionRequest } from '@/common/types/interactionRequest';
 import { Alert, Badge, Button, Drawer, Empty, Spin, Tabs, Tag, Typography } from '@arco-design/web-react';
 import { Audit, CloseSmall, Right } from '@icon-park/react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
@@ -60,10 +60,62 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
     isLoading: interactionLoading,
     isValidating: interactionRefreshing,
     mutate: refreshInteractions,
-  } = useSWR('interaction-requests.active', () => ipcBridge.interactionRequest.list.invoke());
+  } = useSWR('interaction-requests.pending', () => ipcBridge.interactionRequest.list.invoke());
   const pendingApprovals = approvals?.pending ?? [];
   const doneApprovals = approvals?.done ?? [];
   const interactionItems = interactions?.items ?? [];
+  const demoInteractionItems = useMemo<InteractionRequest[]>(
+    () => [
+      {
+        id: 'demo-forecast-scope',
+        version: 'demo-v1',
+        kind: 'question',
+        status: 'pending',
+        title: t('conversation.attention.demo.forecastTitle'),
+        summary: t('conversation.attention.demo.forecastSummary'),
+        source: { type: 'agent', label: t('conversation.attention.source.agent') },
+        conversation_id: 'demo-conversation',
+        allowed_actions: ['answer'],
+        updated_at: '2026-08-21T01:00:00.000Z',
+        stale: false,
+      },
+      {
+        id: 'demo-customer-review',
+        version: 'demo-v1',
+        kind: 'permission',
+        status: 'pending',
+        title: t('conversation.attention.demo.customerReviewTitle'),
+        summary: t('conversation.attention.demo.customerReviewSummary'),
+        source: { type: 'team_agent', label: t('conversation.attention.source.team_agent') },
+        conversation_id: 'demo-conversation',
+        team_id: 'demo-team',
+        slot_id: 'demo-reviewer',
+        allowed_actions: ['approve', 'reject'],
+        updated_at: '2026-08-21T01:05:00.000Z',
+        stale: false,
+      },
+      {
+        id: 'demo-dms-submit',
+        version: 'demo-v1',
+        kind: 'permission',
+        status: 'pending',
+        title: t('conversation.attention.demo.dmsSubmitTitle'),
+        summary: t('conversation.attention.demo.dmsSubmitSummary'),
+        source: { type: 'business_system', label: t('conversation.attention.source.business_system') },
+        conversation_id: 'demo-conversation',
+        allowed_actions: ['proceed_once', 'cancel'],
+        updated_at: '2026-08-21T01:10:00.000Z',
+        stale: true,
+      },
+    ],
+    [t]
+  );
+  const showInteractionDemo =
+    process.env.NODE_ENV !== 'production' &&
+    interactions !== undefined &&
+    !interactionError &&
+    interactionItems.length === 0;
+  const visibleInteractionItems = showInteractionDemo ? demoInteractionItems : interactionItems;
   const pendingCount = pendingApprovals.length + interactionItems.length;
   const syncWarning = interactions?.sync_state === 'partial' || interactions?.sync_state === 'failed';
 
@@ -176,7 +228,7 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
           />
           <Tabs.TabPane
             key='interaction'
-            title={t('conversation.attention.sourceTabs.interaction', { count: interactionItems.length })}
+            title={t('conversation.attention.sourceTabs.interaction', { count: visibleInteractionItems.length })}
           />
         </Tabs>
         {source === 'approval' ? (
@@ -207,6 +259,21 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
           />
         ) : (
           <div className='flex flex-col gap-12px'>
+            {showInteractionDemo ? (
+              <Alert
+                type='info'
+                showIcon
+                content={
+                  <span className='flex items-center gap-8px'>
+                    <Tag size='small' color='blue'>
+                      {t('conversation.attention.demo.label')}
+                    </Tag>
+                    <span>{t('conversation.attention.demo.description')}</span>
+                  </span>
+                }
+                data-testid='interaction-demo-notice'
+              />
+            ) : null}
             {syncWarning ? (
               <Alert
                 type='warning'
@@ -225,15 +292,16 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
                 data-testid='attention-sync-warning'
               />
             ) : null}
-            {interactionItems.length === 0 ? (
+            {visibleInteractionItems.length === 0 ? (
               <Empty description={t('conversation.attention.interactionEmpty')} />
             ) : (
               <div className='flex flex-col gap-8px p-12px' role='list' data-testid='interaction-request-list'>
-                {interactionItems.map((request) => (
+                {visibleInteractionItems.map((request) => (
                   <Button
                     key={request.id}
                     type='secondary'
                     className='!h-auto !p-12px !justify-start !items-start !text-left'
+                    disabled={showInteractionDemo}
                     onClick={() => openInteractionRequest(request)}
                     data-testid={`attention-request-${request.id}`}
                   >

@@ -587,7 +587,7 @@ export const conversation = {
 
 export const interactionRequest = {
   list: withResponseMap(
-    httpGet<InteractionRequestList, void>('/api/interaction-requests?status=active'),
+    httpGet<InteractionRequestList, void>('/api/interaction-requests?status=pending'),
     parseInteractionRequestList
   ),
   act: httpPost<InteractionRequestReceipt, InteractionRequestActionCommand>(

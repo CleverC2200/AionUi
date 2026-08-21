@@ -440,6 +440,33 @@ describe('AttentionInbox real Feishu approval integration', () => {
     expect(interactionApi.list).toHaveBeenCalledTimes(2);
   });
 
+  it('shows clearly labeled development fixtures without inflating the real pending count', async () => {
+    interactionApi.list.mockResolvedValueOnce({
+      revision: 'attention-empty-r1',
+      sync_state: 'complete',
+      failed_session_count: 0,
+      failure_codes: [],
+      items: [],
+    });
+    renderInbox();
+    await waitFor(() => expect(interactionApi.list).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByTestId('attention-inbox-trigger')).toHaveAttribute(
+      'aria-label',
+      'conversation.attention.open:1'
+    );
+    fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
+    fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:3'));
+
+    expect(await screen.findByTestId('interaction-demo-notice')).toHaveTextContent(
+      'conversation.attention.demo.description'
+    );
+    const demoRequests = within(screen.getByTestId('interaction-request-list')).getAllByRole('button');
+    expect(demoRequests).toHaveLength(3);
+    demoRequests.forEach((request) => expect(request).toBeDisabled());
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it('does not hide an unavailable interaction-request route as an empty inbox', async () => {
     interactionApi.list.mockRejectedValueOnce(
       Object.assign(new Error('route unavailable'), {

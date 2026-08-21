@@ -9,6 +9,16 @@
     "stale": "待同步",
     "interactionEmpty": "暂无助手或团队交互请求",
     "interactionLoadFailed": "助手请求加载失败，当前工作没有被修改。",
+    "demo": {
+      "label": "演示数据",
+      "description": "当前没有真实助手请求，以下 3 条仅用于展示，不计入待办，也不会触发业务操作。",
+      "forecastTitle": "请确认需求预测范围",
+      "forecastSummary": "豫南经销省区 · 2026 年 9 月 · 10 家客户",
+      "customerReviewTitle": "审批前需要复核异常客户",
+      "customerReviewSummary": "2 家客户库存周转天数偏高，等待确认处理策略",
+      "dmsSubmitTitle": "DMS 提报等待确认",
+      "dmsSubmitSummary": "提交前请确认预测金额与数量口径，当前数据仍在同步"
+    },
     "sourceTabs": {
       "approval": "飞书审批 {{count}}",
       "interaction": "助手请求 {{count}}"
