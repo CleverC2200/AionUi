@@ -7,6 +7,7 @@
     "syncPartial": "{{count}} sessions could not be synchronized. Affected cached items cannot be submitted yet.",
     "syncFailed": "The latest pending requests could not be confirmed. Cached items cannot be submitted yet.",
     "stale": "Sync pending",
+    "notification": "Pending requests needing attention: {{count}}",
     "interactionEmpty": "No assistant or team interaction requests",
     "interactionLoadFailed": "Assistant requests could not be loaded. Your work has not been changed.",
     "demo": {

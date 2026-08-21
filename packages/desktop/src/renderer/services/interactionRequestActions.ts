@@ -2,10 +2,13 @@ import { ipcBridge } from '@/common';
 import { InteractionRequestActions } from '@/common/adapter/interaction-request';
 import type { InteractionRequestReceipt } from '@/common/types/interactionRequest';
 
+export const INTERACTION_REQUESTS_ACTIVE_KEY = 'interaction-requests.active';
+export const fetchActiveInteractionRequests = () => ipcBridge.interactionRequest.list.invoke();
+
 export const interactionRequestActions = new InteractionRequestActions({
   submit: (command) => ipcBridge.interactionRequest.act.invoke(command),
-  refreshPending: () => ipcBridge.interactionRequest.list.invoke(),
-  preflightActive: () => ipcBridge.interactionRequest.list.invoke(),
+  refreshPending: fetchActiveInteractionRequests,
+  preflightActive: fetchActiveInteractionRequests,
 });
 
 export const requireAcceptedInteractionReceipt = (receipt: InteractionRequestReceipt): void => {

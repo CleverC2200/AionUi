@@ -584,6 +584,7 @@ export type I18nKey =
   | 'conversation.attention.interactionEmpty'
   | 'conversation.attention.interactionLoadFailed'
   | 'conversation.attention.loadFailed'
+  | 'conversation.attention.notification'
   | 'conversation.attention.open'
   | 'conversation.attention.source.agent'
   | 'conversation.attention.source.aioncore'
