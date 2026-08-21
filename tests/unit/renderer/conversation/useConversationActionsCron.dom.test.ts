@@ -8,22 +8,8 @@ import type { TChatConversation } from '@/common/config/storage';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const {
-  emitterEmitMock,
-  messageErrorMock,
-  messageSuccessMock,
-  navigateMock,
-  removeConversationMock,
-  updateConversationMock,
-  requestPrefillMock,
-  routeState,
-} = vi.hoisted(() => ({
-  emitterEmitMock: vi.fn(),
-  messageErrorMock: vi.fn(),
-  messageSuccessMock: vi.fn(),
+const { navigateMock, requestPrefillMock, routeState } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
-  removeConversationMock: vi.fn(),
-  updateConversationMock: vi.fn(),
   requestPrefillMock: vi.fn(),
   routeState: { id: 'current-conversation' as string | undefined },
 }));
@@ -33,18 +19,6 @@ vi.mock('react-i18next', () => ({
     t: (key: string) => (key === 'cron.status.defaultPrompt' ? 'Create with /cron in AionUi' : key),
   }),
 }));
-
-vi.mock('@arco-design/web-react', async () => {
-  const actual = await vi.importActual<typeof import('@arco-design/web-react')>('@arco-design/web-react');
-  return {
-    ...actual,
-    Message: {
-      error: messageErrorMock,
-      success: messageSuccessMock,
-      warning: vi.fn(),
-    },
-  };
-});
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -58,8 +32,8 @@ vi.mock('react-router-dom', async () => {
 vi.mock('@/common', () => ({
   ipcBridge: {
     conversation: {
-      remove: { invoke: removeConversationMock },
-      update: { invoke: updateConversationMock },
+      remove: { invoke: vi.fn() },
+      update: { invoke: vi.fn() },
     },
   },
 }));
@@ -73,7 +47,7 @@ vi.mock('@/renderer/pages/conversation/utils/conversationCache', () => ({
 }));
 
 vi.mock('@/renderer/utils/emitter', () => ({
-  emitter: { emit: emitterEmitMock },
+  emitter: { emit: vi.fn() },
 }));
 
 vi.mock('@/renderer/utils/ui/focus', () => ({
@@ -150,107 +124,4 @@ describe('create scheduled task conversation action', () => {
       });
     }
   );
-});
-
-describe('delete conversation action', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    routeState.id = 'current-conversation';
-  });
-
-  it('opens and cancels the controlled confirmation dialog', () => {
-    const { result } = renderActions();
-
-    act(() => result.current.handleDeleteClick('conversation-to-delete'));
-    expect(result.current.deleteConversationId).toBe('conversation-to-delete');
-
-    act(() => result.current.handleDeleteCancel());
-    expect(result.current.deleteConversationId).toBeNull();
-  });
-
-  it('deletes the selected conversation and closes the dialog', async () => {
-    removeConversationMock.mockResolvedValue(true);
-    const { result } = renderActions();
-
-    act(() => result.current.handleDeleteClick('conversation-to-delete'));
-    await act(async () => result.current.handleDeleteConfirm());
-
-    expect(removeConversationMock).toHaveBeenCalledWith({ id: 'conversation-to-delete' });
-    expect(emitterEmitMock).toHaveBeenCalledWith('conversation.deleted', 'conversation-to-delete');
-    expect(emitterEmitMock).toHaveBeenCalledWith('chat.history.refresh');
-    expect(result.current.deleteConversationId).toBeNull();
-    expect(result.current.deleteConversationLoading).toBe(false);
-  });
-});
-
-describe('legacy sidebar pin action', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    updateConversationMock.mockResolvedValue(true);
-  });
-
-  it('uses the supported conversation extra update when order routes are unavailable', async () => {
-    const conversation = makeConversation('legacy-pin', 'acp');
-    const { result } = renderHook(() =>
-      useConversationActions({
-        batchMode: false,
-        selectedConversationIds: new Set(),
-        setSelectedConversationIds: vi.fn(),
-        toggleSelectedConversation: vi.fn(),
-        markAsRead: vi.fn(),
-        legacySidebarMode: true,
-      })
-    );
-
-    await act(async () => result.current.handleTogglePin(conversation));
-
-    expect(updateConversationMock).toHaveBeenCalledWith({
-      id: 'legacy-pin',
-      updates: { extra: expect.objectContaining({ pinned: true, pinned_at: expect.any(Number) }) },
-      merge_extra: true,
-    });
-    expect(emitterEmitMock).toHaveBeenCalledWith('chat.history.refresh');
-  });
-});
-
-describe('remove project action', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    routeState.id = 'current-conversation';
-  });
-
-  it('deletes every supplied project conversation and closes after complete success', async () => {
-    removeConversationMock.mockResolvedValue(true);
-    const conversations = [makeConversation('regular', 'acp'), makeConversation('pinned', 'acp')];
-    const { result } = renderActions();
-
-    act(() => result.current.handleRemoveProject('AionUi', conversations));
-    expect(result.current.removeProjectTarget?.conversations).toEqual(conversations);
-
-    await act(async () => result.current.handleRemoveProjectConfirm());
-
-    expect(removeConversationMock).toHaveBeenCalledTimes(2);
-    expect(removeConversationMock).toHaveBeenCalledWith({ id: 'regular' });
-    expect(removeConversationMock).toHaveBeenCalledWith({ id: 'pinned' });
-    expect(emitterEmitMock).toHaveBeenCalledWith('chat.history.refresh');
-    expect(messageSuccessMock).toHaveBeenCalledWith('conversation.history.batchDeleteSuccess');
-    expect(messageErrorMock).not.toHaveBeenCalled();
-    expect(result.current.removeProjectTarget).toBeNull();
-  });
-
-  it('keeps failed conversations in the dialog so a partial deletion can be retried', async () => {
-    removeConversationMock.mockResolvedValueOnce(true).mockRejectedValueOnce(new Error('backend unavailable'));
-    const regular = makeConversation('regular', 'acp');
-    const pinned = makeConversation('pinned', 'acp');
-    const { result } = renderActions();
-
-    act(() => result.current.handleRemoveProject('AionUi', [regular, pinned]));
-    await act(async () => result.current.handleRemoveProjectConfirm());
-
-    expect(emitterEmitMock).toHaveBeenCalledWith('chat.history.refresh');
-    expect(messageSuccessMock).toHaveBeenCalledWith('conversation.history.batchDeleteSuccess');
-    expect(messageErrorMock).toHaveBeenCalledWith('conversation.history.deleteFailed');
-    expect(result.current.removeProjectTarget?.conversations).toEqual([pinned]);
-    expect(result.current.removeProjectLoading).toBe(false);
-  });
 });

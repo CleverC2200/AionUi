@@ -43,6 +43,12 @@ vi.mock('@/common', () => ({
       openDevTools: { invoke: () => openDevTools() },
       logStream: { on: () => () => {} },
     },
+    interactionRequest: {
+      list: { invoke: () => Promise.resolve({ items: [], sync_state: 'complete' }) },
+      changed: { on: () => () => {} },
+    },
+    realtime: { reconnected: { on: () => () => {} } },
+    notification: { show: { invoke: () => Promise.resolve() } },
     task: { stopAll: { invoke: () => Promise.resolve({ success: false }) } },
   },
 }));
