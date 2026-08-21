@@ -4,6 +4,9 @@
     "open": "打开审批模块，当前有 {{count}} 个待办",
     "empty": "暂无审批事项",
     "loadFailed": "审批事项加载失败，当前工作没有被修改。",
+    "syncPartial": "有 {{count}} 个会话未完成同步。受影响的旧数据已标记，暂不可提交。",
+    "syncFailed": "无法确认待处理请求是否为最新状态。旧数据暂不可提交。",
+    "stale": "待同步",
     "interactionEmpty": "暂无助手或团队交互请求",
     "interactionLoadFailed": "助手请求加载失败，当前工作没有被修改。",
     "sourceTabs": {

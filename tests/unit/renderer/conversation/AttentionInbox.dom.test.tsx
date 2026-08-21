@@ -186,7 +186,10 @@ describe('AttentionInbox real Feishu approval integration', () => {
       idempotencyKey: 'intent',
     });
     interactionApi.list.mockResolvedValue({
-      revision: 'r1',
+      revision: 'attention-r1',
+      sync_state: 'complete',
+      failed_session_count: 0,
+      failure_codes: [],
       items: [
         {
           id: 'interaction-1',
@@ -389,6 +392,41 @@ describe('AttentionInbox real Feishu approval integration', () => {
     );
   });
 
+  it('returns a team request to its original member and slot context', async () => {
+    interactionApi.list.mockResolvedValueOnce({
+      revision: 'attention-team-r1',
+      sync_state: 'complete',
+      failed_session_count: 0,
+      failure_codes: [],
+      items: [
+        {
+          id: 'team-request-1',
+          version: 'v1',
+          kind: 'permission',
+          status: 'pending',
+          title: 'Review teammate output',
+          source: { type: 'team_agent', label: 'Researcher' },
+          conversation_id: 'member-conversation-1',
+          team_id: 'team-1',
+          slot_id: 'worker-slot',
+          turn_id: 'turn-1',
+          message_id: 'message-1',
+          allowed_actions: ['approve'],
+          updated_at: '2026-08-12T00:00:00.000Z',
+        },
+      ],
+    });
+    renderInbox();
+    fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
+    fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:1'));
+    fireEvent.click(await screen.findByTestId('attention-request-team-request-1'));
+
+    expect(navigate).toHaveBeenCalledWith(
+      '/team/team-1',
+      expect.objectContaining({ state: expect.objectContaining({ targetSlotId: 'worker-slot' }) })
+    );
+  });
+
   it('preserves InteractionRequest failure and manual retry behavior', async () => {
     interactionApi.list.mockRejectedValueOnce(new Error('temporary failure'));
     renderInbox();
@@ -402,7 +440,7 @@ describe('AttentionInbox real Feishu approval integration', () => {
     expect(interactionApi.list).toHaveBeenCalledTimes(2);
   });
 
-  it('treats an unavailable InteractionRequest route as an unsupported empty source', async () => {
+  it('does not hide an unavailable interaction-request route as an empty inbox', async () => {
     interactionApi.list.mockRejectedValueOnce(
       Object.assign(new Error('route unavailable'), {
         name: 'BackendHttpError',
@@ -415,8 +453,39 @@ describe('AttentionInbox real Feishu approval integration', () => {
     fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
     fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:0'));
 
-    expect(await screen.findByText('conversation.attention.interactionEmpty')).toBeInTheDocument();
-    expect(screen.queryByText('conversation.attention.interactionLoadFailed')).not.toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('conversation.attention.interactionLoadFailed');
+    expect(screen.queryByText('conversation.attention.interactionEmpty')).not.toBeInTheDocument();
+  });
+
+  it('shows partial sync health and marks affected cached items stale', async () => {
+    interactionApi.list.mockResolvedValueOnce({
+      revision: 'attention-partial-r1',
+      sync_state: 'partial',
+      failed_session_count: 1,
+      failure_codes: ['GEA_SESSION_REJECTED'],
+      items: [
+        {
+          id: 'request-stale',
+          version: 'v1',
+          kind: 'permission',
+          status: 'pending',
+          title: 'Confirm production submission',
+          source: { type: 'business_system', label: 'Finance' },
+          conversation_id: 'conversation-stale',
+          allowed_actions: ['proceed_once'],
+          stale: true,
+        },
+      ],
+    });
+    renderInbox();
+    fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
+    fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:1'));
+    expect(await screen.findByTestId('attention-sync-warning')).toHaveTextContent(
+      'conversation.attention.syncPartial:1'
+    );
+    expect(screen.getByTestId('attention-request-request-stale-stale')).toHaveTextContent(
+      'conversation.attention.stale'
+    );
   });
 
   it('cancels the confirmation without writing', async () => {

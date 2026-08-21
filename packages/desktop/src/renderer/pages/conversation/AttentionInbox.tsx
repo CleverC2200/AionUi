@@ -1,8 +1,7 @@
 import { ipcBridge } from '@/common';
-import { isRouteUnavailableError } from '@/common/adapter/sidebarCompatibility';
 import type { ApprovalTask } from '@/common/types/approval';
 import type { InteractionRequest } from '@/common/types/interactionRequest';
-import { Alert, Badge, Button, Drawer, Empty, Tabs, Typography } from '@arco-design/web-react';
+import { Alert, Badge, Button, Drawer, Empty, Spin, Tabs, Tag, Typography } from '@arco-design/web-react';
 import { Audit, CloseSmall, Right } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,20 +57,15 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
   const {
     data: interactions,
     error: interactionError,
+    isLoading: interactionLoading,
     isValidating: interactionRefreshing,
     mutate: refreshInteractions,
-  } = useSWR('interaction-requests.pending', async () => {
-    try {
-      return await ipcBridge.interactionRequest.list.invoke();
-    } catch (requestError) {
-      if (isRouteUnavailableError(requestError)) return { revision: 'unsupported', items: [] };
-      throw requestError;
-    }
-  });
+  } = useSWR('interaction-requests.active', () => ipcBridge.interactionRequest.list.invoke());
   const pendingApprovals = approvals?.pending ?? [];
   const doneApprovals = approvals?.done ?? [];
   const interactionItems = interactions?.items ?? [];
   const pendingCount = pendingApprovals.length + interactionItems.length;
+  const syncWarning = interactions?.sync_state === 'partial' || interactions?.sync_state === 'failed';
 
   useEffect(() => {
     const refresh = (): void => {
@@ -194,6 +188,10 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
             onRefresh={refreshApprovals}
             onStartHandling={startHandling}
           />
+        ) : interactionLoading ? (
+          <div className='py-48px flex-center'>
+            <Spin aria-label={t('common.loading', { defaultValue: 'Loading…' })} />
+          </div>
         ) : interactionError ? (
           <Alert
             type='error'
@@ -207,32 +205,64 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
               </div>
             }
           />
-        ) : interactionItems.length ? (
-          <div className='flex flex-col gap-8px p-12px' role='list' data-testid='interaction-request-list'>
-            {interactionItems.map((request) => (
-              <Button
-                key={request.id}
-                type='secondary'
-                className='!h-auto !p-12px !justify-start !items-start !text-left'
-                onClick={() => openInteractionRequest(request)}
-                data-testid={`attention-request-${request.id}`}
-              >
-                <span className='flex min-w-0 w-full items-center gap-10px'>
-                  <span className='flex-1 min-w-0'>
-                    <Typography.Text className='block font-600 text-t-primary'>{request.title}</Typography.Text>
-                    {request.summary ? (
-                      <Typography.Text className='block mt-3px text-12px text-t-secondary' ellipsis>
-                        {request.summary}
-                      </Typography.Text>
-                    ) : null}
-                  </span>
-                  <Right theme='outline' size='16' className='shrink-0 text-t-tertiary' />
-                </span>
-              </Button>
-            ))}
-          </div>
         ) : (
-          <Empty description={t('conversation.attention.interactionEmpty')} />
+          <div className='flex flex-col gap-12px'>
+            {syncWarning ? (
+              <Alert
+                type='warning'
+                showIcon
+                content={t(
+                  interactions?.sync_state === 'failed'
+                    ? 'conversation.attention.syncFailed'
+                    : 'conversation.attention.syncPartial',
+                  { count: interactions?.failed_session_count ?? 0 }
+                )}
+                action={
+                  <Button size='mini' loading={interactionRefreshing} onClick={() => void refreshInteractions()}>
+                    {t('common.retry', { defaultValue: 'Retry' })}
+                  </Button>
+                }
+                data-testid='attention-sync-warning'
+              />
+            ) : null}
+            {interactionItems.length === 0 ? (
+              <Empty description={t('conversation.attention.interactionEmpty')} />
+            ) : (
+              <div className='flex flex-col gap-8px p-12px' role='list' data-testid='interaction-request-list'>
+                {interactionItems.map((request) => (
+                  <Button
+                    key={request.id}
+                    type='secondary'
+                    className='!h-auto !p-12px !justify-start !items-start !text-left'
+                    onClick={() => openInteractionRequest(request)}
+                    data-testid={`attention-request-${request.id}`}
+                  >
+                    <span className='flex min-w-0 w-full items-center gap-10px'>
+                      <span className='flex-1 min-w-0'>
+                        <span className='flex items-center gap-6px'>
+                          <Typography.Text className='font-600 text-t-primary'>{request.title}</Typography.Text>
+                          {request.stale ? (
+                            <Tag size='small' color='orange' data-testid={`attention-request-${request.id}-stale`}>
+                              {t('conversation.attention.stale')}
+                            </Tag>
+                          ) : null}
+                        </span>
+                        {request.summary ? (
+                          <Typography.Text className='block mt-3px text-12px text-t-secondary' ellipsis>
+                            {request.summary}
+                          </Typography.Text>
+                        ) : null}
+                        <Typography.Text className='block mt-5px text-12px text-t-tertiary'>
+                          {request.source.label || t(`conversation.attention.source.${request.source.type}`)}
+                        </Typography.Text>
+                      </span>
+                      <Right theme='outline' size='16' className='shrink-0 text-t-tertiary' />
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </Drawer>
     </>

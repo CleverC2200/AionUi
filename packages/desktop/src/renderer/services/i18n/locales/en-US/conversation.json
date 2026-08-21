@@ -4,6 +4,9 @@
     "open": "Open approvals with {{count}} pending items",
     "empty": "No approval items",
     "loadFailed": "Approval items could not be loaded. Your work has not been changed.",
+    "syncPartial": "{{count}} sessions could not be synchronized. Affected cached items cannot be submitted yet.",
+    "syncFailed": "The latest pending requests could not be confirmed. Cached items cannot be submitted yet.",
+    "stale": "Sync pending",
     "interactionEmpty": "No assistant or team interaction requests",
     "interactionLoadFailed": "Assistant requests could not be loaded. Your work has not been changed.",
     "sourceTabs": {

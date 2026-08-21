@@ -23,6 +23,8 @@ export interface WebviewHostProps {
   className?: string;
   /** Extra styles for root container */
   style?: React.CSSProperties;
+  /** Whether this webview is the visible in-app browser target for agent control. */
+  agentControlActive?: boolean;
   /** Called when the page finishes loading */
   onDidFinishLoad?: () => void;
   /** Called when the page fails to load */
@@ -64,6 +66,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
   partition,
   className,
   style,
+  agentControlActive = false,
   onDidFinishLoad,
   onDidFailLoad,
   onUrlChange,
@@ -76,6 +79,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
   const contentRef = useRef<HTMLDivElement | null>(null);
   const webviewRef = useRef<Electron.WebviewTag | null>(null);
   const autoFitPendingRef = useRef(false);
+  const reportedForAgentControlRef = useRef(false);
 
   // Callbacks are mirrored into refs so the listener effect does not re-subscribe
   // on every parent render (inline arrow props would otherwise churn it).
@@ -164,6 +168,21 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
       // Ignore zoom timing errors
     }
   }, [isStarOffice, zoomFactor, webviewReady]);
+
+  useEffect(() => {
+    if (agentControlActive && !webviewReady) return;
+    if (!agentControlActive && !reportedForAgentControlRef.current) return;
+
+    const webContentsId = webviewRef.current?.getWebContentsId?.();
+    if (typeof webContentsId !== 'number') return;
+    reportedForAgentControlRef.current = agentControlActive;
+    void ipcBridge.application.reportBrowserWebContentsId
+      .invoke({ webContentsId, active: agentControlActive })
+      .then((res) => {
+        if (!res.success && res.msg) console.warn('[browser] agent control unavailable:', res.msg);
+      })
+      .catch((error) => console.warn('[browser] could not report webContents id:', error));
+  }, [agentControlActive, webviewReady]);
 
   /**
    * 主动导航到新地址 / Navigate to a new address.
@@ -300,30 +319,6 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
       setWebviewReady(true);
       syncNavState();
       injectClickInterceptor();
-
-      /**
-       * 把这个 webview 的 webContents id 报给主进程，让单目标 CDP 通道附加到它。
-       *
-       * 放在 dom-ready 里：此时 getWebContentsId() 才可用，而且每次导航/切 tab 后都会
-       * 再触发一次，正好让通道跟着用户当前看的页面走。失败只记日志不打扰用户 ——
-       * Agent 操作浏览器本就是可选能力，不该因为它挡住正常浏览。
-       *
-       * Report this webview's webContents id so the single-target CDP bridge can attach.
-       * Done on dom-ready because getWebContentsId() is only valid by then, and because it
-       * fires again after navigation or a tab switch, which keeps the bridge pointed at the
-       * page the user is actually viewing. Failures are logged only: agent browser control
-       * is optional and must not block ordinary browsing.
-       */
-      try {
-        const webContentsId = webviewEl.getWebContentsId?.();
-        if (typeof webContentsId === 'number') {
-          void ipcBridge.application.reportBrowserWebContentsId.invoke({ webContentsId }).then((res) => {
-            if (!res.success && res.msg) console.warn('[browser] agent control unavailable:', res.msg);
-          });
-        }
-      } catch (error) {
-        console.warn('[browser] could not report webContents id:', error);
-      }
 
       // Inject viewport meta for responsive pages
       webviewEl

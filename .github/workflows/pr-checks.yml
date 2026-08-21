@@ -13,8 +13,9 @@ on:
         required: false
         default: false
   pull_request:
-    # Title/body edits do not change the tested commit and should not restart the full matrix.
-    types: [opened, synchronize, closed, ready_for_review]
+    # Keep `edited`: changing the PR base also emits this action and must
+    # reclassify the diff and rerun checks against the new base.
+    types: [opened, synchronize, edited, closed, ready_for_review]
     branches: [main, dev]
 
 concurrency:

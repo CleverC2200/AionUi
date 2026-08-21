@@ -59,15 +59,18 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
   const [drafts, setDrafts] = useState<Draft[]>(() => questions.map(emptyDraft));
   const [submitted, setSubmitted] = useState<'answered' | 'declined' | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [submissionError, setSubmissionError] = useState<'changed' | 'ordinary' | 'verification' | null>(null);
+  const [submissionError, setSubmissionError] = useState<
+    'changed' | 'ordinary' | 'processing' | 'stale' | 'verification' | null
+  >(null);
   const [authoritativeRequest, setAuthoritativeRequest] = useState<InteractionRequest | null>(null);
-  const [authorityBlocked, setAuthorityBlocked] = useState(false);
+  const sourceProcessing = content.interaction_request?.status === 'processing';
+  const [authorityBlocked, setAuthorityBlocked] = useState(sourceProcessing);
   const submittingRef = useRef(false);
 
   useEffect(() => {
     setAuthoritativeRequest(null);
-    setAuthorityBlocked(false);
-  }, [content.interaction_request?.id, content.interaction_request?.version]);
+    setAuthorityBlocked(sourceProcessing);
+  }, [content.interaction_request?.id, content.interaction_request?.version, sourceProcessing]);
 
   const updateDraft = useCallback((index: number, patch: Partial<Draft>) => {
     setDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
@@ -107,7 +110,7 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
             receipt.request.status !== 'pending' || !receipt.request.allowed_actions.includes('answer')
           );
         } else {
-          setAuthorityBlocked(receipt.status === 'unknown_external_write');
+          setAuthorityBlocked(receipt.status === 'unknown_external_write' || receipt.status === 'processing');
         }
         requireAcceptedInteractionReceipt(receipt);
       } else {
@@ -121,11 +124,17 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setSubmissionError(
-        errorMessage.includes('UNKNOWN_EXTERNAL_WRITE')
-          ? 'verification'
-          : errorMessage.includes('CONFLICT') || errorMessage.includes('EXPIRED') || errorMessage.includes('FORBIDDEN')
-            ? 'changed'
-            : 'ordinary'
+        errorMessage.includes('INTERACTION_REQUEST_STALE')
+          ? 'stale'
+          : errorMessage.includes('INTERACTION_REQUEST_PROCESSING')
+            ? 'processing'
+            : errorMessage.includes('UNKNOWN_EXTERNAL_WRITE')
+              ? 'verification'
+              : errorMessage.includes('CONFLICT') ||
+                  errorMessage.includes('EXPIRED') ||
+                  errorMessage.includes('FORBIDDEN')
+                ? 'changed'
+                : 'ordinary'
       );
     } finally {
       submittingRef.current = false;
@@ -160,7 +169,7 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
             receipt.request.status !== 'pending' || !receipt.request.allowed_actions.includes('decline')
           );
         } else {
-          setAuthorityBlocked(receipt.status === 'unknown_external_write');
+          setAuthorityBlocked(receipt.status === 'unknown_external_write' || receipt.status === 'processing');
         }
         requireAcceptedInteractionReceipt(receipt);
       } else {
@@ -174,11 +183,17 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setSubmissionError(
-        errorMessage.includes('UNKNOWN_EXTERNAL_WRITE')
-          ? 'verification'
-          : errorMessage.includes('CONFLICT') || errorMessage.includes('EXPIRED') || errorMessage.includes('FORBIDDEN')
-            ? 'changed'
-            : 'ordinary'
+        errorMessage.includes('INTERACTION_REQUEST_STALE')
+          ? 'stale'
+          : errorMessage.includes('INTERACTION_REQUEST_PROCESSING')
+            ? 'processing'
+            : errorMessage.includes('UNKNOWN_EXTERNAL_WRITE')
+              ? 'verification'
+              : errorMessage.includes('CONFLICT') ||
+                  errorMessage.includes('EXPIRED') ||
+                  errorMessage.includes('FORBIDDEN')
+                ? 'changed'
+                : 'ordinary'
       );
     } finally {
       submittingRef.current = false;
@@ -186,7 +201,21 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
     }
   }, [authoritativeRequest, content.interaction_request, message.conversation_id, requestId, submitted]);
 
-  if (!questions.length) return null;
+  if (!questions.length) {
+    return (
+      <Card className={styles.card} bordered={false} data-testid='message-question'>
+        <div className={styles.panel}>
+          <div className={own.question}>{content.title || t('messages.permissionRequest')}</div>
+          {content.summary ? <div className={own.header}>{content.summary}</div> : null}
+          <div className={`${styles.feedback} ${styles.error}`} role='status'>
+            <span>
+              {t(sourceProcessing ? 'messages.interactionProcessing' : 'messages.interactionDetailsUnavailable')}
+            </span>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className={styles.card} bordered={false} data-testid='message-question'>
@@ -307,11 +336,15 @@ const MessageQuestion: React.FC<MessageQuestionProps> = React.memo(({ message })
           <div className={`${styles.feedback} ${styles.error}`} role='alert' aria-live='assertive'>
             <span>
               {t(
-                submissionError === 'verification'
-                  ? 'messages.interactionVerificationRequired'
-                  : submissionError === 'changed'
-                    ? 'messages.interactionRequestChanged'
-                    : 'messages.permissionResponseFailed'
+                submissionError === 'stale'
+                  ? 'messages.interactionSyncRequired'
+                  : submissionError === 'processing'
+                    ? 'messages.interactionProcessing'
+                    : submissionError === 'verification'
+                      ? 'messages.interactionVerificationRequired'
+                      : submissionError === 'changed'
+                        ? 'messages.interactionRequestChanged'
+                        : 'messages.permissionResponseFailed'
               )}
             </span>
           </div>

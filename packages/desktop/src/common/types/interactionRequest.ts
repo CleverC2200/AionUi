@@ -6,8 +6,8 @@ const identifier = z.string().trim().min(1).max(240);
 export const InteractionRequestSchema = z.object({
   id: identifier,
   version: identifier,
-  kind: z.enum(['question', 'permission', 'approval']),
-  status: z.enum(['pending', 'resolved', 'expired', 'cancelled', 'verification_required']),
+  kind: z.enum(['question', 'permission']),
+  status: z.enum(['pending', 'processing', 'resolved', 'expired', 'cancelled', 'verification_required']),
   title: z.string().trim().min(1),
   summary: z.string().optional(),
   source: z.object({
@@ -21,12 +21,16 @@ export const InteractionRequestSchema = z.object({
   message_id: identifier.optional(),
   expires_at: z.string().datetime({ offset: true }).optional(),
   allowed_actions: z.array(identifier),
-  updated_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }).optional(),
+  stale: z.boolean().default(false),
 });
 
 export const InteractionRequestListSchema = z.object({
   revision: identifier,
   items: z.array(InteractionRequestSchema),
+  sync_state: z.enum(['complete', 'partial', 'failed']).default('complete'),
+  failed_session_count: z.number().int().nonnegative().default(0),
+  failure_codes: z.array(identifier).default([]),
 });
 
 export const InteractionRequestActionCommandSchema = z.object({
@@ -43,6 +47,8 @@ export const InteractionRequestReceiptSchema = z.object({
   version: identifier,
   status: z.enum([
     'accepted',
+    'processing',
+    'failed',
     'already_resolved',
     'conflict',
     'expired',
