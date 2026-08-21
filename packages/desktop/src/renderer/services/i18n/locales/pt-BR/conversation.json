@@ -45,7 +45,11 @@
     "batchExportConfirm": "Exportar {{count}} tópicos selecionados?",
     "batchDelete": "Excluir em Lote",
     "batchDeleteConfirm": "Excluir {{count}} tópicos selecionados?",
+    "batchDeleteConfirm_one": "Excluir {{count}} tópico selecionado?",
+    "batchDeleteConfirm_other": "Excluir {{count}} tópicos selecionados?",
     "batchDeleteSuccess": "{{count}} tópicos excluídos",
+    "batchDeleteSuccess_one": "{{count}} tópico excluído",
+    "batchDeleteSuccess_other": "{{count}} tópicos excluídos",
     "batchNoSelection": "Por favor, selecione os tópicos primeiro",
     "export": "Exportar",
     "exportDialogTitle": "Exportar Tópicos",
@@ -74,13 +78,20 @@
     "projectsSection": "Projetos",
     "projectActions": "Ações do projeto {{name}}",
     "conversationsSection": "Conversas",
-    "removeProjectTitle": "Remover projeto",
-    "removeProject": "Remover projeto",
-    "removeProjectConfirm": "Remover o projeto \"{{name}}\"? Suas {{count}} conversa(s) também serão removidas.",
     "newConversationInProject": "Novo chat neste projeto",
     "reorderPinned": "Arraste para reordenar a conversa fixada",
     "forkedFrom": "Bifurcada de “{{name}}”",
-    "forkedConversation": "Conversa bifurcada"
+    "forkedConversation": "Conversa bifurcada",
+    "archive": "Arquivar",
+    "archiveSuccess": "Arquivado",
+    "archiveFailed": "Falha ao arquivar",
+    "batchArchive": "Batch archive",
+    "batchArchiveConfirm": "Archive {{count}} selected topics? You can restore or delete them from Archived in Settings.",
+    "batchArchiveSuccess": "Archived {{count}} topics",
+    "archiveProject": "Archive project",
+    "archiveProjectTitle": "Archive project",
+    "archiveProjectConfirm": "Archive project \"{{name}}\"? Its {{count}} conversation(s) will be archived too. You can restore or delete them from Archived in Settings.",
+    "archiving": "Archiving..."
   },
   "historySearch": {
     "tooltip": "Pesquisar mensagens",
@@ -437,7 +448,9 @@
     "searchHint": "Clique aqui para pesquisar palavras-chave",
     "empty": "Nenhum turno de perguntas e respostas ainda",
     "noMatch": "Nenhum conteúdo correspondente encontrado",
-    "count": "{{count}} turnos"
+    "count": "{{count}} turnos",
+    "count_one": "{{count}} turno",
+    "count_other": "{{count}} turnos"
   },
   "chat": {
     "noModelSelected": "Nenhum modelo selecionado para a sessão atual, impossível enviar mensagem",
@@ -455,6 +468,7 @@
     "switchAgentFailed": "Falha ao mudar o agente",
     "speech": {
       "recordTooltip": "Iniciar entrada de voz",
+      "recordTooltipWithShortcut": "Entrada de voz cmd+M",
       "pickFileTooltip": "Selecione um arquivo de áudio",
       "stopTooltip": "Parar gravação",
       "processing": "Transcrevendo áudio...",
@@ -501,6 +515,8 @@
     "reorder": "Arraste para reordenar o comando agendado",
     "remove": "Remover",
     "files": "{{count}} arquivos",
+    "files_one": "{{count}} arquivo",
+    "files_other": "{{count}} arquivos",
     "pausedAfterFailure": "O próximo comando na fila não pôde ser iniciado. Edite, reordene ou o remova para continuar.",
     "emptyInput": "Comandos na fila não podem ficar vazios.",
     "queueFull": "A fila está cheia. Remova um comando antes de adicionar mais.",
@@ -630,13 +646,18 @@
     "removeFailed": "Couldn't remove the folder",
     "contextMenu": {
       "rename": "Renomear",
+      "newFile": "Novo arquivo",
+      "newDir": "Nova pasta",
       "addToChat": "Adicionar ao chat",
       "copyRelativePath": "Copiar caminho relativo",
-      "copyAbsolutePath": "Copiar caminho absoluto"
+      "copyAbsolutePath": "Copiar caminho absoluto",
+      "refresh": "Atualizar"
     },
     "namePlaceholder": "Nome",
     "deleteConfirm": "Excluir “{{name}}”? Isso não pode ser desfeito.",
     "renameFailed": "Não foi possível renomear",
+    "newFileFailed": "Não foi possível criar o arquivo",
+    "newDirFailed": "Não foi possível criar a pasta",
     "tabs": {
       "files": "Arquivos",
       "changes": "Alterações"
@@ -645,6 +666,8 @@
     "imported": "{{count}} arquivo(s) importado(s)",
     "importPartialFailed": "{{copied}} copiado(s), {{failed}} com falha (conflitos de nome ou não suportados)",
     "importFailed": "Falha ao importar os arquivos",
+    "copyNodeFailed": "Falha ao copiar",
+    "moveNodeFailed": "Falha ao mover",
     "search": {
       "placeholder": "Buscar arquivos por nome",
       "searching": "Buscando…",
@@ -714,8 +737,14 @@
         "confirmDiscardMixed": "As edições em {{tracked}} arquivo(s) serão perdidas de forma irreversível; {{untracked}} novo(s) arquivo(s) vão para a lixeira.",
         "discardConfirmButton": "Descartar",
         "okStage": "{{count}} arquivos preparados",
+        "okStage_one": "{{count}} arquivo preparado",
+        "okStage_other": "{{count}} arquivos preparados",
         "okUnstage": "{{count}} arquivos retirados da preparação",
+        "okUnstage_one": "{{count}} arquivo retirado da preparação",
+        "okUnstage_other": "{{count}} arquivos retirados da preparação",
         "okDiscard": "{{count}} arquivos descartados",
+        "okDiscard_one": "{{count}} arquivo descartado",
+        "okDiscard_other": "{{count}} arquivos descartados",
         "partial": "{{succeeded}} de {{total}} concluídos —— {{failed}} não foi possível concluir",
         "partialDetail": "Não concluídos: {{files}}",
         "rejectedBlocked": "Nada foi alterado —— resolva o conflito primeiro",
@@ -724,7 +753,9 @@
         "retry": "Tentar novamente",
         "notSent": "A solicitação não chegou ao backend — nada foi alterado. Você pode tentar novamente.",
         "outcomeUnknown": "A conexão foi reiniciada antes da resposta — esta ação pode ou não ter sido concluída. Atualize e confira a lista de arquivos antes de tentar de novo.",
-        "allFailed": "Nenhum dos {{count}} arquivo(s) pôde ser processado"
+        "allFailed": "Nenhum dos {{count}} arquivo(s) pôde ser processado",
+        "allFailed_one": "Não foi possível processar {{count}} arquivo",
+        "allFailed_other": "Nenhum dos {{count}} arquivos pôde ser processado"
       }
     },
     "pathCopied": "Caminho copiado",
@@ -736,5 +767,8 @@
     "exited": "Saída {{code}}",
     "stop": "Parar",
     "truncated": "(saída anterior truncada)"
+  },
+  "emptyState": {
+    "greeting": "Olá! Diga o que você precisa e eu já começo."
   }
 }

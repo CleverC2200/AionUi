@@ -357,6 +357,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
   }) => {
     let enterpriseWriteCount = 0;
     let enterpriseSyncRequestCount = 0;
+    let standardRequestPending = false;
     let standardCreateRequest: Record<string, unknown> | undefined;
     const standardConversation = {
       id: STANDARD_CONVERSATION_ID,
@@ -440,11 +441,31 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
     const interactionHandler = async (route: Route): Promise<void> => {
       const request = route.request();
       if (request.method() === 'GET') {
-        await fulfillJson(route, { revision: 'standard-pending-r1', items: [] });
+        await fulfillJson(route, {
+          revision: standardRequestPending ? 'standard-pending-r1' : 'standard-pending-r2',
+          items: standardRequestPending
+            ? [
+                {
+                  id: 'standard-question',
+                  version: 'v1',
+                  kind: 'question',
+                  status: 'pending',
+                  title: 'Continue research flow',
+                  source: { type: 'agent', label: 'Research agent' },
+                  conversation_id: STANDARD_CONVERSATION_ID,
+                  turn_id: 'turn-standard-1',
+                  message_id: 'e2e-question-standard-question',
+                  allowed_actions: ['answer'],
+                  updated_at: '2026-08-12T00:00:00.000Z',
+                },
+              ]
+            : [],
+        });
         return;
       }
       const requestId = decodeURIComponent(new URL(request.url()).pathname.split('/').at(-2) ?? '');
       const command = request.postDataJSON() as { expected_version: string };
+      standardRequestPending = false;
       await fulfillJson(route, {
         receipt_id: `receipt-${requestId}`,
         request_id: requestId,
@@ -509,6 +530,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
         STANDARD_CONVERSATION_ID,
         { timeout: 15_000 }
       );
+      standardRequestPending = true;
       await emitInteractionQuestion(page, STANDARD_CONVERSATION_ID, 'standard-question');
       await page.getByTestId('message-question-option-0-Continue').click();
       await page.getByTestId('message-question-submit').click();
@@ -863,6 +885,7 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
       await expect(page.getByTestId('message-question')).toBeVisible();
 
       await page.getByTestId('attention-inbox-trigger').click();
+      await page.getByText(/助手请求 1|Assistant requests 1/).click();
       await page.getByTestId(`attention-request-${MANAGED_REQUEST_ID}`).click();
       await expect(page.getByTestId(`message-question-option-0-Continue`)).toBeVisible();
       await page.getByTestId(`message-question-option-0-Continue`).click();
@@ -872,6 +895,19 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
       await emitFollowUpExchange(page, MANAGED_CONVERSATION_ID);
       await expect(page.getByText('Follow-up reply arrived after the neutral empty-turn tip.')).toBeVisible();
 
+      pendingRequests.set(MANAGED_CONFLICT_REQUEST_ID, {
+        id: MANAGED_CONFLICT_REQUEST_ID,
+        version: 'v1',
+        kind: 'question',
+        status: 'pending',
+        title: 'Policy state changed',
+        source: { type: 'aioncore', label: 'AionCore' },
+        conversation_id: MANAGED_CONVERSATION_ID,
+        turn_id: 'turn-managed-2',
+        message_id: `e2e-question-${MANAGED_CONFLICT_REQUEST_ID}`,
+        allowed_actions: ['answer'],
+        updated_at: '2026-08-12T00:01:00.000Z',
+      });
       await emitInteractionQuestion(page, MANAGED_CONVERSATION_ID, MANAGED_CONFLICT_REQUEST_ID);
       const conflictQuestion = page.getByTestId('message-question').last();
       await conflictQuestion.getByTestId('message-question-option-0-Continue').click();
@@ -912,25 +948,27 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
       name: 'Unified E2E Team',
       workspace: '/tmp/aionui-team-e2e',
       workspace_mode: 'shared',
-      leader_agent_id: 'slot-lead',
-      agents: [
+      leader_assistant_id: 'slot-lead',
+      assistants: [
         {
           slot_id: 'slot-lead',
           conversation_id: 'team-lead-conversation',
-          role: 'lead',
-          name: 'Leader',
-          backend: 'codex',
+          role: 'leader',
+          assistant_name: 'Leader',
+          assistant_backend: 'codex',
           assistant_id: MANAGED_ASSISTANT_ID,
           status: 'idle',
+          context_reset: { supported: false, availability: 'leader_not_targetable' },
         },
         {
           slot_id: 'slot-member',
           conversation_id: 'team-member-conversation',
           role: 'teammate',
-          name: 'Analyst',
-          backend: 'codex',
+          assistant_name: 'Analyst',
+          assistant_backend: 'codex',
           assistant_id: MANAGED_ASSISTANT_ID,
           status: 'idle',
+          context_reset: { supported: true, availability: 'ready' },
         },
       ],
       created_at: 1,
@@ -1117,8 +1155,9 @@ test.describe('Unified assistant journey — standard and managed catalogs', () 
           const box = await attentionPanel.boundingBox();
           return box ? { right: Math.round(box.x + box.width), width: Math.round(box.width) } : null;
         })
-        .toEqual({ right: 1440, width: 420 });
+        .toEqual({ right: 1440, width: 1120 });
       await takeScreenshot(page, 'unified-agent-journey/managed-team-attention-1440.png');
+      await page.getByText(/助手请求 1|Assistant requests 1/).click();
       await page.getByTestId(`attention-request-${teamRequestId}`).click();
       await expect(page.getByTestId('team-tab-slot-member')).toHaveAttribute('data-active', 'true');
       await emitInteractionQuestion(page, 'team-member-conversation', teamRequestId);

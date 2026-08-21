@@ -8,6 +8,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { useTalkToButler } from '@/renderer/hooks/assistant/useTalkToButler';
+import {
+  fetchActiveInteractionRequests,
+  INTERACTION_REQUESTS_ACTIVE_KEY,
+} from '@/renderer/services/interactionRequestActions';
 import { FeishuApprovalInbox } from './ApprovalPrototype';
 import styles from './ApprovalPrototype/ApprovalPrototype.module.css';
 
@@ -60,7 +64,7 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
     isLoading: interactionLoading,
     isValidating: interactionRefreshing,
     mutate: refreshInteractions,
-  } = useSWR('interaction-requests.pending', () => ipcBridge.interactionRequest.list.invoke());
+  } = useSWR(INTERACTION_REQUESTS_ACTIVE_KEY, fetchActiveInteractionRequests);
   const pendingApprovals = approvals?.pending ?? [];
   const doneApprovals = approvals?.done ?? [];
   const interactionItems = interactions?.items ?? [];
@@ -120,19 +124,13 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
   const syncWarning = interactions?.sync_state === 'partial' || interactions?.sync_state === 'failed';
 
   useEffect(() => {
-    const refresh = (): void => {
-      void refreshInteractions();
-    };
-    const offChanged = ipcBridge.interactionRequest.changed.on(refresh);
     const offReconnected = ipcBridge.realtime.reconnected.on(() => {
-      refresh();
       void refreshApprovals();
     });
     return () => {
-      offChanged();
       offReconnected();
     };
-  }, [refreshApprovals, refreshInteractions]);
+  }, [refreshApprovals]);
 
   const close = useCallback(() => {
     setVisible(false);

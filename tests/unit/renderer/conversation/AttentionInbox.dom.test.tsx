@@ -16,7 +16,6 @@ const { approvalApi, interactionApi, navigate, talkToButler } = vi.hoisted(() =>
   },
   interactionApi: {
     list: vi.fn(),
-    changedOn: vi.fn(() => vi.fn()),
     reconnectedOn: vi.fn(() => vi.fn()),
   },
   navigate: vi.fn(),
@@ -35,7 +34,6 @@ vi.mock('@/common', () => ({
     },
     interactionRequest: {
       list: { invoke: interactionApi.list },
-      changed: { on: interactionApi.changedOn },
     },
     realtime: { reconnected: { on: interactionApi.reconnectedOn } },
   },
@@ -594,7 +592,7 @@ describe('AttentionInbox real Feishu approval integration', () => {
     expect(approvalApi.approve).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps InteractionRequest navigation and reconnect refresh behavior', async () => {
+  it('keeps InteractionRequest navigation while reconnect refreshes approvals', async () => {
     interactionApi.list.mockResolvedValue({
       revision: 'r1',
       items: [
@@ -612,10 +610,9 @@ describe('AttentionInbox real Feishu approval integration', () => {
     });
     renderInbox();
     await waitFor(() => expect(interactionApi.list).toHaveBeenCalledTimes(1));
-    interactionApi.changedOn.mock.calls[0][0]();
-    await waitFor(() => expect(interactionApi.list).toHaveBeenCalledTimes(2));
     interactionApi.reconnectedOn.mock.calls[0][0]();
-    await waitFor(() => expect(interactionApi.list).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(approvalApi.list).toHaveBeenCalledTimes(4));
+    expect(interactionApi.list).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
     fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:1'));

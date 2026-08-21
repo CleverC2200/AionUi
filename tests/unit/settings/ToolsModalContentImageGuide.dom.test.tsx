@@ -103,6 +103,10 @@ vi.mock('@/renderer/hooks/mcp', () => ({
   useMountedMessage: (m: unknown) => m,
 }));
 
+vi.mock('@/renderer/hooks/system/useGeaResourceSync', () => ({
+  useGeaResourceSync: () => ({ syncing: false, syncFromGea: hooks.syncFromGea }),
+}));
+
 vi.mock('@/renderer/services/clientBusinessSettings', () => ({
   getClientBusinessSetting: hooks.getClientBusinessSetting,
   setClientBusinessSetting: vi.fn(() => Promise.resolve()),
@@ -179,7 +183,7 @@ describe('ToolsModalContent image model guide', () => {
     expect(links).toHaveLength(0);
   });
 
-  it('refreshes the builtin GEA MCP tools from the add-server menu', async () => {
+  it('syncs managed MCP resources from the add-server menu', async () => {
     const geaServer = {
       id: 'gea-gateway',
       name: 'gea-gateway',
@@ -197,7 +201,8 @@ describe('ToolsModalContent image model guide', () => {
     const marker = await screen.findByTestId('add-mcp-server-menu-gea');
     fireEvent.click((marker.closest('[role="menuitem"]') ?? marker) as HTMLElement);
 
-    await waitFor(() => expect(hooks.testMcpConnection).toHaveBeenCalledWith(geaServer));
+    await waitFor(() => expect(hooks.syncFromGea).toHaveBeenCalledTimes(1));
+    expect(hooks.testMcpConnection).not.toHaveBeenCalled();
   });
 
   it('shows the builtin GEA gateway as a read-only GEA MCP entry', async () => {

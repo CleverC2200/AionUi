@@ -7,6 +7,7 @@
     "syncPartial": "{{count}} sessions could not be synchronized. Affected cached items cannot be submitted yet.",
     "syncFailed": "The latest pending requests could not be confirmed. Cached items cannot be submitted yet.",
     "stale": "Sync pending",
+    "notification": "Pending requests needing attention: {{count}}",
     "interactionEmpty": "No assistant or team interaction requests",
     "interactionLoadFailed": "Assistant requests could not be loaded. Your work has not been changed.",
     "demo": {
@@ -203,7 +204,11 @@
     "batchExportConfirm": "Export {{count}} selected topics?",
     "batchDelete": "Batch Delete",
     "batchDeleteConfirm": "Delete {{count}} selected topics?",
+    "batchDeleteConfirm_one": "Delete {{count}} selected topic?",
+    "batchDeleteConfirm_other": "Delete {{count}} selected topics?",
     "batchDeleteSuccess": "{{count}} topics deleted",
+    "batchDeleteSuccess_one": "{{count}} topic deleted",
+    "batchDeleteSuccess_other": "{{count}} topics deleted",
     "batchNoSelection": "Please select topics first",
     "export": "Export",
     "exportDialogTitle": "Export Topics",
@@ -232,13 +237,20 @@
     "projectsSection": "Projects",
     "projectActions": "Project actions for {{name}}",
     "conversationsSection": "Conversations",
-    "removeProjectTitle": "Remove project",
-    "removeProject": "Remove project",
-    "removeProjectConfirm": "Remove project \"{{name}}\"? Its {{count}} conversation(s) will be removed too.",
     "newConversationInProject": "New chat in this project",
     "reorderPinned": "Drag to reorder pinned conversation",
     "forkedFrom": "Forked from “{{name}}”",
-    "forkedConversation": "Forked conversation"
+    "forkedConversation": "Forked conversation",
+    "archive": "Archive",
+    "archiveSuccess": "Archived",
+    "archiveFailed": "Archive failed",
+    "batchArchive": "Batch archive",
+    "batchArchiveConfirm": "Archive {{count}} selected topics? You can restore or delete them from Archived in Settings.",
+    "batchArchiveSuccess": "Archived {{count}} topics",
+    "archiveProject": "Archive project",
+    "archiveProjectTitle": "Archive project",
+    "archiveProjectConfirm": "Archive project \"{{name}}\"? Its {{count}} conversation(s) will be archived too. You can restore or delete them from Archived in Settings.",
+    "archiving": "Archiving..."
   },
   "historySearch": {
     "tooltip": "Search messages",
@@ -589,7 +601,9 @@
     "searchHint": "Click here to search keywords",
     "empty": "No Q&A turns yet",
     "noMatch": "No matching content found",
-    "count": "{{count}} turns"
+    "count": "{{count}} turns",
+    "count_one": "{{count}} turn",
+    "count_other": "{{count}} turns"
   },
   "chat": {
     "noModelSelected": "No model selected for current session, cannot send message",
@@ -690,6 +704,8 @@
     "reorder": "Drag to reorder queued command",
     "remove": "Remove",
     "files": "{{count}} files",
+    "files_one": "{{count}} file",
+    "files_other": "{{count}} files",
     "pausedAfterFailure": "The next queued command could not start. Edit, reorder, or remove it to continue.",
     "emptyInput": "Queued commands cannot be empty.",
     "queueFull": "Queue is full. Remove a command before adding more.",
@@ -834,13 +850,18 @@
     "removeFailed": "Couldn't remove the folder",
     "contextMenu": {
       "rename": "Rename",
+      "newFile": "New file",
+      "newDir": "New folder",
       "addToChat": "Add to chat",
       "copyRelativePath": "Copy relative path",
-      "copyAbsolutePath": "Copy absolute path"
+      "copyAbsolutePath": "Copy absolute path",
+      "refresh": "Refresh"
     },
     "namePlaceholder": "Name",
     "deleteConfirm": "Delete “{{name}}”? This can’t be undone.",
     "renameFailed": "Couldn't rename",
+    "newFileFailed": "Couldn't create file",
+    "newDirFailed": "Couldn't create folder",
     "tabs": {
       "files": "Files",
       "changes": "Changes"
@@ -849,6 +870,8 @@
     "imported": "Imported {{count}} file(s)",
     "importPartialFailed": "{{copied}} copied, {{failed}} failed (name conflicts or unsupported)",
     "importFailed": "Failed to import files",
+    "copyNodeFailed": "Failed to copy",
+    "moveNodeFailed": "Failed to move",
     "search": {
       "placeholder": "Search files by name",
       "searching": "Searching…",
@@ -918,8 +941,14 @@
         "confirmDiscardMixed": "Edits to {{tracked}} file(s) will be lost and can’t be undone; {{untracked}} new file(s) go to the trash.",
         "discardConfirmButton": "Discard",
         "okStage": "Staged {{count}} files",
+        "okStage_one": "Staged {{count}} file",
+        "okStage_other": "Staged {{count}} files",
         "okUnstage": "Unstaged {{count}} files",
+        "okUnstage_one": "Unstaged {{count}} file",
+        "okUnstage_other": "Unstaged {{count}} files",
         "okDiscard": "Discarded {{count}} files",
+        "okDiscard_one": "Discarded {{count}} file",
+        "okDiscard_other": "Discarded {{count}} files",
         "partial": "{{succeeded}} of {{total}} done — {{failed}} couldn’t be completed",
         "partialDetail": "Not completed: {{files}}",
         "rejectedBlocked": "Nothing was changed — resolve the conflict first",
@@ -928,7 +957,9 @@
         "retry": "Retry",
         "notSent": "The request didn't reach the backend — nothing was changed. You can try again.",
         "outcomeUnknown": "The connection reset before a reply arrived — this action may or may not have completed. Refresh and check the file list before retrying.",
-        "allFailed": "None of the {{count}} file(s) could be processed"
+        "allFailed": "None of the {{count}} file(s) could be processed",
+        "allFailed_one": "{{count}} file could not be processed",
+        "allFailed_other": "None of the {{count}} files could be processed"
       }
     },
     "pathCopied": "Path copied",
@@ -958,5 +989,8 @@
     "exited": "Exit {{code}}",
     "stop": "Stop",
     "truncated": "(earlier output truncated)"
+  },
+  "emptyState": {
+    "greeting": "Hi! Tell me what you need and I'll get started."
   }
 }

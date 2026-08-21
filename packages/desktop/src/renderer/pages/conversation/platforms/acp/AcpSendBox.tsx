@@ -45,8 +45,8 @@ import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
 import { localSelectionItems, mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
 import { collectChatFileRefs, splitChatFileRefs } from '@/renderer/utils/file/messageFiles';
 import type { ChatFileRef } from '@/common/types/chatFile';
-import { Message, Tag } from '@arco-design/web-react';
-import { Brain, MagicHat, Shield } from '@icon-park/react';
+import { Button, Message, Tag } from '@arco-design/web-react';
+import { Brain, Lightning, MagicHat, Shield } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { classifyConversationBusyError } from '../conversationBusyError';
@@ -175,7 +175,7 @@ const AcpSendBox: React.FC<{
     conversation_id,
     prepareRuntime: prepareRuntimeConfig,
     prepareSetRuntime: teamPermission?.warmupSession,
-    loadConfigOptions: teamPermission?.loadConfigOptions,
+    configOptionsPort: teamPermission?.configOptionsPort,
     enabled: true,
   });
   const runtimeMode = runtimeConfig.mode;
@@ -195,7 +195,7 @@ const AcpSendBox: React.FC<{
     backend,
     prepareRuntime: prepareRuntimeConfig,
     prepareSetRuntime: teamPermission?.warmupSession,
-    loadConfigOptions: teamPermission?.loadConfigOptions,
+    configOptionsPort: teamPermission?.configOptionsPort,
     enabled: isMobile,
     onSelectModelSuccess: () => Message.success(t('agent.model.switchSuccess')),
     onSelectModelFailed: (_modelId, error) => Message.error(t(configErrorMessageKey(error))),
@@ -455,6 +455,21 @@ Please check your local CLI tool authentication status`,
     await executeCommand({ input: message, files: allFiles });
   };
 
+  const [interrupting, setInterrupting] = useState(false);
+  const handleInterruptSend = async () => {
+    if (!teamRuntime?.onInterruptSend || !content.trim() || interrupting) return;
+    const files = collectChatFileRefs(uploadFile, atPath);
+    const input = content;
+    setContent('');
+    clearFiles();
+    emitter.emit('acp.selected.file.clear');
+    setInterrupting(true);
+    try {
+      await teamRuntime.onInterruptSend({ input, files });
+    } finally {
+      setInterrupting(false);
+    }
+  };
   // Explicit "add to queue" entry — visibility is keyed only to the user's
   // own input (non-empty draft), never to the agent's busy/replying state:
   // tying it to that racy, async signal made the entry appear/disappear
@@ -768,7 +783,7 @@ Please check your local CLI tool authentication status`,
         onModeChanged={isLeaderInTeam ? teamPermission?.propagateMode : undefined}
         beforeRuntimeSync={prepareRuntimeConfig}
         beforeRuntimeSet={teamPermission?.warmupSession}
-        loadConfigOptions={teamPermission?.loadConfigOptions}
+        configOptionsPort={teamPermission?.configOptionsPort}
       />
     ) : null,
     usage: tokenUsage ? (
@@ -781,7 +796,7 @@ Please check your local CLI tool authentication status`,
         placement='composer'
         prepareRuntime={prepareRuntimeConfig}
         prepareSetRuntime={teamPermission?.warmupSession}
-        loadConfigOptions={teamPermission?.loadConfigOptions}
+        configOptionsPort={teamPermission?.configOptionsPort}
       />
     ),
   });
@@ -890,6 +905,19 @@ Please check your local CLI tool authentication status`,
         onSlashBuiltinCommand={onSlashBuiltinCommand}
         allowSendWhileLoading
         compactActions={false}
+        sendButtonPrefix={
+          teamRuntime?.onInterruptSend && content.trim() ? (
+            <Button
+              size='mini'
+              type='secondary'
+              icon={<Lightning />}
+              loading={interrupting}
+              onClick={() => void handleInterruptSend()}
+            >
+              {t('team.interruptAndSend')}
+            </Button>
+          ) : undefined
+        }
         onAddToDraft={handleAddToQueue}
         addToDraftDisabled={!canQueueCurrentDraft}
         addToDraftTooltip={

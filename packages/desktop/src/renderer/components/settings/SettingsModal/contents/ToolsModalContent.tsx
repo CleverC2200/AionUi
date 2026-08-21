@@ -35,6 +35,7 @@ import {
 import classNames from 'classnames';
 import { useSettingsTabNavigate, useSettingsViewMode } from '../settingsViewContext';
 import { isInternalMcpServer, isLegacyGeaMcpServer } from '@/renderer/hooks/mcp/catalog';
+import { useGeaResourceSync } from '@/renderer/hooks/system/useGeaResourceSync';
 
 type MessageInstance = ReturnType<typeof Message.useMessage>[0];
 
@@ -51,8 +52,19 @@ const ModalMcpManagementSection: React.FC<{
   extensionMcpServers: IMcpServer[];
   setMcpServers: React.Dispatch<React.SetStateAction<IMcpServer[]>>;
   saveMcpServers: (serversOrUpdater: IMcpServer[] | ((prev: IMcpServer[]) => IMcpServer[])) => Promise<void>;
+  geaSyncing: boolean;
+  onSyncFromGea: () => Promise<void>;
   isPageMode?: boolean;
-}> = ({ message, mcpServers, extensionMcpServers, setMcpServers, saveMcpServers, isPageMode }) => {
+}> = ({
+  message,
+  mcpServers,
+  extensionMcpServers,
+  setMcpServers,
+  saveMcpServers,
+  geaSyncing,
+  onSyncFromGea,
+  isPageMode,
+}) => {
   const { t } = useTranslation();
   const { oauthStatus, loggingIn, checkOAuthStatus, markLoginRequired, clearLoginRequired, login } = useMcpOAuth();
   const visibleMcpServers = useMemo(
@@ -190,12 +202,10 @@ const ModalMcpManagementSection: React.FC<{
             ? [
                 {
                   key: 'gea',
-                  label: testingServers[geaGateway.id]
-                    ? t('settings.geaResourceFetching')
-                    : t('settings.geaResourceFetchFromGea'),
+                  label: geaSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea'),
                   onClick: (): void => {
-                    if (!testingServers[geaGateway.id]) {
-                      void handleTestMcpConnection(geaGateway);
+                    if (!geaSyncing) {
+                      void onSyncFromGea();
                     }
                   },
                 },
@@ -314,7 +324,13 @@ const ToolsModalContent: React.FC = () => {
   const [imageGenerationModel, setImageGenerationModel] = useState<ImageGenerationModelSetting | undefined>();
   const [isUpdatingImageGeneration, setIsUpdatingImageGeneration] = useState(false);
   const { modelListWithImage: data } = useConfigModelListWithImage();
-  const { mcpServers, extensionMcpServers, saveMcpServers, setMcpServers, isMcpServersLoading } = useMcpServers();
+  const { mcpServers, extensionMcpServers, saveMcpServers, setMcpServers, isMcpServersLoading, refreshMcpServers } =
+    useMcpServers();
+  const { syncing: geaSyncing, syncFromGea } = useGeaResourceSync({
+    message: mcpMessage,
+    refresh: refreshMcpServers,
+    resource: 'mcps',
+  });
   const builtinImageGenServer = useMemo(() => mcpServers.find(isBuiltinImageGenServer), [mcpServers]);
   const isImageGenerationServerLoading = isMcpServersLoading && !builtinImageGenServer;
 
@@ -542,6 +558,8 @@ const ToolsModalContent: React.FC = () => {
                   extensionMcpServers={extensionMcpServers}
                   setMcpServers={setMcpServers}
                   saveMcpServers={saveMcpServers}
+                  geaSyncing={geaSyncing}
+                  onSyncFromGea={syncFromGea}
                   isPageMode={isPageMode}
                 />
               </AionScrollArea>
@@ -572,7 +590,7 @@ const ToolsModalContent: React.FC = () => {
                 tooltip={
                   <div className='space-y-4px'>
                     <div>{t('settings.imageGenSupportedTooltipTitle')}</div>
-                    <ul className='list-disc pl-16px m-0'>
+                    <ul className='list-disc ps-16px m-0'>
                       <li>{t('settings.imageGenSupportedTooltipGemini')}</li>
                       <li>{t('settings.imageGenSupportedTooltipOpenRouter')}</li>
                       <li>{t('settings.imageGenSupportedTooltipAntigravity')}</li>
@@ -630,7 +648,7 @@ const ToolsModalContent: React.FC = () => {
                             href='https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide'
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] underline ml-4px'
+                            className='text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] underline ms-4px'
                             onClick={(e) => e.stopPropagation()}
                           >
                             {t('settings.configGuide')}
@@ -642,7 +660,7 @@ const ToolsModalContent: React.FC = () => {
                         href='https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide'
                         target='_blank'
                         rel='noopener noreferrer'
-                        className='ml-8px text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] cursor-pointer'
+                        className='ms-8px text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] cursor-pointer'
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Help theme='outline' size='14' />

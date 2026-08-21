@@ -7,6 +7,7 @@ import type { McpOAuthStatus } from '@/renderer/hooks/mcp/useMcpOAuth';
 import FeedbackButton from '@/renderer/components/base/FeedbackButton';
 import { iconColors } from '@/renderer/styles/colors';
 import { isInternalMcpServer } from '@/renderer/hooks/mcp/catalog';
+import { formatDateTime } from '@/renderer/services/i18n/format';
 
 interface McpServerHeaderProps {
   server: IMcpServer;
@@ -53,16 +54,17 @@ const getStatusIcon = (
   return <Info theme='outline' fill={iconColors.secondary} className='h-[24px]' />;
 };
 
-const formatStatusTimestamp = (timestamp?: number): string | null => {
+const formatStatusTimestamp = (timestamp: number | undefined, locale: string): string | null => {
   if (!timestamp) {
     return null;
   }
 
-  return new Date(timestamp).toLocaleString();
+  return formatDateTime(timestamp, locale);
 };
 
 const getStatusPopoverContent = (
   server: IMcpServer,
+  locale: string,
   t?: (key: string, options?: Record<string, unknown>) => string
 ) => {
   if (server.last_test_status !== 'error' && server.last_test_status !== 'connected') {
@@ -70,7 +72,7 @@ const getStatusPopoverContent = (
   }
 
   if (server.last_test_status === 'connected') {
-    const checkedAt = formatStatusTimestamp(server.last_connected || server.updated_at);
+    const checkedAt = formatStatusTimestamp(server.last_connected || server.updated_at, locale);
     return (
       <div className='max-w-300px space-y-2 text-13px leading-20px'>
         <div className='font-medium text-t-primary'>
@@ -87,7 +89,7 @@ const getStatusPopoverContent = (
     );
   }
 
-  const checkedAt = formatStatusTimestamp(server.updated_at);
+  const checkedAt = formatStatusTimestamp(server.updated_at, locale);
 
   const reasonText =
     server.builtin && server.name === 'chrome-devtools' && server.transport.type === 'stdio'
@@ -161,13 +163,13 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
   onOAuthLogin,
   onToggleEnabled,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const oauthCapable = supportsOAuth(server);
   const needsLogin = oauthCapable && oauthStatus?.needsLogin;
   const statusText = getStatusText(server, server.last_test_status, oauthStatus, isTestingConnection, t);
   const statusIcon = getStatusIcon(server.last_test_status, oauthStatus, isTestingConnection);
-  const statusPopoverContent = getStatusPopoverContent(server, t);
+  const statusPopoverContent = getStatusPopoverContent(server, i18n.language, t);
   const displayName = isInternalMcpServer(server) ? t('settings.geaMcpDisplayName') : server.name;
   const isEnabled = server.enabled !== false;
   const canToggleEnabled = !isReadOnly && server.source !== 'managed' && Boolean(onToggleEnabled);

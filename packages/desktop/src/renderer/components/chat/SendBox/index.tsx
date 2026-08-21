@@ -34,7 +34,7 @@ import { blurActiveElement, shouldBlockMobileInputFocus } from '@/renderer/utils
 import { isPlatformPrimaryModifier } from '@/renderer/utils/ui/keyboardShortcuts';
 import { isMacOS } from '@/renderer/utils/platform';
 import { Button, Input, Message, Tag, Tooltip } from '@arco-design/web-react';
-import { ArrowUp, CloseSmall, Plus, Quote } from '@icon-park/react';
+import { CloseSmall, Plus, Quote } from '@icon-park/react';
 import { chatFileRefKey } from '@/common/types/chatFile';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
 import { buildSkillSlashCommands, mergeSlashCommands } from '@/common/chat/slash/mergeSlashCommands';
@@ -69,6 +69,12 @@ const AT_FILE_HIGHLIGHT_COLOR = 'var(--primary)';
 // is unbounded (streaming append) — this caps only the inline mention menu.
 const AT_FILE_MENTION_LIMIT = 8;
 
+const SendArrowIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox='0 0 24 24' fill='none' stroke='currentColor' aria-hidden='true'>
+    <path d='M12 19V5' strokeWidth='2.7' strokeLinecap='round' />
+    <path d='M6.5 10.5 12 5l5.5 5.5' strokeWidth='2.7' strokeLinecap='round' strokeLinejoin='round' />
+  </svg>
+);
 const DraftBoxActionIcon: React.FC<{ size?: number; color?: string; strokeWidth?: number }> = ({
   size = 16,
   color = 'currentColor',
@@ -1478,19 +1484,35 @@ const SendBox: React.FC<{
   const isSendActionDisabled = disabled || sendDisabled || isUploading || !hasDraftToSend;
   const isDraftActionDisabled = disabled || addToDraftDisabled || isUploading || !hasDraftToSend || !onAddToDraft;
   const hasDraftAction = Boolean(onAddToDraft);
+  const sendButtonShapeStyle: React.CSSProperties = {
+    width: 32,
+    minWidth: 32,
+    height: 32,
+    minHeight: 32,
+    padding: 0,
+    borderRadius: '50%',
+    overflow: 'hidden',
+    clipPath: 'circle(50% at 50% 50%)',
+    boxShadow: 'none',
+  };
 
   const primaryActionButton = (
     <Tooltip content={sendActionTooltip} position='top'>
-      <Button
-        shape='circle'
-        type='primary'
-        disabled={isSendActionDisabled}
-        className='send-button-custom'
-        icon={<ArrowUp theme='filled' size='14' fill='white' strokeWidth={5} />}
-        onClick={handlePrimaryAction}
-        data-testid='sendbox-send-btn'
-        aria-label={typeof sendActionTooltip === 'string' ? sendActionTooltip : sendNowLabel}
-      />
+      <span className='sendbox-send-tooltip-anchor' style={sendButtonShapeStyle}>
+        <Button
+          shape='circle'
+          type='text'
+          disabled={isSendActionDisabled}
+          className={`send-button-custom ${
+            isSendActionDisabled ? 'send-button-custom--disabled' : 'send-button-custom--enabled'
+          }`}
+          style={sendButtonShapeStyle}
+          icon={<SendArrowIcon size={16} />}
+          onClick={handlePrimaryAction}
+          data-testid='sendbox-send-btn'
+          aria-label={typeof sendActionTooltip === 'string' ? sendActionTooltip : sendNowLabel}
+        />
+      </span>
     </Tooltip>
   );
 
@@ -1631,7 +1653,7 @@ const SendBox: React.FC<{
         // caller's z-index, e.g. z-10, which is how the box's surface covers
         // ThoughtDisplay's tucked band) — z-3 here only needs to beat the
         // panel's own untouched content, not re-fight that outer stacking.
-        <div className='absolute right-12px top--28px z-3 pointer-events-auto'>{topRightOverlay}</div>
+        <div className='absolute end-12px top--28px z-3 pointer-events-auto'>{topRightOverlay}</div>
       )}
       <div
         ref={containerRef}
@@ -1662,7 +1684,7 @@ const SendBox: React.FC<{
           question={btwCommand.question}
         />
         {isAtFileMenuOpen && (
-          <div className='absolute left-12px right-12px bottom-[calc(100%+8px)] z-70'>
+          <div className='absolute start-12px end-12px bottom-[calc(100%+8px)] z-70'>
             <AtFileMenu
               activeIndex={atFileMenuActiveIndex}
               emptyText={
@@ -1690,7 +1712,7 @@ const SendBox: React.FC<{
           </div>
         )}
         {isCommandMenuOpen && (
-          <div className='absolute left-12px right-12px bottom-[calc(100%+8px)] z-70'>
+          <div className='absolute start-12px end-12px bottom-[calc(100%+8px)] z-70'>
             {conversationExport.step === 'menu' ? (
               <SlashCommandMenu
                 title={t('messages.export.menuTitle')}
@@ -1848,7 +1870,7 @@ const SendBox: React.FC<{
                     : ((bottomHint as string | undefined) ??
                       t('conversation.sendbox.hint', { defaultValue: 'Type / for commands, @ to reference files' }))
               }
-              className={`${shouldUseHighlightOverlay ? 'sendbox-highlight-textarea ' : ''}pl-0 pr-0 !b-none focus:shadow-none m-0 !bg-transparent !focus:bg-transparent !hover:bg-transparent lh-[20px] !resize-none text-14px ${isMobile ? 'sendbox-input--mobile' : ''}`}
+              className={`${shouldUseHighlightOverlay ? 'sendbox-highlight-textarea ' : ''}ps-0 pe-0 !b-none focus:shadow-none m-0 !bg-transparent !focus:bg-transparent !hover:bg-transparent lh-[20px] !resize-none text-14px ${isMobile ? 'sendbox-input--mobile' : ''}`}
               data-testid='sendbox-input'
               style={{
                 width: '100%',

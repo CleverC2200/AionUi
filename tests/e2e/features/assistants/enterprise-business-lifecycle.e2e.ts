@@ -129,6 +129,22 @@ const managedMcp = {
   last_connected: 1,
 };
 
+const geaGateway = {
+  id: 'gea-gateway',
+  name: 'gea-gateway',
+  enabled: true,
+  builtin: true,
+  transport: {
+    type: 'stdio' as const,
+    command: 'aioncore',
+    args: ['mcp-gea-stdio'],
+    env: { AIONUI_GEA_AGENT_CODE: 'sales_forecast' },
+  },
+  created_at: 1,
+  updated_at: 1,
+  original_json: '{}',
+};
+
 const conversation = {
   id: CONVERSATION_ID,
   type: 'acp' as const,
@@ -182,7 +198,7 @@ const waitForAttentionDrawer = async (page: Page): Promise<void> => {
       const box = await panel.boundingBox();
       return box ? { right: Math.round(box.x + box.width), width: Math.round(box.width) } : null;
     })
-    .toEqual({ right: 1440, width: 420 });
+    .toEqual({ right: 1440, width: 1120 });
 };
 
 const emitStreamAction = async (
@@ -280,7 +296,7 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
       const request = route.request();
       const pathname = new URL(request.url()).pathname;
       if (request.method() === 'GET' && pathname === '/api/mcp/servers') {
-        await fulfillJson(route, synced.has('mcps') ? [managedMcp] : []);
+        await fulfillJson(route, synced.has('mcps') ? [geaGateway, managedMcp] : [geaGateway]);
         return;
       }
       if (pathname === '/api/mcp/oauth/authenticated') {
@@ -648,6 +664,7 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
       await page.getByTestId('attention-inbox-trigger').click();
       const attentionDrawer = page.getByTestId('attention-inbox-drawer');
       await waitForAttentionDrawer(page);
+      await page.getByText(/助手请求 1|Assistant requests 1/).click();
       const erpRequest = page.getByTestId(`attention-request-${QUESTION_REQUEST_ID}`);
       await expect(erpRequest).toBeVisible();
       await expect(erpRequest).toContainText('补充成本中心');
@@ -699,6 +716,7 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
       await expect(page.getByTestId('conversation-resources-trigger')).toBeVisible();
       await page.getByTestId('attention-inbox-trigger').click();
       const emptyAttentionDrawer = page.getByTestId('attention-inbox-drawer');
+      await page.getByText(/助手请求 0|Assistant requests 0/).click();
       await expect(emptyAttentionDrawer.locator('.arco-empty')).toBeVisible();
       await emptyAttentionDrawer.locator('.arco-drawer-close-icon').click();
       await expect(emptyAttentionDrawer.locator('.arco-drawer-mask')).toBeHidden();

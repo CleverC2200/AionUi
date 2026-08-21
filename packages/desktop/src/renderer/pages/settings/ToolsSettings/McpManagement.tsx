@@ -7,6 +7,7 @@ import { useMcpConnection, useMcpModal, useMcpOAuth, useMcpServerCRUD, useMcpSer
 import AddMcpServerModal from '../components/AddMcpServerModal';
 import McpServerItem from './McpServerItem';
 import { isInternalMcpServer, isLegacyGeaMcpServer } from '@/renderer/hooks/mcp/catalog';
+import { useGeaResourceSync } from '@/renderer/hooks/system/useGeaResourceSync';
 
 interface McpManagementProps {
   message: ReturnType<typeof import('@arco-design/web-react').Message.useMessage>[0];
@@ -21,7 +22,7 @@ const isOAuthCapableServer = (server: IMcpServer) =>
 
 const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
   const { t } = useTranslation();
-  const { mcpServers, extensionMcpServers, saveMcpServers, setMcpServers } = useMcpServers();
+  const { mcpServers, extensionMcpServers, saveMcpServers, setMcpServers, refreshMcpServers } = useMcpServers();
   const visibleMcpServers = React.useMemo(() => mcpServers.filter(isVisibleMcpServer), [mcpServers]);
   const geaGateway = React.useMemo(() => mcpServers.find(isInternalMcpServer), [mcpServers]);
   const { oauthStatus, loggingIn, checkOAuthStatus, markLoginRequired, clearLoginRequired, login } = useMcpOAuth();
@@ -43,6 +44,11 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
     handleAuthRequired,
     handleAuthResolved
   );
+  const { syncing: geaSyncing, syncFromGea } = useGeaResourceSync({
+    message,
+    refresh: refreshMcpServers,
+    resource: 'mcps',
+  });
   const {
     showMcpModal,
     editingMcpServer,
@@ -161,15 +167,13 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
                     <Menu.Item
                       key='gea'
                       data-testid='fetch-gea-mcp-menu-item'
-                      disabled={testingServers[geaGateway.id]}
+                      disabled={geaSyncing}
                       onClick={(e) => {
                         e.stopPropagation();
-                        void handleTestMcpConnection(geaGateway);
+                        void syncFromGea();
                       }}
                     >
-                      {testingServers[geaGateway.id]
-                        ? t('settings.geaResourceFetching')
-                        : t('settings.geaResourceFetchFromGea')}
+                      {geaSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea')}
                     </Menu.Item>
                   ) : null}
                   <Menu.Item
