@@ -1,17 +1,160 @@
 {
   "attention": {
-    "title": "待处理",
-    "open": "打开 {{count}} 个待处理请求",
-    "empty": "暂无待处理请求",
-    "loadFailed": "待处理请求加载失败，当前工作没有被修改。",
+    "title": "审批",
+    "open": "打开审批模块，当前有 {{count}} 个待办",
+    "empty": "暂无审批事项",
+    "loadFailed": "审批事项加载失败，当前工作没有被修改。",
     "syncPartial": "有 {{count}} 个会话未完成同步。受影响的旧数据已标记，暂不可提交。",
     "syncFailed": "无法确认待处理请求是否为最新状态。旧数据暂不可提交。",
     "stale": "待同步",
+    "interactionEmpty": "暂无助手或团队交互请求",
+    "interactionLoadFailed": "助手请求加载失败，当前工作没有被修改。",
+    "demo": {
+      "label": "演示数据",
+      "description": "当前没有真实助手请求，以下 3 条仅用于展示，不计入待办，也不会触发业务操作。",
+      "forecastTitle": "请确认需求预测范围",
+      "forecastSummary": "豫南经销省区 · 2026 年 9 月 · 10 家客户",
+      "customerReviewTitle": "审批前需要复核异常客户",
+      "customerReviewSummary": "2 家客户库存周转天数偏高，等待确认处理策略",
+      "dmsSubmitTitle": "DMS 提报等待确认",
+      "dmsSubmitSummary": "提交前请确认预测金额与数量口径，当前数据仍在同步"
+    },
+    "sourceTabs": {
+      "approval": "飞书审批 {{count}}",
+      "interaction": "助手请求 {{count}}"
+    },
     "source": {
       "agent": "助手",
       "team_agent": "团队成员",
       "aioncore": "AionCore",
       "business_system": "业务系统"
+    },
+    "approval": {
+      "prototypeData": "原型数据",
+      "realData": "飞书实时数据",
+      "tabs": {
+        "pending": "待办 {{count}}",
+        "done": "已办 {{count}}"
+      },
+      "list": {
+        "pendingTitle": "待审批事项",
+        "doneTitle": "已完成事项",
+        "count": "共 {{count}} 项",
+        "pendingEmpty": "暂无待审批事项",
+        "doneEmpty": "暂无已完成事项"
+      },
+      "card": {
+        "type": "计划审批",
+        "titleSuffix": "销售计划审批",
+        "open": "打开 {{organization}} 的审批详情",
+        "openReal": "打开 {{title}} 的审批详情"
+      },
+      "status": {
+        "pending": "待审批",
+        "done": "已通过",
+        "urgent": "紧急",
+        "passed": "已通过",
+        "waiting": "待审批",
+        "notReached": "待流转"
+      },
+      "detail": {
+        "number": "编号：{{id}}",
+        "code": "组织编码：{{code}}",
+        "deadline": "截止：{{time}}",
+        "createdAt": "发起时间：{{time}}",
+        "unknownUser": "未知发起人",
+        "loadFailed": "审批实例详情加载失败",
+        "empty": "请选择一条审批事项查看详情"
+      },
+      "form": {
+        "title": "审批表单",
+        "attachment": "附件 {{index}}",
+        "attachmentUnavailable": "附件地址无效或不受信"
+      },
+      "tasks": {
+        "title": "审批任务状态"
+      },
+      "comments": {
+        "title": "审批评论"
+      },
+      "result": {
+        "title": "审批结果概览",
+        "status": "审批结果",
+        "tasks": "审批任务",
+        "records": "流转记录",
+        "attachments": "附件",
+        "items": "{{count}} 项",
+        "files": "{{count}} 个"
+      },
+      "overview": {
+        "title": "计划概览",
+        "target": "销售目标金额",
+        "confirmed": "确认金额",
+        "rate": "达成率",
+        "difference": "差异"
+      },
+      "ai": {
+        "title": "AI 审批建议",
+        "pendingCount": "本层级待审",
+        "amountRate": "整体金额达成率",
+        "inventoryDays": "平均库存周转（天）",
+        "focusSkus": "建议关注 SKU"
+      },
+      "flow": {
+        "title": "审批流明细",
+        "manualOpinion": "人工审批意见",
+        "aiOpinion": "AI 意见",
+        "currentHint": "当前待审批节点，等待您处理",
+        "notReachedHint": "该阶段尚未到达，待上级审批通过后流转",
+        "noRecord": "当前没有审批记录",
+        "currentNode": "当前审批节点"
+      },
+      "operation": {
+        "START": "发起审批",
+        "PASS": "审批通过",
+        "REJECT": "审批拒绝",
+        "TRANSFER": "转交审批",
+        "CANCEL": "撤回审批",
+        "CC": "抄送",
+        "REMOVE_REPEAT": "重复审批人已自动跳过"
+      },
+      "stage": {
+        "planSubmit": "计划提报",
+        "regional": "区域审批",
+        "province": "省区审批",
+        "area": "大区审批",
+        "category": "品类审批"
+      },
+      "actions": {
+        "transfer": "转交",
+        "handle": "处理",
+        "approve": "同意",
+        "reject": "驳回",
+        "opinionLabel": "签字意见",
+        "opinionPlaceholder": "填写签字意见，处理时会一并带入新对话",
+        "opinionHint": "意见仅保存在当前原型中，提交审批接口暂未连接",
+        "opinionPlaceholderReal": "请输入签字意见；提交同意、驳回或转交时将同步到飞书",
+        "opinionEmpty": "暂未填写",
+        "handlePromptReal": "请协助我处理以下飞书审批待办。\n\n审批任务：{{taskId}}\n审批实例：{{instanceCode}}\n标题：{{title}}\n流程：{{definitionName}}\n发起人：{{initiator}}\n摘要：\n{{summaries}}\n待签意见：{{opinion}}\n\n请核对表单、附件与审批记录，逐项询问我需要确认的内容，并协助形成最终审批意见。未经我明确确认，不要执行同意、转交或任何飞书写入。",
+        "confirmApproveTitle": "确认同意审批",
+        "confirmRejectTitle": "确认驳回审批",
+        "confirmTransferTitle": "确认转交审批",
+        "confirmDescription": "即将对“{{title}}”执行真实飞书审批操作。提交后可能无法撤销。",
+        "confirmOpinion": "审批意见：{{opinion}}",
+        "confirmRecipient": "转交给：{{name}}（{{department}}，open_id：{{openId}}）",
+        "contactPlaceholder": "输入姓名搜索企业内联系人",
+        "openInFeishu": "在飞书中打开",
+        "actionFailed": "飞书审批操作失败，请核对当前任务状态后再试。",
+        "completedReal": "该审批任务已处理",
+        "receipt": {
+          "succeeded": "飞书已确认操作成功，列表已刷新。",
+          "unknown_external_write": "未能确认飞书最终状态。为避免重复操作，系统不会自动重试；请刷新列表核对。"
+        },
+        "handlePrompt": "请协助我处理以下销售计划审批待办。\n\n审批编号：{{id}}\n组织：{{organization}}（{{organizationLevel}}，{{organizationCode}}）\n计划周期：{{planPeriod}}\n当前节点：{{currentStage}}\n截止时间：{{deadline}}\n计划摘要：{{summary}}\nAI 建议：{{aiSummary}}\n待签意见：{{opinion}}\n\n请先核对关键信息和风险，逐项询问我需要确认的内容，并协助形成最终审批意见。未经我明确确认，不要执行同意、转交或任何业务系统写入。",
+        "completed": "该计划已审批通过，当前在后续节点流转中",
+        "approvedToast": "已在原型中标记为已办",
+        "prototypeOnly": "{{action}} 暂为原型入口，尚未连接审批接口"
+      }
     }
   },
   "welcome": {

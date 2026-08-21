@@ -46,6 +46,11 @@ export type CdpBridgeHandle = {
   close: () => Promise<void>;
 };
 
+export type CdpBridgeOptions = {
+  requestBrowserTarget?: () => void;
+  targetAttachTimeoutMs?: number;
+};
+
 type AttachedState = {
   contents: WebContents;
   dbg: Debugger;
@@ -184,7 +189,12 @@ const sendError = (ws: WebSocket, id: number | undefined, message: string, sessi
  * the set across connections would starve the second client of that event, leaving
  * browser.pages() at 0 forever.
  */
-const handleSocketMessage = async (ws: WebSocket, raw: string, announcedSessions: Set<string>) => {
+const handleSocketMessage = async (
+  ws: WebSocket,
+  raw: string,
+  announcedSessions: Set<string>,
+  ensureAttachedTarget: () => Promise<boolean>
+) => {
   let req: CdpRequest;
   try {
     req = JSON.parse(raw) as CdpRequest;
@@ -260,23 +270,11 @@ const handleSocketMessage = async (ws: WebSocket, raw: string, announcedSessions
 
   // forward
   if (!attached || attached.contents.isDestroyed()) {
-    /**
-     * 说清楚「怎么办」，因为 Agent 侧无法自己修复：attach 只由渲染进程在 webview
-     * dom-ready 时上报触发（WebviewHost.tsx），Target.createTarget 又是明确拒绝的。
-     * 所以这条消息必须告诉用户去开浏览器面板，否则 Agent 只能反复撞同一面墙。
-     *
-     * Say what to do about it: the agent cannot fix this itself. Attachment is only
-     * triggered by the renderer reporting its webContents id on dom-ready
-     * (WebviewHost.tsx), and Target.createTarget is explicitly refused — so this message
-     * has to point at opening the browser panel, or the agent just retries into the same wall.
-     */
-    sendError(
-      ws,
-      id,
-      'The in-app browser is not currently attached. Open the browser panel in AionUi so a page is available to control.',
-      sessionId
-    );
-    return;
+    const targetAttached = await ensureAttachedTarget();
+    if (!targetAttached || !attached || attached.contents.isDestroyed()) {
+      sendError(ws, id, 'The in-app browser could not be opened for agent control.', sessionId);
+      return;
+    }
   }
 
   try {
@@ -337,8 +335,42 @@ const writeJson = (res: ServerResponse, body: unknown) => {
  * main window never is (see the getType() check in attachInternal). Treating same-user local
  * processes as inside the trust boundary is an explicit assumption here.
  */
-export const startCdpBridge = async (): Promise<CdpBridgeHandle> => {
+export const startCdpBridge = async (options: CdpBridgeOptions = {}): Promise<CdpBridgeHandle> => {
   const token = randomBytes(24).toString('hex');
+  const targetAttachTimeoutMs = options.targetAttachTimeoutMs ?? 5_000;
+  let resolveTargetAttached: (() => void) | null = null;
+  let targetRequestInFlight: Promise<boolean> | null = null;
+
+  const ensureAttachedTarget = (): Promise<boolean> => {
+    if (attached && !attached.contents.isDestroyed()) return Promise.resolve(true);
+    if (!options.requestBrowserTarget) return Promise.resolve(false);
+    if (targetRequestInFlight) return targetRequestInFlight;
+
+    targetRequestInFlight = new Promise<boolean>((resolve) => {
+      const timeout = setTimeout(() => {
+        resolveTargetAttached = null;
+        resolve(false);
+      }, targetAttachTimeoutMs);
+
+      resolveTargetAttached = () => {
+        clearTimeout(timeout);
+        resolveTargetAttached = null;
+        resolve(true);
+      };
+
+      try {
+        options.requestBrowserTarget();
+      } catch {
+        clearTimeout(timeout);
+        resolveTargetAttached = null;
+        resolve(false);
+      }
+    }).finally(() => {
+      targetRequestInFlight = null;
+    });
+
+    return targetRequestInFlight;
+  };
 
   const httpServer: Server = createServer((req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url ?? '/', `http://${HOST}`);
@@ -368,7 +400,10 @@ export const startCdpBridge = async (): Promise<CdpBridgeHandle> => {
     wss.handleUpgrade(req, socket, head, (ws) => {
       sockets.add(ws);
       const announcedSessions = new Set<string>();
-      ws.on('message', (data) => void handleSocketMessage(ws, data.toString(), announcedSessions));
+      ws.on(
+        'message',
+        (data) => void handleSocketMessage(ws, data.toString(), announcedSessions, ensureAttachedTarget)
+      );
       ws.on('close', () => sockets.delete(ws));
       ws.on('error', () => sockets.delete(ws));
     });
@@ -389,7 +424,11 @@ export const startCdpBridge = async (): Promise<CdpBridgeHandle> => {
     port,
     token,
     attachedWebContentsId: () => (attached && !attached.contents.isDestroyed() ? attached.contents.id : null),
-    attach: attachInternal,
+    attach: (webContentsId) => {
+      const result = attachInternal(webContentsId);
+      if (result.ok) resolveTargetAttached?.();
+      return result;
+    },
     detach: detachInternal,
     close: async () => {
       detachInternal();

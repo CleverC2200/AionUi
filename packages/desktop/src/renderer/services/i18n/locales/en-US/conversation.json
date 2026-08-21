@@ -1,17 +1,160 @@
 {
   "attention": {
-    "title": "Needs attention",
-    "open": "Open {{count}} pending requests",
-    "empty": "No pending requests",
-    "loadFailed": "Pending requests could not be loaded. Your work has not been changed.",
+    "title": "Approvals",
+    "open": "Open approvals with {{count}} pending items",
+    "empty": "No approval items",
+    "loadFailed": "Approval items could not be loaded. Your work has not been changed.",
     "syncPartial": "{{count}} sessions could not be synchronized. Affected cached items cannot be submitted yet.",
     "syncFailed": "The latest pending requests could not be confirmed. Cached items cannot be submitted yet.",
     "stale": "Sync pending",
+    "interactionEmpty": "No assistant or team interaction requests",
+    "interactionLoadFailed": "Assistant requests could not be loaded. Your work has not been changed.",
+    "demo": {
+      "label": "Demo data",
+      "description": "There are no live assistant requests. These 3 items are display-only and do not count as pending work or trigger business actions.",
+      "forecastTitle": "Confirm the demand forecast scope",
+      "forecastSummary": "Yunan sales region · September 2026 · 10 customers",
+      "customerReviewTitle": "Review exception customers before approval",
+      "customerReviewSummary": "2 customers have high inventory days and need a handling decision",
+      "dmsSubmitTitle": "DMS submission awaiting confirmation",
+      "dmsSubmitSummary": "Confirm forecast amount and quantity definitions before submitting; data is still syncing"
+    },
+    "sourceTabs": {
+      "approval": "Feishu approvals {{count}}",
+      "interaction": "Assistant requests {{count}}"
+    },
     "source": {
       "agent": "Assistant",
       "team_agent": "Team member",
       "aioncore": "AionCore",
       "business_system": "Business system"
+    },
+    "approval": {
+      "prototypeData": "Prototype data",
+      "realData": "Live Feishu data",
+      "tabs": {
+        "pending": "Pending {{count}}",
+        "done": "Done {{count}}"
+      },
+      "list": {
+        "pendingTitle": "Pending approvals",
+        "doneTitle": "Completed approvals",
+        "count": "{{count}} items",
+        "pendingEmpty": "No pending approvals",
+        "doneEmpty": "No completed approvals"
+      },
+      "card": {
+        "type": "Plan approval",
+        "titleSuffix": "sales plan approval",
+        "open": "Open approval details for {{organization}}",
+        "openReal": "Open approval details for {{title}}"
+      },
+      "status": {
+        "pending": "Pending",
+        "done": "Approved",
+        "urgent": "Urgent",
+        "passed": "Passed",
+        "waiting": "Pending",
+        "notReached": "Not reached"
+      },
+      "detail": {
+        "number": "ID: {{id}}",
+        "code": "Organization code: {{code}}",
+        "deadline": "Due: {{time}}",
+        "createdAt": "Started: {{time}}",
+        "unknownUser": "Unknown initiator",
+        "loadFailed": "Approval instance details could not be loaded",
+        "empty": "Select an approval item to view details"
+      },
+      "form": {
+        "title": "Approval form",
+        "attachment": "Attachment {{index}}",
+        "attachmentUnavailable": "The attachment URL is invalid or untrusted"
+      },
+      "tasks": {
+        "title": "Approval task status"
+      },
+      "comments": {
+        "title": "Approval comments"
+      },
+      "result": {
+        "title": "Approval result overview",
+        "status": "Result",
+        "tasks": "Approval tasks",
+        "records": "Workflow records",
+        "attachments": "Attachments",
+        "items": "{{count}} items",
+        "files": "{{count}} files"
+      },
+      "overview": {
+        "title": "Plan overview",
+        "target": "Sales target",
+        "confirmed": "Confirmed amount",
+        "rate": "Achievement rate",
+        "difference": "Difference"
+      },
+      "ai": {
+        "title": "AI approval recommendation",
+        "pendingCount": "Pending at this level",
+        "amountRate": "Overall achievement rate",
+        "inventoryDays": "Average inventory days",
+        "focusSkus": "SKUs to review"
+      },
+      "flow": {
+        "title": "Approval history",
+        "manualOpinion": "Reviewer opinion",
+        "aiOpinion": "AI opinion",
+        "currentHint": "This approval step is waiting for your decision",
+        "notReachedHint": "This stage begins after the previous approval passes",
+        "noRecord": "No approval record",
+        "currentNode": "Current approval node"
+      },
+      "operation": {
+        "START": "Approval started",
+        "PASS": "Approved",
+        "REJECT": "Rejected",
+        "TRANSFER": "Transferred",
+        "CANCEL": "Cancelled",
+        "CC": "Copied",
+        "REMOVE_REPEAT": "Duplicate approver skipped"
+      },
+      "stage": {
+        "planSubmit": "Plan submission",
+        "regional": "Regional approval",
+        "province": "Province approval",
+        "area": "Area approval",
+        "category": "Category approval"
+      },
+      "actions": {
+        "transfer": "Transfer",
+        "handle": "Handle",
+        "approve": "Approve",
+        "reject": "Reject",
+        "opinionLabel": "Sign-off opinion",
+        "opinionPlaceholder": "Enter a sign-off opinion to include in the new chat",
+        "opinionHint": "This opinion is stored only in the prototype; the approval API is not connected",
+        "opinionPlaceholderReal": "Enter a sign-off opinion to submit with an approve, reject, or transfer action",
+        "opinionEmpty": "Not provided",
+        "handlePromptReal": "Help me handle this Feishu approval.\n\nTask: {{taskId}}\nInstance: {{instanceCode}}\nTitle: {{title}}\nDefinition: {{definitionName}}\nInitiator: {{initiator}}\nSummaries:\n{{summaries}}\nDraft opinion: {{opinion}}\n\nVerify the form, attachments, and approval history, ask for each required confirmation, and help draft the final opinion. Do not approve, transfer, or write to Feishu without my explicit confirmation.",
+        "confirmApproveTitle": "Confirm approval",
+        "confirmRejectTitle": "Confirm rejection",
+        "confirmTransferTitle": "Confirm transfer",
+        "confirmDescription": "This will perform a real Feishu approval action on “{{title}}”. It may not be reversible.",
+        "confirmOpinion": "Opinion: {{opinion}}",
+        "confirmRecipient": "Transfer to: {{name}} ({{department}}, open_id: {{openId}})",
+        "contactPlaceholder": "Search internal contacts by name",
+        "openInFeishu": "Open in Feishu",
+        "actionFailed": "The Feishu approval action failed. Verify the current task state before retrying.",
+        "completedReal": "This approval task has been handled",
+        "receipt": {
+          "succeeded": "Feishu confirmed the action. The list has been refreshed.",
+          "unknown_external_write": "The final Feishu state could not be confirmed. The action will not be retried automatically; refresh and verify it."
+        },
+        "handlePrompt": "Help me handle the following sales plan approval.\n\nApproval ID: {{id}}\nOrganization: {{organization}} ({{organizationLevel}}, {{organizationCode}})\nPlan period: {{planPeriod}}\nCurrent stage: {{currentStage}}\nDeadline: {{deadline}}\nPlan summary: {{summary}}\nAI recommendation: {{aiSummary}}\nDraft opinion: {{opinion}}\n\nFirst verify the key information and risks, then ask me for each required confirmation and help draft the final approval opinion. Do not approve, transfer, or write to any business system without my explicit confirmation.",
+        "completed": "This plan is approved and is moving through subsequent stages",
+        "approvedToast": "Marked as done in the prototype",
+        "prototypeOnly": "{{action}} is a prototype action and is not connected to the approval API"
+      }
     }
   },
   "welcome": {

@@ -47,6 +47,15 @@ import {
   type InteractionRequestReceipt,
   parseInteractionRequestList,
 } from '../types/interactionRequest';
+import type {
+  ApprovalActionReceipt,
+  ApprovalContact,
+  ApprovalInstance,
+  ApprovalListTopic,
+  ApprovalTaskActionRequest,
+  ApprovalTaskList,
+  ApprovalTaskTransferRequest,
+} from '../types/approval';
 import type { ConversationRecordEvent, ConversationRecordSnapshot } from '../types/conversationRecord';
 import { parseConversationRecordSnapshot } from '../types/conversationRecord';
 import type {
@@ -578,7 +587,7 @@ export const conversation = {
 
 export const interactionRequest = {
   list: withResponseMap(
-    httpGet<InteractionRequestList, void>('/api/interaction-requests?status=active'),
+    httpGet<InteractionRequestList, void>('/api/interaction-requests?status=pending'),
     parseInteractionRequestList
   ),
   act: httpPost<InteractionRequestReceipt, InteractionRequestActionCommand>(
@@ -586,6 +595,27 @@ export const interactionRequest = {
     ({ request_id: _requestId, ...command }) => command
   ),
   changed: wsEmitter<{ revision: string }>('interactionRequest.changed'),
+};
+
+export const feishuApproval = {
+  list: httpGet<
+    ApprovalTaskList,
+    { topic: ApprovalListTopic; definitionCode?: string; pageToken?: string; pageSize?: number }
+  >((params) => {
+    const query = new URLSearchParams({ topic: params.topic, pageSize: String(params.pageSize ?? 50) });
+    if (params.definitionCode) query.set('definitionCode', params.definitionCode);
+    if (params.pageToken) query.set('pageToken', params.pageToken);
+    return `/api/approvals/tasks?${query.toString()}`;
+  }),
+  get: httpGet<ApprovalInstance, { instanceCode: string }>(
+    (params) => `/api/approvals/instances/${encodeURIComponent(params.instanceCode)}`
+  ),
+  searchContacts: httpGet<ApprovalContact[], { query: string }>(
+    (params) => `/api/approvals/contacts?query=${encodeURIComponent(params.query)}`
+  ),
+  approve: httpPost<ApprovalActionReceipt, ApprovalTaskActionRequest>('/api/approvals/tasks/approve'),
+  reject: httpPost<ApprovalActionReceipt, ApprovalTaskActionRequest>('/api/approvals/tasks/reject'),
+  transfer: httpPost<ApprovalActionReceipt, ApprovalTaskTransferRequest>('/api/approvals/tasks/transfer'),
 };
 
 export const conversationRecords = {
@@ -766,6 +796,8 @@ export const application = {
    * of every site the agent or user logged into.
    */
   clearBrowserData: bridge.buildProvider<IBridgeResponse<void>, void>('app.clear-browser-data'),
+  /** Ask the renderer to reveal an in-app browser target for the agent CDP bridge. */
+  openBrowserForAgent: bridge.buildEmitter<void>('app.open-browser-for-agent'),
   /**
    * 渲染进程把侧边浏览器 webview 的 webContents id 报给主进程，用于把单目标 CDP 通道
    * 附加到它。
@@ -780,7 +812,7 @@ export const application = {
    * in-app browser. Main validates getType() === 'webview', so even a misused call cannot
    * attach to the main window.
    */
-  reportBrowserWebContentsId: bridge.buildProvider<IBridgeResponse<void>, { webContentsId: number }>(
+  reportBrowserWebContentsId: bridge.buildProvider<IBridgeResponse<void>, { webContentsId: number; active?: boolean }>(
     'app.report-browser-webcontents-id'
   ),
   getStartOnBootStatus: bridge.buildProvider<IBridgeResponse<IStartOnBootStatus>, void>('app.get-start-on-boot-status'),

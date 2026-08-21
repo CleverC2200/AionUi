@@ -132,6 +132,17 @@ describe('ipcBridge assistant adapter', () => {
     });
   });
 
+  it('loads pending interaction requests from the AionCore contract route', async () => {
+    const { interactionRequest } = await import('@/common/adapter/ipcBridge');
+    await interactionRequest.list.invoke().catch(() => undefined);
+
+    expect(httpBridgeMocks.calls).toContainEqual({
+      method: 'GET',
+      path: '/api/interaction-requests?status=pending',
+      body: undefined,
+    });
+  });
+
   it('loads structured conversation records from AionCore', async () => {
     const { conversationRecords } = await import('@/common/adapter/ipcBridge');
     await expect(conversationRecords.get.invoke({ conversation_id: 'conversation/1' })).rejects.toThrow(
