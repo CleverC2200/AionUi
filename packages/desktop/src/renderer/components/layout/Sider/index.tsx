@@ -17,6 +17,11 @@ import TeamSiderSection from './TeamSiderSection';
 import siderStyles from './Sider.module.css';
 
 const WorkspaceGroupedHistory = React.lazy(() => import('@renderer/pages/conversation/GroupedHistory'));
+const AttentionInbox = React.lazy(() =>
+  import('@renderer/pages/conversation/AttentionInbox').then(({ AttentionInbox: Component }) => ({
+    default: Component,
+  }))
+);
 const SettingsSider = React.lazy(() => import('@renderer/pages/settings/components/SettingsSider'));
 
 const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
@@ -244,6 +249,11 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               siderTooltipProps={siderTooltipProps}
               onClick={handleScheduledClick}
             />
+            {!collapsed && (
+              <Suspense fallback={<div className='h-34px shrink-0' />}>
+                <AttentionInbox onNavigate={onSessionClick} />
+              </Suspense>
+            )}
             {/* Divider between fixed top nav and scrollable content area */}
             <div
               className={classNames(

@@ -47,6 +47,15 @@ import {
   type InteractionRequestReceipt,
   parseInteractionRequestList,
 } from '../types/interactionRequest';
+import type {
+  ApprovalActionReceipt,
+  ApprovalContact,
+  ApprovalInstance,
+  ApprovalListTopic,
+  ApprovalTaskActionRequest,
+  ApprovalTaskList,
+  ApprovalTaskTransferRequest,
+} from '../types/approval';
 import type { ConversationRecordEvent, ConversationRecordSnapshot } from '../types/conversationRecord';
 import { parseConversationRecordSnapshot } from '../types/conversationRecord';
 import type {
@@ -586,6 +595,27 @@ export const interactionRequest = {
     ({ request_id: _requestId, ...command }) => command
   ),
   changed: wsEmitter<{ revision: string }>('interactionRequest.changed'),
+};
+
+export const feishuApproval = {
+  list: httpGet<
+    ApprovalTaskList,
+    { topic: ApprovalListTopic; definitionCode?: string; pageToken?: string; pageSize?: number }
+  >((params) => {
+    const query = new URLSearchParams({ topic: params.topic, pageSize: String(params.pageSize ?? 50) });
+    if (params.definitionCode) query.set('definitionCode', params.definitionCode);
+    if (params.pageToken) query.set('pageToken', params.pageToken);
+    return `/api/approvals/tasks?${query.toString()}`;
+  }),
+  get: httpGet<ApprovalInstance, { instanceCode: string }>(
+    (params) => `/api/approvals/instances/${encodeURIComponent(params.instanceCode)}`
+  ),
+  searchContacts: httpGet<ApprovalContact[], { query: string }>(
+    (params) => `/api/approvals/contacts?query=${encodeURIComponent(params.query)}`
+  ),
+  approve: httpPost<ApprovalActionReceipt, ApprovalTaskActionRequest>('/api/approvals/tasks/approve'),
+  reject: httpPost<ApprovalActionReceipt, ApprovalTaskActionRequest>('/api/approvals/tasks/reject'),
+  transfer: httpPost<ApprovalActionReceipt, ApprovalTaskTransferRequest>('/api/approvals/tasks/transfer'),
 };
 
 export const conversationRecords = {

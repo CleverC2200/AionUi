@@ -28,7 +28,6 @@ import { useConversations } from './hooks/useConversations';
 import { useDragAndDrop } from './hooks/useDragAndDrop';
 import type { ConversationRowProps, WorkspaceGroupedHistoryProps } from './types';
 import { getProjectConversations } from './utils/groupingHelpers';
-import { AttentionInbox } from '../AttentionInbox';
 
 const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   onSessionClick,
@@ -287,8 +286,6 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
         onCancel={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
       />
-
-      {!collapsed && <AttentionInbox onNavigate={onSessionClick} />}
 
       {batchMode && !collapsed && (
         <div className='px-12px pb-8px pt-2px sticky top-0 z-20 bg-[var(--bg-2)]'>

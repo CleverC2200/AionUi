@@ -1,0 +1,823 @@
+.triggerButton:global(.arco-btn) {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 8px;
+  margin: 0;
+}
+
+.triggerButton :global(.arco-btn-content) {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+}
+
+.triggerButton :global(.arco-badge) {
+  flex-shrink: 0;
+}
+
+.triggerLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawer :global(.arco-drawer-content) {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sourceTabs {
+  flex-shrink: 0;
+}
+
+.sourceTabs :global(.arco-tabs-content) {
+  display: none;
+}
+
+.drawer :global(.arco-drawer-header) {
+  height: 44px;
+  min-height: 44px;
+  padding: 0 56px 0 16px;
+  border-bottom-color: var(--color-border-1);
+  background: var(--color-bg-2);
+}
+
+.drawer :global(.arco-drawer-close-icon) {
+  top: 2px;
+  right: 8px;
+}
+
+.drawerCloseButton:global(.arco-btn) {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--color-text-2);
+  border-radius: 8px;
+}
+
+.drawerCloseButton:global(.arco-btn):hover {
+  color: var(--color-text-1);
+  background: var(--color-fill-2);
+}
+
+.drawer :global(.arco-drawer-title) {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.workspace {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  height: auto;
+  min-height: 0;
+  color: var(--color-text-1);
+  background: var(--color-bg-1);
+}
+
+.toolbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--color-border-2);
+  background: var(--color-bg-2);
+}
+
+.toolbar :global(.arco-tabs-header) {
+  margin: 0;
+}
+
+.toolbar :global(.arco-tabs-content) {
+  display: none;
+}
+
+.toolbarAside {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.feedback {
+  max-width: 360px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--color-text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspaceBody {
+  display: grid;
+  grid-template-columns: minmax(304px, 344px) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+
+.listPane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--color-border-2);
+  background: var(--color-bg-1);
+}
+
+.listHeader {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 14px 10px;
+}
+
+.listTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-1);
+}
+
+.listCount {
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+.listScroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 0 10px 16px;
+  overflow-y: auto;
+}
+
+.listCard {
+  width: 100%;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+  text-align: left;
+  border: 1px solid var(--color-border-2) !important;
+  border-radius: 12px !important;
+  background: var(--color-bg-2) !important;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.listCard :global(.arco-btn-content) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.listCard:hover {
+  border-color: color-mix(in srgb, var(--color-aou-6-brand) 42%, var(--color-border-2)) !important;
+  background: color-mix(in srgb, var(--color-aou-1) 45%, var(--color-bg-2)) !important;
+}
+
+.listCard:focus-visible {
+  outline: 2px solid rgb(var(--primary-6));
+  outline-offset: 2px;
+}
+
+.listCardSelected {
+  border-color: var(--color-text-2) !important;
+  background: var(--color-bg-2) !important;
+}
+
+.listCardContent {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  padding: 12px 13px 11px;
+}
+
+.cardTopline,
+.cardFooter,
+.detailTitleRow,
+.flowHeading,
+.aiSummaryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardTopline {
+  min-width: 0;
+  gap: 8px;
+}
+
+.cardTopline > :global(.arco-tag) {
+  flex-shrink: 0;
+}
+
+.cardTopline > :global(.arco-tag:first-child) {
+  min-width: 0;
+  max-width: calc(100% - 68px);
+}
+
+.cardTopline > :global(.arco-tag:first-child .arco-tag-content) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardTitle {
+  display: block;
+  margin-top: 8px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--color-text-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMeta {
+  display: block;
+  min-width: 0;
+  margin-top: 5px;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--color-text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deadline,
+.doneHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cardSummary {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 7px 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--color-aou-7) 46%, var(--color-text-2));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-aou-1) 58%, var(--color-fill-1));
+  white-space: normal;
+}
+
+.cardSummaryIcon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: rgb(var(--primary-6));
+}
+
+.cardSummaryText {
+  display: block;
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.cardFooter {
+  justify-content: flex-start;
+  margin-top: 9px;
+  padding-top: 7px;
+  font-size: 11px;
+  color: var(--color-text-3);
+  border-top: 1px solid var(--color-border-1);
+}
+
+.detailPane {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-bg-1);
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.detailHeader {
+  flex-shrink: 0;
+  padding: 16px 22px 13px;
+  border-bottom: 1px solid var(--color-border-2);
+  background: var(--color-bg-2);
+}
+
+.detailTitleRow {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.detailTitle {
+  margin: 0 0 9px !important;
+  line-height: 1.35 !important;
+}
+
+.detailIdentity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-2);
+}
+
+.avatar {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--color-white) !important;
+}
+
+.blue {
+  background: rgb(var(--primary-6)) !important;
+}
+
+.purple {
+  background: rgb(var(--purple-6)) !important;
+}
+
+.orange {
+  background: rgb(var(--orange-6)) !important;
+}
+
+.red {
+  background: rgb(var(--danger-6)) !important;
+}
+
+.cyan {
+  background: rgb(var(--cyan-6)) !important;
+}
+
+.green {
+  background: rgb(var(--success-6)) !important;
+}
+
+.detailMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--color-text-3);
+}
+
+.deadline {
+  color: rgb(var(--danger-6));
+}
+
+.detailContent {
+  flex: 1;
+  min-height: 0;
+  padding: 18px 22px 26px;
+  overflow-y: auto;
+}
+
+.section + .section {
+  margin-top: 22px;
+}
+
+.sectionTitle {
+  margin: 0 0 12px !important;
+  line-height: 1.4 !important;
+  color: var(--color-text-1) !important;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  background: var(--color-bg-2);
+}
+
+.resultGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  background: var(--color-bg-2);
+}
+
+.resultGrid > div {
+  min-width: 0;
+  padding: 14px 16px;
+}
+
+.resultGrid > div + div {
+  border-left: 1px solid var(--color-border-2);
+}
+
+.resultGrid span {
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultGrid strong {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-text-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultSuccess {
+  color: rgb(var(--success-6)) !important;
+}
+
+.formField {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 14px 16px;
+  border-right: 1px solid var(--color-border-2);
+  border-bottom: 1px solid var(--color-border-2);
+  background: var(--color-bg-2);
+}
+
+.formFieldFull {
+  grid-column: 1 / -1;
+  border-right: 0 !important;
+}
+
+.formFieldFull strong {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.formApproverGrid {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.formApproverField {
+  flex: 1 0 25%;
+  border-bottom: 0;
+}
+
+.formApproverField:nth-child(n + 5) {
+  border-top: 1px solid var(--color-border-2);
+}
+
+.formApproverField:nth-child(4n),
+.formApproverField:last-child {
+  border-right: 0;
+}
+
+.metricGrid span,
+.aiMetrics span {
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metricGrid strong {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-text-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.amountUp {
+  color: rgb(var(--danger-6)) !important;
+}
+
+.amountDown {
+  color: rgb(var(--success-6)) !important;
+}
+
+.aiSummary,
+.aiInline {
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+}
+
+.aiSummary {
+  padding: 15px 16px;
+  background: var(--color-bg-2);
+}
+
+.aiSummaryHeader {
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.aiSummaryHeader > svg,
+.aiInline > svg {
+  flex-shrink: 0;
+}
+
+.aiMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 13px;
+}
+
+.aiMetrics > div {
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-bg-2) 74%, transparent);
+}
+
+.aiMetrics strong {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aiSummary > p,
+.aiInline p,
+.opinion p {
+  margin: 9px 0 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--color-text-2);
+}
+
+.tone_danger {
+  color: rgb(var(--danger-6));
+  border-color: rgb(var(--danger-3));
+  background: rgb(var(--danger-1));
+}
+
+.tone_warning {
+  color: rgb(var(--orange-6));
+  border-color: rgb(var(--orange-3));
+  background: rgb(var(--orange-1));
+}
+
+.tone_healthy {
+  color: rgb(var(--success-6));
+  border-color: rgb(var(--success-3));
+  background: rgb(var(--success-1));
+}
+
+.tone_info {
+  color: rgb(var(--primary-6));
+  border-color: rgb(var(--primary-3));
+  background: rgb(var(--primary-1));
+}
+
+.flow {
+  overflow: hidden;
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  background: var(--color-bg-2);
+}
+
+.flowStage {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  min-width: 0;
+  border-bottom: 1px solid var(--color-border-2);
+}
+
+.flowStage:last-child {
+  border-bottom: 0;
+}
+
+.flowStageCurrent {
+  background: color-mix(in srgb, var(--color-aou-1) 76%, var(--color-bg-2));
+}
+
+.flowRail {
+  display: flex;
+  justify-content: center;
+  padding-top: 16px;
+  color: var(--color-text-4);
+  border-right: 1px solid var(--color-border-2);
+}
+
+.flowStageCurrent .flowRail {
+  color: rgb(var(--primary-6));
+}
+
+.flowStage:has(.flowOwner) .flowRail {
+  color: rgb(var(--success-6));
+}
+
+.flowStageCurrent:has(.flowOwner) .flowRail {
+  color: rgb(var(--primary-6));
+}
+
+.flowBody {
+  min-width: 0;
+  padding: 13px 15px 15px;
+}
+
+.flowHeading {
+  gap: 10px;
+}
+
+.flowTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-1);
+}
+
+.flowStageCurrent .flowTitle {
+  color: rgb(var(--primary-6));
+}
+
+.flowOwner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.flowOwner > span {
+  min-width: 0;
+}
+
+.ownerName,
+.ownerOrganization {
+  display: block;
+}
+
+.ownerName {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-1);
+}
+
+.ownerOrganization {
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--color-text-3);
+}
+
+.flowTime {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--color-text-3);
+}
+
+.opinion,
+.currentHint {
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-1);
+}
+
+.opinion > span {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-3);
+}
+
+.currentHint {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgb(var(--primary-6));
+}
+
+.aiInline {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 11px;
+  padding: 10px 11px;
+}
+
+.aiInlineTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.notReached {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+.actionBar {
+  box-sizing: border-box;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  gap: 12px;
+  padding: 12px 24px 12px 22px;
+  border-top: 1px solid var(--color-border-2);
+  background: var(--color-bg-2);
+}
+
+.opinionComposer {
+  display: grid;
+  flex-shrink: 0;
+  gap: 9px;
+  padding: 14px 22px 15px;
+  border-top: 1px solid var(--color-border-2);
+  background: var(--color-bg-2);
+}
+
+.opinionLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-aou-7) 48%, var(--color-text-1));
+}
+
+.opinionComposer :global(.arco-textarea-wrapper) {
+  min-height: 96px;
+  border-radius: 8px;
+  background: var(--color-fill-1);
+}
+
+.actionBarPending {
+  justify-content: flex-end;
+}
+
+.actionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.actionBar :global(.arco-btn) {
+  min-width: 72px;
+  border-radius: 8px;
+}
+
+.doneHint {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgb(var(--success-6));
+}
+
+@media (max-width: 900px) {
+  .workspaceBody {
+    grid-template-columns: minmax(240px, 42%) minmax(0, 1fr);
+  }
+
+  .metricGrid,
+  .resultGrid,
+  .aiMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detailMeta {
+    gap: 6px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .listCard {
+    transition: none;
+  }
+}
