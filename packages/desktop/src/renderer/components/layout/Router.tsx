@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
 import DocumentTitle from '@renderer/components/layout/DocumentTitle';
+import { useCrossSessionRateLimitNotice } from '@/renderer/hooks/system/useCrossSessionRateLimitNotice';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
 import { TEAM_MODE_ENABLED } from '@/common/config/constants';
 const Conversation = React.lazy(() => import('@renderer/pages/conversation'));
@@ -44,6 +45,13 @@ const CapabilitiesRedirect: React.FC = () => {
 
 const ProtectedLayout: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
   const { status } = useAuth();
+  // Mounted once for every authenticated route: the loop warning has to reach
+  // the user even when they are looking at a THIRD conversation, which is the
+  // whole reason it is a broadcast rather than an in-conversation banner.
+  // AuthContext may expose an external identity (for example Feishu/Lark), not
+  // the Core user id carried by backend events. The hook resolves that id from
+  // Core itself so cross-user filtering compares like with like.
+  useCrossSessionRateLimitNotice();
 
   if (status === 'checking') {
     return <AppLoader />;

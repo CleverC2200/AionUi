@@ -1441,5 +1441,10 @@
     "selectAll": "Select all",
     "loadMore": "Завантажити ще",
     "loadMoreFailed": "Не вдалося завантажити ще"
-  }
+  },
+  "crossSessionMessage": "Повідомлення між розмовами",
+  "crossSessionMessageDesc": "Дозволяє агентам надсилати повідомлення до ваших інших розмов. Вимкнення також відключає згадку @@ у полі введення.",
+  "crossSessionMessageDisabledBanner": "Повідомлення між розмовами вимкнено, згадка @@ недоступна.",
+  "crossSessionMessageResume": "Увімкнути знову",
+  "crossSessionMessageUpdateFailed": "Не вдалося оновити налаштування повідомлень між розмовами"
 }

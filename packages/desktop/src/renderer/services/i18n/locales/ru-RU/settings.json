@@ -1440,5 +1440,10 @@
     "selectAll": "Select all",
     "loadMore": "Загрузить ещё",
     "loadMoreFailed": "Не удалось загрузить ещё"
-  }
+  },
+  "crossSessionMessage": "Сообщения между беседами",
+  "crossSessionMessageDesc": "Разрешить агентам отправлять сообщения в ваши другие беседы. При отключении также отключается упоминание @@ в поле ввода.",
+  "crossSessionMessageDisabledBanner": "Сообщения между беседами отключены, упоминание @@ недоступно.",
+  "crossSessionMessageResume": "Включить снова",
+  "crossSessionMessageUpdateFailed": "Не удалось обновить настройку сообщений между беседами"
 }

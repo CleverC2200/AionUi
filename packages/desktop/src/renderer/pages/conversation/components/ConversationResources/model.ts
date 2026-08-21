@@ -6,7 +6,11 @@
 
 import { getAcpImagePath } from '@/common/chat/acpToolCallOutput';
 import type { TMessage } from '@/common/chat/chatLib';
-import { AIONUI_FILES_MARKER } from '@/common/config/constants';
+import {
+  parseFileMarker,
+  resolveMessageFilePath,
+  type ParsedFileMarker,
+} from '@/renderer/pages/conversation/Messages/components/fileMarker';
 
 export type ConversationFileResourceItem = {
   kind: 'file';
@@ -38,73 +42,14 @@ export type ConversationResources = {
   sources: ConversationResourceItem[];
 };
 
-export type ParsedMessageFileMarker = {
-  text: string;
-  files: string[];
-};
+export type ParsedMessageFileMarker = ParsedFileMarker;
 
-const URL_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i;
-const MARKDOWN_ATTACHMENT_LINE_PATTERN = /^(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s?|```|~~~|\|)/;
+// Preserve the ConversationResources model API while keeping marker parsing
+// and workspace path resolution authoritative in MessageText's fileMarker.ts.
+export { parseFileMarker as parseMessageFileMarker, resolveMessageFilePath as resolveConversationResourcePath };
+
 const IMAGE_PATH_PATTERN = /\.(?:avif|bmp|gif|jpe?g|png|svg|webp)$/i;
 const HTTP_URL_PATTERN = /https?:\/\/[^\s<>"'`)\]]+/gi;
-
-const isAbsolutePath = (filePath: string): boolean =>
-  filePath.startsWith('/') || filePath.startsWith('\\\\') || /^[A-Za-z]:[\\/]/.test(filePath);
-
-const isWorkspaceRelativePath = (filePath: string): boolean => {
-  const normalized = filePath.replace(/\\/g, '/');
-  return (
-    normalized.startsWith('./') ||
-    normalized.startsWith('../') ||
-    normalized.includes('/') ||
-    /(?:^|\/)[^/]+\.[^./\s][^/]*$/.test(normalized)
-  );
-};
-
-const isLocalMessageFilePath = (filePath: string): boolean => {
-  const trimmed = filePath.trim();
-  if (!trimmed || URL_SCHEME_PATTERN.test(trimmed) || MARKDOWN_ATTACHMENT_LINE_PATTERN.test(trimmed)) {
-    return false;
-  }
-  return isAbsolutePath(trimmed) || isWorkspaceRelativePath(trimmed);
-};
-
-export const parseMessageFileMarker = (content: string, canParse: boolean): ParsedMessageFileMarker => {
-  if (!canParse) return { text: content, files: [] };
-
-  const lines = content.split(/\r?\n/);
-  let markerLineIndex = -1;
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    if (lines[index].trim() === AIONUI_FILES_MARKER) {
-      markerLineIndex = index;
-      break;
-    }
-  }
-
-  if (markerLineIndex === -1) return { text: content, files: [] };
-
-  const files = lines
-    .slice(markerLineIndex + 1)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (!files.length || files.some((filePath) => !isLocalMessageFilePath(filePath))) {
-    return { text: content, files: [] };
-  }
-
-  return {
-    text: lines.slice(0, markerLineIndex).join('\n').trimEnd(),
-    files,
-  };
-};
-
-export const resolveConversationResourcePath = (filePath: string, workspace?: string): string => {
-  if (!filePath || isAbsolutePath(filePath) || !workspace) return filePath;
-
-  const normalizedWorkspace = workspace.replace(/[\\/]+$/, '').replace(/\\/g, '/');
-  const normalizedFilePath = filePath.replace(/^\.?[\\/]+/, '').replace(/\\/g, '/');
-  return `${normalizedWorkspace}/${normalizedFilePath}`.replace(/\/+/g, '/');
-};
 
 export const conversationResourcesSlotId = (conversationId: string): string =>
   `conversation-resources-${conversationId}`;
@@ -124,7 +69,7 @@ const firstString = (record: Record<string, unknown> | undefined, keys: string[]
 };
 
 const addFileResource = (items: Map<string, ConversationResourceItem>, filePath: string, workspace?: string): void => {
-  const resolvedPath = resolveConversationResourcePath(filePath.trim(), workspace);
+  const resolvedPath = resolveMessageFilePath(filePath.trim(), workspace);
   if (!resolvedPath) return;
   const key = resolvedPath.replace(/\\/g, '/');
   items.delete(key);
@@ -271,7 +216,7 @@ export const collectConversationResources = (messages: TMessage[], workspace?: s
   for (const message of messages) {
     if (message.type === 'text') {
       if (message.position === 'right') {
-        const { files } = parseMessageFileMarker(message.content.content, true);
+        const { files } = parseFileMarker(message.content.content, true);
         for (const filePath of files) addFileResource(sourceItems, filePath, workspace);
       } else if (message.position === 'left') {
         for (const url of extractHttpUrls(message.content.content)) addUrlResource(sourceItems, url);

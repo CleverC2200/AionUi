@@ -5,6 +5,9 @@
  */
 
 import type { IMessageText } from '@/common/chat/chatLib';
+import { parseFileMarker, resolveMessageFilePath } from './fileMarker';
+import SessionMentionAction from './SessionMentionAction';
+import { parseSessionMessageBlock, parseSessionsBlock } from './sessionMarkers';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useLocalFilePreview } from '@/renderer/pages/conversation/Preview/hooks/useLocalFilePreview';
@@ -25,10 +28,6 @@ import { stripSkillSuggest, hasSkillSuggest } from '@renderer/utils/chat/skillSu
 import { isForkEnabled } from '@/common/chat/forkConversation';
 import { useForkConversation } from '@/renderer/hooks/chat/useForkConversation';
 import ForkBranchIcon from '@renderer/components/base/ForkBranchIcon';
-import {
-  parseMessageFileMarker,
-  resolveConversationResourcePath,
-} from '@/renderer/pages/conversation/components/ConversationResources/model';
 
 /**
  * Format a timestamp for message display.
@@ -58,9 +57,6 @@ import TeammateMessageAvatar from './TeammateMessageAvatar';
 import { useTeammateColor } from '@/renderer/pages/team/identity/TeamIdentityContext';
 
 const CODE_STYLE = { marginTop: 4, marginBlock: 4 };
-
-export const resolveMessageFilePath = resolveConversationResourcePath;
-
 type TeamContextResetNotice = {
   kind: 'context_reset';
   member_name: string;
@@ -138,8 +134,20 @@ const MessageText: React.FC<{
   const senderAgentType = message.content.senderAgentType;
   const senderConversationId = message.content.senderConversationId;
   const { text, files } = useMemo(
-    () => parseMessageFileMarker(contentToRender, isUserMessage),
+    () => parseFileMarker(contentToRender, isUserMessage),
     [contentToRender, isUserMessage]
+  );
+  // Cross-session markers. Both live on USER messages: the sender-side
+  // `[[AION_SESSIONS]]` block is appended to the user's own message, and a
+  // delivery is persisted as a user message too. Not parsing them would show
+  // raw marker text in a bubble.
+  const { text: textWithoutMentions, sessions: mentionedSessions } = useMemo(
+    () => (isUserMessage ? parseSessionsBlock(text) : { text, sessions: [] }),
+    [isUserMessage, text]
+  );
+  const { text: visibleText, source: deliverySource } = useMemo(
+    () => (isUserMessage ? parseSessionMessageBlock(textWithoutMentions) : { text: textWithoutMentions, source: null }),
+    [isUserMessage, textWithoutMentions]
   );
   const contextResetNotice = useMemo(
     () => (isTeammateMessage && senderName === 'team_system' ? parseTeamContextResetNotice(text) : null),
@@ -152,7 +160,7 @@ const MessageText: React.FC<{
           : 'team.systemNotice.contextResetRuntimeFailed',
         { memberName: contextResetNotice.member_name }
       )
-    : text;
+    : visibleText;
   const { data, json } = useFormatContent(renderedText);
   const shouldRenderPlainText = isUserMessage || Boolean(contextResetNotice);
   const conversationContext = useConversationContextSafe();
@@ -241,6 +249,45 @@ const MessageText: React.FC<{
             >
               {displaySenderName}
             </span>
+          </div>
+        )}
+        {deliverySource && (
+          <div
+            className={classNames('mb-4px flex items-center gap-4px text-12px text-t-secondary', {
+              'self-end': isUserMessage,
+            })}
+          >
+            <SessionMentionAction
+              id={deliverySource.fromId}
+              name={deliverySource.fromName || deliverySource.fromId}
+              label={t('conversation.crossSession.fromBadge', {
+                name: deliverySource.fromName || deliverySource.fromId,
+                defaultValue: 'From conversation {{name}}',
+              })}
+            />
+            {deliverySource.workspace && deliverySource.workspace !== 'same' && (
+              <span
+                className='px-4px rounded-4px'
+                style={{ background: 'var(--color-fill-2)' }}
+                title={deliverySource.workspace}
+              >
+                {t('conversation.crossSession.otherWorkspace', { defaultValue: 'different workspace' })}
+              </span>
+            )}
+          </div>
+        )}
+        {mentionedSessions.length > 0 && (
+          <div className={classNames('mb-4px flex flex-wrap gap-4px', { 'self-end': isUserMessage })}>
+            {mentionedSessions.map((session) => (
+              <SessionMentionAction
+                key={session.id}
+                id={session.id}
+                name={session.name}
+                label={`@@${session.name}`}
+                title={session.workspace}
+                chip
+              />
+            ))}
           </div>
         )}
         {files.length > 0 && (
