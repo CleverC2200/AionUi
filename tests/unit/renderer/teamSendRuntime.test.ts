@@ -89,11 +89,13 @@ describe('buildTeamSendRuntime', () => {
     expect(runtime.runtimeGate.canSendMessage).toBe(true);
   });
 
-  it('stops showing work after a successful pause even when queued intents remain', () => {
-    const runtime = buildTeamSendRuntime({
-      slot_id: 'lead',
-      runView: view(work({ state: 'paused', queued_background_count: 5 })),
+  it('does not show paused queued work as processing', () => {
+    const slotWork = work({
+      state: 'paused',
+      queued_foreground_count: 2,
+      queued_background_count: 3,
     });
+    const runtime = buildTeamSendRuntime({ slot_id: 'lead', runView: view(slotWork) });
 
     expect(runtime.loading).toBe(false);
     expect(runtime.queuedCount).toBe(5);
@@ -208,8 +210,8 @@ describe('buildTeamWorkStatusText', () => {
     expect(text(work({ state: 'queued', queued_foreground_count: 2 }))).toBe('processing');
   });
 
-  it('does not describe paused queued work as processing', () => {
-    expect(text(work({ state: 'paused', queued_background_count: 5 }))).toBeUndefined();
+  it('does not label paused queued work as processing', () => {
+    expect(text(work({ state: 'paused', queued_background_count: 2 }))).toBeUndefined();
   });
 });
 
@@ -232,6 +234,25 @@ describe('buildTeamStopHandler', () => {
       slot_id: 'lead',
       reason: 'user_stop',
     });
+  });
+
+  it('converges locally before reconciling after a successful stop', async () => {
+    const pauseSlotWork = vi.fn(async () => {});
+    const onStopSucceeded = vi.fn();
+    const onRunStateStale = vi.fn(async () => 'applied' as const);
+    const handler = buildTeamStopHandler({
+      team_id: 'team-1',
+      slot_id: 'lead',
+      runView: view(work({ state: 'running', active_turn_id: 'turn-1' })),
+      pauseSlotWork,
+      onStopSucceeded,
+      onRunStateStale,
+    });
+
+    await handler();
+
+    expect(onStopSucceeded).toHaveBeenCalledOnce();
+    expect(onRunStateStale).toHaveBeenCalledOnce();
   });
 });
 

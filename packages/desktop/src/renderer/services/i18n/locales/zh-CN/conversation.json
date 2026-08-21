@@ -204,7 +204,11 @@
     "batchExportConfirm": "确定导出已选的 {{count}} 个话题吗？",
     "batchDelete": "批量删除",
     "batchDeleteConfirm": "确定删除已选的 {{count}} 个话题吗？",
+    "batchDeleteConfirm_one": "确定删除已选的 {{count}} 个话题吗？",
+    "batchDeleteConfirm_other": "确定删除已选的 {{count}} 个话题吗？",
     "batchDeleteSuccess": "已删除 {{count}} 个话题",
+    "batchDeleteSuccess_one": "已删除 {{count}} 个话题",
+    "batchDeleteSuccess_other": "已删除 {{count}} 个话题",
     "batchNoSelection": "请先选择话题",
     "export": "导出",
     "exportDialogTitle": "导出话题",
@@ -233,13 +237,20 @@
     "projectsSection": "项目",
     "projectActions": "{{name}} 的项目操作",
     "conversationsSection": "对话",
-    "removeProjectTitle": "移除项目",
-    "removeProject": "移除项目",
-    "removeProjectConfirm": "确定要移除项目「{{name}}」吗？项目下的 {{count}} 个对话也会被一起移除。",
     "newConversationInProject": "在此项目中新建对话",
     "reorderPinned": "拖动以调整置顶会话顺序",
     "forkedFrom": "分叉自「{{name}}」",
-    "forkedConversation": "分叉会话"
+    "forkedConversation": "分叉会话",
+    "archive": "归档",
+    "archiveSuccess": "已归档",
+    "archiveFailed": "归档失败",
+    "batchArchive": "批量归档",
+    "batchArchiveConfirm": "确定归档已选的 {{count}} 个话题吗？归档后可在设置的归档页恢复或删除。",
+    "batchArchiveSuccess": "已归档 {{count}} 个话题",
+    "archiveProject": "归档项目",
+    "archiveProjectTitle": "归档项目",
+    "archiveProjectConfirm": "确定归档项目「{{name}}」吗？项目下的 {{count}} 个对话也会一起归档。归档后可在设置的归档页恢复或删除。",
+    "archiving": "归档中..."
   },
   "historySearch": {
     "tooltip": "检索会话",
@@ -590,7 +601,9 @@
     "searchHint": "点击这里搜索关键词",
     "empty": "暂无问答内容",
     "noMatch": "未找到匹配内容",
-    "count": "{{count}} 条"
+    "count": "{{count}} 条",
+    "count_one": "{{count}} 条",
+    "count_other": "{{count}} 条"
   },
   "chat": {
     "noModelSelected": "当前会话未选择模型，无法发送消息",
@@ -691,6 +704,8 @@
     "reorder": "拖动以调整排队指令顺序",
     "remove": "移除",
     "files": "{{count}} 个文件",
+    "files_one": "{{count}} 个文件",
+    "files_other": "{{count}} 个文件",
     "pausedAfterFailure": "下一条排队指令启动失败。请编辑、调整顺序或移除后再继续。",
     "emptyInput": "排队指令不能为空。",
     "queueFull": "队列已满，请先移除部分指令再继续添加。",
@@ -837,11 +852,16 @@
       "rename": "重命名",
       "addToChat": "添加到聊天",
       "copyRelativePath": "复制相对路径",
-      "copyAbsolutePath": "复制绝对路径"
+      "copyAbsolutePath": "复制绝对路径",
+      "refresh": "刷新",
+      "newFile": "新建文件",
+      "newDir": "新建目录"
     },
     "namePlaceholder": "名称",
     "deleteConfirm": "删除“{{name}}”？此操作无法撤销。",
     "renameFailed": "重命名失败",
+    "newFileFailed": "新建文件失败",
+    "newDirFailed": "新建目录失败",
     "tabs": {
       "files": "文件",
       "changes": "变更"
@@ -850,6 +870,8 @@
     "imported": "已导入 {{count}} 个文件",
     "importPartialFailed": "已复制 {{copied}} 个，{{failed}} 个失败（重名或不支持）",
     "importFailed": "导入文件失败",
+    "copyNodeFailed": "复制失败",
+    "moveNodeFailed": "移动失败",
     "search": {
       "placeholder": "按文件名搜索",
       "searching": "搜索中…",
@@ -919,8 +941,14 @@
         "confirmDiscardMixed": "{{tracked}} 个文件的修改将丢失且无法撤销；{{untracked}} 个新文件将被移到回收站。",
         "discardConfirmButton": "丢弃",
         "okStage": "已暂存 {{count}} 个文件",
+        "okStage_one": "已暂存 {{count}} 个文件",
+        "okStage_other": "已暂存 {{count}} 个文件",
         "okUnstage": "已取消暂存 {{count}} 个文件",
+        "okUnstage_one": "已取消暂存 {{count}} 个文件",
+        "okUnstage_other": "已取消暂存 {{count}} 个文件",
         "okDiscard": "已丢弃 {{count}} 个文件",
+        "okDiscard_one": "已丢弃 {{count}} 个文件",
+        "okDiscard_other": "已丢弃 {{count}} 个文件",
         "partial": "已完成 {{succeeded}}/{{total}} —— {{failed}} 个未能完成",
         "partialDetail": "未完成：{{files}}",
         "rejectedBlocked": "未改动任何内容 —— 请先解决冲突",
@@ -929,7 +957,9 @@
         "retry": "重试",
         "notSent": "请求没有发出到后端，未改动任何内容。可以重试。",
         "outcomeUnknown": "连接在收到答复前已重置——此操作可能已完成，也可能未完成。请刷新并核对文件列表，确认后再决定是否重试。",
-        "allFailed": "{{count}} 个文件都未能处理"
+        "allFailed": "{{count}} 个文件都未能处理",
+        "allFailed_one": "{{count}} 个文件都未能处理",
+        "allFailed_other": "{{count}} 个文件都未能处理"
       }
     },
     "pathCopied": "已复制路径",
@@ -959,5 +989,8 @@
     "exited": "退出码 {{code}}",
     "stop": "停止",
     "truncated": "(较早输出已截断)"
+  },
+  "emptyState": {
+    "greeting": "你好！说说你的需求，我这就开始。"
   }
 }

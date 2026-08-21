@@ -7,14 +7,16 @@ vi.mock('@/common/config/geaManagedServices', () => ({
 
 const sentryMocks = vi.hoisted(() => {
   const setTag = vi.fn();
+  const setUser = vi.fn();
   const flush = vi.fn(async () => true);
   return {
     captureEvent: vi.fn(() => 'event-id'),
     flush,
     getClient: vi.fn(() => ({ flush })),
     setTag,
-    withScope: vi.fn((callback: (scope: { setTag: typeof setTag }) => void) => {
-      callback({ setTag });
+    setUser,
+    withScope: vi.fn((callback: (scope: { setTag: typeof setTag; setUser: typeof setUser }) => void) => {
+      callback({ setTag, setUser });
     }),
   };
 });
@@ -30,6 +32,7 @@ describe('submitFeedbackReport', () => {
     sentryMocks.getClient.mockClear();
     sentryMocks.getClient.mockReturnValue({ flush: sentryMocks.flush });
     sentryMocks.setTag.mockClear();
+    sentryMocks.setUser.mockClear();
     sentryMocks.withScope.mockClear();
     vi.stubGlobal('window', { electronAPI: undefined });
   });
@@ -112,6 +115,44 @@ describe('submitFeedbackReport', () => {
         message: 'submitted',
       })
     );
+  });
+
+  it('scopes a trimmed contact email onto this feedback event via setUser', async () => {
+    await submitFeedbackReport({
+      collectLogs: false,
+      contactEmail: '  reporter@example.com  ',
+      description: 'Please reach out',
+      module: 'installation-integrity',
+      moduleLabel: 'AionUi installation is incomplete',
+    });
+
+    // Scoped to this event only (inside withScope), never the global
+    // Sentry.setUser — so crash reports and later events stay free of it.
+    expect(sentryMocks.setUser).toHaveBeenCalledTimes(1);
+    expect(sentryMocks.setUser).toHaveBeenCalledWith({ email: 'reporter@example.com' });
+  });
+
+  it('does not set a user when no contact email is provided', async () => {
+    await submitFeedbackReport({
+      collectLogs: false,
+      description: 'No email here',
+      module: 'installation-integrity',
+      moduleLabel: 'AionUi installation is incomplete',
+    });
+
+    expect(sentryMocks.setUser).not.toHaveBeenCalled();
+  });
+
+  it('does not set a user when the contact email is blank', async () => {
+    await submitFeedbackReport({
+      collectLogs: false,
+      contactEmail: '   ',
+      description: 'Whitespace email',
+      module: 'installation-integrity',
+      moduleLabel: 'AionUi installation is incomplete',
+    });
+
+    expect(sentryMocks.setUser).not.toHaveBeenCalled();
   });
 
   it('continues without logs when log collection is unavailable', async () => {

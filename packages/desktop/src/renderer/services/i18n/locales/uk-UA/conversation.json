@@ -45,7 +45,15 @@
     "batchExportConfirm": "Експортувати {{count}} вибраних тем?",
     "batchDelete": "Масове видалення",
     "batchDeleteConfirm": "Видалити {{count}} вибраних тем?",
+    "batchDeleteConfirm_one": "Видалити {{count}} вибрану тему?",
+    "batchDeleteConfirm_other": "Видалити {{count}} вибраних тем?",
+    "batchDeleteConfirm_few": "Видалити {{count}} вибрані теми?",
+    "batchDeleteConfirm_many": "Видалити {{count}} вибраних тем?",
     "batchDeleteSuccess": "Видалено {{count}} тем",
+    "batchDeleteSuccess_one": "Видалено {{count}} тему",
+    "batchDeleteSuccess_other": "Видалено {{count}} тем",
+    "batchDeleteSuccess_few": "Видалено {{count}} теми",
+    "batchDeleteSuccess_many": "Видалено {{count}} тем",
     "batchNoSelection": "Спочатку виберіть теми",
     "export": "Експортувати",
     "exportDialogTitle": "Експорт тем",
@@ -74,13 +82,20 @@
     "projectsSection": "Проєкти",
     "projectActions": "Дії проєкту {{name}}",
     "conversationsSection": "Розмови",
-    "removeProjectTitle": "Видалити проєкт",
-    "removeProject": "Видалити проєкт",
-    "removeProjectConfirm": "Видалити проєкт «{{name}}»? Також буде видалено {{count}} розмов у ньому.",
     "newConversationInProject": "Нова розмова в цьому проєкті",
     "reorderPinned": "Перетягніть, щоб змінити порядок закріплених розмов",
     "forkedFrom": "Відгалуження від «{{name}}»",
-    "forkedConversation": "Відгалужена розмова"
+    "forkedConversation": "Відгалужена розмова",
+    "archive": "Архівувати",
+    "archiveSuccess": "Заархівовано",
+    "archiveFailed": "Не вдалося заархівувати",
+    "batchArchive": "Batch archive",
+    "batchArchiveConfirm": "Archive {{count}} selected topics? You can restore or delete them from Archived in Settings.",
+    "batchArchiveSuccess": "Archived {{count}} topics",
+    "archiveProject": "Archive project",
+    "archiveProjectTitle": "Archive project",
+    "archiveProjectConfirm": "Archive project \"{{name}}\"? Its {{count}} conversation(s) will be archived too. You can restore or delete them from Archived in Settings.",
+    "archiving": "Archiving..."
   },
   "historySearch": {
     "tooltip": "Пошук повідомлень",
@@ -431,7 +446,11 @@
     "searchHint": "Натисніть тут для пошуку за ключовими словами",
     "empty": "Поки немає запитань та відповідей",
     "noMatch": "Відповідний контент не знайдено",
-    "count": "{{count}} ходів"
+    "count": "{{count}} ходів",
+    "count_one": "{{count}} хід",
+    "count_other": "{{count}} ходів",
+    "count_few": "{{count}} ходи",
+    "count_many": "{{count}} ходів"
   },
   "chat": {
     "noModelSelected": "Модель для поточної сесії не вибрана, неможливо надіслати повідомлення",
@@ -449,6 +468,7 @@
     "switchAgentFailed": "Не вдалося переключити агента",
     "speech": {
       "recordTooltip": "Почати голосове введення",
+      "recordTooltipWithShortcut": "Голосове введення cmd+M",
       "pickFileTooltip": "Вибрати аудіофайл",
       "stopTooltip": "Зупинити запис",
       "processing": "Транскрибування аудіо...",
@@ -495,6 +515,10 @@
     "reorder": "Перетягніть, щоб змінити порядок",
     "remove": "Видалити",
     "files": "{{count}} файлів",
+    "files_one": "{{count}} файл",
+    "files_other": "{{count}} файлів",
+    "files_few": "{{count}} файли",
+    "files_many": "{{count}} файлів",
     "pausedAfterFailure": "Наступна команда в черзі не може запуститися. Відредагуйте, змініть порядок або видаліть її, щоб продовжити.",
     "emptyInput": "Команди в черзі не можуть бути порожніми.",
     "queueFull": "Черга заповнена. Видаліть команду перед додаванням нових.",
@@ -626,11 +650,16 @@
       "rename": "Перейменувати",
       "addToChat": "Додати в чат",
       "copyRelativePath": "Копіювати відносний шлях",
-      "copyAbsolutePath": "Копіювати абсолютний шлях"
+      "copyAbsolutePath": "Копіювати абсолютний шлях",
+      "refresh": "Оновити",
+      "newFile": "Новий файл",
+      "newDir": "Нова папка"
     },
     "namePlaceholder": "Назва",
     "deleteConfirm": "Видалити «{{name}}»? Цю дію не можна скасувати.",
     "renameFailed": "Не вдалося перейменувати",
+    "newFileFailed": "Не вдалося створити файл",
+    "newDirFailed": "Не вдалося створити папку",
     "tabs": {
       "files": "Файли",
       "changes": "Зміни"
@@ -639,6 +668,8 @@
     "imported": "Імпортовано файлів: {{count}}",
     "importPartialFailed": "Скопійовано: {{copied}}, з помилкою: {{failed}} (конфлікти імен або не підтримується)",
     "importFailed": "Не вдалося імпортувати файли",
+    "copyNodeFailed": "Не вдалося скопіювати",
+    "moveNodeFailed": "Не вдалося перемістити",
     "search": {
       "placeholder": "Пошук файлів за назвою",
       "searching": "Пошук…",
@@ -708,8 +739,20 @@
         "confirmDiscardMixed": "Правки у {{tracked}} файлі(ах) буде безповоротно втрачено; {{untracked}} нових файлів потраплять до смітника.",
         "discardConfirmButton": "Скасувати",
         "okStage": "Проіндексовано файлів: {{count}}",
+        "okStage_one": "Проіндексовано файлів: {{count}}",
+        "okStage_other": "Проіндексовано файлів: {{count}}",
+        "okStage_few": "Проіндексовано файлів: {{count}}",
+        "okStage_many": "Проіндексовано файлів: {{count}}",
         "okUnstage": "Прибрано з індексу файлів: {{count}}",
+        "okUnstage_one": "Прибрано з індексу файлів: {{count}}",
+        "okUnstage_other": "Прибрано з індексу файлів: {{count}}",
+        "okUnstage_few": "Прибрано з індексу файлів: {{count}}",
+        "okUnstage_many": "Прибрано з індексу файлів: {{count}}",
         "okDiscard": "Скасовано зміни у {{count}} файлах",
+        "okDiscard_one": "Скасовано зміни у {{count}} файлі",
+        "okDiscard_other": "Скасовано зміни у {{count}} файлах",
+        "okDiscard_few": "Скасовано зміни у {{count}} файлах",
+        "okDiscard_many": "Скасовано зміни у {{count}} файлах",
         "partial": "Виконано {{succeeded}} з {{total}} —— не вдалося: {{failed}}",
         "partialDetail": "Не виконано: {{files}}",
         "rejectedBlocked": "Нічого не змінено —— спершу розв’яжіть конфлікт",
@@ -718,7 +761,11 @@
         "retry": "Повторити",
         "notSent": "Запит не дійшов до сервера, нічого не змінено. Можна повторити.",
         "outcomeUnknown": "З’єднання скинуто до отримання відповіді — операція могла завершитися, а могла й ні. Оновіть і перевірте список файлів, перш ніж повторювати.",
-        "allFailed": "Жоден із {{count}} файл(ів) не вдалося обробити"
+        "allFailed": "Жоден із {{count}} файл(ів) не вдалося обробити",
+        "allFailed_one": "Не вдалося обробити {{count}} файл",
+        "allFailed_other": "Жоден із {{count}} файлів не вдалося обробити",
+        "allFailed_few": "Жоден із {{count}} файлів не вдалося обробити",
+        "allFailed_many": "Жоден із {{count}} файлів не вдалося обробити"
       }
     },
     "pathCopied": "Шлях скопійовано",
@@ -730,5 +777,8 @@
     "exited": "Код {{code}}",
     "stop": "Зупинити",
     "truncated": "(ранній вивід обрізано)"
+  },
+  "emptyState": {
+    "greeting": "Вітаю! Розкажіть, що потрібно, і я почну."
   }
 }

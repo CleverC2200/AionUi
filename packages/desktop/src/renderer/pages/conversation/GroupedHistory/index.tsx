@@ -12,7 +12,7 @@ import { restrictToVerticalAxis } from '@/renderer/utils/ui/dndModifiers';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Button, Dropdown, Empty, Input, Menu, Modal, Tooltip } from '@arco-design/web-react';
-import { Delete, MoreOne, Plus, Right } from '@icon-park/react';
+import { FolderClose, MoreOne, Plus, Right } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,13 +21,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import WorkspaceCollapse from '../components/WorkspaceCollapse';
 import ConversationRow from './ConversationRow';
 import SortableConversationRow from './SortableConversationRow';
-import ConversationDeleteModal from './components/ConversationDeleteModal';
 import { useBatchSelection } from './hooks/useBatchSelection';
 import { useConversationActions } from './hooks/useConversationActions';
 import { useConversations } from './hooks/useConversations';
 import { useDragAndDrop } from './hooks/useDragAndDrop';
 import type { ConversationRowProps, WorkspaceGroupedHistoryProps } from './types';
-import { getProjectConversations } from './utils/groupingHelpers';
 
 const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   onSessionClick,
@@ -70,7 +68,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
           <span className='text-14px text-t-tertiary sider-section-title group-hover/label:text-t-primary transition-colors font-[500] leading-none'>
             {label}
           </span>
-          <span className='ml-2px flex items-center justify-center opacity-0 group-hover/label:opacity-100 transition-opacity text-t-tertiary shrink-0'>
+          <span className='ms-2px flex items-center justify-center opacity-0 group-hover/label:opacity-100 transition-opacity text-t-tertiary shrink-0'>
             <Right
               theme='outline'
               size={12}
@@ -78,7 +76,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
             />
           </span>
           {trailing && (
-            <div className='ml-auto' onClick={(e) => e.stopPropagation()}>
+            <div className='ms-auto' onClick={(e) => e.stopPropagation()}>
               {trailing}
             </div>
           )}
@@ -110,14 +108,10 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     renameModalName,
     setRenameModalName,
     renameLoading,
-    deleteConversationId,
-    deleteConversationLoading,
     dropdownVisibleId,
     handleConversationClick,
-    handleDeleteClick,
-    handleDeleteCancel,
-    handleDeleteConfirm,
-    handleBatchDelete,
+    handleArchive,
+    handleBatchArchive,
     handleEditStart,
     handleRenameConfirm,
     handleRenameCancel,
@@ -126,11 +120,11 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     handleOpenMenu,
     handleToggleManualUnread,
     handleCreateCronTask,
-    handleRemoveProject,
-    removeProjectTarget,
-    removeProjectLoading,
-    handleRemoveProjectCancel,
-    handleRemoveProjectConfirm,
+    handleArchiveProject,
+    archiveProjectTarget,
+    archiveProjectLoading,
+    handleArchiveProjectCancel,
+    handleArchiveProjectConfirm,
   } = useConversationActions({
     batchMode,
     onSessionClick,
@@ -183,7 +177,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       onMenuVisibleChange: handleMenuVisibleChange,
       onEditStart: handleEditStart,
       onCreateCronTask: handleCreateCronTask,
-      onDelete: handleDeleteClick,
+      onArchive: handleArchive,
       onTogglePin: handleTogglePin,
       onToggleManualUnread: handleToggleManualUnread,
       getJobStatus,
@@ -205,7 +199,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       handleMenuVisibleChange,
       handleEditStart,
       handleCreateCronTask,
-      handleDeleteClick,
+      handleArchive,
       handleTogglePin,
       handleToggleManualUnread,
       getJobStatus,
@@ -253,7 +247,16 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     [timelineSections]
   );
 
-  const hasAnyContent = timelineSections.length > 0 || pinnedConversations.length > 0;
+  if (timelineSections.length === 0 && pinnedConversations.length === 0) {
+    return (
+      <>
+        {afterPinnedContent}
+        <div className='py-48px flex-center'>
+          <Empty description={t('conversation.history.noHistory')} />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -280,13 +283,6 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
         />
       </Modal>
 
-      <ConversationDeleteModal
-        visible={deleteConversationId !== null}
-        loading={deleteConversationLoading}
-        onCancel={handleDeleteCancel}
-        onConfirm={handleDeleteConfirm}
-      />
-
       {batchMode && !collapsed && (
         <div className='px-12px pb-8px pt-2px sticky top-0 z-20 bg-[var(--bg-2)]'>
           <div className='rd-8px bg-fill-1 p-10px flex flex-col gap-8px border border-solid border-[rgba(var(--primary-6),0.08)]'>
@@ -305,26 +301,26 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
               <Button
                 className='!w-full !justify-center !min-w-0 !h-30px !px-8px !text-12px whitespace-nowrap'
                 size='mini'
-                status='warning'
-                onClick={handleBatchDelete}
+                type='primary'
+                onClick={handleBatchArchive}
               >
-                {t('conversation.history.batchDelete')}
+                {t('conversation.history.batchArchive')}
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 移除项目确认弹窗 — 使用项目自家 AionModal + 圆角线框按钮（红色危险态） */}
+      {/* 归档项目确认弹窗 — 使用项目自家 AionModal + 圆角线框按钮（归档为非危险态，用主色） */}
       <AionModal
-        visible={removeProjectTarget !== null}
+        visible={archiveProjectTarget !== null}
         style={{ width: '400px' }}
         header={{
-          title: t('conversation.history.removeProjectTitle'),
+          title: t('conversation.history.archiveProjectTitle'),
           showClose: true,
           style: { borderBottom: 'none' },
         }}
-        onCancel={handleRemoveProjectCancel}
+        onCancel={handleArchiveProjectCancel}
         footer={
           <div className='flex justify-end gap-12px pt-16px'>
             <button
@@ -334,50 +330,50 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                 border: '1px solid var(--color-border-2)',
                 backgroundColor: 'var(--color-fill-2)',
                 color: 'var(--color-text-1)',
-                cursor: removeProjectLoading ? 'not-allowed' : 'pointer',
-                opacity: removeProjectLoading ? 0.55 : 1,
+                cursor: archiveProjectLoading ? 'not-allowed' : 'pointer',
+                opacity: archiveProjectLoading ? 0.55 : 1,
               }}
               onMouseEnter={(event) => {
-                if (!removeProjectLoading) event.currentTarget.style.backgroundColor = 'var(--color-fill-3)';
+                if (!archiveProjectLoading) event.currentTarget.style.backgroundColor = 'var(--color-fill-3)';
               }}
               onMouseLeave={(event) => {
-                if (!removeProjectLoading) event.currentTarget.style.backgroundColor = 'var(--color-fill-2)';
+                if (!archiveProjectLoading) event.currentTarget.style.backgroundColor = 'var(--color-fill-2)';
               }}
-              onClick={handleRemoveProjectCancel}
-              disabled={removeProjectLoading}
+              onClick={handleArchiveProjectCancel}
+              disabled={archiveProjectLoading}
             >
-              {t('conversation.history.cancelDelete')}
+              {t('common.cancel')}
             </button>
             <button
               type='button'
               className='px-24px py-8px rounded-20px text-14px font-medium transition-all'
               style={{
-                border: '1px solid rgb(var(--danger-6))',
+                border: '1px solid rgb(var(--primary-6))',
                 backgroundColor: 'transparent',
-                color: 'rgb(var(--danger-6))',
-                cursor: removeProjectLoading ? 'not-allowed' : 'pointer',
-                opacity: removeProjectLoading ? 0.55 : 1,
+                color: 'rgb(var(--primary-6))',
+                cursor: archiveProjectLoading ? 'not-allowed' : 'pointer',
+                opacity: archiveProjectLoading ? 0.55 : 1,
               }}
               onMouseEnter={(event) => {
-                if (!removeProjectLoading) {
-                  event.currentTarget.style.backgroundColor = 'rgba(var(--danger-6), 0.08)';
+                if (!archiveProjectLoading) {
+                  event.currentTarget.style.backgroundColor = 'rgba(var(--primary-6), 0.08)';
                 }
               }}
               onMouseLeave={(event) => {
-                if (!removeProjectLoading) event.currentTarget.style.backgroundColor = 'transparent';
+                if (!archiveProjectLoading) event.currentTarget.style.backgroundColor = 'transparent';
               }}
-              onClick={() => void handleRemoveProjectConfirm()}
-              disabled={removeProjectLoading}
+              onClick={() => void handleArchiveProjectConfirm()}
+              disabled={archiveProjectLoading}
             >
-              {removeProjectLoading ? t('conversation.history.deleting') : t('conversation.history.confirmDelete')}
+              {archiveProjectLoading ? t('conversation.history.archiving') : t('conversation.history.archiveProject')}
             </button>
           </div>
         }
       >
         <div className='text-14px leading-22px text-t-secondary'>
-          {t('conversation.history.removeProjectConfirm', {
-            name: removeProjectTarget?.name ?? '',
-            count: removeProjectTarget?.conversations.length ?? 0,
+          {t('conversation.history.archiveProjectConfirm', {
+            name: archiveProjectTarget?.name ?? '',
+            count: archiveProjectTarget?.conversations.length ?? 0,
           })}
         </div>
       </AionModal>
@@ -423,15 +419,15 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                 const projectMenu = (
                   <Menu
                     onClickMenuItem={(key) => {
-                      if (key === 'remove') {
-                        handleRemoveProject(group.displayName, getProjectConversations(conversations, group.workspace));
+                      if (key === 'archive') {
+                        handleArchiveProject(group.displayName, group.conversations);
                       }
                     }}
                   >
-                    <Menu.Item key='remove' className='!text-[rgb(var(--danger-6))]'>
+                    <Menu.Item key='archive'>
                       <span className='flex items-center gap-8px'>
-                        <Delete theme='outline' size='14' />
-                        {t('conversation.history.removeProject')}
+                        <FolderClose theme='outline' size='14' />
+                        {t('conversation.history.archiveProject')}
                       </span>
                     </Menu.Item>
                   </Menu>
@@ -534,12 +530,6 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                   )}
                 </div>
               ))}
-          </div>
-        )}
-
-        {!hasAnyContent && (
-          <div className='py-48px flex-center'>
-            <Empty description={t('conversation.history.noHistory')} />
           </div>
         )}
       </div>

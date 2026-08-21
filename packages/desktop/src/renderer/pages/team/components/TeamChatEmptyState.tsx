@@ -5,6 +5,7 @@ import type { TChatConversation } from '@/common/config/storage';
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
 import { getSendBoxDraftHook } from '@renderer/hooks/chat/useSendBoxDraft';
 import { resolveAgentAvatar, useAgentLogos } from '@renderer/utils/model/agentLogo';
+import ThemedLogo from '@/renderer/components/agent/ThemedLogo';
 import { usePresetAssistantInfo } from '@renderer/hooks/agent/usePresetAssistantInfo';
 import { resolveConversationBackend } from '@/renderer/pages/conversation/utils/conversationAssistantIdentity';
 import { useTeammateColor } from '../identity/TeamIdentityContext';
@@ -130,7 +131,7 @@ const TeamChatEmptyState: React.FC<Props> = ({
         );
       }
       return (
-        <img
+        <ThemedLogo
           src={presetInfo.logo}
           alt={presetInfo.name}
           className='w-48px h-48px object-contain rounded-8px opacity-90'
@@ -139,7 +140,7 @@ const TeamChatEmptyState: React.FC<Props> = ({
     }
     if (agentAvatar.kind === 'image') {
       return (
-        <img
+        <ThemedLogo
           src={agentAvatar.value}
           alt={assistantName}
           className='w-48px h-48px object-contain rounded-8px opacity-80'
@@ -188,7 +189,7 @@ const TeamChatEmptyState: React.FC<Props> = ({
               key={suggestion.key}
               data-testid={`team-chat-empty-state-suggestion-${suggestion.key}`}
               onClick={() => fillDraft(suggestion.label)}
-              className='flex items-center gap-10px px-14px py-10px rd-10px bg-fill-2 hover:bg-fill-3 cursor-pointer transition-colors text-left border border-transparent hover:border-[var(--color-border-2)]'
+              className='flex items-center gap-10px px-14px py-10px rd-10px bg-fill-2 hover:bg-fill-3 cursor-pointer transition-colors text-start border border-transparent hover:border-[var(--color-border-2)]'
             >
               <span className='text-15px shrink-0'>{suggestion.icon}</span>
               <span className='text-13px text-t-secondary'>{suggestion.label}</span>
