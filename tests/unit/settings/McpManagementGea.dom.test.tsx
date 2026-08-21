@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const hooks = vi.hoisted(() => ({
   mcpServers: [] as unknown[],
   testMcpConnection: vi.fn(() => Promise.resolve()),
+  syncFromGea: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -20,6 +21,7 @@ vi.mock('@/renderer/hooks/mcp', () => ({
     extensionMcpServers: [],
     saveMcpServers: vi.fn(() => Promise.resolve()),
     setMcpServers: vi.fn(),
+    refreshMcpServers: vi.fn(() => Promise.resolve(true)),
   }),
   useMcpConnection: () => ({
     testingServers: {},
@@ -56,11 +58,16 @@ vi.mock('@/renderer/hooks/mcp', () => ({
   }),
 }));
 
+vi.mock('@/renderer/hooks/system/useGeaResourceSync', () => ({
+  useGeaResourceSync: () => ({ syncing: false, syncFromGea: hooks.syncFromGea }),
+}));
+
 import McpManagement from '@/renderer/pages/settings/ToolsSettings/McpManagement';
 
 describe('McpManagement GEA action', () => {
   beforeEach(() => {
     hooks.testMcpConnection.mockClear();
+    hooks.syncFromGea.mockClear();
     hooks.mcpServers = [
       {
         id: 'gea-gateway',
@@ -77,13 +84,14 @@ describe('McpManagement GEA action', () => {
 
   afterEach(cleanup);
 
-  it('shows a fetch-from-GEA action and refreshes the builtin gateway tools', async () => {
+  it('shows a fetch-from-GEA action and syncs managed MCP resources', async () => {
     render(<McpManagement message={{} as never} />);
 
     fireEvent.click(screen.getByTestId('add-mcp-server-dropdown'));
     const action = await screen.findByTestId('fetch-gea-mcp-menu-item');
     fireEvent.click(action);
 
-    await waitFor(() => expect(hooks.testMcpConnection).toHaveBeenCalledWith(hooks.mcpServers[0]));
+    await waitFor(() => expect(hooks.syncFromGea).toHaveBeenCalledTimes(1));
+    expect(hooks.testMcpConnection).not.toHaveBeenCalled();
   });
 });

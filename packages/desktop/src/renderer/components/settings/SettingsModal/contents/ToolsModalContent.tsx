@@ -35,6 +35,7 @@ import {
 import classNames from 'classnames';
 import { useSettingsTabNavigate, useSettingsViewMode } from '../settingsViewContext';
 import { isInternalMcpServer, isLegacyGeaMcpServer } from '@/renderer/hooks/mcp/catalog';
+import { useGeaResourceSync } from '@/renderer/hooks/system/useGeaResourceSync';
 
 type MessageInstance = ReturnType<typeof Message.useMessage>[0];
 
@@ -51,8 +52,19 @@ const ModalMcpManagementSection: React.FC<{
   extensionMcpServers: IMcpServer[];
   setMcpServers: React.Dispatch<React.SetStateAction<IMcpServer[]>>;
   saveMcpServers: (serversOrUpdater: IMcpServer[] | ((prev: IMcpServer[]) => IMcpServer[])) => Promise<void>;
+  geaSyncing: boolean;
+  onSyncFromGea: () => Promise<void>;
   isPageMode?: boolean;
-}> = ({ message, mcpServers, extensionMcpServers, setMcpServers, saveMcpServers, isPageMode }) => {
+}> = ({
+  message,
+  mcpServers,
+  extensionMcpServers,
+  setMcpServers,
+  saveMcpServers,
+  geaSyncing,
+  onSyncFromGea,
+  isPageMode,
+}) => {
   const { t } = useTranslation();
   const { oauthStatus, loggingIn, checkOAuthStatus, markLoginRequired, clearLoginRequired, login } = useMcpOAuth();
   const visibleMcpServers = useMemo(
@@ -190,12 +202,10 @@ const ModalMcpManagementSection: React.FC<{
             ? [
                 {
                   key: 'gea',
-                  label: testingServers[geaGateway.id]
-                    ? t('settings.geaResourceFetching')
-                    : t('settings.geaResourceFetchFromGea'),
+                  label: geaSyncing ? t('settings.geaResourceFetching') : t('settings.geaResourceFetchFromGea'),
                   onClick: (): void => {
-                    if (!testingServers[geaGateway.id]) {
-                      void handleTestMcpConnection(geaGateway);
+                    if (!geaSyncing) {
+                      void onSyncFromGea();
                     }
                   },
                 },
@@ -314,7 +324,13 @@ const ToolsModalContent: React.FC = () => {
   const [imageGenerationModel, setImageGenerationModel] = useState<ImageGenerationModelSetting | undefined>();
   const [isUpdatingImageGeneration, setIsUpdatingImageGeneration] = useState(false);
   const { modelListWithImage: data } = useConfigModelListWithImage();
-  const { mcpServers, extensionMcpServers, saveMcpServers, setMcpServers, isMcpServersLoading } = useMcpServers();
+  const { mcpServers, extensionMcpServers, saveMcpServers, setMcpServers, isMcpServersLoading, refreshMcpServers } =
+    useMcpServers();
+  const { syncing: geaSyncing, syncFromGea } = useGeaResourceSync({
+    message: mcpMessage,
+    refresh: refreshMcpServers,
+    resource: 'mcps',
+  });
   const builtinImageGenServer = useMemo(() => mcpServers.find(isBuiltinImageGenServer), [mcpServers]);
   const isImageGenerationServerLoading = isMcpServersLoading && !builtinImageGenServer;
 
@@ -542,6 +558,8 @@ const ToolsModalContent: React.FC = () => {
                   extensionMcpServers={extensionMcpServers}
                   setMcpServers={setMcpServers}
                   saveMcpServers={saveMcpServers}
+                  geaSyncing={geaSyncing}
+                  onSyncFromGea={syncFromGea}
                   isPageMode={isPageMode}
                 />
               </AionScrollArea>
