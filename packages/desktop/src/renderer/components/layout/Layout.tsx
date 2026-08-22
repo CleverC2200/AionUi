@@ -34,6 +34,7 @@ import { useNotificationClick } from '@renderer/hooks/system/notification/useNot
 import { useBrowserNotification } from '@renderer/hooks/system/notification/useBrowserNotification';
 import { useDesktopTurnNotification } from '@renderer/hooks/system/notification/useDesktopTurnNotification';
 import { useInteractionRequestSync } from '@renderer/hooks/system/notification/useInteractionRequestSync';
+import { useNotificationInboxSync } from '@renderer/hooks/system/notification/useNotificationInboxSync';
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useConversationShortcuts } from '@renderer/hooks/ui/useConversationShortcuts';
 import { isElectronDesktop } from '@renderer/utils/platform';
@@ -128,6 +129,7 @@ const Layout: React.FC<{
   useBrowserNotification();
   useDesktopTurnNotification();
   useInteractionRequestSync();
+  useNotificationInboxSync();
   const navigate = useNavigate();
   const location = useLocation();
   const workspaceAvailable =

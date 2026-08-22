@@ -16,6 +16,7 @@ import { ipcBridge } from '@/common';
 import { electronNotification } from '@/common/electronSafe';
 import { ProcessConfig } from '@process/utils/initStorage';
 import type { BrowserWindow } from 'electron';
+import type { NotificationTarget } from '@/common/types/notification';
 import path from 'path';
 import fs from 'fs';
 
@@ -59,21 +60,34 @@ export async function showNotification({
   title,
   body,
   conversation_id,
+  notification_id,
+  notification_version,
+  target,
 }: {
   title: string;
   body: string;
   conversation_id?: string;
+  notification_id?: string;
+  notification_version?: string;
+  target?: NotificationTarget;
 }): Promise<void> {
+  const diagnostic = {
+    notification_id: notification_id ?? '',
+    notification_version: notification_version ?? '',
+    target_type: target?.type ?? (conversation_id ? 'conversation' : 'notification'),
+  };
   // Check if notification is enabled
   const notificationEnabled = await ProcessConfig.get('system.notificationEnabled');
   if (notificationEnabled === false) {
     console.log('[Notification] Skipped: notifications are disabled in settings');
+    console.info('[Notification] native suppressed', { ...diagnostic, reason: 'settings_disabled' });
     return;
   }
 
   // Do not notify while the user is already looking at the app.
   if (mainWindowRef && !mainWindowRef.isDestroyed() && mainWindowRef.isFocused()) {
     console.log('[Notification] Skipped: main window is focused');
+    console.info('[Notification] native suppressed', { ...diagnostic, reason: 'window_focused' });
     return;
   }
 
@@ -84,15 +98,22 @@ export async function showNotification({
     try {
       const notification = new electronNotification({ title, body, ...(iconPath ? { icon: iconPath } : {}) });
       notification.on('click', () => {
+        console.info('[Notification] native clicked', diagnostic);
         const win = mainWindowRef;
         if (win && !win.isDestroyed()) {
           if (win.isMinimized()) win.restore();
           win.show();
           win.focus();
         }
-        ipcBridge.notification.clicked.emit({ conversation_id });
+        ipcBridge.notification.clicked.emit({
+          ...(conversation_id ? { conversation_id } : {}),
+          ...(notification_id ? { notification_id } : {}),
+          ...(notification_version ? { notification_version } : {}),
+          ...(target ? { target } : {}),
+        });
       });
       notification.show();
+      console.info('[Notification] native displayed', diagnostic);
       console.log(`[Notification] show() called (isSupported=${electronNotification.isSupported()})`);
     } catch (error) {
       console.error('[Notification] Error creating notification:', error);

@@ -47,6 +47,16 @@ import {
   type InteractionRequestReceipt,
   parseInteractionRequestList,
 } from '../types/interactionRequest';
+import {
+  type NotificationActionCommand,
+  type NotificationChangedPayload,
+  type NotificationList,
+  type NotificationReceipt,
+  type NotificationTarget,
+  type NotificationItem,
+  parseNotification,
+  parseNotificationList,
+} from '../types/notification';
 import type {
   ApprovalActionReceipt,
   ApprovalContact,
@@ -692,6 +702,31 @@ export const interactionRequest = {
     ({ request_id: _requestId, ...command }) => command
   ),
   changed: wsEmitter<{ revision: string }>('interactionRequest.changed'),
+};
+
+export const notificationInbox = {
+  list: withResponseMap(
+    httpGet<NotificationList, { status?: 'active' | 'unread' | 'read' | 'dismissed' | 'all' }>((params) => {
+      const query = new URLSearchParams({ status: params.status ?? 'active' });
+      return `/api/notifications?${query.toString()}`;
+    }),
+    parseNotificationList
+  ),
+  get: withResponseMap(
+    httpGet<NotificationItem, { notification_id: string }>(
+      (params) => `/api/notifications/${encodeURIComponent(params.notification_id)}`
+    ),
+    parseNotification
+  ),
+  markRead: httpPost<NotificationReceipt, NotificationActionCommand & { notification_id: string }>(
+    (params) => `/api/notifications/${encodeURIComponent(params.notification_id)}/read`,
+    ({ notification_id: _notificationId, ...command }) => command
+  ),
+  dismiss: httpPost<NotificationReceipt, NotificationActionCommand & { notification_id: string }>(
+    (params) => `/api/notifications/${encodeURIComponent(params.notification_id)}/dismiss`,
+    ({ notification_id: _notificationId, ...command }) => command
+  ),
+  changed: wsEmitter<NotificationChangedPayload>('notification.changed'),
 };
 
 export const feishuApproval = {
@@ -1747,11 +1782,19 @@ export type INotificationOptions = {
   body: string;
   icon?: string;
   conversation_id?: string;
+  notification_id?: string;
+  notification_version?: string;
+  target?: NotificationTarget;
 };
 
 export const notification = {
   show: bridge.buildProvider<void, INotificationOptions>('notification.show'),
-  clicked: bridge.buildEmitter<{ conversation_id?: string }>('notification.clicked'),
+  clicked: bridge.buildEmitter<{
+    conversation_id?: string;
+    notification_id?: string;
+    notification_version?: string;
+    target?: NotificationTarget;
+  }>('notification.clicked'),
 };
 
 // ---------------------------------------------------------------------------
