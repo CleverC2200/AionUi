@@ -79,6 +79,24 @@ async function readStatus(page: Page): Promise<LarkStatus> {
   return invokeBridge<LarkStatus>(page, 'lark-auth.status');
 }
 
+async function waitForBackend(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const port = (window as unknown as { __backendPort?: number }).__backendPort;
+          if (!port) return false;
+          try {
+            return (await fetch(`http://127.0.0.1:${port}/api/gea/auth/session`)).ok;
+          } catch {
+            return false;
+          }
+        }),
+      { timeout: 90_000 }
+    )
+    .toBe(true);
+}
+
 async function authenticateWithMockQr(page: Page): Promise<void> {
   const created = await invokeBridge<LarkAuthResult<LarkQrLoginSession>>(page, 'lark-auth.create-qr-session');
   expect(created.success).toBe(true);
@@ -107,6 +125,7 @@ test.describe.serial('Desktop Lark credential restart boundary', () => {
 
     try {
       desktop = await launchDesktop(userDataDir, mockGea);
+      await waitForBackend(desktop.page);
       await authenticateWithMockQr(desktop.page);
       await expect
         .poll(async () => (await readStatus(desktop?.page as Page)).data?.authenticated, { timeout: 60_000 })
