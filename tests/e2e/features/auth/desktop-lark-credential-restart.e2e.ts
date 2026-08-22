@@ -53,6 +53,7 @@ async function launchDesktop(
   mockGea: MockGeaLarkServer
 ): Promise<{
   app: ElectronApplication;
+  diagnostics: string[];
   page: Page;
 }> {
   const app = await electron.launch({
@@ -72,14 +73,25 @@ async function launchDesktop(
     },
     timeout: 90_000,
   });
-  return { app, page: await resolveMainWindow(app) };
+  const diagnostics: string[] = [];
+  const capture = (source: 'stderr' | 'stdout') => (chunk: Buffer | string) => {
+    for (const rawLine of chunk.toString().split(/\r?\n/)) {
+      if (!/(?:\[aioncore\]|backend(?:Manager| startup)|AIONCORE_)/i.test(rawLine)) continue;
+      const line = rawLine.replaceAll(userDataDir, '<user-data>').replaceAll(backendBinary, '<aioncore-binary>');
+      diagnostics.push(`${source}: ${line}`);
+      if (diagnostics.length > 40) diagnostics.shift();
+    }
+  };
+  app.process().stdout?.on('data', capture('stdout'));
+  app.process().stderr?.on('data', capture('stderr'));
+  return { app, diagnostics, page: await resolveMainWindow(app) };
 }
 
 async function readStatus(page: Page): Promise<LarkStatus> {
   return invokeBridge<LarkStatus>(page, 'lark-auth.status');
 }
 
-async function waitForBackend(page: Page): Promise<void> {
+async function waitForBackend(page: Page, diagnostics: string[]): Promise<void> {
   let lastProbe: { error?: string; port: number; startupFailure?: string; status?: number } | undefined;
   try {
     await expect
@@ -96,13 +108,19 @@ async function waitForBackend(page: Page): Promise<void> {
               return { error: error instanceof Error ? error.message : String(error), port, startupFailure };
             }
           });
+          if (lastProbe.startupFailure === 'backend_startup_exited') {
+            throw new Error('desktop Core exited before readiness');
+          }
           return lastProbe.status === 200;
         },
         { timeout: 90_000 }
       )
       .toBe(true);
   } catch (error) {
-    throw new Error(`desktop Core readiness failed: ${JSON.stringify(lastProbe)}`, { cause: error });
+    throw new Error(
+      `desktop Core readiness failed: ${JSON.stringify(lastProbe)}; startup diagnostics: ${JSON.stringify(diagnostics)}`,
+      { cause: error }
+    );
   }
 }
 
@@ -134,7 +152,7 @@ test.describe.serial('Desktop Lark credential restart boundary', () => {
 
     try {
       desktop = await launchDesktop(userDataDir, mockGea);
-      await waitForBackend(desktop.page);
+      await waitForBackend(desktop.page, desktop.diagnostics);
       await authenticateWithMockQr(desktop.page);
       await expect
         .poll(async () => (await readStatus(desktop?.page as Page)).data?.authenticated, { timeout: 60_000 })
