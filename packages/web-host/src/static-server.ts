@@ -21,6 +21,7 @@ export type StaticServerOptions = {
   port?: number;
   allowRemote?: boolean;
   larkAuth?: WebHostLarkAuth;
+  coreSessionBootstrapSecret?: string;
 };
 
 export type StaticServerHandle = {
@@ -83,13 +84,15 @@ function forwardToBackend(
   backendPort: number,
   gateway?: LarkAuthGateway
 ): void {
+  const candidateHeaders = gateway ? gateway.getBackendHeaders(req.headers) : req.headers;
+  const { 'x-aioncore-bootstrap-secret': _bootstrapSecret, ...publicHeaders } = candidateHeaders;
   const options: http.RequestOptions = {
     hostname: '127.0.0.1',
     port: backendPort,
     path: req.url,
     method: req.method,
     headers: {
-      ...(gateway ? gateway.getBackendHeaders(req.headers) : req.headers),
+      ...publicHeaders,
       host: `127.0.0.1:${backendPort}`,
     },
   };
@@ -170,11 +173,17 @@ function peekWsRoute(buf: Buffer): boolean | null {
   return /^GET\s+\/(?:ws|api\/stt\/stream)(?:\?[^\s]*)?\s+HTTP\/1\.[01]\r?$/.test(firstLine);
 }
 
+function isTrustedBackendRoute(url: string): boolean {
+  return url.split('?', 1)[0].startsWith('/api/auth/internal/');
+}
+
 export async function startStaticServer(opts: StaticServerOptions): Promise<StaticServerHandle> {
   const port = opts.port ?? DEFAULT_PORT;
   const allowRemote = opts.allowRemote === true;
   const host = allowRemote ? '0.0.0.0' : '127.0.0.1';
-  const authGateway = opts.larkAuth ? await LarkAuthGateway.create(opts.backendPort, opts.larkAuth) : undefined;
+  const authGateway = opts.larkAuth
+    ? LarkAuthGateway.create(opts.backendPort, opts.larkAuth, opts.coreSessionBootstrapSecret)
+    : undefined;
 
   // The HTTP server listens only on loopback — user traffic hits the outer
   // net.Server first. We route to this server for everything except WS
@@ -193,6 +202,12 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
       }
 
       if (authGateway && (await authGateway.handleRequest(req, res))) {
+        return;
+      }
+
+      if (isTrustedBackendRoute(req.url)) {
+        res.writeHead(404, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+        res.end(JSON.stringify({ success: false, error: 'NOT_FOUND' }));
         return;
       }
 

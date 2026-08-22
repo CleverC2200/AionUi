@@ -282,6 +282,18 @@ describe('buildSpawnEnv', () => {
       }
     }
   });
+
+  it('strips an ambient bootstrap secret and only injects the explicit Core child secret', () => {
+    const previous = process.env.AIONCORE_BOOTSTRAP_SECRET;
+    process.env.AIONCORE_BOOTSTRAP_SECRET = 'ambient-secret';
+    try {
+      expect(buildSpawnEnv()).not.toHaveProperty('AIONCORE_BOOTSTRAP_SECRET');
+      expect(buildSpawnEnv(undefined, 'direct-core-secret').AIONCORE_BOOTSTRAP_SECRET).toBe('direct-core-secret');
+    } finally {
+      if (previous === undefined) delete process.env.AIONCORE_BOOTSTRAP_SECRET;
+      else process.env.AIONCORE_BOOTSTRAP_SECRET = previous;
+    }
+  });
 });
 
 describe('findAvailablePort', () => {

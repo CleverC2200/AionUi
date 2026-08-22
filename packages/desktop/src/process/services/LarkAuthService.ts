@@ -171,17 +171,22 @@ export function resolveLarkAuthSessionFileName(baseUrl: string): string {
 }
 
 export async function pollSharedLarkAuthSession(qrcodeId: string): Promise<LarkQrLoginPollResult> {
-  const result = await sharedLarkAuthService.pollQrSession(qrcodeId);
-  if (result.status !== 'authenticated' || !result.user) return result;
+  return (await pollSharedLarkAuthSessionWithIdentity(qrcodeId)).result;
+}
+
+async function pollSharedLarkAuthSessionWithIdentity(qrcodeId: string) {
+  const verified = await sharedLarkAuthService.pollQrSessionWithIdentity(qrcodeId);
+  const result = verified.result;
+  if (result.status !== 'authenticated' || !result.user) return verified;
   await syncSharedGeaSessionToBackend({ replaceInvalidated: true });
-  if (!personalModelGateway) return result;
+  if (!personalModelGateway) return verified;
   let personalModelSync: PersonalModelSyncResult;
   try {
     personalModelSync = await personalModelGateway.sync(result.user, sharedLarkAuthService);
   } catch {
     personalModelSync = { configured: 0, failed: 1, skipped: 0, status: 'partial' };
   }
-  return { ...result, personalModelSync };
+  return { ...verified, result: { ...result, personalModelSync } };
 }
 
 export async function syncSharedPersonalModels(): Promise<PersonalModelSyncResult> {
@@ -257,14 +262,16 @@ export function createSharedWebHostLarkAuth(): WebHostLarkAuth {
     },
     pollQrSession: async (qrcodeId) => {
       try {
-        return { success: true, data: await pollSharedLarkAuthSession(qrcodeId) };
+        const { identity, result } = await sharedLarkAuthService.pollQrSessionWithIdentity(qrcodeId);
+        return { ...(identity ? { identity } : {}), publicResult: { success: true, data: result } };
       } catch (error) {
         return {
-          success: false,
-          code: error instanceof GeaLarkAuthServiceError ? error.code : 'serverError',
+          publicResult: {
+            success: false,
+            code: error instanceof GeaLarkAuthServiceError ? error.code : 'serverError',
+          },
         };
       }
     },
-    logout: logoutSharedLarkAuthSession,
   };
 }

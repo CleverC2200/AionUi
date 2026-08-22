@@ -1,23 +1,24 @@
 import { randomBytes } from 'node:crypto';
 import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from 'node:http';
-import type { WebHostLarkAuth, WebHostLarkAuthUser } from './types.js';
+import { CoreSessionClient, getCoreSessionBootstrapSecret } from './core-session-client.js';
+import type {
+  WebHostLarkAuth,
+  WebHostLarkAuthResult,
+  WebHostLarkAuthUser,
+  WebHostLarkExternalIdentity,
+  WebHostLarkQrLoginPollResult,
+  WebHostLarkQrLoginSession,
+} from './types.js';
 
 const WEB_SESSION_COOKIE = 'aionui-web-session';
 const WEB_SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 const MAX_JSON_BODY_BYTES = 16 * 1024;
 
 type WebSession = {
+  coreSessionCookie: string;
   expiresAt: number;
+  identity: WebHostLarkExternalIdentity;
   user: WebHostLarkAuthUser;
-};
-
-type BackendSystemUserResponse = {
-  data?: { username?: string };
-};
-
-type BackendPasswordResponse = {
-  data?: { new_password?: string };
-  new_password?: string;
 };
 
 function writeJson(res: ServerResponse, statusCode: number, body: unknown, headers: Record<string, string> = {}): void {
@@ -53,68 +54,30 @@ async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknow
   return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
 }
 
-async function backendJson<T>(
-  backendPort: number,
-  path: string,
-  options: { method?: string; body?: unknown } = {}
-): Promise<{ data: T; setCookie?: string }> {
-  const response = await fetch(`http://127.0.0.1:${backendPort}${path}`, {
-    method: options.method ?? 'GET',
-    headers: options.body === undefined ? undefined : { 'content-type': 'application/json' },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
-  if (!response.ok) {
-    throw new Error(`Backend ${path} returned ${response.status}`);
-  }
-  return {
-    data: (await response.json()) as T,
-    setCookie: response.headers.get('set-cookie') ?? undefined,
-  };
-}
-
-async function createBackendSessionCookie(backendPort: number): Promise<string> {
-  const userResponse = await backendJson<BackendSystemUserResponse>(backendPort, '/api/auth/internal/users/system');
-  const username = userResponse.data.data?.username?.trim();
-  if (!username) {
-    throw new Error('Backend system user has no username');
-  }
-
-  // The backend account is now an implementation detail. Rotate its password
-  // when WebUI starts and keep both the password and resulting session server-side.
-  const passwordResponse = await backendJson<BackendPasswordResponse>(backendPort, '/api/webui/reset-password', {
-    method: 'POST',
-  });
-  const password = passwordResponse.data.data?.new_password ?? passwordResponse.data.new_password;
-  if (!password) {
-    throw new Error('Backend password reset returned no password');
-  }
-
-  const loginResponse = await backendJson<unknown>(backendPort, '/login', {
-    method: 'POST',
-    body: { username, password, remember: true },
-  });
-  const cookiePair = loginResponse.setCookie?.split(';', 1)[0]?.trim();
-  if (!cookiePair) {
-    throw new Error('Backend login returned no session cookie');
-  }
-  return cookiePair;
-}
-
 export class LarkAuthGateway {
   private readonly sessions = new Map<string, WebSession>();
 
   private constructor(
     private readonly larkAuth: WebHostLarkAuth,
-    private readonly backendSessionCookie: string
+    private readonly coreSessions: CoreSessionClient
   ) {}
 
-  static async create(backendPort: number, larkAuth: WebHostLarkAuth): Promise<LarkAuthGateway> {
-    return new LarkAuthGateway(larkAuth, await createBackendSessionCookie(backendPort));
+  static create(backendPort: number, larkAuth: WebHostLarkAuth, bootstrapSecret?: string): LarkAuthGateway {
+    const heldBootstrapSecret = getCoreSessionBootstrapSecret();
+    return new LarkAuthGateway(larkAuth, new CoreSessionClient(backendPort, bootstrapSecret ?? heldBootstrapSecret));
   }
 
   getBackendHeaders(headers: IncomingHttpHeaders): IncomingHttpHeaders {
-    const { cookie: _cookie, host: _host, ...forwardedHeaders } = headers;
-    return { ...forwardedHeaders, cookie: this.backendSessionCookie };
+    const session = this.getSession(headers.cookie);
+    const {
+      cookie: _cookie,
+      host: _host,
+      authorization: _authorization,
+      'x-access-token': _accessToken,
+      'x-aioncore-bootstrap-secret': _bootstrapSecret,
+      ...forwardedHeaders
+    } = headers;
+    return { ...forwardedHeaders, ...(session ? { cookie: session.coreSessionCookie } : {}) };
   }
 
   isAuthenticated(cookieHeader: string | undefined): boolean {
@@ -125,7 +88,7 @@ export class LarkAuthGateway {
     const url = req.url?.split('?', 1)[0];
 
     if (url === '/api/lark-auth/qr-session' && req.method === 'POST') {
-      writeJson(res, 200, await this.larkAuth.createQrSession());
+      writeJson(res, 200, sanitizeQrSessionResult(await this.larkAuth.createQrSession()));
       return true;
     }
 
@@ -137,11 +100,21 @@ export class LarkAuthGateway {
           writeJson(res, 400, { success: false, code: 'invalidResponse' });
           return true;
         }
-        const result = await this.larkAuth.pollQrSession(qrcodeId);
+        const poll = await this.larkAuth.pollQrSession(qrcodeId);
+        const result = sanitizePollResult(poll.publicResult);
         if (result.success && result.data.status === 'authenticated' && result.data.user) {
+          const identity = sanitizeExternalIdentity(poll.identity);
+          if (!identity) {
+            writeJson(res, 502, { success: false, code: 'serverError' });
+            return true;
+          }
+          await this.coreSessions.ensureMapping(identity);
+          const coreSession = await this.coreSessions.exchange(identity);
           const token = randomBytes(32).toString('base64url');
           this.sessions.set(token, {
+            coreSessionCookie: coreSession.cookie,
             expiresAt: Date.now() + WEB_SESSION_MAX_AGE_SECONDS * 1000,
+            identity,
             user: result.data.user,
           });
           writeJson(res, 200, result, {
@@ -151,7 +124,7 @@ export class LarkAuthGateway {
         }
         writeJson(res, 200, result);
       } catch {
-        writeJson(res, 400, { success: false, code: 'invalidResponse' });
+        writeJson(res, 502, { success: false, code: 'serverError' });
       }
       return true;
     }
@@ -180,16 +153,21 @@ export class LarkAuthGateway {
 
     if ((url === '/api/lark-auth/logout' || url === '/logout') && req.method === 'POST') {
       const token = cookieValue(req.headers.cookie, WEB_SESSION_COOKIE);
+      const session = token ? this.sessions.get(token) : undefined;
       if (token) this.sessions.delete(token);
-      await this.larkAuth.logout?.();
-      writeJson(
-        res,
-        200,
-        { success: true, data: { authenticated: false } },
-        {
-          'set-cookie': `${WEB_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`,
+      let statusCode = 200;
+      let responseBody: unknown = { success: true, data: { authenticated: false } };
+      if (session) {
+        try {
+          await this.coreSessions.revoke(session.identity);
+        } catch {
+          statusCode = 502;
+          responseBody = { success: false, code: 'serverError' };
         }
-      );
+      }
+      writeJson(res, statusCode, responseBody, {
+        'set-cookie': `${WEB_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`,
+      });
       return true;
     }
 
@@ -210,10 +188,13 @@ export class LarkAuthGateway {
       .find((line) => /^cookie:/i.test(line))
       ?.slice('cookie:'.length)
       .trim();
-    if (!this.isAuthenticated(cookieHeader)) return null;
+    const session = this.getSession(cookieHeader);
+    if (!session) return null;
 
-    const nextLines = lines.filter((line) => !/^cookie:/i.test(line));
-    nextLines.push(`Cookie: ${this.backendSessionCookie}`);
+    const nextLines = lines.filter(
+      (line) => !/^(?:cookie|authorization|x-access-token|x-aioncore-bootstrap-secret):/i.test(line)
+    );
+    nextLines.push(`Cookie: ${session.coreSessionCookie}`);
     const nextHeader = Buffer.from(`${nextLines.join('\r\n')}\r\n\r\n`, 'latin1');
     return Buffer.concat([nextHeader, requestBytes.subarray(headerEnd + 4)]);
   }
@@ -229,4 +210,76 @@ export class LarkAuthGateway {
     }
     return session;
   }
+}
+
+function sanitizeUser(user: WebHostLarkAuthUser): WebHostLarkAuthUser {
+  return {
+    id: user.id,
+    username: user.username,
+    realname: user.realname,
+    ...(user.avatar ? { avatar: user.avatar } : {}),
+    ...(user.email ? { email: user.email } : {}),
+    ...(user.phone ? { phone: user.phone } : {}),
+  };
+}
+
+function sanitizeQrSessionResult(
+  result: WebHostLarkAuthResult<WebHostLarkQrLoginSession>
+): WebHostLarkAuthResult<WebHostLarkQrLoginSession> {
+  if (result.success === false) return { success: false, code: result.code };
+  return {
+    success: true,
+    data: {
+      expiresIn: result.data.expiresIn,
+      loginUrl: result.data.loginUrl,
+      qrcodeId: result.data.qrcodeId,
+    },
+  };
+}
+
+function sanitizePollResult(
+  result: WebHostLarkAuthResult<WebHostLarkQrLoginPollResult>
+): WebHostLarkAuthResult<WebHostLarkQrLoginPollResult> {
+  if (result.success === false) return { success: false, code: result.code };
+  const data = result.data;
+  return {
+    success: true,
+    data: {
+      status: data.status,
+      ...(data.user ? { user: sanitizeUser(data.user) } : {}),
+      ...(data.personalModelSync
+        ? {
+            personalModelSync: {
+              configured: data.personalModelSync.configured,
+              failed: data.personalModelSync.failed,
+              skipped: data.personalModelSync.skipped,
+              status: data.personalModelSync.status,
+            },
+          }
+        : {}),
+    },
+  };
+}
+
+function sanitizeExternalIdentity(
+  identity: WebHostLarkExternalIdentity | undefined
+): WebHostLarkExternalIdentity | null {
+  if (
+    !identity ||
+    identity.provider !== 'lark' ||
+    identity.issuer.trim() !== identity.issuer ||
+    identity.issuer === '' ||
+    identity.tenant_id.trim() !== identity.tenant_id ||
+    identity.tenant_id === '' ||
+    identity.subject.trim() !== identity.subject ||
+    identity.subject === ''
+  ) {
+    return null;
+  }
+  return {
+    provider: 'lark',
+    issuer: identity.issuer,
+    tenant_id: identity.tenant_id,
+    subject: identity.subject,
+  };
 }

@@ -54,9 +54,22 @@ export type WebHostLarkQrLoginPollResult = {
   };
 };
 
+/** Exact server-only Lark identity asserted after GEA verifies the QR login. */
+export type WebHostLarkExternalIdentity = {
+  provider: 'lark';
+  issuer: string;
+  tenant_id: string;
+  subject: string;
+};
+
 export type WebHostLarkAuthResult<T> =
   | { success: true; data: T }
   | { success: false; code: 'invalidResponse' | 'networkError' | 'serverError' };
+
+export type WebHostLarkAuthPoll = {
+  identity?: WebHostLarkExternalIdentity;
+  publicResult: WebHostLarkAuthResult<WebHostLarkQrLoginPollResult>;
+};
 
 /**
  * Lark authentication operations supplied by the host process.
@@ -64,8 +77,7 @@ export type WebHostLarkAuthResult<T> =
  */
 export type WebHostLarkAuth = {
   createQrSession: () => Promise<WebHostLarkAuthResult<WebHostLarkQrLoginSession>>;
-  logout?: () => Promise<void> | void;
-  pollQrSession: (qrcodeId: string) => Promise<WebHostLarkAuthResult<WebHostLarkQrLoginPollResult>>;
+  pollQrSession: (qrcodeId: string) => Promise<WebHostLarkAuthPoll>;
 };
 
 /**
@@ -79,6 +91,8 @@ export type WebHostOptions = {
   dataDir?: string;
   logDir?: string;
   dirs?: BackendSystemDirs;
+  /** Server-only secret shared with the direct aioncore child. */
+  coreSessionBootstrapSecret?: string;
   backend: { kind: 'ownBackend'; resolveBackend: BackendBinaryResolver } | { kind: 'useExistingBackend'; port: number };
   larkAuth?: WebHostLarkAuth;
 };

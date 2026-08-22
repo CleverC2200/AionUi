@@ -18,14 +18,21 @@ async function mkRendererFixture(): Promise<string> {
 
 async function startMockBackend(
   handler: (req: http.IncomingMessage, res: http.ServerResponse) => void
-): Promise<{ port: number; close: () => Promise<void> }> {
+): Promise<{ port: number; server: http.Server; close: () => Promise<void> }> {
   const server = http.createServer(handler);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
   const port = (server.address() as AddressInfo).port;
   return {
     port,
+    server,
     close: () => new Promise<void>((r) => server.close(() => r())),
   };
+}
+
+async function readRequestJson(req: http.IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
 }
 
 describe('static-server', () => {
@@ -88,6 +95,38 @@ describe('static-server', () => {
     expect(r.status).toBe(200);
     const json = (await r.json()) as { path: string };
     expect(json.path).toBe('/api/anything');
+  });
+
+  it('blocks trusted Core routes and strips only the bootstrap header without Lark auth', async () => {
+    let trustedRequests = 0;
+    let publicHeaders: http.IncomingHttpHeaders | undefined;
+    const backend = await startMockBackend((req, res) => {
+      if (req.url?.startsWith('/api/auth/internal/')) trustedRequests += 1;
+      if (req.url === '/api/anything') publicHeaders = req.headers;
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    });
+    stopBackend = backend.close;
+    handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+
+    const trustedResponse = await fetch(`${handle.localUrl}/api/auth/internal/external-sessions`, {
+      method: 'POST',
+      headers: { 'x-aioncore-bootstrap-secret': 'browser-injected' },
+    });
+    expect(trustedResponse.status).toBe(404);
+    expect(trustedRequests).toBe(0);
+
+    const publicResponse = await fetch(`${handle.localUrl}/api/anything`, {
+      headers: {
+        authorization: 'Bearer public-api-token',
+        'x-access-token': 'public-upstream-token',
+        'x-aioncore-bootstrap-secret': 'browser-injected',
+      },
+    });
+    expect(publicResponse.status).toBe(200);
+    expect(publicHeaders?.['x-aioncore-bootstrap-secret']).toBeUndefined();
+    expect(publicHeaders?.authorization).toBe('Bearer public-api-token');
+    expect(publicHeaders?.['x-access-token']).toBe('public-upstream-token');
   });
 
   it('/login reverse-proxies to backend (no local handler)', async () => {
@@ -154,53 +193,117 @@ describe('static-server', () => {
     expect(r.headers.get('set-cookie')).toMatch(/Max-Age=0/);
   });
 
-  it('uses a Lark browser session and keeps the backend session private', async () => {
-    let forwardedCookie = '';
-    const backend = await startMockBackend((req, res) => {
-      if (req.url === '/api/auth/internal/users/system') {
+  it('isolates two Lark identities across HTTP, WebSocket, and logout without leaking credentials', async () => {
+    const provisionBodies: unknown[] = [];
+    const exchangeBodies: unknown[] = [];
+    const revokeBodies: unknown[] = [];
+    const trustedBootstrapHeaders: string[] = [];
+    const forwardedHeaders: http.IncomingHttpHeaders[] = [];
+    const upgradeHeaders: http.IncomingHttpHeaders[] = [];
+    let trustedBrowserRequests = 0;
+    const backend = await startMockBackend(async (req, res) => {
+      if (req.url === '/api/auth/internal/external-identities' && req.method === 'PUT') {
+        trustedBootstrapHeaders.push(String(req.headers['x-aioncore-bootstrap-secret'] ?? ''));
+        provisionBodies.push(await readRequestJson(req));
+        const identity = (provisionBodies.at(-1) as { identity: { subject: string } }).identity;
         res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ success: true, data: { username: 'internal-user' } }));
+        res.end(JSON.stringify({ success: true, data: { core_user_id: `core-${identity.subject}`, created: true } }));
         return;
       }
-      if (req.url === '/api/webui/reset-password' && req.method === 'POST') {
-        res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ success: true, data: { new_password: 'internal-password' } }));
-        return;
-      }
-      if (req.url === '/login' && req.method === 'POST') {
+      if (req.url === '/api/auth/internal/external-sessions' && req.method === 'POST') {
+        trustedBootstrapHeaders.push(String(req.headers['x-aioncore-bootstrap-secret'] ?? ''));
+        exchangeBodies.push(await readRequestJson(req));
+        const identity = (exchangeBodies.at(-1) as { identity: { subject: string } }).identity;
         res.writeHead(200, {
           'content-type': 'application/json',
-          'set-cookie': 'aionui-session=backend-token; Path=/; HttpOnly',
+          'set-cookie': `aionui-session=core-${identity.subject}; Path=/; HttpOnly; SameSite=Lax`,
         });
-        res.end(JSON.stringify({ success: true }));
+        res.end(
+          JSON.stringify({
+            success: true,
+            data: { user: { id: `core-${identity.subject}`, username: identity.subject }, session_generation: 1 },
+          })
+        );
+        return;
+      }
+      if (req.url === '/api/auth/internal/external-sessions/revoke' && req.method === 'POST') {
+        trustedBootstrapHeaders.push(String(req.headers['x-aioncore-bootstrap-secret'] ?? ''));
+        revokeBodies.push(await readRequestJson(req));
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ success: true, data: { user_id: 'core-user-a', session_generation: 2 } }));
+        return;
+      }
+      if (req.url?.startsWith('/api/auth/internal/')) {
+        trustedBrowserRequests += 1;
+        res.writeHead(500).end();
         return;
       }
       if (req.url === '/api/anything') {
-        forwardedCookie = req.headers.cookie ?? '';
-        res.writeHead(200, { 'content-type': 'application/json' });
+        forwardedHeaders.push(req.headers);
+        res.writeHead(200, {
+          'content-type': 'application/json',
+          'set-cookie': 'aionui-session=must-not-reach-browser; Path=/; HttpOnly',
+        });
         res.end(JSON.stringify({ success: true }));
         return;
       }
       res.writeHead(404).end();
     });
+    backend.server.on('upgrade', (req, socket) => {
+      upgradeHeaders.push(req.headers);
+      socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n');
+      socket.end();
+    });
     stopBackend = backend.close;
 
-    const user = { id: 'user-1', username: 'zhangsan', realname: '张三' };
+    const identities = {
+      'qr-a': {
+        provider: 'lark' as const,
+        issuer: 'https://gea.example/gea-boot',
+        tenant_id: '1001',
+        subject: 'user-a',
+      },
+      'qr-b': {
+        provider: 'lark' as const,
+        issuer: 'https://gea.example/gea-boot',
+        tenant_id: '1002',
+        subject: 'user-b',
+      },
+    };
     const larkAuth = {
       createQrSession: async () => ({
         success: true as const,
-        data: { expiresIn: 300, loginUrl: 'https://gea.example/login', qrcodeId: 'qr-1' },
+        data: {
+          expiresIn: 300,
+          loginUrl: 'https://gea.example/login',
+          qrcodeId: 'qr-1',
+          credential: { accessToken: 'must-not-leak' },
+        },
+        accessToken: 'must-not-leak',
       }),
-      pollQrSession: async () => ({
-        success: true as const,
-        data: { status: 'authenticated' as const, user },
-      }),
+      pollQrSession: async (qrcodeId: string) => {
+        const identity = identities[qrcodeId as keyof typeof identities];
+        const user = { id: identity.subject, username: identity.subject, realname: identity.subject };
+        return {
+          identity: { ...identity, access_token: 'must-not-leak' },
+          publicResult: {
+            success: true as const,
+            data: {
+              status: 'authenticated' as const,
+              user: { ...user, credential: { accessToken: 'must-not-leak' } },
+              accessToken: 'must-not-leak',
+            },
+          },
+          accessToken: 'must-not-leak',
+        };
+      },
     } satisfies WebHostLarkAuth;
     handle = await startStaticServer({
       staticDir,
       backendPort: backend.port,
       port: 0,
       larkAuth,
+      coreSessionBootstrapSecret: 'bootstrap-secret',
     });
 
     expect((await fetch(`${handle.localUrl}/api/anything`)).status).toBe(401);
@@ -226,39 +329,150 @@ describe('static-server', () => {
     expect(unauthenticatedUpgradeStatus).toContain('401 Unauthorized');
 
     const qrResponse = await fetch(`${handle.localUrl}/api/lark-auth/qr-session`, { method: 'POST' });
-    expect(await qrResponse.json()).toMatchObject({ success: true, data: { qrcodeId: 'qr-1' } });
+    expect(await qrResponse.json()).toEqual({
+      success: true,
+      data: { expiresIn: 300, loginUrl: 'https://gea.example/login', qrcodeId: 'qr-1' },
+    });
 
-    const pollResponse = await fetch(`${handle.localUrl}/api/lark-auth/poll`, {
+    const login = async (qrcodeId: 'qr-a' | 'qr-b'): Promise<string> => {
+      const response = await fetch(`${handle?.localUrl}/api/lark-auth/poll`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ qrcodeId }),
+      });
+      const text = await response.text();
+      expect(text).not.toMatch(/must-not-leak|bootstrap-secret|aionui-session|identity|issuer|tenant_id|subject/i);
+      expect(JSON.parse(text)).toEqual({
+        success: true,
+        data: {
+          status: 'authenticated',
+          user: {
+            id: qrcodeId === 'qr-a' ? 'user-a' : 'user-b',
+            username: qrcodeId === 'qr-a' ? 'user-a' : 'user-b',
+            realname: qrcodeId === 'qr-a' ? 'user-a' : 'user-b',
+          },
+        },
+      });
+      expect(response.headers.get('set-cookie')).toMatch(
+        /^aionui-web-session=[^;]+; Path=\/; HttpOnly; SameSite=Strict; Max-Age=/
+      );
+      return response.headers.get('set-cookie')?.split(';', 1)[0] ?? '';
+    };
+    const cookieA = await login('qr-a');
+    const cookieB = await login('qr-b');
+
+    const expectedIdentityBodies = [{ identity: identities['qr-a'] }, { identity: identities['qr-b'] }];
+    expect(provisionBodies).toEqual(expectedIdentityBodies);
+    expect(exchangeBodies).toEqual(expectedIdentityBodies);
+
+    const statusA = await fetch(`${handle.localUrl}/api/lark-auth/status`, { headers: { cookie: cookieA } });
+    const statusAText = await statusA.text();
+    expect(statusAText).not.toMatch(/must-not-leak|bootstrap-secret|aionui-session|issuer|tenant_id/i);
+    expect(JSON.parse(statusAText)).toEqual({
+      success: true,
+      data: {
+        authenticated: true,
+        user: { id: 'user-a', username: 'user-a', realname: 'user-a' },
+      },
+    });
+    const userB = await fetch(`${handle.localUrl}/api/auth/user`, { headers: { cookie: cookieB } });
+    expect(await userB.json()).toEqual({
+      success: true,
+      user: { id: 'user-b', username: 'user-b', realname: 'user-b' },
+    });
+
+    const apiResponses = await Promise.all(
+      [cookieA, cookieB].map((cookie) =>
+        fetch(`${handle.localUrl}/api/anything`, {
+          headers: {
+            cookie,
+            authorization: 'Bearer injected',
+            'x-access-token': 'injected-token',
+            'x-aioncore-bootstrap-secret': 'injected-secret',
+          },
+        })
+      )
+    );
+    for (const apiResponse of apiResponses) {
+      expect(apiResponse.status).toBe(200);
+      expect(apiResponse.headers.get('set-cookie')).toBeNull();
+    }
+    expect(forwardedHeaders.map((headers) => headers.cookie).toSorted()).toEqual([
+      'aionui-session=core-user-a',
+      'aionui-session=core-user-b',
+    ]);
+    for (const headers of forwardedHeaders) {
+      expect(headers.authorization).toBeUndefined();
+      expect(headers['x-access-token']).toBeUndefined();
+      expect(headers['x-aioncore-bootstrap-secret']).toBeUndefined();
+    }
+
+    const upgrade = async (cookie: string): Promise<void> => {
+      await new Promise<void>((resolve, reject) => {
+        const socket = netModule.connect({ host: '127.0.0.1', port: handle?.port }, () => {
+          socket.write(
+            'GET /ws HTTP/1.1\r\n' +
+              `Host: 127.0.0.1:${handle?.port}\r\n` +
+              `Cookie: ${cookie}\r\n` +
+              'Authorization: Bearer injected\r\n' +
+              'X-Access-Token: injected-token\r\n' +
+              'X-Aioncore-Bootstrap-Secret: injected-secret\r\n' +
+              'Upgrade: websocket\r\nConnection: Upgrade\r\n\r\n'
+          );
+        });
+        socket.on('data', () => {
+          socket.destroy();
+          resolve();
+        });
+        socket.on('error', reject);
+      });
+    };
+    await upgrade(cookieA);
+    await upgrade(cookieB);
+    expect(upgradeHeaders.map((headers) => headers.cookie)).toEqual([
+      'aionui-session=core-user-a',
+      'aionui-session=core-user-b',
+    ]);
+    for (const headers of upgradeHeaders) {
+      expect(headers.authorization).toBeUndefined();
+      expect(headers['x-access-token']).toBeUndefined();
+      expect(headers['x-aioncore-bootstrap-secret']).toBeUndefined();
+    }
+
+    const trustedResponse = await fetch(`${handle.localUrl}/api/auth/internal/external-sessions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ qrcodeId: 'qr-1' }),
+      headers: { cookie: cookieA, 'x-aioncore-bootstrap-secret': 'bootstrap-secret' },
     });
-    const browserCookie = pollResponse.headers.get('set-cookie')?.split(';', 1)[0];
-    expect(browserCookie).toMatch(/^aionui-web-session=/);
-
-    const userResponse = await fetch(`${handle.localUrl}/api/auth/user`, {
-      headers: { cookie: browserCookie ?? '' },
-    });
-    expect(await userResponse.json()).toEqual({ success: true, user });
-
-    const apiResponse = await fetch(`${handle.localUrl}/api/anything`, {
-      headers: { cookie: browserCookie ?? '' },
-    });
-    expect(apiResponse.status).toBe(200);
-    expect(forwardedCookie).toBe('aionui-session=backend-token');
+    expect(trustedResponse.status).toBe(404);
+    expect(trustedBrowserRequests).toBe(0);
 
     const logoutResponse = await fetch(`${handle.localUrl}/api/lark-auth/logout`, {
       method: 'POST',
-      headers: { cookie: browserCookie ?? '' },
+      headers: { cookie: cookieA },
     });
     expect(logoutResponse.headers.get('set-cookie')).toMatch(/Max-Age=0/);
+    expect(revokeBodies).toEqual([{ identity: identities['qr-a'] }]);
+    expect(trustedBootstrapHeaders).toEqual([
+      'bootstrap-secret',
+      'bootstrap-secret',
+      'bootstrap-secret',
+      'bootstrap-secret',
+      'bootstrap-secret',
+    ]);
     expect(
       (
         await fetch(`${handle.localUrl}/api/anything`, {
-          headers: { cookie: browserCookie ?? '' },
+          headers: { cookie: cookieA },
         })
       ).status
     ).toBe(401);
+    expect(
+      (
+        await fetch(`${handle.localUrl}/api/anything`, {
+          headers: { cookie: cookieB },
+        })
+      ).status
+    ).toBe(200);
   });
 
   it('/api proxy returns 502 when backend unreachable', async () => {

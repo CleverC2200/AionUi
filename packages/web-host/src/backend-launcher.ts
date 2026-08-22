@@ -96,6 +96,7 @@ export type BackendLaunchOptions = {
    * process.env and will likely report wrong/empty dirs.
    */
   dirs?: BackendDirConfig;
+  coreSessionBootstrapSecret?: string;
 };
 
 export type BackendHandle = {
@@ -220,22 +221,32 @@ export function buildSpawnArgs(config: SpawnConfig): string[] {
  * Backend reads AIONUI_{CACHE,WORK,LOG}_DIR env vars to report system dirs and
  * AIONUI_HUB_DIR as an offline marketplace fallback. Inject them so the
  * backend sees the same packaged resources and persisted directories as the
- * Electron main process.
+ * Electron main process. The bootstrap secret is removed from ambient env and
+ * may be reintroduced only for the direct aioncore child.
  */
-export function buildSpawnEnv(dirs?: BackendDirConfig): NodeJS.ProcessEnv {
+export function buildSpawnEnv(dirs?: BackendDirConfig, coreSessionBootstrapSecret?: string): NodeJS.ProcessEnv {
   // PREBUILDS_ONLY protects the packaged Electron process's own node-gyp-build
   // natives (see desktop process/index.ts) and must stay scoped to it. Agent
   // CLIs spawned under aioncore (e.g. cursor-agent) ship natives under
   // build/Release only, and node-gyp-build skips that directory for any
   // non-empty value, aborting the agent before the ACP handshake (#4070).
-  const { PREBUILDS_ONLY: _prebuildsOnly, ...parentEnv } = process.env;
-  if (!dirs) return parentEnv;
+  const {
+    PREBUILDS_ONLY: _prebuildsOnly,
+    AIONCORE_BOOTSTRAP_SECRET: _ambientBootstrapSecret,
+    ...parentEnv
+  } = process.env;
+  if (!dirs && !coreSessionBootstrapSecret) return parentEnv;
   return {
     ...parentEnv,
-    AIONUI_CACHE_DIR: dirs.cacheDir,
-    AIONUI_WORK_DIR: dirs.workDir,
-    AIONUI_LOG_DIR: dirs.logDir,
-    ...(dirs.hubDir ? { AIONUI_HUB_DIR: dirs.hubDir } : {}),
+    ...(dirs
+      ? {
+          AIONUI_CACHE_DIR: dirs.cacheDir,
+          AIONUI_WORK_DIR: dirs.workDir,
+          AIONUI_LOG_DIR: dirs.logDir,
+          ...(dirs.hubDir ? { AIONUI_HUB_DIR: dirs.hubDir } : {}),
+        }
+      : {}),
+    ...(coreSessionBootstrapSecret ? { AIONCORE_BOOTSTRAP_SECRET: coreSessionBootstrapSecret } : {}),
   };
 }
 
@@ -529,7 +540,8 @@ export class BackendLifecycleManager {
 
   constructor(
     private readonly appMeta: AppMetadata,
-    private readonly resolveBackend: BackendBinaryResolver
+    private readonly resolveBackend: BackendBinaryResolver,
+    private readonly coreSessionBootstrapSecret?: string
   ) {}
 
   get port(): number {
@@ -691,7 +703,7 @@ export class BackendLifecycleManager {
     try {
       this.childProcess = spawn(binaryPath, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: buildSpawnEnv(dirs),
+        env: buildSpawnEnv(dirs, this.coreSessionBootstrapSecret),
         cwd: dirs?.workDir ?? dbPath,
         detached: process.platform !== 'win32',
       });
@@ -1078,7 +1090,7 @@ export class BackendLifecycleManager {
  * directly to preserve current stop/port getter semantics).
  */
 export async function startBackend(opts: BackendLaunchOptions): Promise<BackendHandle> {
-  const manager = new BackendLifecycleManager(opts.app, opts.resolveBackend);
+  const manager = new BackendLifecycleManager(opts.app, opts.resolveBackend, opts.coreSessionBootstrapSecret);
   const dataDir = opts.dataDir ?? '';
   if (!dataDir) {
     throw new Error('startBackend: dataDir is required');
