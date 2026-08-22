@@ -182,20 +182,23 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     []
   );
 
-  const pollLarkQrLogin = useCallback(async (qrcodeId: string) => {
-    const result = isDesktopRuntime
-      ? await ipcBridge.larkAuth.pollQrSession.invoke({ qrcodeId })
-      : await fetchLarkAuthResult<LarkQrLoginPollResult>('/api/lark-auth/poll', { qrcodeId });
-    if (result.success && result.data.status === 'authenticated' && result.data.user) {
-      publishAuthState('authenticated', result.data.user);
-      setReady(true);
-      if (!isDesktopRuntime) {
-        const reconnect = (window as Window & { __websocketReconnect?: () => void }).__websocketReconnect;
-        reconnect?.();
+  const pollLarkQrLogin = useCallback(
+    async (qrcodeId: string) => {
+      const result = isDesktopRuntime
+        ? await ipcBridge.larkAuth.pollQrSession.invoke({ qrcodeId })
+        : await fetchLarkAuthResult<LarkQrLoginPollResult>('/api/lark-auth/poll', { qrcodeId });
+      if (result.success && result.data.status === 'authenticated' && result.data.user) {
+        publishAuthState('authenticated', result.data.user);
+        setReady(true);
+        if (!isDesktopRuntime) {
+          const reconnect = (window as Window & { __websocketReconnect?: () => void }).__websocketReconnect;
+          reconnect?.();
+        }
       }
-    }
-    return result;
-  }, [publishAuthState]);
+      return result;
+    },
+    [publishAuthState]
+  );
 
   const logout = useCallback(async () => {
     if (isDesktopRuntime) {

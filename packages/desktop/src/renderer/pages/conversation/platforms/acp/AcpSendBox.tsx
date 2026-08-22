@@ -500,18 +500,21 @@ Please check your local CLI tool authentication status`,
   // supporting and non-supporting backends. Clears the draft the same way a
   // send would.
   const canQueueCurrentDraft = content.trim().length > 0;
-  const handleAddToQueue = useCallback((sessions?: QueuedSessionMention[]) => {
-    const allFiles = collectChatFileRefs(uploadFile, atPath);
-    // `@@` references must ride along, and must be released from the send box
-    // the same way the draft text is — otherwise they leak into whatever the
-    // user sends next.
-    enqueue({ input: content, files: allFiles, sessions });
-    setContent('');
-    clearFiles();
-    setSelectedSessions([]);
-    setRestoredSessionMentions([]);
-    emitter.emit('acp.selected.file.clear');
-  }, [atPath, clearFiles, content, enqueue, setContent, uploadFile]);
+  const handleAddToQueue = useCallback(
+    (sessions?: QueuedSessionMention[]) => {
+      const allFiles = collectChatFileRefs(uploadFile, atPath);
+      // `@@` references must ride along, and must be released from the send box
+      // the same way the draft text is — otherwise they leak into whatever the
+      // user sends next.
+      enqueue({ input: content, files: allFiles, sessions });
+      setContent('');
+      clearFiles();
+      setSelectedSessions([]);
+      setRestoredSessionMentions([]);
+      emitter.emit('acp.selected.file.clear');
+    },
+    [atPath, clearFiles, content, enqueue, setContent, uploadFile]
+  );
 
   const handleEditQueuedCommand = useCallback(
     (item: ConversationCommandQueueItem) => {

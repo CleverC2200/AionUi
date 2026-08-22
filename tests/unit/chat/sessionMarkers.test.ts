@@ -139,13 +139,7 @@ describe('parseSessionMessageBlock', () => {
     ['workspace', ['from: A\tconv_1', 'reply_to: conv_1\t（回信）']],
     ['reply address', ['from: A\tconv_1', 'workspace: same']],
   ])('leaves a block with no %s untouched', (_missing, fields) => {
-    const content = [
-      '[[AION_SESSION_MESSAGE]]',
-      ...fields,
-      '[[/AION_SESSION_MESSAGE]]',
-      '',
-      'body',
-    ].join('\n');
+    const content = ['[[AION_SESSION_MESSAGE]]', ...fields, '[[/AION_SESSION_MESSAGE]]', '', 'body'].join('\n');
     expect(parseSessionMessageBlock(content)).toEqual({ text: content, source: null });
   });
 

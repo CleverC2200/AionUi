@@ -1101,12 +1101,13 @@ describe('AcpSendBox', () => {
       await act(async () => {
         screen.getByText('pick-session').click();
       });
-      const latestProps = () => sendBoxPropsSpy.mock.calls.at(-1)?.[0] as {
-        onAddToDraft?: (sessions?: Array<{ id: string; name: string }>) => void;
-        onSelectedSessionsChange?: (sessions: Array<{ id: string }>) => void;
-        selectedSessions?: Array<{ id: string }>;
-        sessionMentions?: Array<{ id: string; name: string }>;
-      };
+      const latestProps = () =>
+        sendBoxPropsSpy.mock.calls.at(-1)?.[0] as {
+          onAddToDraft?: (sessions?: Array<{ id: string; name: string }>) => void;
+          onSelectedSessionsChange?: (sessions: Array<{ id: string }>) => void;
+          selectedSessions?: Array<{ id: string }>;
+          sessionMentions?: Array<{ id: string; name: string }>;
+        };
       await act(async () => {
         latestProps().onSelectedSessionsChange?.([{ id: 'conv_alpha' }, { id: 'conv_beta' }]);
       });
@@ -1137,9 +1138,11 @@ describe('AcpSendBox', () => {
         { id: 'conv_alpha', name: 'Alpha' },
         { id: 'conv_beta', name: 'Beta' },
       ]);
-      const onEdit = (commandQueuePanelPropsSpy.mock.calls.at(-1)![0] as {
-        onEdit: (item: typeof queued & { id: string; created_at: number }) => void;
-      }).onEdit;
+      const onEdit = (
+        commandQueuePanelPropsSpy.mock.calls.at(-1)![0] as {
+          onEdit: (item: typeof queued & { id: string; created_at: number }) => void;
+        }
+      ).onEdit;
 
       await act(async () => {
         onEdit({ ...queued, id: 'q-session', created_at: 1 });
@@ -1163,9 +1166,7 @@ describe('AcpSendBox', () => {
       await act(async () => {
         screen.getByText('send').click();
       });
-      expect(sendMessageInvokeMock).toHaveBeenCalledWith(
-        expect.objectContaining({ sessions: [{ id: 'conv_beta' }] })
-      );
+      expect(sendMessageInvokeMock).toHaveBeenCalledWith(expect.objectContaining({ sessions: [{ id: 'conv_beta' }] }));
     });
 
     it('offers the picker in an ordinary conversation but not in a team one', () => {

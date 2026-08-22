@@ -454,22 +454,25 @@ const AionrsSendBox: React.FC<{
   // mode governs (auto drains immediately, manual holds). Clears the draft
   // the same way a send would.
   const canQueueCurrentDraft = content.trim().length > 0;
-  const handleAddToQueue = useCallback((sessions?: QueuedSessionMention[]) => {
-    const filesToSend = collectChatFileRefs(uploadFile, atPath);
-    // `@@` references must ride along, and must be released from the send box
-    // the same way the draft text is — otherwise they leak into whatever the
-    // user sends next.
-    enqueue({
-      input: content,
-      files: filesToSend,
-      sessions,
-    });
-    setContent('');
-    clearFiles();
-    setSelectedSessions([]);
-    setRestoredSessionMentions([]);
-    emitter.emit('aionrs.selected.file.clear');
-  }, [atPath, clearFiles, content, enqueue, setContent, uploadFile]);
+  const handleAddToQueue = useCallback(
+    (sessions?: QueuedSessionMention[]) => {
+      const filesToSend = collectChatFileRefs(uploadFile, atPath);
+      // `@@` references must ride along, and must be released from the send box
+      // the same way the draft text is — otherwise they leak into whatever the
+      // user sends next.
+      enqueue({
+        input: content,
+        files: filesToSend,
+        sessions,
+      });
+      setContent('');
+      clearFiles();
+      setSelectedSessions([]);
+      setRestoredSessionMentions([]);
+      emitter.emit('aionrs.selected.file.clear');
+    },
+    [atPath, clearFiles, content, enqueue, setContent, uploadFile]
+  );
 
   const handleEditQueuedCommand = useCallback(
     (item: ConversationCommandQueueItem) => {

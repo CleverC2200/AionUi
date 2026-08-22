@@ -67,17 +67,15 @@ const COMMAND_QUEUE_LOG_PREFIX = '[conversation-command-queue]';
  *  recoverable, losing the user's typed message is not. */
 const normalizeSessionRefs = (value: unknown): QueuedSessionMention[] | undefined => {
   if (!Array.isArray(value)) return undefined;
-  const refs = value.filter(
-    (entry): entry is QueuedSessionMention => {
-      const candidate = entry as Partial<QueuedSessionMention> | undefined;
-      return (
-        typeof candidate?.id === 'string' &&
-        candidate.id.length > 0 &&
-        typeof candidate.name === 'string' &&
-        candidate.name.length > 0
-      );
-    }
-  );
+  const refs = value.filter((entry): entry is QueuedSessionMention => {
+    const candidate = entry as Partial<QueuedSessionMention> | undefined;
+    return (
+      typeof candidate?.id === 'string' &&
+      candidate.id.length > 0 &&
+      typeof candidate.name === 'string' &&
+      candidate.name.length > 0
+    );
+  });
   return refs.length > 0 ? refs : undefined;
 };
 

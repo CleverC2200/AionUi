@@ -87,9 +87,8 @@ vi.mock('@/renderer/pages/conversation/runtime/conversationRuntimeViewStore', ()
 
 const { useCrossSessionRateLimitNotice } = await import('@/renderer/hooks/system/useCrossSessionRateLimitNotice');
 const { resetCurrentUserIdCache } = await import('@/renderer/hooks/system/currentUserId');
-const { notifyAuthSessionChanged, resetAuthSessionEpochForTests } = await import(
-  '@/renderer/hooks/context/AuthContext'
-);
+const { notifyAuthSessionChanged, resetAuthSessionEpochForTests } =
+  await import('@/renderer/hooks/context/AuthContext');
 
 const payload = (overrides: Partial<SessionMessageRateLimitedPayload> = {}): SessionMessageRateLimitedPayload => ({
   user_id: 'system_default_user',
@@ -262,9 +261,7 @@ describe('useCrossSessionRateLimitNotice — resolving the current user', () => 
     render(<>{config.btn}</>);
     fireEvent.click(screen.getByRole('button', { name: 'conversation.crossSession.stopBoth' }));
 
-    await waitFor(() =>
-      expect(messageError).toHaveBeenCalledWith('conversation.crossSession.stopPartialFailure')
-    );
+    await waitFor(() => expect(messageError).toHaveBeenCalledWith('conversation.crossSession.stopPartialFailure'));
     expect(notificationRemove).not.toHaveBeenCalled();
   });
 
