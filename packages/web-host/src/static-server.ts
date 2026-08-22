@@ -12,7 +12,7 @@ import http, { type IncomingMessage, type Server, type ServerResponse } from 'no
 import { networkInterfaces } from 'node:os';
 import net, { type Socket } from 'node:net';
 import serveHandler from 'serve-handler';
-import { LarkAuthGateway } from './lark-auth-gateway.js';
+import { CLEAR_WEB_SESSION_COOKIE, LarkAuthGateway } from './lark-auth-gateway.js';
 import type { WebHostLarkAuth } from './types.js';
 
 export type StaticServerOptions = {
@@ -34,6 +34,7 @@ export type StaticServerHandle = {
 };
 
 const DEFAULT_PORT = 25808;
+const MAX_BACKEND_AUTH_ERROR_BYTES = 64 * 1024;
 
 // Ranges that are non-internal IPv4 yet never a reachable LAN address, so we
 // must never advertise them as the WebUI access URL even when they are the only
@@ -78,13 +79,22 @@ function getLanIP(): string | null {
   return pickLanIP(networkInterfaces());
 }
 
-function forwardToBackend(
+async function forwardToBackend(
   req: IncomingMessage,
   res: ServerResponse,
   backendPort: number,
   gateway?: LarkAuthGateway
-): void {
-  const candidateHeaders = gateway ? gateway.getBackendHeaders(req.headers) : req.headers;
+): Promise<void> {
+  const candidateHeaders = gateway ? await gateway.getBackendHeaders(req.headers) : req.headers;
+  if (!candidateHeaders) {
+    res.writeHead(401, {
+      'content-type': 'application/json',
+      'cache-control': 'no-store',
+      'set-cookie': CLEAR_WEB_SESSION_COOKIE,
+    });
+    res.end(JSON.stringify({ success: false, error: 'UNAUTHENTICATED' }));
+    return;
+  }
   const { 'x-aioncore-bootstrap-secret': _bootstrapSecret, ...publicHeaders } = candidateHeaders;
   const options: http.RequestOptions = {
     hostname: '127.0.0.1',
@@ -99,8 +109,44 @@ function forwardToBackend(
   const proxy = http.request(options, (proxyRes) => {
     const responseHeaders = { ...proxyRes.headers };
     if (gateway) delete responseHeaders['set-cookie'];
-    res.writeHead(proxyRes.statusCode ?? 502, responseHeaders);
-    proxyRes.pipe(res);
+    const statusCode = proxyRes.statusCode ?? 502;
+    if (!gateway || (statusCode !== 401 && statusCode !== 403)) {
+      res.writeHead(statusCode, responseHeaders);
+      proxyRes.pipe(res);
+      return;
+    }
+
+    let bufferedBytes = 0;
+    let passthrough = false;
+    let chunks: Buffer[] = [];
+    proxyRes.on('data', (chunk: Buffer | string) => {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      if (passthrough) {
+        res.write(buffer);
+        return;
+      }
+      bufferedBytes += buffer.length;
+      chunks.push(buffer);
+      if (bufferedBytes > MAX_BACKEND_AUTH_ERROR_BYTES) {
+        passthrough = true;
+        res.writeHead(statusCode, responseHeaders);
+        for (const buffered of chunks) res.write(buffered);
+        chunks = [];
+      }
+    });
+    proxyRes.on('end', () => {
+      if (passthrough) {
+        res.end();
+        return;
+      }
+      const body = Buffer.concat(chunks);
+      const errorCode = parseBackendErrorCode(body);
+      if (gateway.invalidateForBackendAuthError(req.headers.cookie, errorCode)) {
+        responseHeaders['set-cookie'] = [CLEAR_WEB_SESSION_COOKIE];
+      }
+      res.writeHead(statusCode, responseHeaders);
+      res.end(body);
+    });
   });
   proxy.on('error', () => {
     if (!res.headersSent) {
@@ -111,6 +157,17 @@ function forwardToBackend(
     }
   });
   req.pipe(proxy);
+}
+
+function parseBackendErrorCode(body: Buffer): string | null {
+  try {
+    const parsed = JSON.parse(body.toString('utf8')) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    const code = (parsed as { code?: unknown }).code;
+    return typeof code === 'string' ? code : null;
+  } catch {
+    return null;
+  }
 }
 
 // Max bytes we peek before forcing a routing decision. An HTTP request-line
@@ -213,12 +270,7 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
 
       // /api/* — reverse proxy to backend (includes /api/auth/*).
       if (req.url.startsWith('/api/') || req.url.startsWith('/api?') || req.url === '/login' || req.url === '/logout') {
-        if (authGateway && !authGateway.isAuthenticated(req.headers.cookie)) {
-          res.writeHead(401, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-          res.end(JSON.stringify({ success: false, error: 'UNAUTHENTICATED' }));
-          return;
-        }
-        forwardToBackend(req, res, opts.backendPort, authGateway);
+        await forwardToBackend(req, res, opts.backendPort, authGateway);
         return;
       }
 
@@ -271,16 +323,20 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
       if (decision === true && authGateway) {
         const headerComplete = peeked.indexOf('\r\n\r\n') >= 0;
         if (!headerComplete && peeked.length < PEEK_LIMIT_BYTES) return;
-        const authorizedBytes = authGateway.authorizeUpgrade(peeked);
-        if (!authorizedBytes) {
-          cleanup();
-          client.end(
-            'HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: 0\r\n\r\n'
-          );
-          return;
-        }
         cleanup();
-        spliceToTcpEndpoint(client, opts.backendPort, authorizedBytes);
+        client.pause();
+        void authGateway.authorizeUpgrade(peeked).then(
+          (authorizedBytes) => {
+            if (!authorizedBytes) {
+              client.end(
+                `HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nSet-Cookie: ${CLEAR_WEB_SESSION_COOKIE}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`
+              );
+              return;
+            }
+            spliceToTcpEndpoint(client, opts.backendPort, authorizedBytes);
+          },
+          () => client.destroy()
+        );
         return;
       }
       cleanup();
@@ -322,6 +378,7 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
     lanIP,
     stop: () =>
       new Promise<void>((resolve) => {
+        authGateway?.dispose();
         tcp_server.close(() => {
           http_server.close(() => resolve());
         });

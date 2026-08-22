@@ -11,7 +11,7 @@ import type { ElectronBridgeAPI } from '@/common/types/platform/electron';
 interface CustomWindow extends Window {
   electronAPI?: ElectronBridgeAPI;
   __bridgeEmitter?: { emit: (name: string, data: unknown) => void };
-  __websocketReconnect?: () => void;
+  __websocketReconnect?: (authSessionEpoch: number) => void;
 }
 
 type BrowserWebSocketPayload = { name: string; data?: unknown };
@@ -25,6 +25,9 @@ function isBrowserWebSocketPayload(value: unknown): value is BrowserWebSocketPay
 }
 
 export function isRealtimeAuthTerminalError(payload: unknown): boolean {
+  if (isBrowserWebSocketPayload(payload) && payload.name === 'auth-expired') {
+    return true;
+  }
   const data = getRealtimeErrorData(payload);
   if (!data) {
     return false;
@@ -82,8 +85,10 @@ if (win.electronAPI) {
   let socket: WebSocket | null = null;
   let emitterRef: { emit: (name: string, data: unknown) => void } | null = null;
   let reconnectTimer: number | null = null;
+  let authRedirectTimer: number | null = null;
   let reconnectDelay = 500;
   let shouldReconnect = true; // Flag to control reconnection
+  let lastResumedAuthEpoch: number | null = null;
 
   const messageQueue: QueuedMessage[] = [];
 
@@ -114,8 +119,33 @@ if (win.electronAPI) {
     }, reconnectDelay);
   };
 
+  const stopForTerminalAuth = (closeSocket: boolean) => {
+    console.warn('[WebSocket] Authentication expired, stopping reconnection');
+    shouldReconnect = false;
+    messageQueue.length = 0;
+    if (reconnectTimer !== null) {
+      window.clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    if (closeSocket) {
+      socket?.close();
+    }
+    if (window.location.pathname === '/login' || window.location.hash.includes('/login')) {
+      return;
+    }
+    if (authRedirectTimer === null) {
+      authRedirectTimer = window.setTimeout(() => {
+        authRedirectTimer = null;
+        window.location.hash = '/login';
+      }, 1000);
+    }
+  };
+
   // 3.建立 WebSocket 连接（或复用已有的 OPEN/CONNECTING 状态）
   const connect = () => {
+    if (!shouldReconnect) {
+      return;
+    }
     if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
       return;
     }
@@ -162,34 +192,7 @@ if (win.electronAPI) {
         // 处理认证过期 - 停止重连并跳转到登录页
         // Handle auth expiration - stop reconnecting and redirect to login
         if (isRealtimeAuthTerminalError(payload)) {
-          console.warn('[WebSocket] Authentication expired, stopping reconnection');
-          shouldReconnect = false;
-
-          // 清除所有待执行的重连定时器
-          // Clear any pending reconnection timer
-          if (reconnectTimer !== null) {
-            window.clearTimeout(reconnectTimer);
-            reconnectTimer = null;
-          }
-
-          // 关闭 socket 并跳转到登录页
-          // Close the socket and redirect to login page
-          socket?.close();
-
-          // 已在登录页则不再重定向，防止无限刷新循环
-          // Skip redirect if already on login page to prevent infinite reload loop
-          if (window.location.pathname === '/login' || window.location.hash.includes('/login')) {
-            return;
-          }
-
-          // 短暂延迟后跳转到登录页，以便显示 UI 反馈
-          // Redirect to login page after a short delay to show any UI feedback
-          // Use hash navigation to stay within the SPA (HashRouter), avoiding a full
-          // page reload that would land on an empty hash and cause a blank screen.
-          setTimeout(() => {
-            window.location.hash = '/login';
-          }, 1000);
-
+          stopForTerminalAuth(true);
           return;
         }
 
@@ -212,6 +215,11 @@ if (win.electronAPI) {
         socket = null;
       }
 
+      if (event.code === 1008) {
+        stopForTerminalAuth(false);
+        return;
+      }
+
       scheduleReconnect();
     });
 
@@ -229,6 +237,9 @@ if (win.electronAPI) {
 
   bridge.adapter({
     emit(name, data) {
+      if (!shouldReconnect) {
+        return;
+      }
       const message: QueuedMessage = { name, data };
 
       ensureSocket();
@@ -255,9 +266,17 @@ if (win.electronAPI) {
   connect();
 
   // Expose reconnection control for login flow
-  win.__websocketReconnect = () => {
+  win.__websocketReconnect = (authSessionEpoch: number) => {
+    if (!Number.isSafeInteger(authSessionEpoch) || authSessionEpoch <= 0 || lastResumedAuthEpoch === authSessionEpoch) {
+      return;
+    }
+    lastResumedAuthEpoch = authSessionEpoch;
     shouldReconnect = true;
     reconnectDelay = 500;
+    if (authRedirectTimer !== null) {
+      window.clearTimeout(authRedirectTimer);
+      authRedirectTimer = null;
+    }
     connect();
   };
 }

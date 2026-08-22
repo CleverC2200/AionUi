@@ -16,6 +16,7 @@ import type {
   LarkQrLoginSession,
 } from '@/common/types/platform/larkAuth';
 import { PREVIEW_SCOPE_KEY_PREFIX } from '@/renderer/pages/conversation/Preview/context/previewScope';
+import { resumeRealtimeWebSocket } from '@/common/adapter/httpBridge';
 
 type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
 
@@ -107,13 +108,14 @@ async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> 
   }
 }
 
-async function fetchLarkAuthResult<T>(path: string, body?: unknown): Promise<LarkAuthResult<T>> {
+async function fetchLarkAuthResult<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<LarkAuthResult<T>> {
   try {
     const response = await fetch(path, {
       method: body === undefined ? 'GET' : 'POST',
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal,
     });
     if (!response.ok) {
       return { success: false, code: response.status >= 500 ? 'serverError' : 'invalidResponse' };
@@ -130,23 +132,56 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [ready, setReady] = useState(false);
   const sessionEpoch = useAuthSessionEpoch();
   const abortRef = useRef<AbortController | null>(null);
+  const authOperationEpochRef = useRef(0);
   const authIdentityRef = useRef('checking');
+  const pendingAuthRequestsRef = useRef(new Set<Promise<unknown>>());
 
-  const publishAuthState = useCallback((nextStatus: Exclude<AuthStatus, 'checking'>, nextUser: AuthUser | null) => {
-    // The external user id is only an invalidation signal. Core-scoped callers
-    // must still resolve Core's own user id after this epoch changes.
-    const nextIdentity = nextStatus === 'authenticated' ? `authenticated:${nextUser?.id ?? 'unknown'}` : nextStatus;
-    if (authIdentityRef.current !== nextIdentity) {
-      authIdentityRef.current = nextIdentity;
-      notifyAuthSessionChanged();
-    }
-    setUser(nextUser);
-    setStatus(nextStatus);
+  const beginAuthOperation = useCallback((): { controller: AbortController; epoch: number } => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    authOperationEpochRef.current += 1;
+    return { controller, epoch: authOperationEpochRef.current };
   }, []);
 
+  const invalidateAuthOperations = useCallback((): number => {
+    authOperationEpochRef.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    return authOperationEpochRef.current;
+  }, []);
+
+  const trackAuthRequest = useCallback(function track<T>(request: Promise<T>): Promise<T> {
+    pendingAuthRequestsRef.current.add(request);
+    void request.then(
+      () => pendingAuthRequestsRef.current.delete(request),
+      () => pendingAuthRequestsRef.current.delete(request)
+    );
+    return request;
+  }, []);
+
+  const publishAuthState = useCallback(
+    (nextStatus: Exclude<AuthStatus, 'checking'>, nextUser: AuthUser | null, forceSessionBoundary = false) => {
+      // The external user id is only an invalidation signal. Core-scoped callers
+      // must still resolve Core's own user id after this epoch changes. A newly
+      // established WebHost session is a boundary even for the same identity.
+      const nextIdentity = nextStatus === 'authenticated' ? `authenticated:${nextUser?.id ?? 'unknown'}` : nextStatus;
+      if (forceSessionBoundary || authIdentityRef.current !== nextIdentity) {
+        authIdentityRef.current = nextIdentity;
+        notifyAuthSessionChanged();
+      }
+      setUser(nextUser);
+      setStatus(nextStatus);
+    },
+    []
+  );
+
   const refresh = useCallback(async () => {
+    const operation = beginAuthOperation();
     if (isDesktopRuntime) {
-      const result = await ipcBridge.larkAuth.status.invoke();
+      const request = trackAuthRequest(ipcBridge.larkAuth.status.invoke());
+      const result = await request;
+      if (authOperationEpochRef.current !== operation.epoch) return;
       if (result.success && result.data.authenticated && result.data.user) {
         publishAuthState('authenticated', result.data.user);
       } else {
@@ -156,23 +191,24 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       return;
     }
 
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
     setStatus('checking');
-    const currentUser = await fetchCurrentUser(controller.signal);
+    const request = trackAuthRequest(fetchCurrentUser(operation.controller.signal));
+    const currentUser = await request;
+    if (authOperationEpochRef.current !== operation.epoch) return;
     if (currentUser) {
       publishAuthState('authenticated', currentUser);
     } else {
       publishAuthState('unauthenticated', null);
     }
     setReady(true);
-  }, [publishAuthState]);
+  }, [beginAuthOperation, publishAuthState, trackAuthRequest]);
 
   useEffect(() => {
     void refresh();
-    return () => abortRef.current?.abort();
-  }, [refresh]);
+    return () => {
+      invalidateAuthOperations();
+    };
+  }, [invalidateAuthOperations, refresh]);
 
   const startLarkQrLogin = useCallback(
     () =>
@@ -184,46 +220,66 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const pollLarkQrLogin = useCallback(
     async (qrcodeId: string) => {
-      const result = isDesktopRuntime
-        ? await ipcBridge.larkAuth.pollQrSession.invoke({ qrcodeId })
-        : await fetchLarkAuthResult<LarkQrLoginPollResult>('/api/lark-auth/poll', { qrcodeId });
+      const operation = beginAuthOperation();
+      const request = trackAuthRequest(
+        isDesktopRuntime
+          ? ipcBridge.larkAuth.pollQrSession.invoke({ qrcodeId })
+          : fetchLarkAuthResult<LarkQrLoginPollResult>('/api/lark-auth/poll', { qrcodeId }, operation.controller.signal)
+      );
+      const result = await request;
+      if (authOperationEpochRef.current !== operation.epoch) return result;
       if (result.success && result.data.status === 'authenticated' && result.data.user) {
-        publishAuthState('authenticated', result.data.user);
+        publishAuthState('authenticated', result.data.user, !isDesktopRuntime);
         setReady(true);
         if (!isDesktopRuntime) {
-          const reconnect = (window as Window & { __websocketReconnect?: () => void }).__websocketReconnect;
-          reconnect?.();
+          const reconnect = (
+            window as Window & {
+              __websocketReconnect?: (authSessionEpoch: number) => void;
+            }
+          ).__websocketReconnect;
+          const nextAuthSessionEpoch = getAuthSessionEpochSnapshot();
+          reconnect?.(nextAuthSessionEpoch);
+          resumeRealtimeWebSocket(nextAuthSessionEpoch);
         }
       }
       return result;
     },
-    [publishAuthState]
+    [beginAuthOperation, publishAuthState, trackAuthRequest]
   );
 
   const logout = useCallback(async () => {
+    const pendingAuthRequests = [...pendingAuthRequestsRef.current];
+    const operationEpoch = invalidateAuthOperations();
     if (isDesktopRuntime) {
+      await Promise.allSettled(pendingAuthRequests);
+      if (authOperationEpochRef.current !== operationEpoch) return;
       const result = await ipcBridge.larkAuth.logout.invoke();
       if (result.success === false) throw new Error(result.code);
+      if (authOperationEpochRef.current !== operationEpoch) return;
       publishAuthState('unauthenticated', null);
       setReady(true);
       clearAuthCache();
       return;
     }
 
+    publishAuthState('unauthenticated', null, true);
+    clearAuthCache();
+    await Promise.allSettled(pendingAuthRequests);
+    if (authOperationEpochRef.current !== operationEpoch) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       await fetch('/api/lark-auth/logout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({}),
+        signal: controller.signal,
       });
     } catch (error) {
       console.error('Logout request failed:', error);
-    } finally {
-      publishAuthState('unauthenticated', null);
-      clearAuthCache();
     }
-  }, [publishAuthState]);
+  }, [invalidateAuthOperations, publishAuthState]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -1,6 +1,14 @@
 import { randomBytes } from 'node:crypto';
 import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from 'node:http';
-import { CoreSessionClient, getCoreSessionBootstrapSecret } from './core-session-client.js';
+import {
+  CoreSessionClient,
+  CoreSessionClientError,
+  getCoreSessionBootstrapSecret,
+  type CoreExternalIdentityMapping,
+  type CoreMatchingSessionRevocation,
+  type CoreSession,
+  type CoreSessionRefresh,
+} from './core-session-client.js';
 import type {
   WebHostLarkAuth,
   WebHostLarkAuthResult,
@@ -11,13 +19,58 @@ import type {
 } from './types.js';
 
 const WEB_SESSION_COOKIE = 'aionui-web-session';
-const WEB_SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+const WEB_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const MAX_JSON_BODY_BYTES = 16 * 1024;
+const REFRESH_EARLY_MS = 60_000;
+const REFRESH_IDEMPOTENCY_WINDOW_MS = 60_000;
+const MAX_REFRESH_RETRY_MS = 30_000;
+const TERMINAL_BACKEND_AUTH_ERROR_CODES = new Set([
+  'EXTERNAL_SESSION_REVOKED',
+  'EXTERNAL_SESSION_GENERATION_MISMATCH',
+  'EXTERNAL_SESSION_EXPIRED',
+  'EXTERNAL_SESSION_REQUIRED',
+  'EXTERNAL_SESSION_REFRESH_INVALID',
+  'CORE_USER_DISABLED',
+]);
+
+export const CLEAR_WEB_SESSION_COOKIE = `${WEB_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`;
+
+export type CoreSessionPort = {
+  ensureMapping: (identity: WebHostLarkExternalIdentity) => Promise<CoreExternalIdentityMapping>;
+  exchange: (identity: WebHostLarkExternalIdentity) => Promise<CoreSession>;
+  refresh: (refreshCookie: string, idempotencyKey: string) => Promise<CoreSessionRefresh>;
+  revokeMatching: (refreshCookie: string) => Promise<CoreMatchingSessionRevocation>;
+};
+
+export type LarkAuthGatewayClock = {
+  clearTimeout: (timer: ReturnType<typeof setTimeout>) => void;
+  now: () => number;
+  setTimeout: (callback: () => void, delayMs: number) => ReturnType<typeof setTimeout>;
+};
+
+const systemClock: LarkAuthGatewayClock = {
+  clearTimeout: (timer) => clearTimeout(timer),
+  now: () => Date.now(),
+  setTimeout: (callback, delayMs) => setTimeout(callback, delayMs),
+};
+
+type CoreCredentials = Pick<CoreSessionRefresh, 'accessCookie' | 'refreshCookie' | 'session'>;
+
+type RefreshState = {
+  attemptCount: number;
+  idempotencyKey: string;
+  nextRetryAt: number;
+  refreshCookie: string;
+  startedAt: number;
+};
 
 type WebSession = {
-  coreSessionCookie: string;
+  core: CoreCredentials;
+  epoch: number;
   expiresAt: number;
-  identity: WebHostLarkExternalIdentity;
+  refreshInFlight?: Promise<CoreSessionRefresh>;
+  refreshState?: RefreshState;
+  refreshTimer?: ReturnType<typeof setTimeout>;
   user: WebHostLarkAuthUser;
 };
 
@@ -57,9 +110,10 @@ async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknow
 export class LarkAuthGateway {
   private readonly sessions = new Map<string, WebSession>();
 
-  private constructor(
+  constructor(
     private readonly larkAuth: WebHostLarkAuth,
-    private readonly coreSessions: CoreSessionClient
+    private readonly coreSessions: CoreSessionPort,
+    private readonly clock: LarkAuthGatewayClock = systemClock
   ) {}
 
   static create(backendPort: number, larkAuth: WebHostLarkAuth, bootstrapSecret?: string): LarkAuthGateway {
@@ -67,8 +121,9 @@ export class LarkAuthGateway {
     return new LarkAuthGateway(larkAuth, new CoreSessionClient(backendPort, bootstrapSecret ?? heldBootstrapSecret));
   }
 
-  getBackendHeaders(headers: IncomingHttpHeaders): IncomingHttpHeaders {
-    const session = this.getSession(headers.cookie);
+  async getBackendHeaders(headers: IncomingHttpHeaders): Promise<IncomingHttpHeaders | null> {
+    const resolved = await this.resolveSession(headers.cookie);
+    if (!resolved) return null;
     const {
       cookie: _cookie,
       host: _host,
@@ -77,11 +132,7 @@ export class LarkAuthGateway {
       'x-aioncore-bootstrap-secret': _bootstrapSecret,
       ...forwardedHeaders
     } = headers;
-    return { ...forwardedHeaders, ...(session ? { cookie: session.coreSessionCookie } : {}) };
-  }
-
-  isAuthenticated(cookieHeader: string | undefined): boolean {
-    return this.getSession(cookieHeader) !== null;
+    return { ...forwardedHeaders, cookie: resolved.session.core.accessCookie };
   }
 
   async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
@@ -110,15 +161,35 @@ export class LarkAuthGateway {
           }
           await this.coreSessions.ensureMapping(identity);
           const coreSession = await this.coreSessions.exchange(identity);
+          const now = this.clock.now();
+          if (
+            coreSession.session.accessExpiresAt <= now ||
+            coreSession.session.refreshExpiresAt <= coreSession.session.accessExpiresAt
+          ) {
+            throw new CoreSessionClientError('CORE_SESSION_RESPONSE_INVALID', 502);
+          }
+          const webSessionMaxAgeSeconds = Math.min(
+            WEB_SESSION_MAX_AGE_SECONDS,
+            Math.floor((coreSession.session.refreshExpiresAt - now) / 1000)
+          );
+          if (webSessionMaxAgeSeconds <= 0) {
+            throw new CoreSessionClientError('CORE_SESSION_RESPONSE_INVALID', 502);
+          }
           const token = randomBytes(32).toString('base64url');
-          this.sessions.set(token, {
-            coreSessionCookie: coreSession.cookie,
-            expiresAt: Date.now() + WEB_SESSION_MAX_AGE_SECONDS * 1000,
-            identity,
+          const session: WebSession = {
+            core: {
+              accessCookie: coreSession.accessCookie,
+              refreshCookie: coreSession.refreshCookie,
+              session: coreSession.session,
+            },
+            epoch: 0,
+            expiresAt: now + webSessionMaxAgeSeconds * 1000,
             user: result.data.user,
-          });
+          };
+          this.sessions.set(token, session);
+          this.scheduleRefresh(token, session);
           writeJson(res, 200, result, {
-            'set-cookie': `${WEB_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${WEB_SESSION_MAX_AGE_SECONDS}`,
+            'set-cookie': `${WEB_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${webSessionMaxAgeSeconds}`,
           });
           return true;
         }
@@ -130,21 +201,26 @@ export class LarkAuthGateway {
     }
 
     if (url === '/api/lark-auth/status' && req.method === 'GET') {
-      const session = this.getSession(req.headers.cookie);
+      const resolved = await this.resolveSession(req.headers.cookie);
+      const session = resolved?.session;
       writeJson(
         res,
         200,
         session
           ? { success: true, data: { authenticated: true, user: session.user } }
-          : { success: true, data: { authenticated: false } }
+          : { success: true, data: { authenticated: false } },
+        !session && cookieValue(req.headers.cookie, WEB_SESSION_COOKIE)
+          ? { 'set-cookie': CLEAR_WEB_SESSION_COOKIE }
+          : {}
       );
       return true;
     }
 
     if (url === '/api/auth/user' && req.method === 'GET') {
-      const session = this.getSession(req.headers.cookie);
+      const resolved = await this.resolveSession(req.headers.cookie);
+      const session = resolved?.session;
       if (!session) {
-        writeJson(res, 401, { success: false });
+        writeJson(res, 401, { success: false }, { 'set-cookie': CLEAR_WEB_SESSION_COOKIE });
       } else {
         writeJson(res, 200, { success: true, user: session.user });
       }
@@ -154,19 +230,37 @@ export class LarkAuthGateway {
     if ((url === '/api/lark-auth/logout' || url === '/logout') && req.method === 'POST') {
       const token = cookieValue(req.headers.cookie, WEB_SESSION_COOKIE);
       const session = token ? this.sessions.get(token) : undefined;
-      if (token) this.sessions.delete(token);
+      let refreshCookie = session?.core.refreshCookie;
+      const expectedSid = session?.core.session.sid;
+      if (token && session) {
+        this.invalidateSession(token, session);
+        const inFlight = session.refreshInFlight;
+        if (inFlight) {
+          try {
+            const refreshed = await inFlight;
+            if (refreshed.session.sid === session.core.session.sid) {
+              refreshCookie = refreshed.refreshCookie;
+            }
+          } catch {
+            // The matching revoke still receives the last held refresh cookie.
+          }
+        }
+      }
       let statusCode = 200;
       let responseBody: unknown = { success: true, data: { authenticated: false } };
-      if (session) {
+      if (refreshCookie) {
         try {
-          await this.coreSessions.revoke(session.identity);
+          const revoked = await this.coreSessions.revokeMatching(refreshCookie);
+          if (expectedSid && revoked.sid !== expectedSid) {
+            throw new CoreSessionClientError('CORE_SESSION_RESPONSE_INVALID', 502);
+          }
         } catch {
           statusCode = 502;
           responseBody = { success: false, code: 'serverError' };
         }
       }
       writeJson(res, statusCode, responseBody, {
-        'set-cookie': `${WEB_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`,
+        'set-cookie': CLEAR_WEB_SESSION_COOKIE,
       });
       return true;
     }
@@ -179,7 +273,7 @@ export class LarkAuthGateway {
     return false;
   }
 
-  authorizeUpgrade(requestBytes: Buffer): Buffer | null {
+  async authorizeUpgrade(requestBytes: Buffer): Promise<Buffer | null> {
     const headerEnd = requestBytes.indexOf('\r\n\r\n');
     if (headerEnd < 0) return null;
     const headerText = requestBytes.subarray(0, headerEnd).toString('latin1');
@@ -188,28 +282,162 @@ export class LarkAuthGateway {
       .find((line) => /^cookie:/i.test(line))
       ?.slice('cookie:'.length)
       .trim();
-    const session = this.getSession(cookieHeader);
-    if (!session) return null;
+    const resolved = await this.resolveSession(cookieHeader);
+    if (!resolved) return null;
 
     const nextLines = lines.filter(
       (line) => !/^(?:cookie|authorization|x-access-token|x-aioncore-bootstrap-secret):/i.test(line)
     );
-    nextLines.push(`Cookie: ${session.coreSessionCookie}`);
+    nextLines.push(`Cookie: ${resolved.session.core.accessCookie}`);
     const nextHeader = Buffer.from(`${nextLines.join('\r\n')}\r\n\r\n`, 'latin1');
     return Buffer.concat([nextHeader, requestBytes.subarray(headerEnd + 4)]);
   }
 
-  private getSession(cookieHeader: string | undefined): WebSession | null {
+  invalidateForBackendAuthError(cookieHeader: string | undefined, errorCode: string | null): boolean {
+    if (!errorCode || !TERMINAL_BACKEND_AUTH_ERROR_CODES.has(errorCode)) return false;
+    const resolved = this.getSession(cookieHeader);
+    if (!resolved) return false;
+    this.invalidateSession(resolved.token, resolved.session);
+    return true;
+  }
+
+  dispose(): void {
+    for (const [token, session] of this.sessions) {
+      this.invalidateSession(token, session);
+    }
+  }
+
+  private getSession(cookieHeader: string | undefined): { session: WebSession; token: string } | null {
     const token = cookieValue(cookieHeader, WEB_SESSION_COOKIE);
     if (!token) return null;
     const session = this.sessions.get(token);
     if (!session) return null;
-    if (session.expiresAt <= Date.now()) {
-      this.sessions.delete(token);
+    if (session.expiresAt <= this.clock.now() || session.core.session.refreshExpiresAt <= this.clock.now()) {
+      this.invalidateSession(token, session);
       return null;
     }
-    return session;
+    return { session, token };
   }
+
+  private async resolveSession(
+    cookieHeader: string | undefined
+  ): Promise<{ session: WebSession; token: string } | null> {
+    const resolved = this.getSession(cookieHeader);
+    if (!resolved) return null;
+    const session = await this.ensureFresh(resolved.token, resolved.session);
+    return session ? { session, token: resolved.token } : null;
+  }
+
+  private async ensureFresh(token: string, session: WebSession): Promise<WebSession | null> {
+    if (this.sessions.get(token) !== session) return null;
+    const now = this.clock.now();
+    const retryDeadline = Math.min(
+      session.core.session.accessExpiresAt,
+      (session.refreshState?.startedAt ?? now) + REFRESH_IDEMPOTENCY_WINDOW_MS
+    );
+    if (session.core.session.refreshExpiresAt <= now || session.expiresAt <= now) {
+      this.invalidateSession(token, session);
+      return null;
+    }
+    if (session.refreshState && retryDeadline <= now) {
+      this.invalidateSession(token, session);
+      return null;
+    }
+    if (!session.refreshState && session.core.session.accessExpiresAt - now > REFRESH_EARLY_MS) {
+      return session;
+    }
+    if (session.refreshState?.nextRetryAt && session.refreshState.nextRetryAt > now) {
+      return session.core.session.accessExpiresAt > now ? session : null;
+    }
+
+    const refreshState =
+      session.refreshState ??
+      (session.refreshState = {
+        attemptCount: 0,
+        idempotencyKey: randomBytes(32).toString('base64url'),
+        nextRetryAt: now,
+        refreshCookie: session.core.refreshCookie,
+        startedAt: now,
+      });
+    if (!session.refreshInFlight) {
+      session.refreshInFlight = this.coreSessions.refresh(refreshState.refreshCookie, refreshState.idempotencyKey);
+    }
+    const inFlight = session.refreshInFlight;
+    const epoch = session.epoch;
+    try {
+      const refreshed = await inFlight;
+      if (session.refreshInFlight !== inFlight) {
+        return this.sessions.get(token) === session ? session : null;
+      }
+      session.refreshInFlight = undefined;
+      if (this.sessions.get(token) !== session || session.epoch !== epoch) return null;
+      if (
+        refreshed.session.sid !== session.core.session.sid ||
+        refreshed.session.rotation !== session.core.session.rotation + 1 ||
+        refreshed.session.accessExpiresAt <= this.clock.now() ||
+        refreshed.session.refreshExpiresAt <= refreshed.session.accessExpiresAt
+      ) {
+        this.invalidateSession(token, session);
+        return null;
+      }
+      session.core = refreshed;
+      session.refreshState = undefined;
+      this.scheduleRefresh(token, session);
+      return session;
+    } catch (error) {
+      if (session.refreshInFlight !== inFlight) {
+        return this.sessions.get(token) === session ? session : null;
+      }
+      session.refreshInFlight = undefined;
+      if (this.sessions.get(token) !== session || session.epoch !== epoch) return null;
+      const failedAt = this.clock.now();
+      if (!isRetryableRefreshError(error) || failedAt >= retryDeadline) {
+        this.invalidateSession(token, session);
+        return null;
+      }
+      refreshState.attemptCount += 1;
+      const retryDelay = Math.min(1000 * 2 ** (refreshState.attemptCount - 1), MAX_REFRESH_RETRY_MS);
+      refreshState.nextRetryAt = Math.min(failedAt + retryDelay, retryDeadline);
+      this.scheduleRefresh(token, session);
+      return session.core.session.accessExpiresAt > failedAt ? session : null;
+    }
+  }
+
+  private scheduleRefresh(token: string, session: WebSession): void {
+    if (session.refreshTimer) this.clock.clearTimeout(session.refreshTimer);
+    const refreshAt = session.refreshState
+      ? session.refreshState.nextRetryAt
+      : session.core.session.accessExpiresAt - REFRESH_EARLY_MS;
+    session.refreshTimer = this.clock.setTimeout(
+      () => {
+        session.refreshTimer = undefined;
+        void this.ensureFresh(token, session);
+      },
+      Math.max(0, refreshAt - this.clock.now())
+    );
+    session.refreshTimer.unref?.();
+  }
+
+  private invalidateSession(token: string, session: WebSession): void {
+    session.epoch += 1;
+    session.refreshState = undefined;
+    if (session.refreshTimer) {
+      this.clock.clearTimeout(session.refreshTimer);
+      session.refreshTimer = undefined;
+    }
+    if (this.sessions.get(token) === session) this.sessions.delete(token);
+  }
+}
+
+const RETRYABLE_REFRESH_CLIENT_ERROR_CODES = new Set([
+  'EXTERNAL_SESSION_REFRESH_IDEMPOTENCY_REQUIRED',
+  'EXTERNAL_SESSION_REFRESH_IDEMPOTENCY_INVALID',
+]);
+
+function isRetryableRefreshError(error: unknown): boolean {
+  if (!(error instanceof CoreSessionClientError)) return false;
+  if (error.status >= 500) return true;
+  return error.status === 400 && RETRYABLE_REFRESH_CLIENT_ERROR_CODES.has(error.code);
 }
 
 function sanitizeUser(user: WebHostLarkAuthUser): WebHostLarkAuthUser {

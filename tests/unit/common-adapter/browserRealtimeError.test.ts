@@ -79,6 +79,11 @@ class FakeWebSocket {
     this.sentMessages.push(data);
   }
 
+  dispatchOpen() {
+    this.readyState = FakeWebSocket.OPEN;
+    for (const listener of this.listeners.open) listener();
+  }
+
   dispatchMessage(payload: unknown) {
     const event = { data: JSON.stringify(payload) } as MessageEvent<string>;
     for (const listener of this.listeners.message) {
@@ -214,7 +219,7 @@ describe('browser WebSocket realtime error handling', () => {
     expect(location.hash).toBe('');
   });
 
-  it('does not treat legacy auth-expired events as terminal auth errors', async () => {
+  it('treats explicit auth-expired events as terminal auth errors', async () => {
     const { adapter, location, socket } = await loadBrowserAdapter();
     const emit = vi.fn();
     adapter.on({ emit });
@@ -222,18 +227,51 @@ describe('browser WebSocket realtime error handling', () => {
 
     socket.dispatchMessage(payload);
 
-    expect(socket.close).not.toHaveBeenCalled();
-    expect(emit).toHaveBeenCalledWith(payload.name, payload.data);
-    expect(location.hash).toBe('');
+    expect(socket.close).toHaveBeenCalledTimes(1);
+    expect(emit).not.toHaveBeenCalled();
+
+    socket.dispatchClose(1006);
+    vi.advanceTimersByTime(8000);
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    vi.advanceTimersByTime(1000);
+    expect(location.hash).toBe('/login');
   });
 
-  it('does not redirect to login from close code 1008 without an auth error event', async () => {
+  it('stops reconnecting and redirects to login from close code 1008', async () => {
     const { location, socket } = await loadBrowserAdapter();
 
     socket.dispatchClose(1008);
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(8000);
 
-    expect(location.hash).toBe('');
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    vi.advanceTimersByTime(1000);
+    expect(location.hash).toBe('/login');
+  });
+
+  it('resumes a terminal socket only once for each new authentication epoch', async () => {
+    const { adapter, socket } = await loadBrowserAdapter();
+    const reconnect = (
+      window as Window & {
+        __websocketReconnect?: (authSessionEpoch: number) => void;
+      }
+    ).__websocketReconnect;
+
+    socket.dispatchMessage({ name: 'auth-expired', data: {} });
+    socket.dispatchClose(1008);
+    adapter.emit('must-not-cross-auth-epoch', { owner: 'user-a' });
+    reconnect?.(1);
     expect(FakeWebSocket.instances).toHaveLength(2);
+    FakeWebSocket.instances[1].dispatchOpen();
+    expect(FakeWebSocket.instances[1].sentMessages).toEqual([]);
+
+    const resumedSocket = FakeWebSocket.instances[1];
+    resumedSocket.dispatchMessage({ name: 'auth-expired', data: {} });
+    resumedSocket.dispatchClose(1008);
+    reconnect?.(1);
+    expect(FakeWebSocket.instances).toHaveLength(2);
+
+    reconnect?.(2);
+    expect(FakeWebSocket.instances).toHaveLength(3);
   });
 });

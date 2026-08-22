@@ -22,8 +22,10 @@ import {
   BackendHttpError,
   dispatchE2EWsEvent,
   isBackendHttpError,
+  resumeRealtimeWebSocket,
   wsEmitter,
   wsMappedEmitter,
+  wsSend,
   stubEmitter,
   httpRequest,
 } from '@/common/adapter/httpBridge';
@@ -68,8 +70,18 @@ class FakeWebSocket {
   }
 
   dispatchClose() {
+    this.dispatchCloseWithCode(1006);
+  }
+
+  dispatchCloseWithCode(code: number) {
     this.readyState = FakeWebSocket.CLOSED;
-    for (const listener of this.listeners.close) listener({ code: 1006, reason: '' } as CloseEvent);
+    for (const listener of this.listeners.close) listener({ code, reason: '' } as CloseEvent);
+  }
+
+  dispatchMessage(payload: unknown) {
+    for (const listener of this.listeners.message) {
+      listener({ data: JSON.stringify(payload) } as MessageEvent<string>);
+    }
   }
 }
 
@@ -425,6 +437,40 @@ describe('httpBridge', () => {
 
       FakeWebSocket.instances[1].dispatchClose();
       vi.clearAllTimers();
+      unsubscribe();
+      vi.useRealTimers();
+    });
+
+    it('stops terminal auth reconnect loops and resumes once for a new auth epoch', () => {
+      vi.useFakeTimers();
+      vi.stubGlobal('window', { __backendPort: 13400 });
+      vi.stubGlobal('WebSocket', FakeWebSocket as unknown as typeof WebSocket);
+      vi.spyOn(console, 'debug').mockImplementation(() => {});
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      FakeWebSocket.instances = [];
+
+      const unsubscribe = wsEmitter('test-terminal-auth').on(() => {});
+      const first = FakeWebSocket.instances[0];
+      first.dispatchMessage({
+        name: 'realtime.error',
+        data: { code: 'REALTIME_AUTH_EXPIRED', recoverable: false },
+      });
+      first.dispatchCloseWithCode(1008);
+      expect(wsSend('must-not-cross-auth-epoch', { owner: 'user-a' })).toBe(false);
+      const terminalSubscription = wsEmitter('after-terminal').on(() => {});
+      vi.advanceTimersByTime(30_000);
+      expect(FakeWebSocket.instances).toHaveLength(1);
+
+      resumeRealtimeWebSocket(1);
+      expect(FakeWebSocket.instances).toHaveLength(2);
+      FakeWebSocket.instances[1].dispatchCloseWithCode(1008);
+      resumeRealtimeWebSocket(1);
+      expect(FakeWebSocket.instances).toHaveLength(2);
+
+      resumeRealtimeWebSocket(2);
+      expect(FakeWebSocket.instances).toHaveLength(3);
+      vi.clearAllTimers();
+      terminalSubscription();
       unsubscribe();
       vi.useRealTimers();
     });
