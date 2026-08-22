@@ -1,5 +1,64 @@
 # 更新日志
 
+## 2.1.60 (2026-08-22)
+
+### 桌面端
+
+#### 新功能
+
+- **聊天：**支持用 `@@` 引用其他会话，并展示跨会话消息的来源与投递状态（官方 #4131；个人仓库 #147）
+- **会话：**允许在助手空状态下以空输入启动会话（官方 #4127）
+- **布局：**桌面侧边栏支持拖动调整宽度和吸附折叠（官方 #4128）
+- **侧边栏：**新增归档优先的会话入口和归档页面（官方 #4126）
+- **文件浏览器：**支持通过后端重新挂载刷新根目录（官方 #4121）
+- **渲染：**聊天 Markdown 中的 Mermaid 图表支持平移和缩放（官方 #4108）
+- **设置：**归档会话分组支持分页加载，避免遗漏后续归档项（官方 #4137；个人仓库 #134）
+- **设置：**支持分别配置应用、聊天、Markdown 和代码字体（官方 #4138；个人仓库 #135）
+
+#### 问题修复
+
+- **桌面端：**为 Main 进程未捕获错误补充日志归因（官方 #4112）
+- **聊天：**跨会话 marker 改用严格的版本化 envelope，同时兼容历史消息并保留无效原文（个人仓库 #148）
+
+#### 重构
+
+- **反馈：**自动附加当前账户邮箱（官方 #4117）
+
+### GEAUi 工程与交付
+
+- **发布：**稳定构建固定并校验个人 AionCore 的仓库、Actions run、源提交和制品校验和，校验失败时不回退到官方制品（[个人仓库 PR #149](https://github.com/CleverC2200/AionUi/pull/149)；[Issue #136](https://github.com/CleverC2200/AionUi/issues/136)）
+
+### 核心服务（个人 AionCore 0.1.71；版本基线：[个人 Core #17](https://github.com/CleverC2200/AionCore/pull/17)）
+
+#### 新功能
+
+- **项目：**新增 `fs/remount`，用于重建失效的文件系统挂载（官方 Core #910）
+- **跨会话消息：**支持在同一用户的会话间投递消息（官方 Core #914；[个人 Core #16](https://github.com/CleverC2200/AionCore/pull/16)）
+- **侧边栏：**新增归档基础能力和聚合读取模型（官方 Core #911）
+
+#### 问题修复
+
+- **应用：**自定义日志目录不可用时回退到默认目录（官方 Core #898）
+- **Claude：**追加助手预设，不再替换系统提示词（官方 Core #900）
+- **Codex：**将助手预设作为 `developerInstructions` 发送（官方 Core #897）
+- **会话：**在 relay 层应用 Agent 会话标题（官方 Core #896）
+- **扩展：**限制内置技能物化锁的等待时间（官方 Core #903）
+- **项目：**单个 `fs/subscribe` 目标失败时保留其他已挂载目标（官方 Core #902）
+- **运行时：**记录 npm/npx 探测错误和缺失可执行文件快照（官方 Core #904）
+- **认证：**将 JWT 与会话 Cookie 有效期统一为 30 天（[个人 Core #14](https://github.com/CleverC2200/AionCore/pull/14)）
+- **跨会话消息：**使用版本化单行 JSON envelope，并转义内嵌结束标记（[个人 Core #18](https://github.com/CleverC2200/AionCore/pull/18)）
+
+#### 维护
+
+- **ACP：**同步已验证的 dimcode、Grok 和 Nova registry 版本（[个人 Core #13](https://github.com/CleverC2200/AionCore/pull/13)）
+- **Codex：**将已验证的 CLI 版本更新为 0.149.0（[个人 Core #15](https://github.com/CleverC2200/AionCore/pull/15)）
+
+#### 保留的个人集成
+
+- 保留 Approval、GEA 运行时与 Swagger、Team Work Kernel 和托管 Voice 集成。
+
+---
+
 ## [2.1.53](https://github.com/iOfficeAI/AionUi/compare/v2.1.52...v2.1.53) (2026-08-10)
 
 ### 桌面端
