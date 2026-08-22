@@ -1,9 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync, promises as fs } from 'node:fs';
-import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import WebSocket from 'ws';
 import {
   CoreSessionClient,
   startWebHost,
@@ -87,88 +87,82 @@ async function readJson(response: Response): Promise<TracedResponse> {
   };
 }
 
-async function openWebSocket(port: number, cookie: string): Promise<net.Socket> {
-  return new Promise<net.Socket>((resolve, reject) => {
-    const socket = net.connect({ host: '127.0.0.1', port });
+async function openRegisteredWebSocket(port: number, cookie: string): Promise<WebSocket> {
+  const socket = new WebSocket(`ws://127.0.0.1:${port}/ws`, { headers: { cookie } });
+  await new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(() => {
-      socket.destroy();
+      socket.terminate();
       reject(new Error('WebSocket handshake timed out'));
     }, 10_000);
-    let response = '';
-    const finish = (error?: Error) => {
+    const onError = (error: Error) => {
+      clearTimeout(timeout);
+      reject(error);
+    };
+    socket.once('error', onError);
+    socket.once('open', () => {
       clearTimeout(timeout);
       socket.off('error', onError);
-      socket.off('data', onData);
-      if (error) {
-        socket.destroy();
-        reject(error);
-      } else {
-        resolve(socket);
-      }
-    };
-    const onError = (error: Error) => finish(error);
-    const onData = (chunk: Buffer) => {
-      response += chunk.toString('latin1');
-      if (!response.includes('\r\n\r\n')) return;
-      const statusLine = response.split('\r\n', 1)[0];
-      finish(statusLine.includes('101 Switching Protocols') ? undefined : new Error(statusLine));
-    };
-    socket.on('error', onError);
-    socket.on('data', onData);
-    socket.on('connect', () => {
-      socket.write(
-        'GET /ws HTTP/1.1\r\n' +
-          `Host: 127.0.0.1:${port}\r\n` +
-          `Cookie: ${cookie}\r\n` +
-          'Upgrade: websocket\r\n' +
-          'Connection: Upgrade\r\n' +
-          'Sec-WebSocket-Version: 13\r\n' +
-          `Sec-WebSocket-Key: ${randomBytes(16).toString('base64')}\r\n\r\n`
-      );
+      resolve();
     });
   });
+  const registered = new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      socket.terminate();
+      reject(new Error('WebSocket registration probe timed out'));
+    }, 10_000);
+    const onError = (error: Error) => {
+      clearTimeout(timeout);
+      reject(error);
+    };
+    socket.once('error', onError);
+    socket.once('message', (data) => {
+      clearTimeout(timeout);
+      socket.off('error', onError);
+      const parsed = JSON.parse(data.toString()) as JsonRecord;
+      const code = (parsed.data as JsonRecord | undefined)?.code;
+      if (parsed.name === 'realtime.error' && code === 'REALTIME_INVALID_MESSAGE') resolve();
+      else reject(new Error(`unexpected WebSocket registration response: ${data.toString()}`));
+    });
+  });
+  socket.send('issue-133-registration-probe');
+  await registered;
+  return socket;
 }
 
-async function waitForSocketCloseFrame(socket: net.Socket): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    let buffered = Buffer.alloc(0);
+type WebSocketTerminalBoundary = {
+  closeCode: number;
+  closeReason: string;
+  errorCode: string;
+};
+
+async function waitForSocketTerminalBoundary(socket: WebSocket): Promise<WebSocketTerminalBoundary> {
+  return new Promise<WebSocketTerminalBoundary>((resolve, reject) => {
+    let errorCode = '';
     const timeout = setTimeout(() => {
-      socket.destroy();
-      reject(new Error('revoked WebSocket did not receive a Close frame'));
+      socket.terminate();
+      reject(new Error('revoked WebSocket did not receive its terminal auth boundary'));
     }, 10_000);
-    const finish = () => {
-      clearTimeout(timeout);
-      socket.off('data', onData);
-      socket.destroy();
-      resolve();
-    };
-    const onData = (chunk: Buffer) => {
-      buffered = Buffer.concat([buffered, chunk]);
-      while (buffered.length >= 2) {
-        const opcode = buffered[0] & 0x0f;
-        let headerLength = 2;
-        let payloadLength = buffered[1] & 0x7f;
-        if (payloadLength === 126) {
-          if (buffered.length < 4) return;
-          payloadLength = buffered.readUInt16BE(2);
-          headerLength = 4;
-        } else if (payloadLength === 127) {
-          if (buffered.length < 10) return;
-          const length = buffered.readBigUInt64BE(2);
-          if (length > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('WebSocket frame is too large');
-          payloadLength = Number(length);
-          headerLength = 10;
-        }
-        const frameLength = headerLength + payloadLength;
-        if (buffered.length < frameLength) return;
-        buffered = buffered.subarray(frameLength);
-        if (opcode === 0x8) {
-          finish();
-          return;
-        }
+    const onMessage = (data: WebSocket.RawData) => {
+      const parsed = JSON.parse(data.toString()) as JsonRecord;
+      if (parsed.name === 'realtime.error') {
+        errorCode = ((parsed.data as JsonRecord | undefined)?.code as string | undefined) ?? '';
       }
     };
-    socket.on('data', onData);
+    const onClose = (closeCode: number, reason: Buffer) => {
+      clearTimeout(timeout);
+      socket.off('error', onError);
+      socket.off('message', onMessage);
+      resolve({ closeCode, closeReason: reason.toString('utf8'), errorCode });
+    };
+    const onError = (error: Error) => {
+      clearTimeout(timeout);
+      socket.off('message', onMessage);
+      socket.off('close', onClose);
+      reject(error);
+    };
+    socket.once('error', onError);
+    socket.on('message', onMessage);
+    socket.once('close', onClose);
   });
 }
 
@@ -188,8 +182,12 @@ describe.skipIf(!realCoreAvailable)('renewable Lark-to-Core session with a real 
   });
 
   afterAll(async () => {
-    await host?.stop().catch(() => {});
     await fs.rm(rootDir, { recursive: true, force: true });
+  });
+
+  afterEach(async () => {
+    await host?.stop().catch(() => {});
+    host = null;
   });
 
   const start = async (): Promise<WebHostHandle> =>
@@ -275,18 +273,34 @@ describe.skipIf(!realCoreAvailable)('renewable Lark-to-Core session with a real 
     expect(refreshed.session.sid).toBe(directSession.session.sid);
     expect(refreshed.session.rotation).toBe(directSession.session.rotation + 1);
     expect(refreshed.accessCookie).not.toBe(directSession.accessCookie);
+    expect(refreshed.csrfCookie).not.toBe(directSession.csrfCookie);
     expect(refreshed.refreshCookie).not.toBe(directSession.refreshCookie);
+    const csrfToken = refreshed.csrfCookie.split('=', 2)[1];
+    const refreshedWrite = await fetch(`http://127.0.0.1:${host.backendPort}/api/settings/client`, {
+      method: 'PUT',
+      headers: {
+        cookie: `${refreshed.accessCookie}; ${refreshed.csrfCookie}`,
+        'content-type': 'application/json',
+        'x-csrf-token': csrfToken,
+      },
+      body: JSON.stringify({ issue133_refreshed_csrf_marker: 'accepted' }),
+    });
+    expect(refreshedWrite.status).toBe(200);
     await trustedClient.revokeMatching(refreshed.refreshCookie);
 
-    const socketA = await openWebSocket(host.port, cookieA);
-    const socketClosed = waitForSocketCloseFrame(socketA);
+    const socketA = await openRegisteredWebSocket(host.port, cookieA);
+    const socketBoundary = waitForSocketTerminalBoundary(socketA);
     const logoutA = await request(`${host.localUrl}/api/lark-auth/logout`, {
       method: 'POST',
       headers: { cookie: cookieA },
     });
     expect(logoutA.response.status).toBe(200);
     expect(logoutA.response.headers.get('set-cookie')).toContain('Max-Age=0');
-    await socketClosed;
+    await expect(socketBoundary).resolves.toEqual({
+      closeCode: 1008,
+      closeReason: 'session revoked',
+      errorCode: 'REALTIME_AUTH_EXPIRED',
+    });
     expect((await currentUser(cookieA)).response.status).toBe(401);
     expect((await currentUser(cookieB)).response.status).toBe(200);
 
@@ -322,12 +336,17 @@ describe.skipIf(!realCoreAvailable)('renewable Lark-to-Core session with a real 
       host = await start();
       const cookie = await login('qr-a');
       const deadline = Date.now() + 24 * 60 * 60 * 1000;
+      let probe = 0;
       while (Date.now() < deadline) {
-        // This is a wall-clock soak: probes and delays must remain ordered.
+        // A state-changing Core request proves refreshed access and CSRF credentials
+        // remain paired; probes and delays must remain ordered for this wall-clock soak.
         // eslint-disable-next-line no-await-in-loop
-        const status = await request(`${host.localUrl}/api/lark-auth/status`, { headers: { cookie } });
-        expect(status.response.status).toBe(200);
-        expect((status.body.data as JsonRecord).authenticated).toBe(true);
+        const write = await request(`${host.localUrl}/api/settings/client`, {
+          method: 'PUT',
+          headers: { cookie, 'content-type': 'application/json' },
+          body: JSON.stringify({ issue133_soak_probe: ++probe }),
+        });
+        expect(write.response.status).toBe(200);
         // eslint-disable-next-line no-await-in-loop
         await new Promise((resolve) => setTimeout(resolve, Math.min(5 * 60 * 1000, deadline - Date.now())));
       }
