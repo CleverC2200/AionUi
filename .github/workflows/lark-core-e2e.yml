@@ -24,6 +24,7 @@ env:
   AIONCORE_LARK_E2E_REF: b60ce7c7c3d22e6864deff9c43b6734445c944f4
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
   CARGO_INCREMENTAL: '0'
+  NODE_OPTIONS: '--max-old-space-size=8192'
 
 jobs:
   lark-core-boundary:
