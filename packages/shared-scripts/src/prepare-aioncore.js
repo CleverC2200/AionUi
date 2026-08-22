@@ -1,11 +1,14 @@
 /**
  * Prepare aioncore binary for packaging.
  *
- * Resolution order:
- *  1. GitHub Actions artifact download when AIONUI_BACKEND_RUN_ID is set
- *  2. GitHub release download (requires version or defaults to "latest")
- *  3. Complete local bundle from AIONUI_BACKEND_LOCAL_BUNDLE_DIR
+ * Default resolution order:
+ *  1. Complete local bundle from AIONUI_BACKEND_LOCAL_BUNDLE_DIR
+ *  2. GitHub Actions artifact download when AIONUI_BACKEND_RUN_ID is set
+ *  3. GitHub release download (requires version or defaults to "latest")
  *  4. Local binary fallback from AIONUI_BACKEND_LOCAL_BINARY
+ *
+ * AIONUI_BACKEND_SOURCE_POLICY=verified-actions disables every fallback and
+ * requires a successful personal-fork workflow run plus an archive SHA256.
  *
  * Output: {projectRoot}/resources/bundled-aioncore/{platform}-{arch}/
  *   - aioncore[.exe]
@@ -16,6 +19,7 @@
  */
 
 const { execSync, execFileSync, spawnSync } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -23,7 +27,8 @@ const { verifyBundledAioncoreResources } = require('./verify-bundled-aioncore-re
 
 const GITHUB_OWNER = 'iOfficeAI';
 const GITHUB_REPO = 'AionCore';
-const DEFAULT_ACTIONS_REPOSITORY = `${GITHUB_OWNER}/${GITHUB_REPO}`;
+const DEFAULT_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+const VERIFIED_ACTIONS_POLICY = 'verified-actions';
 
 const ACTIONS_ARTIFACT_TARGETS = {
   'darwin-arm64': {
@@ -105,6 +110,69 @@ function getActionsRepository() {
     throw new Error(`Invalid AionCore Actions repository: ${repository}`);
   }
   return repository;
+}
+
+function getBackendSourcePolicy() {
+  const policy = (process.env.AIONUI_BACKEND_SOURCE_POLICY || 'default').trim();
+  if (!['default', VERIFIED_ACTIONS_POLICY].includes(policy)) {
+    throw new Error(`Invalid AionCore source policy: ${policy}`);
+  }
+  return policy;
+}
+
+function normalizeSha256(value, label) {
+  const digest = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^sha256:/, '');
+  if (!/^[a-f0-9]{64}$/.test(digest)) {
+    throw new Error(`Invalid SHA256 for ${label}`);
+  }
+  return digest;
+}
+
+function getExpectedActionsSha256(artifactName, { required = false } = {}) {
+  const direct = (process.env.AIONUI_BACKEND_SHA256 || '').trim();
+  const checksumMapJson = (process.env.AIONUI_BACKEND_SHA256S || '').trim();
+  let mapped = '';
+
+  if (checksumMapJson) {
+    let checksumMap;
+    try {
+      checksumMap = JSON.parse(checksumMapJson);
+    } catch {
+      throw new Error('Invalid AIONUI_BACKEND_SHA256S JSON');
+    }
+    if (!checksumMap || typeof checksumMap !== 'object' || Array.isArray(checksumMap)) {
+      throw new Error('AIONUI_BACKEND_SHA256S must be a JSON object keyed by artifact name');
+    }
+    mapped = String(checksumMap[artifactName] || '').trim();
+  }
+
+  if (direct && mapped && normalizeSha256(direct, artifactName) !== normalizeSha256(mapped, artifactName)) {
+    throw new Error(`Conflicting SHA256 values for AionCore artifact ${artifactName}`);
+  }
+
+  const value = direct || mapped;
+  if (!value) {
+    if (required) {
+      throw new Error(`Missing SHA256 for AionCore artifact ${artifactName}`);
+    }
+    return null;
+  }
+  return normalizeSha256(value, artifactName);
+}
+
+function sha256File(filePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
+function verifyFileSha256(filePath, expectedSha256, label) {
+  const actualSha256 = sha256File(filePath);
+  if (actualSha256 !== normalizeSha256(expectedSha256, label)) {
+    throw new Error(`SHA256 mismatch for ${label}: expected ${expectedSha256}, got ${actualSha256}`);
+  }
+  return actualSha256;
 }
 
 function getActionsManualPlatform(platform, arch) {
@@ -316,6 +384,56 @@ function githubApiGetJson(apiPath) {
   return JSON.parse(out);
 }
 
+function getActionsRunProvenance(runId, repository) {
+  if (!/^[1-9][0-9]*$/.test(runId)) {
+    throw new Error(`Invalid AionCore Actions run id: ${runId}`);
+  }
+
+  const run = githubApiGetJson(`repos/${repository}/actions/runs/${runId}`);
+  const workflowPath = String(run?.path || '').split('@')[0];
+  const sourceRepository = String(run?.repository?.full_name || '');
+  const headSha = String(run?.head_sha || '').toLowerCase();
+
+  if (String(run?.id || '') !== runId) {
+    throw new Error(`AionCore run metadata id mismatch for run ${runId}`);
+  }
+  if (sourceRepository.toLowerCase() !== repository.toLowerCase()) {
+    throw new Error(`AionCore run ${runId} repository mismatch: ${sourceRepository || '(missing)'}`);
+  }
+  if (run?.event !== 'workflow_dispatch') {
+    throw new Error(`AionCore run ${runId} was not triggered by workflow_dispatch`);
+  }
+  if (
+    workflowPath !== '.github/workflows/build-manual.yml' &&
+    !workflowPath.endsWith('/.github/workflows/build-manual.yml')
+  ) {
+    throw new Error(`AionCore run ${runId} did not use .github/workflows/build-manual.yml`);
+  }
+  if (run?.status !== 'completed' || run?.conclusion !== 'success') {
+    throw new Error(
+      `AionCore run ${runId} is not a completed success (status=${run?.status || 'unknown'}, conclusion=${run?.conclusion || 'unknown'})`
+    );
+  }
+  if (!/^[a-f0-9]{40}$/.test(headSha)) {
+    throw new Error(`AionCore run ${runId} is missing a valid head SHA`);
+  }
+
+  return {
+    repository: sourceRepository,
+    runId,
+    runUrl: String(run.html_url || `https://github.com/${repository}/actions/runs/${runId}`),
+    workflowName: String(run.name || ''),
+    workflowPath,
+    event: run.event,
+    status: run.status,
+    conclusion: run.conclusion,
+    headSha,
+    headBranch: String(run.head_branch || ''),
+    createdAt: String(run.created_at || ''),
+    updatedAt: String(run.updated_at || ''),
+  };
+}
+
 function downloadFileWithAuth(url, outputPath) {
   const token = getGitHubToken();
   const headers = ['-H', 'Accept: application/vnd.github+json'];
@@ -354,13 +472,14 @@ function listActionsArtifacts(runId, repository) {
   return Array.isArray(response?.artifacts) ? response.artifacts : [];
 }
 
-function downloadAndExtractActionsArtifact(platform, arch, runId) {
+function downloadAndExtractActionsArtifact(platform, arch, runId, { requireChecksum = false } = {}) {
   const expectedArtifactName = getActionsArtifactName(platform, arch);
   if (!expectedArtifactName) {
     throw new Error(`Unsupported AionCore Actions artifact target: ${platform}-${arch}`);
   }
 
   const repository = getActionsRepository();
+  const runProvenance = getActionsRunProvenance(runId, repository);
   const artifacts = listActionsArtifacts(runId, repository);
   const availableArtifactNames = artifacts
     .map((artifact) => artifact.name)
@@ -378,6 +497,17 @@ function downloadAndExtractActionsArtifact(platform, arch, runId) {
       })
     );
   }
+  if (!Number.isInteger(artifact.id) || artifact.id <= 0) {
+    throw new Error(`AionCore artifact ${expectedArtifactName} from run ${runId} is missing a valid artifact id`);
+  }
+  if (artifact.expired === true) {
+    throw new Error(`AionCore artifact ${expectedArtifactName} from run ${runId} has expired`);
+  }
+  if (artifact.workflow_run?.id && String(artifact.workflow_run.id) !== runId) {
+    throw new Error(`AionCore artifact ${expectedArtifactName} does not belong to run ${runId}`);
+  }
+
+  const expectedArchiveSha256 = getExpectedActionsSha256(expectedArtifactName, { required: requireChecksum });
 
   const tempDir = path.join(os.tmpdir(), 'aioncore-prepare-actions', runId, `${platform}-${arch}`);
   const artifactZipPath = path.join(tempDir, `${expectedArtifactName}.zip`);
@@ -391,12 +521,19 @@ function downloadAndExtractActionsArtifact(platform, arch, runId) {
     artifact.archive_download_url || `https://api.github.com/repos/${repository}/actions/artifacts/${artifact.id}/zip`;
   console.log(`  Downloading aioncore from AionCore run ${runId} artifact ${expectedArtifactName}`);
   downloadFileWithAuth(downloadUrl, artifactZipPath);
+  const artifactDigest = artifact.digest ? normalizeSha256(artifact.digest, `artifact ${expectedArtifactName}`) : null;
+  const artifactZipSha256 = artifactDigest
+    ? verifyFileSha256(artifactZipPath, artifactDigest, `artifact ${expectedArtifactName}`)
+    : sha256File(artifactZipPath);
   extractArchive(artifactZipPath, artifactExtractDir, platform);
 
   const archivePath = findAioncoreArchiveInDir(artifactExtractDir);
   if (!archivePath) {
     throw new Error(`AionCore artifact ${expectedArtifactName} from run ${runId} does not contain an aioncore archive`);
   }
+  const archiveSha256 = expectedArchiveSha256
+    ? verifyFileSha256(archivePath, expectedArchiveSha256, `AionCore archive from ${expectedArtifactName}`)
+    : sha256File(archivePath);
 
   extractArchive(archivePath, binaryExtractDir, platform);
 
@@ -413,6 +550,12 @@ function downloadAndExtractActionsArtifact(platform, arch, runId) {
     repository,
     archivePath,
     url: downloadUrl,
+    archiveSha256,
+    expectedArchiveSha256,
+    artifactId: artifact.id,
+    artifactDigest,
+    artifactZipSha256,
+    provenance: runProvenance,
   };
 }
 
@@ -460,6 +603,30 @@ function prepareAioncore(options) {
   const { projectRoot, platform, arch, version = 'latest' } = options;
   const runtimeKey = `${platform}-${arch}`;
   const actionsRunId = (process.env.AIONUI_BACKEND_RUN_ID || '').trim();
+  const sourcePolicy = getBackendSourcePolicy();
+  const verifiedActionsOnly = sourcePolicy === VERIFIED_ACTIONS_POLICY;
+  const localBundleDir = (process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR || '').trim();
+  const localBinary = (process.env.AIONUI_BACKEND_LOCAL_BINARY || '').trim();
+
+  if (verifiedActionsOnly) {
+    if (!actionsRunId) {
+      throw new Error('AIONUI_BACKEND_RUN_ID is required by verified-actions source policy');
+    }
+    const repository = getActionsRepository();
+    if (repository.toLowerCase() !== DEFAULT_ACTIONS_REPOSITORY.toLowerCase()) {
+      throw new Error(
+        `verified-actions source policy requires AionCore repository ${DEFAULT_ACTIONS_REPOSITORY}, got ${repository}`
+      );
+    }
+    const artifactName = getActionsArtifactName(platform, arch);
+    if (!artifactName) {
+      throw new Error(`Unsupported AionCore Actions artifact target: ${platform}-${arch}`);
+    }
+    getExpectedActionsSha256(artifactName, { required: true });
+    if (localBundleDir || localBinary) {
+      throw new Error('verified-actions source policy rejects local AionCore overrides');
+    }
+  }
 
   let tag = null;
   if (!actionsRunId) {
@@ -487,7 +654,6 @@ function prepareAioncore(options) {
   removeDirectorySafe(targetDir);
   ensureDirectory(targetDir);
 
-  const localBundleDir = (process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR || '').trim();
   if (localBundleDir) {
     const resolvedLocalBundleDir = path.resolve(localBundleDir);
     const localBinaryPath = path.join(resolvedLocalBundleDir, binaryName);
@@ -505,6 +671,7 @@ function prepareAioncore(options) {
         arch,
         version: tag || `actions-run-${actionsRunId}` || 'local-bundle',
         generatedAt: new Date().toISOString(),
+        sourcePolicy,
         sourceType: 'local-bundle',
         source: { path: resolvedLocalBundleDir },
         files: [binaryName, 'managed-resources/'],
@@ -524,7 +691,9 @@ function prepareAioncore(options) {
 
   // 1. Download from GitHub Actions artifacts when manual build run id is provided.
   if (actionsRunId) {
-    const result = downloadAndExtractActionsArtifact(platform, arch, actionsRunId);
+    const result = downloadAndExtractActionsArtifact(platform, arch, actionsRunId, {
+      requireChecksum: verifiedActionsOnly,
+    });
     sourcePath = result.binaryPath;
     tempDir = result.tempDir;
     sourceType = 'actions-artifact';
@@ -532,6 +701,12 @@ function prepareAioncore(options) {
       runId: actionsRunId,
       repository: result.repository,
       artifactName: result.artifactName,
+      artifactId: result.artifactId,
+      artifactDigest: result.artifactDigest,
+      artifactZipSha256: result.artifactZipSha256,
+      archiveSha256: result.archiveSha256,
+      expectedArchiveSha256: result.expectedArchiveSha256,
+      provenance: result.provenance,
       url: result.url,
     };
     console.log(`  Downloaded from GitHub Actions artifact`);
@@ -553,7 +728,6 @@ function prepareAioncore(options) {
 
   // 3. Use an explicitly supplied local cache when network download is unavailable.
   if (!sourcePath) {
-    const localBinary = (process.env.AIONUI_BACKEND_LOCAL_BINARY || '').trim();
     if (localBinary) {
       const resolvedLocalBinary = path.resolve(localBinary);
       if (fs.existsSync(resolvedLocalBinary) && fs.statSync(resolvedLocalBinary).isFile()) {
@@ -581,6 +755,7 @@ function prepareAioncore(options) {
       arch,
       version: tag || `actions-run-${actionsRunId}`,
       generatedAt: new Date().toISOString(),
+      sourcePolicy,
       sourceType,
       source: sourceDetail,
       files: [binaryName, 'managed-resources/'],
@@ -601,10 +776,15 @@ function prepareAioncore(options) {
 }
 
 module.exports = {
+  downloadAndExtractActionsArtifact,
   downloadFileWithAuth,
   getActionsArtifactMissingMessage,
   getActionsArtifactName,
   getActionsRepository,
+  getActionsRunProvenance,
+  getBackendSourcePolicy,
+  getExpectedActionsSha256,
   prepareAioncore,
+  verifyFileSha256,
   verifyPreparedAioncoreBundle,
 };
