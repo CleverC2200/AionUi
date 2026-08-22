@@ -471,6 +471,7 @@ const AionrsSendBox: React.FC<{
     (item: ConversationCommandQueueItem) => {
       remove(item.id);
       setContent(item.input);
+      setSelectedSessions(item.sessions ?? []);
       // Restore the two selection lanes: upload refs → uploadFile paths,
       // project refs → atPath items carrying their chatRef (so a re-send
       // collects the same project ref).
@@ -804,7 +805,7 @@ const AionrsSendBox: React.FC<{
         onStop={effectiveHandleStop}
         onRetryStart={teamRuntime?.onRetryStart ? () => void teamRuntime.onRetryStart?.() : undefined}
       />
-      <CrossSessionDisabledBanner />
+      <CrossSessionDisabledBanner interactive={!teamRuntime} />
       <SendBox
         data-testid='aionrs-sendbox'
         onMobilePlusClick={isMobile ? () => setIsMobileSheetOpen(true) : undefined}

@@ -55,6 +55,7 @@ import MessageCronBadge from './MessageCronBadge';
 import { resolveAgentLogo, useAgentLogos } from '@/renderer/utils/model/agentLogo';
 import TeammateMessageAvatar from './TeammateMessageAvatar';
 import { useTeammateColor } from '@/renderer/pages/team/identity/TeamIdentityContext';
+import { useTeamPermission } from '@/renderer/pages/team/hooks/TeamPermissionContext';
 
 const CODE_STYLE = { marginTop: 4, marginBlock: 4 };
 type TeamContextResetNotice = {
@@ -164,6 +165,7 @@ const MessageText: React.FC<{
   const { data, json } = useFormatContent(renderedText);
   const shouldRenderPlainText = isUserMessage || Boolean(contextResetNotice);
   const conversationContext = useConversationContextSafe();
+  const teamPermission = useTeamPermission();
   const forkConversation = useForkConversation(conversationContext?.conversation_id);
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
@@ -264,6 +266,7 @@ const MessageText: React.FC<{
                 name: deliverySource.fromName || deliverySource.fromId,
                 defaultValue: 'From conversation {{name}}',
               })}
+              interactive={!teamPermission}
             />
             {deliverySource.workspace && deliverySource.workspace !== 'same' && (
               <span
@@ -286,6 +289,7 @@ const MessageText: React.FC<{
                 label={`@@${session.name}`}
                 title={session.workspace}
                 chip
+                interactive={!teamPermission}
               />
             ))}
           </div>

@@ -776,6 +776,7 @@
     "rateLimitedTitle": "Les messages entre conversations semblent boucler",
     "rateLimited": "Les messages automatiques entre « {{from}} » et « {{to}} » sont anormalement fréquents et semblent boucler.",
     "stopBoth": "Arrêter les deux conversations",
+    "stopPartialFailure": "Certaines conversations n’ont pas pu être arrêtées. Réessayez.",
     "disableFeature": "Désactiver les messages entre conversations"
   }
 }

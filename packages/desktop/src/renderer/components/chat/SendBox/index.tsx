@@ -33,7 +33,7 @@ import {
 } from '@/renderer/utils/chat/atSessionQuery';
 import { buildAttachedMentionRanges } from '@/renderer/utils/chat/mentionHighlight';
 import { applyMentionInsertion, insertMentionAtCaret } from '@/renderer/utils/chat/mentionInsertion';
-import { reconcileSessionRefs } from './sessionMentionReconcile';
+import { buildSessionNameMap, reconcileSessionRefs } from './sessionMentionReconcile';
 import { getLastAssistantText } from '@/renderer/utils/chat/getLastAssistantText';
 import { dispatchChatScrollToBottom } from '@/renderer/utils/chat/chatMinimapEvents';
 import { formatRelativeTime } from '@/renderer/utils/chat/relativeTime';
@@ -1274,6 +1274,16 @@ const SendBox: React.FC<{
     }
   }, [input, onSelectedSessionsChange, selectedSessions]);
 
+  const restoredSessionNameById = useMemo(
+    () => buildSessionNameMap(input, selectedSessions ?? []),
+    [input, selectedSessions]
+  );
+  useEffect(() => {
+    for (const [id, name] of Object.entries(restoredSessionNameById)) {
+      if (sessionNameByIdRef.current[id] === undefined) sessionNameByIdRef.current[id] = name;
+    }
+  }, [restoredSessionNameById]);
+
   /**
    * Mention a conversation the user clicked on an earlier message.
    *
@@ -1826,11 +1836,11 @@ const SendBox: React.FC<{
   const attachedSessionNames = useMemo(
     () =>
       (selectedSessions ?? [])
-        .map((ref) => sessionNameByIdRef.current[ref.id])
+        .map((ref) => sessionNameByIdRef.current[ref.id] ?? restoredSessionNameById[ref.id])
         .filter((name): name is string => Boolean(name)),
     // `sessionNameByIdRef` is a ref, but it is written in the same commit that
     // grows `selectedSessions`, so that dependency covers it.
-    [selectedSessions]
+    [restoredSessionNameById, selectedSessions]
   );
   const highlightRanges = useMemo(
     () =>

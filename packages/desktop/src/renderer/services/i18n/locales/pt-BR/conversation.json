@@ -782,6 +782,7 @@
     "rateLimitedTitle": "As mensagens entre conversas podem estar em loop",
     "rateLimited": "As mensagens automáticas entre \"{{from}}\" e \"{{to}}\" estão excepcionalmente frequentes e podem estar em loop.",
     "stopBoth": "Parar as duas conversas",
+    "stopPartialFailure": "Não foi possível parar algumas conversas. Tente novamente.",
     "disableFeature": "Desativar mensagens entre conversas"
   }
 }

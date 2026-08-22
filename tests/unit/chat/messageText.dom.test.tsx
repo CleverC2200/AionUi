@@ -39,6 +39,7 @@ const forkMocks = vi.hoisted(() => ({
   ensureRuntime: vi.fn().mockResolvedValue(undefined),
   navigate: vi.fn(),
 }));
+const teamModeRef = vi.hoisted(() => ({ current: false }));
 
 vi.mock('@/common', () => ({
   ipcBridge: {
@@ -135,6 +136,10 @@ vi.mock('@/renderer/pages/conversation/Messages/components/TeammateMessageAvatar
   default: ({ senderName }: { senderName?: string }) => <span data-testid='teammate-avatar'>{senderName}</span>,
 }));
 
+vi.mock('@/renderer/pages/team/hooks/TeamPermissionContext', () => ({
+  useTeamPermission: () => (teamModeRef.current ? { isTeamMode: true } : null),
+}));
+
 vi.mock('@/renderer/utils/ui/clipboard', () => ({
   copyText: vi.fn().mockResolvedValue(undefined),
 }));
@@ -167,6 +172,7 @@ const fileMetadata = (path: string) => ({
 
 describe('MessageText attachment paths', () => {
   beforeEach(() => {
+    teamModeRef.current = false;
     mockFilePreview.mockClear();
     vi.mocked(copyText).mockClear();
     previewMocks.openPreview.mockClear();
@@ -327,6 +333,42 @@ describe('MessageText attachment paths', () => {
     expect(previews[1]).toHaveTextContent('/workspace/demo/uploads/中文 文件.txt');
     expect(previews[2]).toHaveTextContent('/workspace/demo/设计 图.png');
     expect(screen.getByTestId('message-text-content')).toHaveTextContent('look at these');
+  });
+
+  it('renders Team conversation chips and source badges as non-interactive text', () => {
+    teamModeRef.current = true;
+    const content = [
+      '[[AION_SESSION_MESSAGE]]',
+      'from: Source\tconv_source',
+      'workspace: same',
+      'reply_to: conv_source\t（回信）',
+      '[[/AION_SESSION_MESSAGE]]',
+      '',
+      'ask Target',
+      '',
+      '[[AION_SESSIONS]]',
+      'Target\tconv_target\tworkspace: same',
+      '[[/AION_SESSIONS]]',
+    ].join('\n');
+
+    const message: IMessageText = {
+      id: 'msg-team-cross-session',
+      msg_id: 'msg-team-cross-session',
+      conversation_id: 'conv-1',
+      type: 'text',
+      position: 'right',
+      createdAt: Date.now(),
+      content: { content },
+    };
+    render(
+      <ConversationProvider value={{ conversation_id: 'conv-1', workspace: '/workspace/demo', type: 'acp' }}>
+        <MessageText message={message} />
+      </ConversationProvider>
+    );
+
+    expect(screen.getByText('@@Target')).toBeInTheDocument();
+    expect(screen.getByText('From conversation {{name}}')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Mention conversation/ })).not.toBeInTheDocument();
   });
 
   it('renders assistant marker mentions as full message text without file previews', () => {

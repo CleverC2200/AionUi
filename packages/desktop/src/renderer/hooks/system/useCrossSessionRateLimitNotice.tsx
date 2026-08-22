@@ -7,8 +7,8 @@
 import { ipcBridge } from '@/common';
 import type { SessionMessageRateLimitedPayload } from '@/common/adapter/ipcBridge';
 import { useCrossSessionMessageEnabled } from '@/renderer/hooks/chat/useCrossSessionMessageEnabled';
+import { useAuthSessionEpoch } from '@/renderer/hooks/context/AuthContext';
 import { resolveCurrentUserId } from '@/renderer/hooks/system/currentUserId';
-import { getConversationRuntimeViewSnapshot } from '@/renderer/pages/conversation/runtime/conversationRuntimeViewStore';
 import { Button, Message, Notification } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -67,6 +67,7 @@ const pairKey = (payload: SessionMessageRateLimitedPayload): string =>
  */
 export function useCrossSessionRateLimitNotice(): void {
   const { t } = useTranslation();
+  const authSessionEpoch = useAuthSessionEpoch();
   const { setEnabled } = useCrossSessionMessageEnabled();
   const lastShownRef = useRef<Map<string, number>>(new Map());
   // AuthContext is not authoritative here: desktop can have no UI user, while
@@ -77,28 +78,34 @@ export function useCrossSessionRateLimitNotice(): void {
 
   useEffect(() => {
     let cancelled = false;
-    void resolveCurrentUserId().then((id) => {
+    setResolvedUserId(undefined);
+    void resolveCurrentUserId(authSessionEpoch).then((id) => {
       if (!cancelled) setResolvedUserId(id);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authSessionEpoch]);
 
-  const stopConversations = useCallback(async (conversationIds: string[]) => {
-    await Promise.all(
+  const stopConversations = useCallback(async (conversationIds: string[]): Promise<boolean> => {
+    const results = await Promise.all(
       conversationIds.map(async (conversation_id) => {
-        // `cancel` needs the active turn id; the runtime view store is the same
-        // source the send box's stop button reads.
-        const activeTurnId = getConversationRuntimeViewSnapshot(conversation_id).activeTurnId;
-        if (!activeTurnId) return;
         try {
+          // Background conversations may never have populated the Renderer
+          // runtime store. The detail endpoint is read-only and returns Core's
+          // authoritative runtime, including the active turn needed by cancel.
+          const conversation = await ipcBridge.conversation.get.invoke({ id: conversation_id });
+          const activeTurnId = conversation.runtime?.turn_id;
+          if (!activeTurnId) return true;
           await ipcBridge.conversation.stop.invoke({ conversation_id, turn_id: activeTurnId });
+          return true;
         } catch {
-          // Best effort: one side failing must not block the other.
+          // Keep trying the other side, then report the partial failure.
+          return false;
         }
       })
     );
+    return results.every(Boolean);
   }, []);
 
   const handlePayload = useCallback(
@@ -134,8 +141,17 @@ export function useCrossSessionRateLimitNotice(): void {
             <Button
               size='mini'
               onClick={() => {
-                void stopConversations(notice.conversationIdsToStop);
-                Notification.remove(notificationId);
+                void stopConversations(notice.conversationIdsToStop).then((allStopped) => {
+                  if (allStopped) {
+                    Notification.remove(notificationId);
+                    return;
+                  }
+                  Message.error(
+                    t('conversation.crossSession.stopPartialFailure', {
+                      defaultValue: 'Some conversations could not be stopped. Please try again.',
+                    })
+                  );
+                });
               }}
             >
               {t('conversation.crossSession.stopBoth', { defaultValue: 'Stop both conversations' })}

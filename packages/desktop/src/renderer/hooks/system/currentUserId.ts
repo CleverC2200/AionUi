@@ -29,19 +29,25 @@
 import { ipcBridge } from '@/common';
 
 let cached: string | undefined;
-let pending: Promise<string | undefined> | null = null;
+let cachedEpoch: number | undefined;
+let pending: { epoch: number; promise: Promise<string | undefined> } | null = null;
 
-export async function resolveCurrentUserId(): Promise<string | undefined> {
+export async function resolveCurrentUserId(authSessionEpoch: number): Promise<string | undefined> {
+  if (cachedEpoch !== authSessionEpoch) {
+    cachedEpoch = authSessionEpoch;
+    cached = undefined;
+    pending = null;
+  }
   if (cached) return cached;
-  if (pending) return pending;
-  pending = (async () => {
+  if (pending?.epoch === authSessionEpoch) return pending.promise;
+  const promise = (async () => {
     try {
       // Optional-chained: a preload/bridge build without this entry must degrade
       // to "unknown" rather than throwing inside a render effect.
       const response = await ipcBridge.auth?.currentUser?.invoke?.();
       const id = response?.id;
-      if (id) cached = id;
-      return cached;
+      if (id && cachedEpoch === authSessionEpoch) cached = id;
+      return cachedEpoch === authSessionEpoch ? cached : undefined;
     } catch {
       // Leave it unknown. Callers treat that as "cannot attribute events to me"
       // and stay silent, which is the safe direction: showing another user's
@@ -49,14 +55,16 @@ export async function resolveCurrentUserId(): Promise<string | undefined> {
       return undefined;
     } finally {
       // Cleared either way so a failure can be retried by the next mount.
-      pending = null;
+      if (pending?.epoch === authSessionEpoch) pending = null;
     }
   })();
-  return pending;
+  pending = { epoch: authSessionEpoch, promise };
+  return promise;
 }
 
 /** Drop the cache. Exported for tests. */
 export function resetCurrentUserIdCache(): void {
   cached = undefined;
+  cachedEpoch = undefined;
   pending = null;
 }

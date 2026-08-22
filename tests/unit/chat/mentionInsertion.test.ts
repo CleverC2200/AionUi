@@ -83,16 +83,11 @@ describe('applyMentionInsertion', () => {
     expect(result.value).not.toContain(' ,');
   });
 
-  /// Pre-existing, and NOT introduced by the trailing space: the boundary set is
-  /// `/[\s,;!?()[\]{}]/`, which is ASCII-only, so CJK punctuation counts as part
-  /// of the name. `@@重构，急` is therefore one token ending at the input's end,
-  /// and completing it replaces the comma too. Pinned so the next reader does
-  /// not mistake it for a regression in the insertion rule.
-  it('treats CJK punctuation as part of the token, not as a separator', () => {
+  it('stops before CJK punctuation so completing a mention preserves it', () => {
     const value = '问下 @@重构，急';
-    const query = getActiveAtSessionQuery(value, value.length);
-    expect(query?.query).toBe('重构，急');
-    expect(query?.end).toBe(value.length);
+    const [query] = getAllAtSessionQueries(value);
+    expect(query.query).toBe('重构');
+    expect(value.slice(query.end)).toBe('，急');
   });
 
   it('escapes a name containing spaces and still appends the separator', () => {

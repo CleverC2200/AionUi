@@ -59,7 +59,7 @@ describe('parseSessionsBlock', () => {
     expect(parsed.text).toBe(content);
   });
 
-  it('skips malformed lines rather than producing half-built chips', () => {
+  it('leaves a mixed valid and malformed block untouched', () => {
     const content = [
       'hi',
       '',
@@ -68,14 +68,25 @@ describe('parseSessionsBlock', () => {
       'A\tconv_1\tworkspace: same',
       '[[/AION_SESSIONS]]',
     ].join('\n');
-    expect(parseSessionsBlock(content).sessions).toEqual([{ name: 'A', id: 'conv_1', workspace: 'same' }]);
+    expect(parseSessionsBlock(content)).toEqual({ text: content, sessions: [] });
   });
 
-  it('handles an empty block', () => {
+  it('leaves an empty block untouched', () => {
     const content = 'hi\n\n[[AION_SESSIONS]]\n[[/AION_SESSIONS]]';
     const parsed = parseSessionsBlock(content);
     expect(parsed.sessions).toEqual([]);
-    expect(parsed.text).toBe('hi');
+    expect(parsed.text).toBe(content);
+  });
+
+  it('leaves a conflicting marker inside the block untouched', () => {
+    const content = [
+      'hi',
+      '[[AION_SESSIONS]]',
+      'A\tconv_1\tworkspace: same',
+      '[[AION_SESSION_MESSAGE]]',
+      '[[/AION_SESSIONS]]',
+    ].join('\n');
+    expect(parseSessionsBlock(content)).toEqual({ text: content, sessions: [] });
   });
 });
 
@@ -122,6 +133,34 @@ describe('parseSessionMessageBlock', () => {
     const parsed = parseSessionMessageBlock(content);
     expect(parsed.source).toBeNull();
     expect(parsed.text).toBe(content);
+  });
+
+  it.each([
+    ['workspace', ['from: A\tconv_1', 'reply_to: conv_1\t（回信）']],
+    ['reply address', ['from: A\tconv_1', 'workspace: same']],
+  ])('leaves a block with no %s untouched', (_missing, fields) => {
+    const content = [
+      '[[AION_SESSION_MESSAGE]]',
+      ...fields,
+      '[[/AION_SESSION_MESSAGE]]',
+      '',
+      'body',
+    ].join('\n');
+    expect(parseSessionMessageBlock(content)).toEqual({ text: content, source: null });
+  });
+
+  it('leaves a conflicting marker inside the delivery block untouched', () => {
+    const content = [
+      '[[AION_SESSION_MESSAGE]]',
+      'from: A\tconv_1',
+      'workspace: same',
+      '[[AION_SESSIONS]]',
+      'reply_to: conv_1\t（回信）',
+      '[[/AION_SESSION_MESSAGE]]',
+      '',
+      'body',
+    ].join('\n');
+    expect(parseSessionMessageBlock(content)).toEqual({ text: content, source: null });
   });
 
   it('leaves a multi-line body intact', () => {

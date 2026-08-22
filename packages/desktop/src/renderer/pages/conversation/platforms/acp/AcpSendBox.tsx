@@ -512,6 +512,7 @@ Please check your local CLI tool authentication status`,
     (item: ConversationCommandQueueItem) => {
       remove(item.id);
       setContent(item.input);
+      setSelectedSessions(item.sessions ?? []);
       // Restore upload refs → uploadFile paths, project refs → atPath items.
       const { uploadFiles, atPath: restoredAtPath } = splitChatFileRefs(item.files);
       setUploadFile(uploadFiles);
@@ -847,7 +848,7 @@ Please check your local CLI tool authentication status`,
         onStop={effectiveHandleStop}
         onRetryStart={teamRuntime?.onRetryStart ? () => void teamRuntime.onRetryStart?.() : undefined}
       />
-      <CrossSessionDisabledBanner />
+      <CrossSessionDisabledBanner interactive={!teamRuntime} />
       <SendBox
         onMobilePlusClick={isMobile ? () => setIsMobileSheetOpen(true) : undefined}
         value={content}

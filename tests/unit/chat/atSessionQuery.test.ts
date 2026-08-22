@@ -109,6 +109,14 @@ describe('getAllAtSessionQueries', () => {
     const tokens = getAllAtSessionQueries('@@a @@b');
     expect(tokens).toHaveLength(2);
   });
+
+  it.each(['，', '。', '！', '？', '；', '：', '、', '）', '】', '》', '」'])(
+    'stops a token at the full-width boundary %s',
+    (boundary) => {
+      const tokens = getAllAtSessionQueries(`@@会话${boundary}继续`);
+      expect(tokens.map((token) => token.query)).toEqual(['会话']);
+    }
+  );
 });
 
 describe('buildAtSessionInsertion', () => {
@@ -120,6 +128,12 @@ describe('buildAtSessionInsertion', () => {
     const inserted = buildAtSessionInsertion('重构 鉴权, 模块');
     const value = `hi ${inserted}`;
     expect(getActiveAtSessionQuery(value, value.length)?.query).toBe('重构 鉴权, 模块');
+  });
+
+  it('round-trips a name containing full-width punctuation', () => {
+    const name = '重构，鉴权（第二阶段）';
+    const inserted = buildAtSessionInsertion(name);
+    expect(getActiveAtSessionQuery(inserted, inserted.length)?.query).toBe(name);
   });
 
   it('escapes a backslash so it does not swallow the next character', () => {

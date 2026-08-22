@@ -740,6 +740,7 @@ export type I18nKey =
   | 'conversation.crossSession.rateLimited'
   | 'conversation.crossSession.rateLimitedTitle'
   | 'conversation.crossSession.stopBoth'
+  | 'conversation.crossSession.stopPartialFailure'
   | 'conversation.dropdown.cliAgents'
   | 'conversation.dropdown.presetAssistants'
   | 'conversation.emptyState.greeting'

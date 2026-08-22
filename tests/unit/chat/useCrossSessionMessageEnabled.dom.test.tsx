@@ -28,6 +28,7 @@ vi.mock('@/common', () => ({
 }));
 
 const importHook = async () => await import('@/renderer/hooks/chat/useCrossSessionMessageEnabled');
+const importAuthEpoch = async () => await import('@/renderer/hooks/context/AuthContext');
 
 /** Two independent consumers, exactly as the real tree has. */
 const Consumers: React.FC<{
@@ -52,6 +53,8 @@ const Consumers: React.FC<{
 describe('useCrossSessionMessageEnabled', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    const { resetAuthSessionEpochForTests } = await importAuthEpoch();
+    act(() => resetAuthSessionEpochForTests());
     getMock.mockResolvedValue({ cross_session_message_enabled: true });
     setMock.mockResolvedValue(undefined);
     const { resetCrossSessionMessageEnabledCache } = await importHook();
@@ -74,6 +77,38 @@ describe('useCrossSessionMessageEnabled', () => {
     await act(async () => {
       render(<Consumers useHook={useCrossSessionMessageEnabled} />);
     });
+    expect(screen.getByTestId('a').textContent).toBe('true');
+  });
+
+  it('retries the settings read after an initial failure', async () => {
+    getMock.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ cross_session_message_enabled: false });
+    const { useCrossSessionMessageEnabled } = await importHook();
+    const first = render(<Consumers useHook={useCrossSessionMessageEnabled} />);
+    await act(async () => {});
+    expect(getMock).toHaveBeenCalledTimes(1);
+    first.unmount();
+
+    await act(async () => {
+      render(<Consumers useHook={useCrossSessionMessageEnabled} />);
+    });
+    expect(getMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('a').textContent).toBe('false');
+  });
+
+  it('re-reads the setting when the auth session changes from user A to user B', async () => {
+    getMock
+      .mockResolvedValueOnce({ cross_session_message_enabled: false })
+      .mockResolvedValueOnce({ cross_session_message_enabled: true });
+    const { useCrossSessionMessageEnabled } = await importHook();
+    const view = render(<Consumers useHook={useCrossSessionMessageEnabled} />);
+    await act(async () => {});
+    expect(screen.getByTestId('a').textContent).toBe('false');
+
+    const { notifyAuthSessionChanged } = await importAuthEpoch();
+    act(() => notifyAuthSessionChanged());
+    view.rerender(<Consumers useHook={useCrossSessionMessageEnabled} />);
+    await act(async () => {});
+    expect(getMock).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId('a').textContent).toBe('true');
   });
 

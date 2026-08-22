@@ -16,11 +16,11 @@ import { useTranslation } from 'react-i18next';
  * means a user who forgot they flipped it concludes the feature is broken. The
  * banner both explains why `@@` does nothing and offers the one-click way back.
  */
-const CrossSessionDisabledBanner: React.FC = () => {
+const CrossSessionDisabledBanner: React.FC<{ interactive?: boolean }> = ({ interactive = true }) => {
   const { t } = useTranslation();
   const { enabled, setEnabled } = useCrossSessionMessageEnabled();
 
-  if (enabled) {
+  if (!interactive || enabled) {
     return null;
   }
 

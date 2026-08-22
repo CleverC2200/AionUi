@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import { useAuthSessionEpoch } from '@/renderer/hooks/context/AuthContext';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 /**
@@ -28,6 +29,7 @@ type Listener = () => void;
 
 let enabledState = true;
 let loadPromise: Promise<void> | null = null;
+let storeEpoch: number | undefined;
 const listeners = new Set<Listener>();
 
 const emit = (): void => {
@@ -53,26 +55,44 @@ const getSnapshot = (): boolean => enabledState;
  * Fetch once per app session and share the result. Concurrent mounts await the
  * same promise instead of each issuing its own `GET /api/settings`.
  */
-const load = (): Promise<void> => {
+const activateEpoch = (authSessionEpoch: number): void => {
+  if (storeEpoch === authSessionEpoch) return;
+  storeEpoch = authSessionEpoch;
+  loadPromise = null;
+  setEnabledState(true);
+};
+
+const load = (authSessionEpoch: number): Promise<void> => {
+  activateEpoch(authSessionEpoch);
   if (loadPromise) return loadPromise;
-  loadPromise = (async () => {
+  let loaded = false;
+  const request = (async () => {
     try {
       // Optional-chained: a preload/bridge build without this entry must degrade
       // to the default rather than throwing inside a render effect.
       const settings = await ipcBridge.systemSettings?.getCrossSessionMessageEnabled?.invoke?.();
-      if (settings?.cross_session_message_enabled !== undefined) {
+      if (storeEpoch === authSessionEpoch && settings?.cross_session_message_enabled !== undefined) {
         setEnabledState(settings.cross_session_message_enabled);
+        loaded = true;
       }
     } catch {
       // Leave the default (on) in place.
+    } finally {
+      // A failed/unsupported first read must not poison the module cache. The
+      // next mount or explicit refresh gets a real retry.
+      if (!loaded && storeEpoch === authSessionEpoch && loadPromise === request) {
+        loadPromise = null;
+      }
     }
   })();
-  return loadPromise;
+  loadPromise = request;
+  return request;
 };
 
 /** Drop the cached fetch so the next mount re-reads. Exported for tests. */
 export const resetCrossSessionMessageEnabledCache = (): void => {
   loadPromise = null;
+  storeEpoch = undefined;
   enabledState = true;
   emit();
 };
@@ -82,15 +102,17 @@ export function useCrossSessionMessageEnabled(): {
   setEnabled: (enabled: boolean) => Promise<void>;
   refresh: () => void;
 } {
+  const authSessionEpoch = useAuthSessionEpoch();
   const enabled = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
-    void load();
-  }, [reloadToken]);
+    void load(authSessionEpoch);
+  }, [authSessionEpoch, reloadToken]);
 
   const setEnabled = useCallback(async (next: boolean) => {
     const previous = enabledState;
+    const requestEpoch = storeEpoch;
     // Optimistic, and shared: every consumer sees the new value immediately, so
     // the banner and the `@@` entry point can never disagree.
     setEnabledState(next);
@@ -102,7 +124,7 @@ export function useCrossSessionMessageEnabled(): {
       await setter.invoke({ enabled: next });
     } catch (error) {
       // Roll back so the UI never claims a state the backend rejected.
-      setEnabledState(previous);
+      if (storeEpoch === requestEpoch) setEnabledState(previous);
       throw error;
     }
   }, []);

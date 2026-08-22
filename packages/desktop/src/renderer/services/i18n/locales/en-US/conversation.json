@@ -1004,6 +1004,7 @@
     "rateLimitedTitle": "Cross-conversation messages may be looping",
     "rateLimited": "Automatic messages between \"{{from}}\" and \"{{to}}\" are unusually frequent and may be looping.",
     "stopBoth": "Stop both conversations",
+    "stopPartialFailure": "Some conversations could not be stopped. Please try again.",
     "disableFeature": "Turn off cross-conversation messages"
   }
 }

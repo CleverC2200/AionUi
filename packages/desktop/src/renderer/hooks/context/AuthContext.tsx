@@ -1,4 +1,13 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { ipcBridge } from '@/common';
 import type {
   LarkAuthResult,
@@ -16,6 +25,8 @@ type AuthContextValue = {
   ready: boolean;
   user: AuthUser | null;
   status: AuthStatus;
+  /** Changes whenever the authenticated session identity changes. */
+  authSessionEpoch: number;
   startLarkQrLogin: () => Promise<LarkAuthResult<LarkQrLoginSession>>;
   pollLarkQrLogin: (qrcodeId: string) => Promise<LarkAuthResult<LarkQrLoginPollResult>>;
   logout: () => Promise<void>;
@@ -26,6 +37,33 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const AUTH_USER_ENDPOINT = '/api/auth/user';
 const isDesktopRuntime = typeof window !== 'undefined' && Boolean(window.electronAPI);
+
+let authSessionEpoch = 0;
+const authSessionEpochListeners = new Set<() => void>();
+
+const subscribeAuthSessionEpoch = (listener: () => void): (() => void) => {
+  authSessionEpochListeners.add(listener);
+  return () => authSessionEpochListeners.delete(listener);
+};
+
+const getAuthSessionEpoch = (): number => authSessionEpoch;
+
+/** Publish an authenticated-session boundary without exposing an external id
+ * as a Core user id. Shared caches subscribe to the monotonically increasing
+ * epoch and resolve their own Core-scoped values again. */
+export const notifyAuthSessionChanged = (): void => {
+  authSessionEpoch += 1;
+  for (const listener of authSessionEpochListeners) listener();
+};
+
+export const useAuthSessionEpoch = (): number =>
+  useSyncExternalStore(subscribeAuthSessionEpoch, getAuthSessionEpoch, getAuthSessionEpoch);
+
+/** Reset the module store between tests. */
+export const resetAuthSessionEpochForTests = (): void => {
+  authSessionEpoch = 0;
+  for (const listener of authSessionEpochListeners) listener();
+};
 
 function clearAuthCache(): void {
   if (typeof window === 'undefined') return;
@@ -90,17 +128,29 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('checking');
   const [ready, setReady] = useState(false);
+  const sessionEpoch = useAuthSessionEpoch();
   const abortRef = useRef<AbortController | null>(null);
+  const authIdentityRef = useRef('checking');
+
+  const publishAuthState = useCallback((nextStatus: Exclude<AuthStatus, 'checking'>, nextUser: AuthUser | null) => {
+    // The external user id is only an invalidation signal. Core-scoped callers
+    // must still resolve Core's own user id after this epoch changes.
+    const nextIdentity = nextStatus === 'authenticated' ? `authenticated:${nextUser?.id ?? 'unknown'}` : nextStatus;
+    if (authIdentityRef.current !== nextIdentity) {
+      authIdentityRef.current = nextIdentity;
+      notifyAuthSessionChanged();
+    }
+    setUser(nextUser);
+    setStatus(nextStatus);
+  }, []);
 
   const refresh = useCallback(async () => {
     if (isDesktopRuntime) {
       const result = await ipcBridge.larkAuth.status.invoke();
       if (result.success && result.data.authenticated && result.data.user) {
-        setStatus('authenticated');
-        setUser(result.data.user);
+        publishAuthState('authenticated', result.data.user);
       } else {
-        setStatus('unauthenticated');
-        setUser(null);
+        publishAuthState('unauthenticated', null);
       }
       setReady(true);
       return;
@@ -112,14 +162,12 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     setStatus('checking');
     const currentUser = await fetchCurrentUser(controller.signal);
     if (currentUser) {
-      setUser(currentUser);
-      setStatus('authenticated');
+      publishAuthState('authenticated', currentUser);
     } else {
-      setUser(null);
-      setStatus('unauthenticated');
+      publishAuthState('unauthenticated', null);
     }
     setReady(true);
-  }, []);
+  }, [publishAuthState]);
 
   useEffect(() => {
     void refresh();
@@ -139,8 +187,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       ? await ipcBridge.larkAuth.pollQrSession.invoke({ qrcodeId })
       : await fetchLarkAuthResult<LarkQrLoginPollResult>('/api/lark-auth/poll', { qrcodeId });
     if (result.success && result.data.status === 'authenticated' && result.data.user) {
-      setUser(result.data.user);
-      setStatus('authenticated');
+      publishAuthState('authenticated', result.data.user);
       setReady(true);
       if (!isDesktopRuntime) {
         const reconnect = (window as Window & { __websocketReconnect?: () => void }).__websocketReconnect;
@@ -148,14 +195,13 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       }
     }
     return result;
-  }, []);
+  }, [publishAuthState]);
 
   const logout = useCallback(async () => {
     if (isDesktopRuntime) {
       const result = await ipcBridge.larkAuth.logout.invoke();
       if (result.success === false) throw new Error(result.code);
-      setUser(null);
-      setStatus('unauthenticated');
+      publishAuthState('unauthenticated', null);
       setReady(true);
       clearAuthCache();
       return;
@@ -171,24 +217,24 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     } catch (error) {
       console.error('Logout request failed:', error);
     } finally {
-      setUser(null);
-      setStatus('unauthenticated');
+      publishAuthState('unauthenticated', null);
       clearAuthCache();
     }
-  }, []);
+  }, [publishAuthState]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       ready,
       user,
       status,
+      authSessionEpoch: sessionEpoch,
       startLarkQrLogin,
       pollLarkQrLogin,
       logout,
       refresh,
       clearAuthCache,
     }),
-    [logout, pollLarkQrLogin, ready, refresh, startLarkQrLogin, status, user]
+    [logout, pollLarkQrLogin, ready, refresh, sessionEpoch, startLarkQrLogin, status, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

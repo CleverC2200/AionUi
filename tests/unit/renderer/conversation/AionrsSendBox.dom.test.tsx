@@ -18,6 +18,8 @@ const {
   markSendAcceptedMock,
   sendBoxPropsSpy,
   enqueueMock,
+  removeMock,
+  commandQueuePanelPropsSpy,
   clearFilesMock,
   draftMutateMock,
   draftContentRef,
@@ -33,6 +35,8 @@ const {
   markSendAcceptedMock: vi.fn(),
   sendBoxPropsSpy: vi.fn(),
   enqueueMock: vi.fn(),
+  removeMock: vi.fn(),
+  commandQueuePanelPropsSpy: vi.fn(),
   clearFilesMock: vi.fn(),
   draftMutateMock: vi.fn(),
   draftContentRef: { current: '' },
@@ -133,7 +137,12 @@ vi.mock('@/renderer/pages/conversation/platforms/aionrs/AionrsModelSelector', ()
     <div data-testid='mock-aionrs-model-selector' data-placement={placement} />
   ),
 }));
-vi.mock('@/renderer/components/chat/CommandQueuePanel', () => ({ default: () => null }));
+vi.mock('@/renderer/components/chat/CommandQueuePanel', () => ({
+  default: (props: unknown) => {
+    commandQueuePanelPropsSpy(props);
+    return null;
+  },
+}));
 vi.mock('@/renderer/components/chat/MobileActionSheet', () => ({
   default: () => null,
   useAttachEntry: () => ({ entries: [], hiddenFileInput: null }),
@@ -205,7 +214,7 @@ vi.mock('@/renderer/pages/conversation/platforms/useConversationCommandQueue', (
     isInteractionLocked: false,
     hasPendingCommands: false,
     enqueue: enqueueMock,
-    remove: vi.fn(),
+    remove: removeMock,
     clear: vi.fn(),
     reorder: vi.fn(),
     pause: vi.fn(),
@@ -540,6 +549,47 @@ describe('AionrsSendBox', () => {
 
       expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining({ sessions: [{ id: 'conv_target' }] }));
       expect(latestProps().selectedSessions).toEqual([]);
+    });
+
+    it('restores queued session references when editing and sends them again', async () => {
+      draftContentRef.current = 'ask @@target';
+      render(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} />);
+      await waitFor(() => expect(ensureConversationRuntimeMock).toHaveBeenCalledWith('conv-1'));
+
+      type SessionProps = {
+        onAddToDraft?: () => void;
+        onSelectedSessionsChange?: (sessions: Array<{ id: string }>) => void;
+        selectedSessions?: Array<{ id: string }>;
+      };
+      const latestProps = (): SessionProps => sendBoxPropsSpy.mock.calls.at(-1)?.[0] as SessionProps;
+      await act(async () => {
+        latestProps().onSelectedSessionsChange?.([{ id: 'conv_target' }]);
+      });
+      await act(async () => {
+        latestProps().onAddToDraft?.();
+      });
+      const queued = enqueueMock.mock.calls.at(-1)?.[0] as {
+        input: string;
+        files: [];
+        sessions: Array<{ id: string }>;
+      };
+      const onEdit = (commandQueuePanelPropsSpy.mock.calls.at(-1)![0] as {
+        onEdit: (item: typeof queued & { id: string; created_at: number }) => void;
+      }).onEdit;
+
+      await act(async () => {
+        onEdit({ ...queued, id: 'q-session', created_at: 1 });
+      });
+      expect(latestProps().selectedSessions).toEqual([{ id: 'conv_target' }]);
+
+      await act(async () => {
+        screen.getByRole('button', { name: 'send' }).click();
+      });
+      await waitFor(() =>
+        expect(sendMessageInvokeMock).toHaveBeenCalledWith(
+          expect.objectContaining({ sessions: [{ id: 'conv_target' }] })
+        )
+      );
     });
 
     it('shows the add-to-draft-box option while idle, as long as the draft is non-empty', async () => {

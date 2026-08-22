@@ -776,6 +776,7 @@
     "rateLimitedTitle": "会話間メッセージが空転している可能性があります",
     "rateLimited": "「{{from}}」と「{{to}}」の間の自動メッセージが異常に頻繁で、空転している可能性があります。",
     "stopBoth": "両方の会話を停止",
+    "stopPartialFailure": "一部の会話を停止できませんでした。もう一度お試しください。",
     "disableFeature": "会話間メッセージをオフにする"
   }
 }

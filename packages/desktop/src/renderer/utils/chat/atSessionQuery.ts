@@ -26,7 +26,7 @@
  * the two alphabets answer to different things (filesystem paths vs. names an
  * agent writes), so a change to one should not silently move the other.
  */
-const AT_SESSION_BOUNDARY_CHARS = String.raw`\s,;!?()[\]{}`;
+const AT_SESSION_BOUNDARY_CHARS = String.raw`\s,;:!?()[\]{}，。；：！？、（）【】［］｛｝《》〈〉「」『』〔〕`;
 const AT_SESSION_BOUNDARY_RE = new RegExp(`[${AT_SESSION_BOUNDARY_CHARS}]`);
 /**
  * The boundary characters plus the backslash itself, which is the escape

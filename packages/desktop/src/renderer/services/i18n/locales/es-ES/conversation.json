@@ -777,6 +777,7 @@
     "rateLimitedTitle": "Los mensajes entre conversaciones podrían estar en bucle",
     "rateLimited": "Los mensajes automáticos entre «{{from}}» y «{{to}}» son inusualmente frecuentes y podrían estar en bucle.",
     "stopBoth": "Detener ambas conversaciones",
+    "stopPartialFailure": "No se pudieron detener algunas conversaciones. Inténtalo de nuevo.",
     "disableFeature": "Desactivar los mensajes entre conversaciones"
   }
 }

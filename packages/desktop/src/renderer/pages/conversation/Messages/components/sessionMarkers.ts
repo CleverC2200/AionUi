@@ -65,15 +65,20 @@ export function parseSessionsBlock(content: string): { text: string; sessions: S
   for (const line of block.body) {
     // `name \t id \t workspace: VALUE`
     const parts = line.split('\t');
-    if (parts.length < 3) continue;
+    if (parts.length !== 3) return { text: content, sessions: [] };
     const [name, id, workspaceField] = parts;
-    if (!name || !id) continue;
+    if (!name || !id || !workspaceField.startsWith('workspace: ')) {
+      return { text: content, sessions: [] };
+    }
+    const workspace = workspaceField.slice('workspace: '.length);
+    if (!workspace) return { text: content, sessions: [] };
     sessions.push({
       name,
       id,
-      workspace: workspaceField.replace(/^workspace:\s*/, ''),
+      workspace,
     });
   }
+  if (sessions.length === 0) return { text: content, sessions: [] };
   return { text: block.text, sessions };
 }
 
@@ -90,21 +95,43 @@ export function parseSessionMessageBlock(content: string): { text: string; sourc
   let fromId = '';
   let workspace = '';
   let replyTo = '';
+  let hasFrom = false;
+  let hasWorkspace = false;
+  let hasReplyTo = false;
+  let invalid = false;
   for (const line of block.body) {
     if (line.startsWith('from: ')) {
-      const [name, id] = line.slice('from: '.length).split('\t');
+      const fromParts = line.slice('from: '.length).split('\t');
+      if (hasFrom || fromParts.length !== 2) {
+        invalid = true;
+        continue;
+      }
+      hasFrom = true;
+      const [name, id] = fromParts;
       fromName = name ?? '';
       fromId = id ?? '';
     } else if (line.startsWith('workspace: ')) {
+      if (hasWorkspace) {
+        invalid = true;
+        continue;
+      }
+      hasWorkspace = true;
       workspace = line.slice('workspace: '.length);
     } else if (line.startsWith('reply_to: ')) {
+      if (hasReplyTo) {
+        invalid = true;
+        continue;
+      }
+      hasReplyTo = true;
       // The value is followed by a tab and the short reply hint meant for the
       // agent; the UI only needs the address.
       replyTo = line.slice('reply_to: '.length).split('\t')[0] ?? '';
+    } else {
+      invalid = true;
     }
   }
 
-  if (!fromId) {
+  if (invalid || !fromName || !fromId || !workspace || !replyTo) {
     // Present but unparseable — treat as an ordinary message rather than
     // rendering an empty badge.
     return { text: content, source: null };

@@ -778,6 +778,7 @@
     "rateLimitedTitle": "Sohbetler arası mesajlar döngüye girmiş olabilir",
     "rateLimited": "\"{{from}}\" ve \"{{to}}\" arasındaki otomatik mesajlar olağandışı sıklıkta; döngüye girmiş olabilir.",
     "stopBoth": "Her iki sohbeti durdur",
+    "stopPartialFailure": "Bazı sohbetler durdurulamadı. Tekrar deneyin.",
     "disableFeature": "Sohbetler arası mesajları kapat"
   }
 }

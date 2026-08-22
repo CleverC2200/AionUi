@@ -1070,6 +1070,50 @@ describe('AcpSendBox', () => {
       expect(props.selectedSessions).toEqual([]);
     });
 
+    it('restores queued session references when editing and sends them again', async () => {
+      draftContentRef.current = 'ask @@target';
+      sendMessageInvokeMock.mockResolvedValue({ msg_id: 'm1', turn_id: 't1', runtime: {} });
+      render(
+        <AcpSendBox
+          conversation_id='conv-1'
+          backend='claude'
+          workspacePath='/tmp/workspace'
+          messageState={makeMessageState()}
+        />
+      );
+
+      await act(async () => {
+        screen.getByText('pick-session').click();
+      });
+      const latestProps = () => sendBoxPropsSpy.mock.calls.at(-1)?.[0] as {
+        onAddToDraft?: () => void;
+        selectedSessions?: Array<{ id: string }>;
+      };
+      await act(async () => {
+        latestProps().onAddToDraft?.();
+      });
+      const queued = enqueueMock.mock.calls.at(-1)?.[0] as {
+        input: string;
+        files: [];
+        sessions: Array<{ id: string }>;
+      };
+      const onEdit = (commandQueuePanelPropsSpy.mock.calls.at(-1)![0] as {
+        onEdit: (item: typeof queued & { id: string; created_at: number }) => void;
+      }).onEdit;
+
+      await act(async () => {
+        onEdit({ ...queued, id: 'q-session', created_at: 1 });
+      });
+      expect(latestProps().selectedSessions).toEqual([{ id: 'conv_target' }]);
+
+      await act(async () => {
+        screen.getByText('send').click();
+      });
+      expect(sendMessageInvokeMock).toHaveBeenCalledWith(
+        expect.objectContaining({ sessions: [{ id: 'conv_target' }] })
+      );
+    });
+
     it('offers the picker in an ordinary conversation but not in a team one', () => {
       const { unmount } = render(
         <AcpSendBox

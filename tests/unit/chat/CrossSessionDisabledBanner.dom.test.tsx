@@ -65,6 +65,15 @@ describe('CrossSessionDisabledBanner', () => {
     await waitFor(() => expect(setEnabled).toHaveBeenCalledWith({ enabled: true }));
   });
 
+  it('renders no recovery entry in a Team conversation', async () => {
+    getEnabled.mockResolvedValue({ cross_session_message_enabled: false });
+    const { container } = render(<CrossSessionDisabledBanner interactive={false} />);
+    await waitFor(() => expect(getEnabled).toHaveBeenCalled());
+
+    expect(container).toBeEmptyDOMElement();
+    expect(setEnabled).not.toHaveBeenCalled();
+  });
+
   it('stays hidden when the setting cannot be read, rather than nagging', async () => {
     // Default-on: a transient read failure must not look like the feature was
     // switched off.

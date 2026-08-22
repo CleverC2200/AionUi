@@ -777,6 +777,7 @@
     "rateLimitedTitle": "Nachrichten zwischen Unterhaltungen laufen möglicherweise im Kreis",
     "rateLimited": "Automatische Nachrichten zwischen „{{from}}“ und „{{to}}“ sind ungewöhnlich häufig und laufen möglicherweise im Kreis.",
     "stopBoth": "Beide Unterhaltungen stoppen",
+    "stopPartialFailure": "Einige Unterhaltungen konnten nicht gestoppt werden. Bitte versuchen Sie es erneut.",
     "disableFeature": "Nachrichten zwischen Unterhaltungen ausschalten"
   }
 }

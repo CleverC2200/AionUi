@@ -32,14 +32,16 @@ const SessionMentionAction: React.FC<{
   title?: string;
   /** Chip styling (sender side); the delivery badge is inline text. */
   chip?: boolean;
-}> = ({ id, name, label, title, chip = false }) => {
+  /** Team conversations may display provenance but cannot create cross-session mentions. */
+  interactive?: boolean;
+}> = ({ id, name, label, title, chip = false, interactive = true }) => {
   const { t } = useTranslation();
   const { available, pending, mention } = useMentionSessionFromMessage();
 
   const chipClass = chip ? 'px-6px py-2px rounded-6px text-12px text-t-secondary' : undefined;
   const chipStyle = chip ? { background: 'var(--color-fill-2)' } : undefined;
 
-  if (!available) {
+  if (!interactive || !available) {
     return (
       <span className={chipClass} style={chipStyle} title={title}>
         {label}
