@@ -14,7 +14,10 @@ export { CoreSessionClient, CoreSessionClientError, getCoreSessionBootstrapSecre
 export type {
   CoreExternalIdentity,
   CoreExternalIdentityMapping,
+  CoreMatchingSessionRevocation,
   CoreSession,
+  CoreSessionMetadata,
+  CoreSessionRefresh,
   CoreSessionRevocation,
 } from './core-session-client.js';
 export { startStaticServer, stopStaticServer } from './static-server.js';

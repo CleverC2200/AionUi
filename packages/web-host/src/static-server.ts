@@ -12,7 +12,7 @@ import http, { type IncomingMessage, type Server, type ServerResponse } from 'no
 import { networkInterfaces } from 'node:os';
 import net, { type Socket } from 'node:net';
 import serveHandler from 'serve-handler';
-import { LarkAuthGateway } from './lark-auth-gateway.js';
+import { CLEAR_WEB_SESSION_COOKIE, LarkAuthGateway } from './lark-auth-gateway.js';
 import type { WebHostLarkAuth } from './types.js';
 
 export type StaticServerOptions = {
@@ -78,13 +78,22 @@ function getLanIP(): string | null {
   return pickLanIP(networkInterfaces());
 }
 
-function forwardToBackend(
+async function forwardToBackend(
   req: IncomingMessage,
   res: ServerResponse,
   backendPort: number,
   gateway?: LarkAuthGateway
-): void {
-  const candidateHeaders = gateway ? gateway.getBackendHeaders(req.headers) : req.headers;
+): Promise<void> {
+  const candidateHeaders = gateway ? await gateway.getBackendHeaders(req.headers) : req.headers;
+  if (!candidateHeaders) {
+    res.writeHead(401, {
+      'content-type': 'application/json',
+      'cache-control': 'no-store',
+      'set-cookie': CLEAR_WEB_SESSION_COOKIE,
+    });
+    res.end(JSON.stringify({ success: false, error: 'UNAUTHENTICATED' }));
+    return;
+  }
   const { 'x-aioncore-bootstrap-secret': _bootstrapSecret, ...publicHeaders } = candidateHeaders;
   const options: http.RequestOptions = {
     hostname: '127.0.0.1',
@@ -213,12 +222,7 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
 
       // /api/* — reverse proxy to backend (includes /api/auth/*).
       if (req.url.startsWith('/api/') || req.url.startsWith('/api?') || req.url === '/login' || req.url === '/logout') {
-        if (authGateway && !authGateway.isAuthenticated(req.headers.cookie)) {
-          res.writeHead(401, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-          res.end(JSON.stringify({ success: false, error: 'UNAUTHENTICATED' }));
-          return;
-        }
-        forwardToBackend(req, res, opts.backendPort, authGateway);
+        await forwardToBackend(req, res, opts.backendPort, authGateway);
         return;
       }
 
@@ -271,16 +275,20 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
       if (decision === true && authGateway) {
         const headerComplete = peeked.indexOf('\r\n\r\n') >= 0;
         if (!headerComplete && peeked.length < PEEK_LIMIT_BYTES) return;
-        const authorizedBytes = authGateway.authorizeUpgrade(peeked);
-        if (!authorizedBytes) {
-          cleanup();
-          client.end(
-            'HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: 0\r\n\r\n'
-          );
-          return;
-        }
         cleanup();
-        spliceToTcpEndpoint(client, opts.backendPort, authorizedBytes);
+        client.pause();
+        void authGateway.authorizeUpgrade(peeked).then(
+          (authorizedBytes) => {
+            if (!authorizedBytes) {
+              client.end(
+                `HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nSet-Cookie: ${CLEAR_WEB_SESSION_COOKIE}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`
+              );
+              return;
+            }
+            spliceToTcpEndpoint(client, opts.backendPort, authorizedBytes);
+          },
+          () => client.destroy()
+        );
         return;
       }
       cleanup();
@@ -322,6 +330,7 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
     lanIP,
     stop: () =>
       new Promise<void>((resolve) => {
+        authGateway?.dispose();
         tcp_server.close(() => {
           http_server.close(() => resolve());
         });

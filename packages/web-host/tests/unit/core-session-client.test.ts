@@ -55,7 +55,7 @@ describe('CoreSessionClient', () => {
     }
   });
 
-  it('exchanges the exact Lark identity tuple and keeps the Core cookie server-side', async () => {
+  it('exchanges the exact Lark identity tuple and keeps both renewable Core cookies server-side', async () => {
     let requestBody: unknown;
     let bootstrapHeader = '';
     const server = await startServer(async (req, res) => {
@@ -63,12 +63,24 @@ describe('CoreSessionClient', () => {
       bootstrapHeader = String(req.headers['x-aioncore-bootstrap-secret'] ?? '');
       res.writeHead(200, {
         'content-type': 'application/json',
-        'set-cookie': 'aionui-session=core-user-1; Path=/; HttpOnly; SameSite=Lax',
+        'set-cookie': [
+          'aionui-session=access-1; Path=/; HttpOnly; SameSite=Lax; Max-Age=900',
+          'aionui-refresh-session=sid-1.refresh-1; Path=/api/auth/internal/external-sessions; HttpOnly; SameSite=Lax; Max-Age=2592000',
+        ],
       });
       res.end(
         JSON.stringify({
           success: true,
-          data: { user: { id: 'core-user-1', username: 'zhangsan' }, session_generation: 3 },
+          data: {
+            user: { id: 'core-user-1', username: 'zhangsan' },
+            session_generation: 3,
+            session: {
+              sid: 'sid-1',
+              rotation: 0,
+              access_expires_at: 2_000_000_000,
+              refresh_expires_at: 2_002_591_100,
+            },
+          },
         })
       );
     });
@@ -79,11 +91,72 @@ describe('CoreSessionClient', () => {
     expect(bootstrapHeader).toBe('bootstrap-secret');
     expect(requestBody).toEqual({ identity });
     expect(result).toEqual({
-      cookie: 'aionui-session=core-user-1',
+      accessCookie: 'aionui-session=access-1',
+      refreshCookie: 'aionui-refresh-session=sid-1.refresh-1',
       user: { id: 'core-user-1', username: 'zhangsan' },
       sessionGeneration: 3,
+      session: {
+        sid: 'sid-1',
+        rotation: 0,
+        accessExpiresAt: 2_000_000_000_000,
+        refreshExpiresAt: 2_002_591_100_000,
+      },
     });
     expect(JSON.stringify(result)).not.toContain('bootstrap-secret');
+  });
+
+  it('refreshes with only the Core refresh cookie and an empty body', async () => {
+    let requestBody = Buffer.alloc(0);
+    let requestCookie = '';
+    let idempotencyKey = '';
+    const server = await startServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      requestBody = Buffer.concat(chunks);
+      requestCookie = String(req.headers.cookie ?? '');
+      idempotencyKey = String(req.headers['x-aioncore-refresh-idempotency-key'] ?? '');
+      res.writeHead(200, {
+        'content-type': 'application/json',
+        'set-cookie': [
+          'aionui-session=access-2; Path=/; HttpOnly; SameSite=Lax; Max-Age=900',
+          'aionui-refresh-session=sid-1.refresh-2; Path=/api/auth/internal/external-sessions; HttpOnly; SameSite=Lax; Max-Age=2592000',
+        ],
+      });
+      res.end(
+        JSON.stringify({
+          success: true,
+          data: {
+            session: {
+              sid: 'sid-1',
+              rotation: 1,
+              access_expires_at: 2_000_000_900,
+              refresh_expires_at: 2_002_592_000,
+            },
+          },
+        })
+      );
+    });
+    closeServer = server.close;
+
+    const refreshIdempotencyKey = 'A'.repeat(43);
+    const result = await new CoreSessionClient(server.port, 'bootstrap-secret').refresh(
+      'aionui-refresh-session=sid-1.refresh-1',
+      refreshIdempotencyKey
+    );
+
+    expect(requestBody).toHaveLength(0);
+    expect(requestCookie).toBe('aionui-refresh-session=sid-1.refresh-1');
+    expect(idempotencyKey).toBe(refreshIdempotencyKey);
+    expect(result).toEqual({
+      accessCookie: 'aionui-session=access-2',
+      refreshCookie: 'aionui-refresh-session=sid-1.refresh-2',
+      session: {
+        sid: 'sid-1',
+        rotation: 1,
+        accessExpiresAt: 2_000_000_900_000,
+        refreshExpiresAt: 2_002_592_000_000,
+      },
+    });
   });
 
   it('provisions the exact Lark identity tuple before exchange without returning credentials', async () => {
@@ -125,6 +198,29 @@ describe('CoreSessionClient', () => {
     });
     expect(requestPath).toBe('/api/auth/internal/external-sessions/revoke');
     expect(requestBody).toEqual({ identity });
+  });
+
+  it('revokes only the matching sid with the refresh cookie and an empty body', async () => {
+    let requestPath = '';
+    let requestBody = Buffer.alloc(0);
+    let requestCookie = '';
+    const server = await startServer(async (req, res) => {
+      requestPath = req.url ?? '';
+      requestCookie = String(req.headers.cookie ?? '');
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      requestBody = Buffer.concat(chunks);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ success: true, data: { sid: 'sid-1', revoked: true } }));
+    });
+    closeServer = server.close;
+
+    await expect(
+      new CoreSessionClient(server.port, 'bootstrap-secret').revokeMatching('aionui-refresh-session=sid-1.refresh-1')
+    ).resolves.toEqual({ sid: 'sid-1', revoked: true });
+    expect(requestPath).toBe('/api/auth/internal/external-sessions/revoke-matching');
+    expect(requestBody).toHaveLength(0);
+    expect(requestCookie).toBe('aionui-refresh-session=sid-1.refresh-1');
   });
 
   it('fails closed when Core omits its session cookie', async () => {

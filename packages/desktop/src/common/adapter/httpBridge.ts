@@ -360,6 +360,8 @@ let ws: WebSocket | null = null;
 let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let wsReconnectAttempt = 0;
 let wsHasOpened = false;
+let wsAuthReconnectSuppressed = false;
+let wsLastResumedAuthEpoch: number | null = null;
 
 function dispatchWsEvent(eventName: string, payload: unknown): void {
   const handlers = wsListeners.get(eventName);
@@ -371,6 +373,33 @@ function dispatchWsEvent(eventName: string, payload: unknown): void {
       /* never crash listener */
     }
   }
+}
+
+function isTerminalAuthWsMessage(eventName: string | undefined, payload: unknown): boolean {
+  if (eventName === 'auth-expired') return true;
+  if (eventName !== 'realtime.error' || !payload || typeof payload !== 'object') return false;
+  const code = (payload as { code?: unknown }).code;
+  return code === 'REALTIME_AUTH_MISSING' || code === 'REALTIME_AUTH_EXPIRED';
+}
+
+function stopWsAuthReconnect(current?: WebSocket): void {
+  wsAuthReconnectSuppressed = true;
+  if (wsReconnectTimer) {
+    clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = null;
+  }
+  current?.close();
+}
+
+/** Resume the realtime socket once after a new authenticated browser epoch. */
+export function resumeRealtimeWebSocket(authSessionEpoch: number): void {
+  if (!Number.isSafeInteger(authSessionEpoch) || authSessionEpoch <= 0 || wsLastResumedAuthEpoch === authSessionEpoch) {
+    return;
+  }
+  wsLastResumedAuthEpoch = authSessionEpoch;
+  wsAuthReconnectSuppressed = false;
+  wsReconnectAttempt = 0;
+  ensureWs();
 }
 
 /**
@@ -385,6 +414,9 @@ export function dispatchE2EWsEvent(eventName: string, payload: unknown): void {
 function ensureWs(): void {
   if (typeof window === 'undefined') {
     console.debug('[ensureWs] skipped: no window');
+    return;
+  }
+  if (wsAuthReconnectSuppressed) {
     return;
   }
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
@@ -417,6 +449,10 @@ function ensureWs(): void {
   current.addEventListener('close', (e) => {
     console.debug('[ensureWs] CLOSED code=' + e.code + ' reason=' + e.reason);
     if (ws === current) ws = null;
+    if (e.code === 1008) {
+      stopWsAuthReconnect();
+      return;
+    }
     scheduleWsReconnect();
   });
 
@@ -436,6 +472,10 @@ function ensureWs(): void {
       const eventName = msg.name ?? msg.event;
       const payload = msg.data ?? msg.payload;
       console.debug('[WS:msg]', eventName, JSON.stringify(payload).slice(0, 200));
+      if (isTerminalAuthWsMessage(eventName, payload)) {
+        stopWsAuthReconnect(current);
+        return;
+      }
       if (eventName) {
         dispatchWsEvent(eventName, payload);
       }
@@ -446,7 +486,7 @@ function ensureWs(): void {
 }
 
 function scheduleWsReconnect(): void {
-  if (wsReconnectTimer) return;
+  if (wsReconnectTimer || wsAuthReconnectSuppressed) return;
   const delay = Math.min(1000 * Math.pow(2, wsReconnectAttempt), 30000);
   wsReconnectAttempt++;
   wsReconnectTimer = setTimeout(() => {

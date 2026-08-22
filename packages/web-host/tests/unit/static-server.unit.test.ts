@@ -196,7 +196,7 @@ describe('static-server', () => {
   it('isolates two Lark identities across HTTP, WebSocket, and logout without leaking credentials', async () => {
     const provisionBodies: unknown[] = [];
     const exchangeBodies: unknown[] = [];
-    const revokeBodies: unknown[] = [];
+    const revokeCookies: string[] = [];
     const trustedBootstrapHeaders: string[] = [];
     const forwardedHeaders: http.IncomingHttpHeaders[] = [];
     const upgradeHeaders: http.IncomingHttpHeaders[] = [];
@@ -214,23 +214,36 @@ describe('static-server', () => {
         trustedBootstrapHeaders.push(String(req.headers['x-aioncore-bootstrap-secret'] ?? ''));
         exchangeBodies.push(await readRequestJson(req));
         const identity = (exchangeBodies.at(-1) as { identity: { subject: string } }).identity;
+        const now = Math.floor(Date.now() / 1000);
         res.writeHead(200, {
           'content-type': 'application/json',
-          'set-cookie': `aionui-session=core-${identity.subject}; Path=/; HttpOnly; SameSite=Lax`,
+          'set-cookie': [
+            `aionui-session=access-${identity.subject}; Path=/; HttpOnly; SameSite=Lax; Max-Age=900`,
+            `aionui-refresh-session=sid-${identity.subject}.refresh-${identity.subject}; Path=/api/auth/internal/external-sessions; HttpOnly; SameSite=Lax; Max-Age=2592000`,
+          ],
         });
         res.end(
           JSON.stringify({
             success: true,
-            data: { user: { id: `core-${identity.subject}`, username: identity.subject }, session_generation: 1 },
+            data: {
+              user: { id: `core-${identity.subject}`, username: identity.subject },
+              session_generation: 1,
+              session: {
+                sid: `sid-${identity.subject}`,
+                rotation: 0,
+                access_expires_at: now + 900,
+                refresh_expires_at: now + 2_592_000,
+              },
+            },
           })
         );
         return;
       }
-      if (req.url === '/api/auth/internal/external-sessions/revoke' && req.method === 'POST') {
+      if (req.url === '/api/auth/internal/external-sessions/revoke-matching' && req.method === 'POST') {
         trustedBootstrapHeaders.push(String(req.headers['x-aioncore-bootstrap-secret'] ?? ''));
-        revokeBodies.push(await readRequestJson(req));
+        revokeCookies.push(String(req.headers.cookie ?? ''));
         res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ success: true, data: { user_id: 'core-user-a', session_generation: 2 } }));
+        res.end(JSON.stringify({ success: true, data: { sid: 'sid-user-a', revoked: true } }));
         return;
       }
       if (req.url?.startsWith('/api/auth/internal/')) {
@@ -398,8 +411,8 @@ describe('static-server', () => {
       expect(apiResponse.headers.get('set-cookie')).toBeNull();
     }
     expect(forwardedHeaders.map((headers) => headers.cookie).toSorted()).toEqual([
-      'aionui-session=core-user-a',
-      'aionui-session=core-user-b',
+      'aionui-session=access-user-a',
+      'aionui-session=access-user-b',
     ]);
     for (const headers of forwardedHeaders) {
       expect(headers.authorization).toBeUndefined();
@@ -430,8 +443,8 @@ describe('static-server', () => {
     await upgrade(cookieA);
     await upgrade(cookieB);
     expect(upgradeHeaders.map((headers) => headers.cookie)).toEqual([
-      'aionui-session=core-user-a',
-      'aionui-session=core-user-b',
+      'aionui-session=access-user-a',
+      'aionui-session=access-user-b',
     ]);
     for (const headers of upgradeHeaders) {
       expect(headers.authorization).toBeUndefined();
@@ -451,7 +464,7 @@ describe('static-server', () => {
       headers: { cookie: cookieA },
     });
     expect(logoutResponse.headers.get('set-cookie')).toMatch(/Max-Age=0/);
-    expect(revokeBodies).toEqual([{ identity: identities['qr-a'] }]);
+    expect(revokeCookies).toEqual(['aionui-refresh-session=sid-user-a.refresh-user-a']);
     expect(trustedBootstrapHeaders).toEqual([
       'bootstrap-secret',
       'bootstrap-secret',

@@ -16,6 +16,7 @@ import type {
   LarkQrLoginSession,
 } from '@/common/types/platform/larkAuth';
 import { PREVIEW_SCOPE_KEY_PREFIX } from '@/renderer/pages/conversation/Preview/context/previewScope';
+import { resumeRealtimeWebSocket } from '@/common/adapter/httpBridge';
 
 type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
 
@@ -191,8 +192,14 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
         publishAuthState('authenticated', result.data.user);
         setReady(true);
         if (!isDesktopRuntime) {
-          const reconnect = (window as Window & { __websocketReconnect?: () => void }).__websocketReconnect;
-          reconnect?.();
+          const reconnect = (
+            window as Window & {
+              __websocketReconnect?: (authSessionEpoch: number) => void;
+            }
+          ).__websocketReconnect;
+          const nextAuthSessionEpoch = getAuthSessionEpochSnapshot();
+          reconnect?.(nextAuthSessionEpoch);
+          resumeRealtimeWebSocket(nextAuthSessionEpoch);
         }
       }
       return result;
