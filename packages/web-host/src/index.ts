@@ -4,10 +4,19 @@ export type {
   AppMetadata,
   BackendBinaryResolver,
   WebHostLarkAuth,
+  WebHostLarkAuthPoll,
   WebHostLarkAuthResult,
+  WebHostLarkExternalIdentity,
   WebHostOptions,
   WebHostHandle,
 } from './types.js';
+export { CoreSessionClient, CoreSessionClientError, getCoreSessionBootstrapSecret } from './core-session-client.js';
+export type {
+  CoreExternalIdentity,
+  CoreExternalIdentityMapping,
+  CoreSession,
+  CoreSessionRevocation,
+} from './core-session-client.js';
 export { startStaticServer, stopStaticServer } from './static-server.js';
 export type { StaticServerOptions, StaticServerHandle } from './static-server.js';
 export {
@@ -54,6 +63,9 @@ export type { BackendDirConfig, BackendLaunchOptions, BackendHandle, BackendStar
 export async function startWebHost(opts: WebHostOptions): Promise<WebHostHandle> {
   const { startBackend } = await import('./backend-launcher.js');
   const { startStaticServer } = await import('./static-server.js');
+  const { getCoreSessionBootstrapSecret } = await import('./core-session-client.js');
+  const heldBootstrapSecret = getCoreSessionBootstrapSecret();
+  const coreSessionBootstrapSecret = opts.coreSessionBootstrapSecret ?? heldBootstrapSecret;
 
   // 1. Start backend (M4)
   let backendHandle;
@@ -64,6 +76,7 @@ export async function startWebHost(opts: WebHostOptions): Promise<WebHostHandle>
       dataDir: opts.dataDir,
       logDir: opts.logDir,
       dirs: opts.dirs,
+      coreSessionBootstrapSecret,
     });
   } else {
     // useExistingBackend: create a fake handle
@@ -84,6 +97,7 @@ export async function startWebHost(opts: WebHostOptions): Promise<WebHostHandle>
       port: opts.port,
       allowRemote: opts.allowRemote ?? false,
       larkAuth: opts.larkAuth,
+      coreSessionBootstrapSecret,
     });
   } catch (err) {
     // If static-server fails, clean up backend

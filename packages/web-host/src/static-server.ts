@@ -21,6 +21,7 @@ export type StaticServerOptions = {
   port?: number;
   allowRemote?: boolean;
   larkAuth?: WebHostLarkAuth;
+  coreSessionBootstrapSecret?: string;
 };
 
 export type StaticServerHandle = {
@@ -174,7 +175,9 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
   const port = opts.port ?? DEFAULT_PORT;
   const allowRemote = opts.allowRemote === true;
   const host = allowRemote ? '0.0.0.0' : '127.0.0.1';
-  const authGateway = opts.larkAuth ? await LarkAuthGateway.create(opts.backendPort, opts.larkAuth) : undefined;
+  const authGateway = opts.larkAuth
+    ? LarkAuthGateway.create(opts.backendPort, opts.larkAuth, opts.coreSessionBootstrapSecret)
+    : undefined;
 
   // The HTTP server listens only on loopback — user traffic hits the outer
   // net.Server first. We route to this server for everything except WS
@@ -193,6 +196,12 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
       }
 
       if (authGateway && (await authGateway.handleRequest(req, res))) {
+        return;
+      }
+
+      if (authGateway && authGateway.isTrustedRoute(req.url)) {
+        res.writeHead(404, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+        res.end(JSON.stringify({ success: false, error: 'NOT_FOUND' }));
         return;
       }
 

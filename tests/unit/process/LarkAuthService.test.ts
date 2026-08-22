@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LarkAuthServiceError } from '@/process/services/LarkAuthService';
 import {
   configureSharedPersonalModelGateway,
+  createSharedWebHostLarkAuth,
   ElectronLarkAuthSessionStore,
   getSharedLarkAuthService,
   initializeSharedPersonalModelGateway,
@@ -95,7 +96,15 @@ describe('LarkAuthService', () => {
   it('automatically syncs personal models for the authenticated GEA user', async () => {
     const service = getSharedLarkAuthService();
     const user = { id: '10086', realname: '张三', username: 'zhangsan' };
-    const pollSpy = vi.spyOn(service, 'pollQrSession').mockResolvedValue({ status: 'authenticated', user });
+    const pollSpy = vi.spyOn(service, 'pollQrSessionWithIdentity').mockResolvedValue({
+      identity: {
+        provider: 'lark',
+        issuer: 'https://gea.example/gea-boot',
+        tenant_id: '1001',
+        subject: user.id,
+      },
+      result: { status: 'authenticated', user },
+    });
     const statusSpy = vi.spyOn(service, 'getStatus').mockReturnValue({ authenticated: true, user });
     const forwardSpy = vi.spyOn(service, 'forwardGatewayAuthSession').mockImplementation(async (forward) => {
       await forward({ accessToken: 'sensitive-token', tenantId: 'tenant-1' });
@@ -233,6 +242,63 @@ describe('LarkAuthService', () => {
     await service.createQrSession();
 
     expect(fetchImpl.mock.calls[0]?.[0]).toBe('https://gea.example:4443/gea-boot/sys/getLoginQrcode');
+  });
+
+  it('builds the exact server-only identity from the normalized GEA issuer and verified user', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ success: true, result: { success: true, token: 'sensitive-token' } }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          success: true,
+          result: { userInfo: { id: '10086', username: 'zhangsan', realname: '张三', loginTenantId: '1001' } },
+        })
+      );
+    const service = new LarkAuthService({ baseUrl: 'https://gea.example:4443/gea-boot///', fetchImpl });
+
+    const result = await service.pollQrSessionWithIdentity('QRCODELOGIN:1');
+
+    expect(result).toEqual({
+      identity: {
+        provider: 'lark',
+        issuer: 'https://gea.example:4443/gea-boot',
+        tenant_id: '1001',
+        subject: '10086',
+      },
+      result: {
+        status: 'authenticated',
+        user: { id: '10086', username: 'zhangsan', realname: '张三' },
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('sensitive-token');
+  });
+
+  it('does not expose a process-global logout through the WebHost auth adapter', () => {
+    expect(createSharedWebHostLarkAuth()).not.toHaveProperty('logout');
+  });
+
+  it('does not forward a WebHost user GEA credential into process-global Core state', async () => {
+    const service = getSharedLarkAuthService();
+    const verified = {
+      identity: {
+        provider: 'lark' as const,
+        issuer: 'https://gea.example/gea-boot',
+        tenant_id: '1001',
+        subject: 'user-1',
+      },
+      result: {
+        status: 'authenticated' as const,
+        user: { id: 'user-1', realname: '张三', username: 'zhangsan' },
+      },
+    };
+    const pollSpy = vi.spyOn(service, 'pollQrSessionWithIdentity').mockResolvedValue(verified);
+
+    await expect(createSharedWebHostLarkAuth().pollQrSession('qr-1')).resolves.toEqual({
+      identity: verified.identity,
+      publicResult: { success: true, data: verified.result },
+    });
+    expect(httpRequestMock).not.toHaveBeenCalled();
+    pollSpy.mockRestore();
   });
 
   it.each([
