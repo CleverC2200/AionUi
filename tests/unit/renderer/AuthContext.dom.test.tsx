@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const bridgeMocks = vi.hoisted(() => ({
@@ -26,10 +26,10 @@ vi.mock('@/common', () => ({
   },
 }));
 
-import { AuthProvider, useAuth } from '@renderer/hooks/context/AuthContext';
+import { AuthProvider, resetAuthSessionEpochForTests, useAuth } from '@renderer/hooks/context/AuthContext';
 
 const Probe = () => {
-  const { logout, pollLarkQrLogin, startLarkQrLogin, status, user } = useAuth();
+  const { authSessionEpoch, logout, pollLarkQrLogin, startLarkQrLogin, status, user } = useAuth();
   const [qrcodeId, setQrcodeId] = useState('');
   const [logoutFailed, setLogoutFailed] = useState(false);
 
@@ -38,6 +38,7 @@ const Probe = () => {
       <span>{status}</span>
       <span>{user?.realname}</span>
       <span>{qrcodeId}</span>
+      <span data-testid='auth-session-epoch'>{authSessionEpoch}</span>
       <button
         onClick={() => {
           void startLarkQrLogin().then((result) => {
@@ -63,6 +64,7 @@ const renderProbe = () =>
 
 describe('desktop AuthProvider', () => {
   beforeEach(() => {
+    act(() => resetAuthSessionEpochForTests());
     bridgeMocks.status.mockReset().mockResolvedValue({ success: true, data: { authenticated: false } });
     bridgeMocks.createQrSession.mockReset().mockResolvedValue({
       success: true,
@@ -105,6 +107,28 @@ describe('desktop AuthProvider', () => {
     fireEvent.click(screen.getByText('logout'));
     await waitFor(() => expect(screen.getByText('unauthenticated')).toBeInTheDocument());
     expect(screen.queryByText('张三')).toBeNull();
+  });
+
+  it('advances the auth session epoch when the authenticated external user changes', async () => {
+    renderProbe();
+    await waitFor(() => expect(screen.getByText('unauthenticated')).toBeInTheDocument());
+    const unauthenticatedEpoch = Number(screen.getByTestId('auth-session-epoch').textContent);
+
+    fireEvent.click(screen.getByText('poll'));
+    await waitFor(() => expect(screen.getByText('张三')).toBeInTheDocument());
+    const userAEpoch = Number(screen.getByTestId('auth-session-epoch').textContent);
+    expect(userAEpoch).toBeGreaterThan(unauthenticatedEpoch);
+
+    bridgeMocks.pollQrSession.mockResolvedValueOnce({
+      success: true,
+      data: {
+        status: 'authenticated',
+        user: { id: '10010', username: 'lisi', realname: '李四' },
+      },
+    });
+    fireEvent.click(screen.getByText('poll'));
+    await waitFor(() => expect(screen.getByText('李四')).toBeInTheDocument());
+    expect(Number(screen.getByTestId('auth-session-epoch').textContent)).toBeGreaterThan(userAEpoch);
   });
 
   it('keeps the authenticated user when persistent logout fails', async () => {

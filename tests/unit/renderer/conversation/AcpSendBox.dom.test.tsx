@@ -107,6 +107,11 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
     sendDisabled,
     onAddToDraft,
     addToDraftDisabled,
+    selectedSessions,
+    sessionMentions,
+    onSelectedSessionsChange,
+    crossSessionEnabled,
+    isTeamConversation,
   }: {
     onSend: (message: string) => Promise<void>;
     onChange?: (value: string) => void;
@@ -118,10 +123,27 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
     onFocused?: () => void;
     disabled?: boolean;
     sendDisabled?: boolean;
-    onAddToDraft?: () => void;
+    onAddToDraft?: (sessions?: Array<{ id: string; name: string }>) => void;
     addToDraftDisabled?: boolean;
+    selectedSessions?: Array<{ id: string }>;
+    sessionMentions?: Array<{ id: string; name: string }>;
+    onSelectedSessionsChange?: (sessions: Array<{ id: string }>) => void;
+    crossSessionEnabled?: boolean;
+    isTeamConversation?: boolean;
   }) => {
-    sendBoxPropsSpy({ active, onFocused, disabled, sendDisabled, onAddToDraft, addToDraftDisabled });
+    sendBoxPropsSpy({
+      active,
+      onFocused,
+      disabled,
+      sendDisabled,
+      onAddToDraft,
+      addToDraftDisabled,
+      selectedSessions,
+      sessionMentions,
+      onSelectedSessionsChange,
+      crossSessionEnabled,
+      isTeamConversation,
+    });
     return (
       <div>
         <div data-testid='mock-sendbox-tools'>{tools}</div>
@@ -130,6 +152,23 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
         {topRightOverlay}
         <button type='button' onClick={() => onChange?.('hello')}>
           change
+        </button>
+        {/* Stands in for choosing a conversation in the `@@` picker. */}
+        <button type='button' onClick={() => onSelectedSessionsChange?.([{ id: 'conv_target' }])}>
+          pick-session
+        </button>
+        <button
+          type='button'
+          onClick={() =>
+            onAddToDraft?.(
+              selectedSessions?.map(({ id }) => ({
+                id,
+                name: id === 'conv_alpha' ? 'Alpha' : id === 'conv_beta' ? 'Beta' : 'target',
+              }))
+            )
+          }
+        >
+          add-to-draft
         </button>
         <button
           type='button'
@@ -955,8 +994,212 @@ describe('AcpSendBox', () => {
       });
 
       expect(removeMock).toHaveBeenCalledWith('q1');
-      expect(enqueueMock).toHaveBeenCalledWith({ input: 'queued draft', files: [] });
+      expect(enqueueMock).toHaveBeenCalledWith({ input: 'queued draft', files: [], sessions: undefined });
       expect(prioritizeMock).toHaveBeenCalledWith('restored-1');
+    });
+
+    it('keeps the `@@` references when a failed mid-turn send is re-enqueued', async () => {
+      // The restore path re-creates the queue item from scratch, so dropping
+      // `sessions` here would silently strip the references the user picked.
+      runtimeViewMock.supportsMidturnDelivery = true;
+      sendMessageInvokeMock.mockRejectedValue(new Error('boom'));
+      enqueueMock.mockReturnValue({ id: 'restored-1', input: 'queued draft', files: [], created_at: 123 });
+
+      render(
+        <AcpSendBox
+          conversation_id='conv-1'
+          backend='claude'
+          workspacePath='/tmp/workspace'
+          messageState={makeMessageState()}
+        />
+      );
+
+      await act(async () => {
+        await getOnSendNow()({ ...queuedItem, sessions: [{ id: 'conv_target', name: 'target' }] });
+      });
+
+      expect(enqueueMock).toHaveBeenCalledWith({
+        input: 'queued draft',
+        files: [],
+        sessions: [{ id: 'conv_target', name: 'target' }],
+      });
+    });
+  });
+
+  describe('`@@` session references', () => {
+    it('forwards them to sendMessage on a direct send and clears them afterwards', async () => {
+      sendMessageInvokeMock.mockResolvedValue({ msg_id: 'm1', turn_id: 't1', runtime: {} });
+      render(
+        <AcpSendBox
+          conversation_id='conv-1'
+          backend='claude'
+          workspacePath='/tmp/workspace'
+          messageState={makeMessageState()}
+        />
+      );
+
+      await act(async () => {
+        screen.getByText('pick-session').click();
+      });
+      await act(async () => {
+        screen.getByText('send').click();
+      });
+
+      expect(sendMessageInvokeMock).toHaveBeenCalledWith(
+        expect.objectContaining({ sessions: [{ id: 'conv_target' }] })
+      );
+
+      // Released with the draft: a leftover reference would silently attach
+      // itself to the user's next, unrelated message.
+      sendMessageInvokeMock.mockClear();
+      await act(async () => {
+        screen.getByText('send').click();
+      });
+      expect(sendMessageInvokeMock).toHaveBeenCalledWith(expect.objectContaining({ sessions: undefined }));
+    });
+
+    it('carries them into the draft box and clears them from the send box', async () => {
+      // The draft box is the path most likely to lose them: enqueue rebuilds the
+      // item, and a message that reaches the agent without its session block
+      // fails silently on both sides.
+      render(
+        <AcpSendBox
+          conversation_id='conv-1'
+          backend='claude'
+          workspacePath='/tmp/workspace'
+          messageState={makeMessageState()}
+        />
+      );
+
+      await act(async () => {
+        screen.getByText('pick-session').click();
+      });
+      await act(async () => {
+        screen.getByText('add-to-draft').click();
+      });
+
+      expect(enqueueMock).toHaveBeenCalledWith(
+        expect.objectContaining({ sessions: [{ id: 'conv_target', name: 'target' }] })
+      );
+
+      const props = sendBoxPropsSpy.mock.calls.at(-1)?.[0] as { selectedSessions?: Array<{ id: string }> };
+      expect(props.selectedSessions).toEqual([]);
+    });
+
+    it('keeps two session ids bound to their names after reorder, queue edit, deletion, and resend', async () => {
+      draftContentRef.current = 'ask @@Alpha then @@Beta';
+      sendMessageInvokeMock.mockResolvedValue({ msg_id: 'm1', turn_id: 't1', runtime: {} });
+      const view = render(
+        <AcpSendBox
+          conversation_id='conv-1'
+          backend='claude'
+          workspacePath='/tmp/workspace'
+          messageState={makeMessageState()}
+        />
+      );
+
+      await act(async () => {
+        screen.getByText('pick-session').click();
+      });
+      const latestProps = () =>
+        sendBoxPropsSpy.mock.calls.at(-1)?.[0] as {
+          onAddToDraft?: (sessions?: Array<{ id: string; name: string }>) => void;
+          onSelectedSessionsChange?: (sessions: Array<{ id: string }>) => void;
+          selectedSessions?: Array<{ id: string }>;
+          sessionMentions?: Array<{ id: string; name: string }>;
+        };
+      await act(async () => {
+        latestProps().onSelectedSessionsChange?.([{ id: 'conv_alpha' }, { id: 'conv_beta' }]);
+      });
+
+      // Reorder only the visible tokens. The id/name binding must remain the
+      // one captured by the picker, not be reconstructed from token position.
+      draftContentRef.current = 'ask @@Beta then @@Alpha';
+      view.rerender(
+        <AcpSendBox
+          conversation_id='conv-1'
+          backend='claude'
+          workspacePath='/tmp/workspace'
+          messageState={makeMessageState()}
+        />
+      );
+      await act(async () => {
+        latestProps().onAddToDraft?.([
+          { id: 'conv_alpha', name: 'Alpha' },
+          { id: 'conv_beta', name: 'Beta' },
+        ]);
+      });
+      const queued = enqueueMock.mock.calls.at(-1)?.[0] as {
+        input: string;
+        files: [];
+        sessions: Array<{ id: string; name: string }>;
+      };
+      expect(queued.sessions).toEqual([
+        { id: 'conv_alpha', name: 'Alpha' },
+        { id: 'conv_beta', name: 'Beta' },
+      ]);
+      const onEdit = (
+        commandQueuePanelPropsSpy.mock.calls.at(-1)![0] as {
+          onEdit: (item: typeof queued & { id: string; created_at: number }) => void;
+        }
+      ).onEdit;
+
+      await act(async () => {
+        onEdit({ ...queued, id: 'q-session', created_at: 1 });
+      });
+      expect(latestProps().selectedSessions).toEqual([{ id: 'conv_alpha' }, { id: 'conv_beta' }]);
+      expect(latestProps().sessionMentions).toEqual(queued.sessions);
+
+      draftContentRef.current = 'ask @@Beta';
+      view.rerender(
+        <AcpSendBox
+          conversation_id='conv-1'
+          backend='claude'
+          workspacePath='/tmp/workspace'
+          messageState={makeMessageState()}
+        />
+      );
+      await act(async () => {
+        latestProps().onSelectedSessionsChange?.([{ id: 'conv_beta' }]);
+      });
+
+      await act(async () => {
+        screen.getByText('send').click();
+      });
+      expect(sendMessageInvokeMock).toHaveBeenCalledWith(expect.objectContaining({ sessions: [{ id: 'conv_beta' }] }));
+    });
+
+    it('offers the picker in an ordinary conversation but not in a team one', () => {
+      const { unmount } = render(
+        <AcpSendBox
+          conversation_id='conv-1'
+          backend='claude'
+          workspacePath='/tmp/workspace'
+          messageState={makeMessageState()}
+        />
+      );
+      let props = sendBoxPropsSpy.mock.calls.at(-1)?.[0] as {
+        crossSessionEnabled?: boolean;
+        isTeamConversation?: boolean;
+      };
+      expect(props.crossSessionEnabled).toBe(true);
+      expect(props.isTeamConversation).toBe(false);
+      unmount();
+
+      render(
+        <AcpSendBox
+          conversation_id='conv-1'
+          backend='claude'
+          workspacePath='/tmp/workspace'
+          messageState={makeMessageState()}
+          teamRuntime={{ loading: false, startedAtMs: null } as unknown as TeamSendBoxRuntime}
+        />
+      );
+      props = sendBoxPropsSpy.mock.calls.at(-1)?.[0] as {
+        crossSessionEnabled?: boolean;
+        isTeamConversation?: boolean;
+      };
+      expect(props.isTeamConversation).toBe(true);
     });
   });
 });

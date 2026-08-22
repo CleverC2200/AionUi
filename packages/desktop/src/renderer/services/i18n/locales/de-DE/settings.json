@@ -1426,5 +1426,10 @@
     "selectAll": "Select all",
     "loadMore": "Mehr laden",
     "loadMoreFailed": "Laden weiterer Einträge fehlgeschlagen"
-  }
+  },
+  "crossSessionMessage": "Nachrichten zwischen Unterhaltungen",
+  "crossSessionMessageDesc": "Erlaubt Agenten, Nachrichten an Ihre anderen Unterhaltungen zu senden. Beim Ausschalten wird auch die @@-Erwähnung im Eingabefeld deaktiviert.",
+  "crossSessionMessageDisabledBanner": "Nachrichten zwischen Unterhaltungen sind aus, die @@-Erwähnung ist nicht verfügbar.",
+  "crossSessionMessageResume": "Wieder einschalten",
+  "crossSessionMessageUpdateFailed": "Einstellung konnte nicht aktualisiert werden"
 }

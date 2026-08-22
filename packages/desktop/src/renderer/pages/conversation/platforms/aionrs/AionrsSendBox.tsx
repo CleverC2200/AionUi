@@ -31,6 +31,7 @@ import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import {
   useConversationCommandQueue,
   type ConversationCommandQueueItem,
+  type QueuedSessionMention,
 } from '@/renderer/pages/conversation/platforms/useConversationCommandQueue';
 import { useConversationRuntimeView } from '@/renderer/pages/conversation/runtime/useConversationRuntimeView';
 import { getConversationRuntimeWorkspaceErrorMessage } from '@/renderer/pages/conversation/utils/conversationCreateError';
@@ -41,6 +42,9 @@ import { useTeamPermission } from '@/renderer/pages/team/hooks/TeamPermissionCon
 import type { TeamSendBoxRuntime } from '@/renderer/pages/team/components/teamSendRuntime';
 import { allSupportedExts } from '@/renderer/services/FileService';
 import { iconColors } from '@/renderer/styles/colors';
+import type { SessionRef } from '@/common/adapter/ipcBridge';
+import CrossSessionDisabledBanner from '@/renderer/components/chat/CrossSessionDisabledBanner';
+import { useCrossSessionMessageEnabled } from '@/renderer/hooks/chat/useCrossSessionMessageEnabled';
 import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
 import { type ChatFileRef, isChatFileRef, uploadFileRef } from '@/common/types/chatFile';
 import { localSelectionItems, mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
@@ -270,7 +274,7 @@ const AionrsSendBox: React.FC<{
   });
 
   const executeCommand = useCallback(
-    async ({ input, files }: Pick<ConversationCommandQueueItem, 'input' | 'files'>) => {
+    async ({ input, files, sessions }: { input: string; files: ChatFileRef[]; sessions?: SessionRef[] }) => {
       if (teamPermission) await teamPermission.warmupSession();
       if (!current_model?.use_model) {
         Message.warning(t('conversation.chat.noModelSelected'));
@@ -297,6 +301,9 @@ const AionrsSendBox: React.FC<{
           input,
           conversation_id,
           files,
+          // `@@` references. Omitting this makes the whole feature silently
+          // no-op for this platform.
+          sessions: sessions?.map(({ id }) => ({ id })),
         });
         setActiveMsgId(res.msg_id);
         markSendAccepted(res.turn_id, res.runtime, res.msg_id);
@@ -395,6 +402,12 @@ const AionrsSendBox: React.FC<{
     void processInitialMessage();
   }, [conversation_id, current_model?.use_model, executeCommand]);
 
+  // `@@` session references the user picked. Declared before the handlers that
+  // read it — every send path has to both forward and release it.
+  const [selectedSessions, setSelectedSessions] = useState<SessionRef[]>([]);
+  const [restoredSessionMentions, setRestoredSessionMentions] = useState<QueuedSessionMention[]>([]);
+  const { enabled: crossSessionEnabled } = useCrossSessionMessageEnabled();
+
   // aionrs backends never support mid-turn delivery: while the agent is
   // replying, sending is hard-blocked with a toast instead of implicitly
   // enqueuing. The only way to queue a message while busy is the explicit
@@ -411,9 +424,12 @@ const AionrsSendBox: React.FC<{
     }
 
     const filesToSend = collectChatFileRefs(uploadFile, atPath);
+    const sessions = selectedSessions.length > 0 ? selectedSessions : undefined;
     clearFiles();
+    setSelectedSessions([]);
+    setRestoredSessionMentions([]);
     emitter.emit('aionrs.selected.file.clear');
-    await executeCommand({ input: message, files: filesToSend });
+    await executeCommand({ input: message, files: filesToSend, sessions });
   };
 
   const [interrupting, setInterrupting] = useState(false);
@@ -438,18 +454,32 @@ const AionrsSendBox: React.FC<{
   // mode governs (auto drains immediately, manual holds). Clears the draft
   // the same way a send would.
   const canQueueCurrentDraft = content.trim().length > 0;
-  const handleAddToQueue = useCallback(() => {
-    const filesToSend = collectChatFileRefs(uploadFile, atPath);
-    enqueue({ input: content, files: filesToSend });
-    setContent('');
-    clearFiles();
-    emitter.emit('aionrs.selected.file.clear');
-  }, [atPath, clearFiles, content, enqueue, setContent, uploadFile]);
+  const handleAddToQueue = useCallback(
+    (sessions?: QueuedSessionMention[]) => {
+      const filesToSend = collectChatFileRefs(uploadFile, atPath);
+      // `@@` references must ride along, and must be released from the send box
+      // the same way the draft text is — otherwise they leak into whatever the
+      // user sends next.
+      enqueue({
+        input: content,
+        files: filesToSend,
+        sessions,
+      });
+      setContent('');
+      clearFiles();
+      setSelectedSessions([]);
+      setRestoredSessionMentions([]);
+      emitter.emit('aionrs.selected.file.clear');
+    },
+    [atPath, clearFiles, content, enqueue, setContent, uploadFile]
+  );
 
   const handleEditQueuedCommand = useCallback(
     (item: ConversationCommandQueueItem) => {
       remove(item.id);
       setContent(item.input);
+      setSelectedSessions(item.sessions?.map(({ id }) => ({ id })) ?? []);
+      setRestoredSessionMentions(item.sessions ?? []);
       // Restore the two selection lanes: upload refs → uploadFile paths,
       // project refs → atPath items carrying their chatRef (so a re-send
       // collects the same project ref).
@@ -783,6 +813,7 @@ const AionrsSendBox: React.FC<{
         onStop={effectiveHandleStop}
         onRetryStart={teamRuntime?.onRetryStart ? () => void teamRuntime.onRetryStart?.() : undefined}
       />
+      <CrossSessionDisabledBanner interactive={!teamRuntime} />
       <SendBox
         data-testid='aionrs-sendbox'
         onMobilePlusClick={isMobile ? () => setIsMobileSheetOpen(true) : undefined}
@@ -793,6 +824,11 @@ const AionrsSendBox: React.FC<{
           emitter.emit('aionrs.selected.file', items, conversation_id);
           setAtPath(items);
         }}
+        selectedSessions={selectedSessions}
+        sessionMentions={restoredSessionMentions}
+        onSelectedSessionsChange={setSelectedSessions}
+        crossSessionEnabled={crossSessionEnabled}
+        isTeamConversation={Boolean(teamRuntime)}
         loading={teamRuntime?.loading ?? isBusy}
         active={teamRuntime?.isActive}
         onFocused={teamRuntime?.onFocus}

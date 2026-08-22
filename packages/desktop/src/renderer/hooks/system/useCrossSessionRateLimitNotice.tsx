@@ -1,0 +1,192 @@
+/**
+ * @license
+ * Copyright 2025 AionUi (aionui.com)
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { ipcBridge } from '@/common';
+import type { SessionMessageRateLimitedPayload } from '@/common/adapter/ipcBridge';
+import { useCrossSessionMessageEnabled } from '@/renderer/hooks/chat/useCrossSessionMessageEnabled';
+import { getAuthSessionEpochSnapshot, useAuthSessionEpoch } from '@/renderer/hooks/context/AuthContext';
+import { resolveCurrentUserId } from '@/renderer/hooks/system/currentUserId';
+import { Button, Message, Notification } from '@arco-design/web-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+export type { SessionMessageRateLimitedPayload };
+
+export type RateLimitNotice = {
+  message: string;
+  conversationIdsToStop: string[];
+};
+
+/**
+ * `BroadcastEventBus` fans out to EVERY connection, so payload filtering is the
+ * only thing that stops one user's conversation names from surfacing in another
+ * user's UI.
+ */
+export function shouldShowRateLimitNotice(
+  payload: SessionMessageRateLimitedPayload,
+  currentUserId: string | undefined
+): boolean {
+  if (!currentUserId) return false;
+  return payload.user_id === currentUserId;
+}
+
+/**
+ * Build the notice. Names both conversations and carries the two ids to stop —
+ * and never a message body (spec §10).
+ */
+export function buildRateLimitNotice(
+  payload: SessionMessageRateLimitedPayload,
+  describe?: (from: string, to: string) => string
+): RateLimitNotice {
+  const from = payload.from_name || payload.from_conversation_id;
+  const to = payload.to_name || payload.to_conversation_id;
+  return {
+    message: describe
+      ? describe(from, to)
+      : `Automatic messages between "${from}" and "${to}" are unusually frequent and may be looping.`,
+    conversationIdsToStop: [payload.from_conversation_id, payload.to_conversation_id],
+  };
+}
+
+/** Suppress repeat notices for the same pair inside this window. */
+export const NOTICE_COOLDOWN_MS = 60_000;
+
+const pairKey = (payload: SessionMessageRateLimitedPayload): string =>
+  `${payload.from_conversation_id}->${payload.to_conversation_id}`;
+
+/**
+ * The REAL emergency stop.
+ *
+ * The settings switch is a long-term gate that takes "Settings → System → scroll
+ * → toggle" to reach; too far away while the user is watching two agents talk
+ * past each other. This fires the moment the rate gate trips, with the two
+ * actions that actually end it.
+ */
+export function useCrossSessionRateLimitNotice(): void {
+  const { t } = useTranslation();
+  const authSessionEpoch = useAuthSessionEpoch();
+  const { setEnabled } = useCrossSessionMessageEnabled();
+  const lastShownRef = useRef<Map<string, number>>(new Map());
+  // AuthContext is not authoritative here: desktop can have no UI user, while
+  // Feishu/Lark authentication can expose an external id different from Core's
+  // user_id. Ask Core who this client is so the per-user filter compares ids
+  // from the same identity domain.
+  const [resolvedUserId, setResolvedUserId] = useState<string>();
+
+  useEffect(() => {
+    let cancelled = false;
+    setResolvedUserId(undefined);
+    void resolveCurrentUserId(authSessionEpoch).then((id) => {
+      if (!cancelled) setResolvedUserId(id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authSessionEpoch]);
+
+  const stopConversations = useCallback(async (conversationIds: string[]): Promise<boolean> => {
+    const results = await Promise.all(
+      conversationIds.map(async (conversation_id) => {
+        try {
+          // Background conversations may never have populated the Renderer
+          // runtime store. The detail endpoint is read-only and returns Core's
+          // authoritative runtime, including the active turn needed by cancel.
+          const conversation = await ipcBridge.conversation.get.invoke({ id: conversation_id });
+          const activeTurnId = conversation.runtime?.turn_id;
+          if (!activeTurnId) return true;
+          await ipcBridge.conversation.stop.invoke({ conversation_id, turn_id: activeTurnId });
+          return true;
+        } catch {
+          // Keep trying the other side, then report the partial failure.
+          return false;
+        }
+      })
+    );
+    return results.every(Boolean);
+  }, []);
+
+  const handlePayload = useCallback(
+    (payload: SessionMessageRateLimitedPayload) => {
+      // An auth transition can happen before React flushes this effect and
+      // unsubscribes the old callback. Never attribute that stale callback's
+      // event using the previous user's resolved Core id.
+      if (getAuthSessionEpochSnapshot() !== authSessionEpoch) return;
+      if (!shouldShowRateLimitNotice(payload, resolvedUserId)) return;
+
+      const key = pairKey(payload);
+      const now = Date.now();
+      const lastShown = lastShownRef.current.get(key) ?? 0;
+      // Without this the notice itself becomes the spam it warns about.
+      if (now - lastShown < NOTICE_COOLDOWN_MS) return;
+      lastShownRef.current.set(key, now);
+
+      const notice = buildRateLimitNotice(payload, (from, to) =>
+        t('conversation.crossSession.rateLimited', {
+          from,
+          to,
+          defaultValue: 'Automatic messages between "{{from}}" and "{{to}}" are unusually frequent and may be looping.',
+        })
+      );
+
+      const notificationId = `cross-session-rate-limited-${key}`;
+      Notification.warning({
+        id: notificationId,
+        title: t('conversation.crossSession.rateLimitedTitle', {
+          defaultValue: 'Cross-conversation messages may be looping',
+        }),
+        content: notice.message,
+        // No auto-dismiss: this needs a decision, not a glance.
+        duration: 0,
+        btn: (
+          <span className='flex gap-8px'>
+            <Button
+              size='mini'
+              onClick={() => {
+                void stopConversations(notice.conversationIdsToStop).then((allStopped) => {
+                  if (allStopped) {
+                    Notification.remove(notificationId);
+                    return;
+                  }
+                  Message.error(
+                    t('conversation.crossSession.stopPartialFailure', {
+                      defaultValue: 'Some conversations could not be stopped. Please try again.',
+                    })
+                  );
+                });
+              }}
+            >
+              {t('conversation.crossSession.stopBoth', { defaultValue: 'Stop both conversations' })}
+            </Button>
+            <Button
+              size='mini'
+              type='primary'
+              status='warning'
+              onClick={() => {
+                void setEnabled(false)
+                  .then(() => {
+                    Notification.remove(notificationId);
+                  })
+                  .catch(() => {
+                    Message.error(t('settings.crossSessionMessageUpdateFailed'));
+                  });
+              }}
+            >
+              {t('conversation.crossSession.disableFeature', { defaultValue: 'Turn off cross-conversation messages' })}
+            </Button>
+          </span>
+        ),
+      });
+    },
+    [authSessionEpoch, resolvedUserId, setEnabled, stopConversations, t]
+  );
+
+  useEffect(() => {
+    const unsubscribe = ipcBridge.sessionMessage?.rateLimited?.on?.(handlePayload);
+    return () => {
+      unsubscribe?.();
+    };
+  }, [handlePayload]);
+}
