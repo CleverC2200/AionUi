@@ -64,6 +64,7 @@ vi.mock('@/renderer/components/layout/Titlebar', () => ({ default: () => null })
 vi.mock('@/renderer/components/settings/UpdateModal', () => ({ default: () => null }));
 vi.mock('@renderer/hooks/system/useDeepLink', () => ({ useDeepLink: () => {} }));
 vi.mock('@renderer/hooks/system/notification/useNotificationClick', () => ({ useNotificationClick: () => {} }));
+vi.mock('@renderer/hooks/system/notification/useNotificationInboxSync', () => ({ useNotificationInboxSync: () => {} }));
 vi.mock('@renderer/hooks/system/notification/useBrowserNotification', () => ({ useBrowserNotification: () => {} }));
 vi.mock('@renderer/hooks/file/useDirectorySelection', () => ({
   useDirectorySelection: () => ({ contextHolder: null }),

@@ -12,20 +12,20 @@ const platformSend = vi.fn();
 // Defined via vi.hoisted so the hoisted vi.mock factory can reference the class
 // at evaluation time without a temporal-dead-zone error.
 const { FakeElectronNotification } = vi.hoisted(() => {
-  class FakeElectronNotification {
-    static instances: FakeElectronNotification[] = [];
+  class FakeNotification {
+    static instances: FakeNotification[] = [];
     static isSupported = vi.fn(() => true);
     handlers: Record<string, () => void> = {};
     show = vi.fn();
     constructor(public options: { title: string; body: string; icon?: string }) {
-      FakeElectronNotification.instances.push(this);
+      FakeNotification.instances.push(this);
     }
     on(event: string, cb: () => void): this {
       this.handlers[event] = cb;
       return this;
     }
   }
-  return { FakeElectronNotification };
+  return { FakeElectronNotification: FakeNotification };
 });
 
 vi.mock('@/common', () => ({
@@ -110,6 +110,29 @@ describe('showNotification', () => {
     expect(win.show).toHaveBeenCalledTimes(1);
     expect(win.focus).toHaveBeenCalledTimes(1);
     expect(clickedEmit).toHaveBeenCalledWith({ conversation_id: 'c1' });
+  });
+
+  it('returns only typed notification navigation metadata on click', async () => {
+    const win = makeWindow(false);
+    const target = { type: 'conversation' as const, conversationId: 'conversation-1' };
+    setNotificationMainWindow(win as never);
+    await showNotification({
+      title: 'New notification',
+      body: 'Open AionUi to view it',
+      notification_id: 'notification-1',
+      notification_version: 'v1',
+      scope_id: 'user-1',
+      target,
+    });
+
+    FakeElectronNotification.instances[0].handlers.click?.();
+
+    expect(clickedEmit).toHaveBeenCalledWith({
+      notification_id: 'notification-1',
+      notification_version: 'v1',
+      scope_id: 'user-1',
+      target,
+    });
   });
 
   it('logs when skipping because notifications are disabled in settings', async () => {

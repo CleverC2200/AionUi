@@ -22,6 +22,11 @@ const AttentionInbox = React.lazy(() =>
     default: Component,
   }))
 );
+const NotificationInbox = React.lazy(() =>
+  import('@renderer/pages/conversation/NotificationInbox').then(({ NotificationInbox: Component }) => ({
+    default: Component,
+  }))
+);
 const SettingsSider = React.lazy(() => import('@renderer/pages/settings/components/SettingsSider'));
 
 const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
@@ -251,6 +256,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
             />
             {!collapsed && (
               <Suspense fallback={<div className='h-34px shrink-0' />}>
+                <NotificationInbox onNavigate={onSessionClick} />
                 <AttentionInbox onNavigate={onSessionClick} />
               </Suspense>
             )}
