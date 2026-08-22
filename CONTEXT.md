@@ -48,6 +48,28 @@ _避免使用_：官方助手列表、能力市场、本地 Assistant 列表
 实际执行会话轮次并产生消息、工具调用和输出的运行主体。
 _避免使用_：Assistant、Conversation
 
+## 身份与会话
+
+**Lark External Identity（Lark 外部身份）**：
+由 provider `lark`、`issuer`、`tenant_id` 与该租户内稳定的 `subject` 组成的身份元组；同一 subject 在不同租户中表示不同身份。
+_避免使用_：AionPro 用户、Core User、GEA Credential
+
+**External Identity Mapping（外部身份映射）**：
+AionCore 权威维护从外部身份元组到 Core User 的唯一对应关系；该关系只能由可信宿主引导（trusted host/bootstrap）建立。
+_避免使用_：客户端用户映射、共享 Core 用户、AionPro 映射
+
+**Core User（Core 用户）**：
+AionCore 中数据、权限与审计记录的归属主体；不同 Lark External Identity 不共用 Core User。
+_避免使用_：Lark External Identity、共享 Core 用户、系统默认用户
+
+**Core Session（Core 会话）**：
+AionCore 为一个 Core User 签发并验证的认证会话；外部凭据不直接充当 Core Session。
+_避免使用_：Conversation、GEA Credential、Lark access token
+
+**GEA Credential（GEA 凭据）**：
+由 GEA 或 Lark 签发、用于验证外部身份或访问平台能力的敏感凭据，包括 Lark access token；它不是 Core JWT 或 Core Session，也不得交付浏览器。
+_避免使用_：Core JWT、Core Session、浏览器会话令牌
+
 ## 团队协作
 
 **Team（团队）**：
