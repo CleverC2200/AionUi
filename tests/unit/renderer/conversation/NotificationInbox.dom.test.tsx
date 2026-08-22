@@ -4,17 +4,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SWRConfig } from 'swr';
 import { NotificationInbox } from '@/renderer/pages/conversation/NotificationInbox';
 
-const { list, detail, submit, navigate } = vi.hoisted(() => ({
+const { list, detail, submit, navigate, clearDetail } = vi.hoisted(() => ({
   list: vi.fn(),
   detail: vi.fn(),
   submit: vi.fn(),
   navigate: vi.fn(),
+  clearDetail: vi.fn(),
 }));
 
 vi.mock('@/renderer/services/notificationInbox', () => ({
   notificationInboxKey: (userId: string) => `notifications.active.test:${userId}`,
   fetchActiveNotifications: list,
   fetchNotificationDetail: detail,
+  clearNotificationDetailCache: clearDetail,
   notificationActions: { submit },
 }));
 
@@ -81,7 +83,7 @@ describe('NotificationInbox', () => {
     fireEvent.click(screen.getByTestId('notification-inbox-trigger'));
     fireEvent.click(await screen.findByText(notification.title));
     expect(await screen.findByText(notification.body)).toBeVisible();
-    expect(detail).toHaveBeenCalledWith(notification.id);
+    expect(detail).toHaveBeenCalledWith(notification.id, expect.any(AbortSignal));
 
     fireEvent.click(screen.getByText('conversation.notifications.actions.read'));
     await waitFor(() =>
@@ -95,6 +97,7 @@ describe('NotificationInbox', () => {
 
     fireEvent.click(screen.getByText('conversation.notifications.actions.openTarget'));
     expect(navigate).toHaveBeenCalledWith('/conversation/conversation-1', { state: undefined });
+    expect(clearDetail).toHaveBeenCalledWith('user-1', expect.any(Function));
   });
 
   it('shows last-good degradation without hiding confirmed items', async () => {
@@ -110,6 +113,24 @@ describe('NotificationInbox', () => {
 
     expect(await screen.findByTestId('notification-sync-warning')).toBeVisible();
     expect(screen.getByText(notification.title)).toBeVisible();
+  });
+
+  it('renders syncing state and a safe fallback for notification-only targets', async () => {
+    const notificationOnly = { ...notification, target: { type: 'notification' as const } };
+    list.mockResolvedValue({
+      revision: 'r1',
+      items: [notificationOnly],
+      sync_state: 'syncing',
+      last_synced_at: '2026-08-22T08:00:01Z',
+      failure_codes: [],
+    });
+    detail.mockResolvedValue(notificationOnly);
+    renderInbox();
+    fireEvent.click(await screen.findByTestId('notification-inbox-trigger'));
+    expect(await screen.findByTestId('notification-syncing')).toBeVisible();
+    fireEvent.click(await screen.findByText(notificationOnly.title));
+    expect(await screen.findByText('conversation.notifications.navigationUnavailable')).toBeVisible();
+    expect(screen.queryByText('conversation.notifications.actions.openTarget')).not.toBeInTheDocument();
   });
 
   it('surfaces a failed mutation and does not guess the next state', async () => {

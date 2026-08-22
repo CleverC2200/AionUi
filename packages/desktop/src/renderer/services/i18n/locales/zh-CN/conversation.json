@@ -6,6 +6,7 @@
     "nativeBody": "你有 {{count}} 条新通知，请打开 AionUi 查看。",
     "loadFailed": "通知加载失败，当前工作没有被修改。",
     "detailFailed": "通知详情加载失败。",
+    "navigationUnavailable": "该通知没有可打开的客户端目标。",
     "action": {
       "conflict": "通知已在其他位置发生变化，已刷新最新状态。",
       "retryable": "通知服务暂时不可用，请重试。",
@@ -13,6 +14,7 @@
     },
     "empty": "暂无有效通知",
     "sync": {
+      "syncing": "正在同步最新通知。",
       "stale": "同步恢复期间显示上次确认的通知。",
       "partial": "部分通知未完成同步，当前仅显示已确认的数据。",
       "failed": "无法确认最新通知，当前显示上次确认的状态。"

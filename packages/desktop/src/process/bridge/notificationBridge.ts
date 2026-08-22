@@ -62,6 +62,7 @@ export async function showNotification({
   conversation_id,
   notification_id,
   notification_version,
+  scope_id,
   target,
 }: {
   title: string;
@@ -69,6 +70,7 @@ export async function showNotification({
   conversation_id?: string;
   notification_id?: string;
   notification_version?: string;
+  scope_id?: string;
   target?: NotificationTarget;
 }): Promise<void> {
   const diagnostic = {
@@ -109,6 +111,7 @@ export async function showNotification({
           ...(conversation_id ? { conversation_id } : {}),
           ...(notification_id ? { notification_id } : {}),
           ...(notification_version ? { notification_version } : {}),
+          ...(scope_id ? { scope_id } : {}),
           ...(target ? { target } : {}),
         });
       });

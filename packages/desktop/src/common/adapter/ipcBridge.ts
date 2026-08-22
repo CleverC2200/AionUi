@@ -1784,6 +1784,7 @@ export type INotificationOptions = {
   conversation_id?: string;
   notification_id?: string;
   notification_version?: string;
+  scope_id?: string;
   target?: NotificationTarget;
 };
 
@@ -1793,6 +1794,7 @@ export const notification = {
     conversation_id?: string;
     notification_id?: string;
     notification_version?: string;
+    scope_id?: string;
     target?: NotificationTarget;
   }>('notification.clicked'),
 };

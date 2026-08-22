@@ -6,6 +6,7 @@
     "nativeBody": "You have {{count}} new notification(s). Open AionUi to view them.",
     "loadFailed": "Notifications could not be loaded. Your work has not been changed.",
     "detailFailed": "Notification details could not be loaded.",
+    "navigationUnavailable": "This notification has no client destination to open.",
     "action": {
       "conflict": "The notification changed elsewhere. The latest state has been refreshed.",
       "retryable": "The notification service is temporarily unavailable. Try again.",
@@ -13,6 +14,7 @@
     },
     "empty": "No active notifications",
     "sync": {
+      "syncing": "Syncing the latest notifications.",
       "stale": "Showing the last confirmed notifications while synchronization recovers.",
       "partial": "Some notifications could not be synchronized. Showing the confirmed subset.",
       "failed": "The latest notifications could not be confirmed. Showing the last confirmed state."

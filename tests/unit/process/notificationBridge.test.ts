@@ -121,6 +121,7 @@ describe('showNotification', () => {
       body: 'Open AionUi to view it',
       notification_id: 'notification-1',
       notification_version: 'v1',
+      scope_id: 'user-1',
       target,
     });
 
@@ -129,6 +130,7 @@ describe('showNotification', () => {
     expect(clickedEmit).toHaveBeenCalledWith({
       notification_id: 'notification-1',
       notification_version: 'v1',
+      scope_id: 'user-1',
       target,
     });
   });

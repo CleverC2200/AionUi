@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures';
-import { goToGuid } from '../helpers';
+import { goToGuid, invokeBridge } from '../helpers';
 
 test.describe('GEA notification inbox mock contract', () => {
   test('new notification opens, marks read and dismisses through the public HTTP seam', async ({ page }) => {
@@ -108,5 +108,40 @@ test.describe('GEA notification inbox mock contract', () => {
     } finally {
       await page.unroute('**/api/notifications**');
     }
+  });
+
+  test('native notification click respects the active identity before navigating', async ({ page, electronApp }) => {
+    await page.reload();
+    await goToGuid(page);
+    const auth = await invokeBridge<{
+      success: boolean;
+      data?: { authenticated: boolean; user?: { id?: string } };
+    }>(page, 'lark-auth.status');
+    const userId = auth.data?.user?.id;
+    expect(userId).toBeTruthy();
+
+    const emitClick = async (scopeId: string, conversationId: string) => {
+      await electronApp.evaluate(
+        ({ BrowserWindow }, payload) => {
+          const win = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed());
+          win?.webContents.send(
+            'office-ai-bridge-adapter',
+            JSON.stringify({ name: 'notification.clicked', data: payload })
+          );
+        },
+        {
+          notification_id: 'notification-native-e2e',
+          notification_version: 'v1',
+          scope_id: scopeId,
+          target: { type: 'conversation', conversationId },
+        }
+      );
+    };
+
+    await emitClick(`${userId}-other`, 'must-not-open');
+    await expect(page).not.toHaveURL(/must-not-open/);
+
+    await emitClick(userId as string, 'native-click-target');
+    await expect(page).toHaveURL(/\/conversation\/native-click-target/, { timeout: 5_000 });
   });
 });

@@ -10,8 +10,11 @@ const state = vi.hoisted(() => ({
     user: { id: string } | null;
   },
   fetch: vi.fn(),
+  clearScope: vi.fn(),
   show: vi.fn(),
-  changedCallback: undefined as (() => void) | undefined,
+  changedCallback: undefined as
+    | ((payload?: { revision: string; reason: 'snapshot'; notification_id?: string; trace_id?: string }) => void)
+    | undefined,
   reconnectedCallback: undefined as (() => void) | undefined,
   offChanged: vi.fn(),
   offReconnected: vi.fn(),
@@ -21,13 +24,14 @@ vi.mock('@/renderer/hooks/context/AuthContext', () => ({ useAuth: () => state.au
 vi.mock('@/renderer/utils/platform', () => ({ isElectronDesktop: () => true }));
 vi.mock('@/renderer/services/notificationInbox', () => ({
   fetchActiveNotifications: state.fetch,
+  clearNotificationScopeCache: state.clearScope,
   notificationInboxKey: (userId: string) => `notifications.active.test:${userId}`,
 }));
 vi.mock('@/common', () => ({
   ipcBridge: {
     notificationInbox: {
       changed: {
-        on: (callback: () => void) => {
+        on: (callback: NonNullable<typeof state.changedCallback>) => {
           state.changedCallback = callback;
           return state.offChanged;
         },
@@ -113,6 +117,7 @@ describe('useNotificationInboxSync', () => {
       body: 'conversation.notifications.nativeBody:1',
       notification_id: 'notification-2',
       notification_version: 'v1',
+      scope_id: 'user-1',
       target: { type: 'conversation', conversationId: 'conversation-notification-2' },
     });
 
@@ -130,10 +135,45 @@ describe('useNotificationInboxSync', () => {
     state.fetch.mockResolvedValue(snapshot([item('notification-1', 'v1')]));
     const { rerender } = renderHook(() => useNotificationInboxSync(), { wrapper });
     await waitFor(() => expect(state.fetch).toHaveBeenCalledTimes(1));
+    const previousSignal = state.fetch.mock.calls[0][0] as AbortSignal;
 
     state.auth = { status: 'authenticated', user: { id: 'user-2' } };
     rerender();
     await waitFor(() => expect(state.fetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(previousSignal.aborted).toBe(true));
+    expect(state.clearScope).toHaveBeenCalledWith('user-1', expect.any(Function));
     expect(state.show).not.toHaveBeenCalled();
+  });
+
+  it('runs one follow-up refresh when a changed revision arrives during an in-flight refresh', async () => {
+    let resolveSecond: ((value: ReturnType<typeof snapshot>) => void) | undefined;
+    state.fetch
+      .mockResolvedValueOnce(snapshot([item('notification-1', 'v1')]))
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReturnType<typeof snapshot>>((resolve) => {
+            resolveSecond = resolve;
+          })
+      )
+      .mockResolvedValueOnce(snapshot([item('notification-1', 'v3')]));
+    renderHook(() => useNotificationInboxSync(), { wrapper });
+    await waitFor(() => expect(state.fetch).toHaveBeenCalledTimes(1));
+
+    state.changedCallback?.({ revision: 'v2', reason: 'snapshot', trace_id: 'trace-safe' });
+    await waitFor(() => expect(state.fetch).toHaveBeenCalledTimes(2), { timeout: 1_000 });
+    state.changedCallback?.({ revision: 'v3', reason: 'snapshot', notification_id: 'notification-1' });
+    resolveSecond?.(snapshot([item('notification-1', 'v2')]));
+
+    await waitFor(() => expect(state.fetch).toHaveBeenCalledTimes(3), { timeout: 1_000 });
+  });
+
+  it('refreshes on reconnect without requiring a notification.changed event', async () => {
+    state.fetch.mockResolvedValue(snapshot([item('notification-1', 'v1')]));
+    renderHook(() => useNotificationInboxSync(), { wrapper });
+    await waitFor(() => expect(state.fetch).toHaveBeenCalledTimes(1));
+
+    state.reconnectedCallback?.();
+
+    await waitFor(() => expect(state.fetch).toHaveBeenCalledTimes(2), { timeout: 1_000 });
   });
 });

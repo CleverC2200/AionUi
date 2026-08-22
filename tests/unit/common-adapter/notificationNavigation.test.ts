@@ -14,6 +14,14 @@ describe('resolveNotificationNavigation', () => {
       pathname: '/team/t1',
       state: { targetSlotId: 's1' },
     });
+    expect(resolveNotificationNavigation({ type: 'team', teamId: 't1' })).toEqual({ pathname: '/team/t1' });
+    expect(
+      resolveNotificationNavigation({
+        type: 'interaction_request',
+        conversationId: 'c1',
+        requestId: 'request-1',
+      })
+    ).toEqual({ pathname: '/conversation/c1', state: { interactionRequestId: 'request-1' } });
   });
 
   it('keeps notification-only targets inside the inbox', () => {

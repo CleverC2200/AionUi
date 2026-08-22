@@ -1,11 +1,12 @@
 import type { NotificationItem } from '@/common/types/notification';
 import { Alert, Badge, Button, Drawer, Empty, Spin, Tag, Typography } from '@arco-design/web-react';
 import { CheckOne, CloseSmall, Inbox, Right } from '@icon-park/react';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import {
+  clearNotificationDetailCache,
   fetchActiveNotifications,
   fetchNotificationDetail,
   notificationInboxKey,
@@ -30,34 +31,51 @@ export const NotificationInbox: React.FC<NotificationInboxProps> = ({ onNavigate
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { status, user } = useAuth();
+  const { mutate: mutateCache } = useSWRConfig();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [visible, setVisible] = useState(false);
   const [selectedId, setSelectedId] = useState<string>();
   const [pendingAction, setPendingAction] = useState<string>();
   const [actionError, setActionError] = useState<'conflict' | 'retryable' | 'failed'>();
+  const listRequestController = useMemo(() => new AbortController(), [user?.id]);
   const {
     data,
     error: listError,
     isLoading,
     isValidating,
     mutate,
-  } = useSWR(status === 'authenticated' && user ? notificationInboxKey(user.id) : null, fetchActiveNotifications);
+  } = useSWR(status === 'authenticated' && user ? notificationInboxKey(user.id) : null, () =>
+    fetchActiveNotifications(listRequestController.signal)
+  );
   const items = data?.items ?? [];
   const selectedVersion = items.find((item) => item.id === selectedId)?.version;
+  const detailRequestController = useMemo(() => new AbortController(), [selectedId, selectedVersion, user?.id]);
   const {
     data: detail,
     error: detailError,
     isLoading: detailLoading,
   } = useSWR(
     selectedId && selectedVersion && user ? `notifications.detail:${user.id}:${selectedId}:${selectedVersion}` : null,
-    () => fetchNotificationDetail(selectedId as string)
+    () => fetchNotificationDetail(selectedId as string, detailRequestController.signal)
   );
   const unreadCount = useMemo(() => items.filter((item) => item.status === 'unread').length, [items]);
 
+  useEffect(() => {
+    setSelectedId(undefined);
+    setPendingAction(undefined);
+    setActionError(undefined);
+  }, [user?.id]);
+
+  useEffect(() => () => listRequestController.abort(), [listRequestController]);
+  useEffect(() => () => detailRequestController.abort(), [detailRequestController]);
+
   const close = useCallback(() => {
+    detailRequestController.abort();
     setVisible(false);
+    setSelectedId(undefined);
+    if (user?.id) void clearNotificationDetailCache(user.id, mutateCache);
     requestAnimationFrame(() => triggerRef.current?.focus());
-  }, []);
+  }, [detailRequestController, mutateCache, user?.id]);
 
   const runAction = useCallback(
     async (item: NotificationItem, action: 'read' | 'dismiss') => {
@@ -89,12 +107,27 @@ export const NotificationInbox: React.FC<NotificationInboxProps> = ({ onNavigate
   const openTarget = useCallback(
     (item: NotificationItem) => {
       const destination = resolveNotificationNavigation(item.target);
-      if (!destination) return;
+      if (!destination) {
+        console.info('[NotificationInbox] navigation unavailable', {
+          notification_id: item.id,
+          target_type: item.target.type,
+          result: 'ignored',
+        });
+        return;
+      }
+      console.info('[NotificationInbox] navigation resolved', {
+        notification_id: item.id,
+        target_type: item.target.type,
+        result: 'navigating',
+      });
+      detailRequestController.abort();
       setVisible(false);
+      setSelectedId(undefined);
+      if (user?.id) void clearNotificationDetailCache(user.id, mutateCache);
       onNavigate?.();
       void navigate(destination.pathname, { state: destination.state });
     },
-    [navigate, onNavigate]
+    [detailRequestController, mutateCache, navigate, onNavigate, user?.id]
   );
 
   return (
@@ -165,6 +198,14 @@ export const NotificationInbox: React.FC<NotificationInboxProps> = ({ onNavigate
                   </Button>
                 }
                 data-testid='notification-sync-warning'
+              />
+            ) : null}
+            {data?.sync_state === 'syncing' || isValidating ? (
+              <Alert
+                type='info'
+                showIcon
+                content={t('conversation.notifications.sync.syncing')}
+                data-testid='notification-syncing'
               />
             ) : null}
             {items.length === 0 ? (
@@ -245,6 +286,10 @@ export const NotificationInbox: React.FC<NotificationInboxProps> = ({ onNavigate
                               <Button size='small' type='primary' onClick={() => openTarget(selectedItem)}>
                                 {t('conversation.notifications.actions.openTarget')}
                               </Button>
+                            ) : selectedItem ? (
+                              <Typography.Text className='text-12px text-t-tertiary'>
+                                {t('conversation.notifications.navigationUnavailable')}
+                              </Typography.Text>
                             ) : null}
                           </div>
                         </div>
