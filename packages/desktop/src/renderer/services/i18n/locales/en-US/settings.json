@@ -1514,6 +1514,8 @@
     "deleteSelectedConfirmTitle": "Delete selected archived items?",
     "deleteSelectedConfirmContent": "This permanently deletes {{count}} selected archived items. This can't be undone.",
     "deleteSelectedSuccess": "Selected archived items deleted",
-    "selectAll": "Select all"
+    "selectAll": "Select all",
+    "loadMore": "Load more",
+    "loadMoreFailed": "Failed to load more"
   }
 }

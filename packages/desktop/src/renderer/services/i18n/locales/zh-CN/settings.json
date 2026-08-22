@@ -1515,6 +1515,8 @@
     "deleteSelectedConfirmTitle": "删除所选归档项？",
     "deleteSelectedConfirmContent": "将永久删除已选的 {{count}} 个归档项，此操作无法撤销。",
     "deleteSelectedSuccess": "已删除所选归档项",
-    "selectAll": "全选"
+    "selectAll": "全选",
+    "loadMore": "加载更多",
+    "loadMoreFailed": "加载更多失败"
   }
 }

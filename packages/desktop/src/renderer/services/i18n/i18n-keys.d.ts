@@ -1723,6 +1723,8 @@ export type I18nKey =
   | 'settings.archived.deleteSuccess'
   | 'settings.archived.description'
   | 'settings.archived.empty'
+  | 'settings.archived.loadMore'
+  | 'settings.archived.loadMoreFailed'
   | 'settings.archived.multiSelect'
   | 'settings.archived.navLabel'
   | 'settings.archived.noProject'
