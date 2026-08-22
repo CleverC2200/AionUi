@@ -61,6 +61,45 @@ describe('startWebHost', () => {
     vi.doUnmock('../src/static-server.js');
   });
 
+  test('disables Core local identity mode when the trusted Lark gateway is configured', async () => {
+    const startBackend = vi.fn().mockResolvedValue({
+      port: 55555,
+      stop: vi.fn().mockResolvedValue(undefined),
+    });
+    vi.doMock('../src/backend-launcher.js', () => ({ startBackend }));
+    vi.doMock('../src/static-server.js', () => ({
+      startStaticServer: vi.fn().mockResolvedValue({
+        port: 33000,
+        url: 'http://127.0.0.1:33000',
+        localUrl: 'http://127.0.0.1:33000',
+        stop: vi.fn().mockResolvedValue(undefined),
+      }),
+    }));
+
+    const { startWebHost } = await import('../src/index.js');
+    const larkAuth = {
+      createQrSession: vi.fn(),
+      pollQrSession: vi.fn(),
+    };
+    const handle = await startWebHost({
+      app: {
+        version: '1.0.0',
+        isPackaged: false,
+        resourcesPath: '/app',
+        userDataPath: '/tmp/test-data',
+      },
+      staticDir: '/tmp/static',
+      backend: { kind: 'ownBackend', resolveBackend: () => '/bin/backend' },
+      larkAuth,
+    });
+
+    expect(startBackend).toHaveBeenCalledWith(expect.objectContaining({ local: false }));
+    await handle.stop();
+
+    vi.doUnmock('../src/backend-launcher.js');
+    vi.doUnmock('../src/static-server.js');
+  });
+
   test.todo('Backend port conflict: throws and does not leak resources');
   test.todo('Static-server port conflict: cleans up backend before throwing');
   test.todo('Stop cleanup: stops static-server then backend in sequence');

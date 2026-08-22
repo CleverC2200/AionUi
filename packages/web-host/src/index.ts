@@ -80,6 +80,10 @@ export async function startWebHost(opts: WebHostOptions): Promise<WebHostHandle>
       logDir: opts.logDir,
       dirs: opts.dirs,
       coreSessionBootstrapSecret,
+      // Core's local mode injects system_default_user and intentionally ignores
+      // JWT identity. A trusted Lark gateway must therefore launch Core with
+      // authentication enabled so its external session cookie owns data scope.
+      local: !opts.larkAuth,
     });
   } else {
     // useExistingBackend: create a fake handle

@@ -358,6 +358,28 @@ test-contract:
 test-integration:
     bun run test:integration
 
+# Run the real AionCore + mocked Lark identity boundary and macOS safeStorage restart E2E.
+# Usage: AIONUI_AIONCORE_BINARY=/absolute/path/to/aioncore just test-lark-core-boundary
+[no-exit-message]
+test-lark-core-boundary:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    : "${AIONUI_AIONCORE_BINARY:?set AIONUI_AIONCORE_BINARY to a real aioncore executable}"
+    test -x "$AIONUI_AIONCORE_BINARY"
+    bun run --cwd packages/web-host test -- tests/integration/renewable-core-session.integration.test.ts
+    bun run package
+    AIONUI_BACKEND_BIN="$AIONUI_AIONCORE_BINARY" bunx playwright test --config playwright.config.ts tests/e2e/features/auth/desktop-lark-credential-restart.e2e.ts
+
+# Run the explicit 24-hour wall-clock session/refresh/CSRF soak on a durable runner.
+# GitHub-hosted runners cannot cover this duration; use a supervised machine.
+[no-exit-message]
+test-lark-core-soak:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    : "${AIONUI_AIONCORE_BINARY:?set AIONUI_AIONCORE_BINARY to a real aioncore executable}"
+    test -x "$AIONUI_AIONCORE_BINARY"
+    ISSUE133_LONG_RUNTIME=1 bun run --cwd packages/web-host test -- tests/integration/renewable-core-session.integration.test.ts
+
 # Verify packaged artifact contains complete renderer assets (i18n safety)
 test-packaged-i18n:
     bun run test:packaged:i18n
