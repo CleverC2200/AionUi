@@ -19,11 +19,19 @@ import type {
 } from './types.js';
 
 const WEB_SESSION_COOKIE = 'aionui-web-session';
-const WEB_SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+const WEB_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const MAX_JSON_BODY_BYTES = 16 * 1024;
 const REFRESH_EARLY_MS = 60_000;
 const REFRESH_IDEMPOTENCY_WINDOW_MS = 60_000;
 const MAX_REFRESH_RETRY_MS = 30_000;
+const TERMINAL_BACKEND_AUTH_ERROR_CODES = new Set([
+  'EXTERNAL_SESSION_REVOKED',
+  'EXTERNAL_SESSION_GENERATION_MISMATCH',
+  'EXTERNAL_SESSION_EXPIRED',
+  'EXTERNAL_SESSION_REQUIRED',
+  'EXTERNAL_SESSION_REFRESH_INVALID',
+  'CORE_USER_DISABLED',
+]);
 
 export const CLEAR_WEB_SESSION_COOKIE = `${WEB_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`;
 
@@ -160,6 +168,13 @@ export class LarkAuthGateway {
           ) {
             throw new CoreSessionClientError('CORE_SESSION_RESPONSE_INVALID', 502);
           }
+          const webSessionMaxAgeSeconds = Math.min(
+            WEB_SESSION_MAX_AGE_SECONDS,
+            Math.floor((coreSession.session.refreshExpiresAt - now) / 1000)
+          );
+          if (webSessionMaxAgeSeconds <= 0) {
+            throw new CoreSessionClientError('CORE_SESSION_RESPONSE_INVALID', 502);
+          }
           const token = randomBytes(32).toString('base64url');
           const session: WebSession = {
             core: {
@@ -168,13 +183,13 @@ export class LarkAuthGateway {
               session: coreSession.session,
             },
             epoch: 0,
-            expiresAt: Math.min(now + WEB_SESSION_MAX_AGE_SECONDS * 1000, coreSession.session.refreshExpiresAt),
+            expiresAt: now + webSessionMaxAgeSeconds * 1000,
             user: result.data.user,
           };
           this.sessions.set(token, session);
           this.scheduleRefresh(token, session);
           writeJson(res, 200, result, {
-            'set-cookie': `${WEB_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${WEB_SESSION_MAX_AGE_SECONDS}`,
+            'set-cookie': `${WEB_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${webSessionMaxAgeSeconds}`,
           });
           return true;
         }
@@ -278,6 +293,14 @@ export class LarkAuthGateway {
     return Buffer.concat([nextHeader, requestBytes.subarray(headerEnd + 4)]);
   }
 
+  invalidateForBackendAuthError(cookieHeader: string | undefined, errorCode: string | null): boolean {
+    if (!errorCode || !TERMINAL_BACKEND_AUTH_ERROR_CODES.has(errorCode)) return false;
+    const resolved = this.getSession(cookieHeader);
+    if (!resolved) return false;
+    this.invalidateSession(resolved.token, resolved.session);
+    return true;
+  }
+
   dispose(): void {
     for (const [token, session] of this.sessions) {
       this.invalidateSession(token, session);
@@ -350,7 +373,9 @@ export class LarkAuthGateway {
       if (this.sessions.get(token) !== session || session.epoch !== epoch) return null;
       if (
         refreshed.session.sid !== session.core.session.sid ||
-        refreshed.session.rotation <= session.core.session.rotation
+        refreshed.session.rotation !== session.core.session.rotation + 1 ||
+        refreshed.session.accessExpiresAt <= this.clock.now() ||
+        refreshed.session.refreshExpiresAt <= refreshed.session.accessExpiresAt
       ) {
         this.invalidateSession(token, session);
         return null;
@@ -366,7 +391,7 @@ export class LarkAuthGateway {
       session.refreshInFlight = undefined;
       if (this.sessions.get(token) !== session || session.epoch !== epoch) return null;
       const failedAt = this.clock.now();
-      if (!isRetryableRefreshError(error) || failedAt >= retryDeadline) {
+      if (isTerminalRefreshError(error) || failedAt >= retryDeadline) {
         this.invalidateSession(token, session);
         return null;
       }
@@ -404,8 +429,15 @@ export class LarkAuthGateway {
   }
 }
 
-function isRetryableRefreshError(error: unknown): boolean {
-  return error instanceof CoreSessionClientError && error.status >= 500;
+const TERMINAL_REFRESH_ERROR_CODES = new Set([
+  'EXTERNAL_SESSION_REFRESH_REPLAYED',
+  'EXTERNAL_SESSION_EXPIRED',
+  'EXTERNAL_SESSION_REVOKED',
+  'EXTERNAL_SESSION_GENERATION_MISMATCH',
+]);
+
+function isTerminalRefreshError(error: unknown): boolean {
+  return error instanceof CoreSessionClientError && TERMINAL_REFRESH_ERROR_CODES.has(error.code);
 }
 
 function sanitizeUser(user: WebHostLarkAuthUser): WebHostLarkAuthUser {

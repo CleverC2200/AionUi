@@ -260,6 +260,16 @@ describe('static-server', () => {
         res.end(JSON.stringify({ success: true }));
         return;
       }
+      if (req.url === '/api/business-denied') {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ success: false, code: 'BUSINESS_DENIED' }));
+        return;
+      }
+      if (req.url === '/api/admin-revoked') {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ success: false, code: 'EXTERNAL_SESSION_GENERATION_MISMATCH' }));
+        return;
+      }
       res.writeHead(404).end();
     });
     backend.server.on('upgrade', (req, socket) => {
@@ -486,6 +496,30 @@ describe('static-server', () => {
         })
       ).status
     ).toBe(200);
+
+    const businessDenied = await fetch(`${handle.localUrl}/api/business-denied`, {
+      headers: { cookie: cookieB },
+    });
+    expect(businessDenied.status).toBe(401);
+    expect(businessDenied.headers.get('set-cookie')).toBeNull();
+    expect(
+      (
+        await fetch(`${handle.localUrl}/api/auth/user`, {
+          headers: { cookie: cookieB },
+        })
+      ).status
+    ).toBe(200);
+
+    const adminRevoked = await fetch(`${handle.localUrl}/api/admin-revoked`, {
+      headers: { cookie: cookieB },
+    });
+    expect(adminRevoked.status).toBe(401);
+    expect(adminRevoked.headers.get('set-cookie')).toContain('Max-Age=0');
+    const staleLocalUser = await fetch(`${handle.localUrl}/api/auth/user`, {
+      headers: { cookie: cookieB },
+    });
+    expect(staleLocalUser.status).toBe(401);
+    expect(staleLocalUser.headers.get('set-cookie')).toContain('Max-Age=0');
   });
 
   it('/api proxy returns 502 when backend unreachable', async () => {

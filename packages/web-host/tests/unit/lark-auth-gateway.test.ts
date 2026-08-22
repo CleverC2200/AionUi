@@ -164,6 +164,35 @@ describe('LarkAuthGateway renewable Core sessions', () => {
     await Promise.all(closes.splice(0).map((close) => close()));
   });
 
+  it.each([
+    { coreLifetimeMs: 30 * 24 * 60 * 60 * 1000, expectedMaxAge: 30 * 24 * 60 * 60 },
+    { coreLifetimeMs: 12 * 60 * 60 * 1000 + 500, expectedMaxAge: 12 * 60 * 60 },
+    { coreLifetimeMs: 45 * 24 * 60 * 60 * 1000, expectedMaxAge: 30 * 24 * 60 * 60 },
+  ])(
+    'bounds the browser WebSession lifetime by the Core durable expiry ($expectedMaxAge seconds)',
+    async ({ coreLifetimeMs, expectedMaxAge }) => {
+      const clock = new FakeClock();
+      const initial = coreSession(1);
+      initial.session.refreshExpiresAt = NOW + coreLifetimeMs;
+      const core = createCorePort([initial]);
+      const gateway = new LarkAuthGateway(createLarkAuth(), core, clock);
+      const server = await startGatewayServer(gateway);
+      closes.push(server.close);
+
+      const response = await fetch(`${server.url}/api/lark-auth/poll`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ qrcodeId: 'qr-1' }),
+      });
+
+      expect(response.status).toBe(200);
+      const setCookie = response.headers.get('set-cookie') ?? '';
+      expect(setCookie).toContain(`Max-Age=${expectedMaxAge}`);
+      const maxAge = Number(/Max-Age=(\d+)/.exec(setCookie)?.[1]);
+      expect(maxAge * 1000).toBeLessThanOrEqual(coreLifetimeMs);
+    }
+  );
+
   it('single-flights concurrent HTTP and WebSocket refresh with one idempotency key', async () => {
     const clock = new FakeClock();
     const core = createCorePort([coreSession(1, 30_000)]);
@@ -234,10 +263,15 @@ describe('LarkAuthGateway renewable Core sessions', () => {
     await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toBeNull();
   });
 
-  it('fails a replayed refresh closed and clears the stale browser cookie on 401', async () => {
+  it.each([
+    'EXTERNAL_SESSION_REFRESH_REPLAYED',
+    'EXTERNAL_SESSION_EXPIRED',
+    'EXTERNAL_SESSION_REVOKED',
+    'EXTERNAL_SESSION_GENERATION_MISMATCH',
+  ])('fails the explicit terminal refresh error %s closed', async (code) => {
     const clock = new FakeClock();
     const core = createCorePort([coreSession(1, 30_000)]);
-    vi.mocked(core.refresh).mockRejectedValue(new CoreSessionClientError('EXTERNAL_SESSION_REFRESH_REPLAYED', 401));
+    vi.mocked(core.refresh).mockRejectedValue(new CoreSessionClientError(code, 401));
     const gateway = new LarkAuthGateway(createLarkAuth(), core, clock);
     const server = await startGatewayServer(gateway);
     closes.push(server.close);
@@ -249,6 +283,60 @@ describe('LarkAuthGateway renewable Core sessions', () => {
     const response = await fetch(`${server.url}/api/auth/user`, { headers: { cookie: webCookie } });
     expect(response.status).toBe(401);
     expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
+  });
+
+  it('keeps valid access after an idempotency-key 400 and recovers on the bounded retry', async () => {
+    const clock = new FakeClock();
+    const core = createCorePort([coreSession(1, 30_000)]);
+    vi.mocked(core.refresh)
+      .mockRejectedValueOnce(new CoreSessionClientError('EXTERNAL_SESSION_REFRESH_IDEMPOTENCY_REQUIRED', 400))
+      .mockResolvedValueOnce(refreshedSession(1));
+    const gateway = new LarkAuthGateway(createLarkAuth(), core, clock);
+    const server = await startGatewayServer(gateway);
+    closes.push(server.close);
+    const webCookie = await login(server.url, 'qr-1');
+
+    await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toMatchObject({
+      cookie: 'aionui-session=access-1',
+    });
+    await clock.advance(1_000);
+
+    expect(core.refresh).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(core.refresh).mock.calls[1]).toEqual(vi.mocked(core.refresh).mock.calls[0]);
+    await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toMatchObject({
+      cookie: 'aionui-session=access-1-rotated',
+    });
+  });
+
+  it.each([
+    {
+      name: 'expired access metadata',
+      mutate: (refresh: CoreSessionRefresh) => {
+        refresh.session.accessExpiresAt = NOW;
+      },
+    },
+    {
+      name: 'a skipped rotation',
+      mutate: (refresh: CoreSessionRefresh) => {
+        refresh.session.rotation = 2;
+      },
+    },
+  ])('rejects $name without scheduling a zero-delay refresh loop', async ({ mutate }) => {
+    const clock = new FakeClock();
+    const core = createCorePort([coreSession(1, 30_000)]);
+    const stale = refreshedSession(1);
+    mutate(stale);
+    vi.mocked(core.refresh).mockResolvedValue(stale);
+    const gateway = new LarkAuthGateway(createLarkAuth(), core, clock);
+    const server = await startGatewayServer(gateway);
+    closes.push(server.close);
+    const webCookie = await login(server.url, 'qr-1');
+
+    await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toBeNull();
+    await clock.advance(60_000);
+
+    expect(core.refresh).toHaveBeenCalledTimes(1);
+    await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toBeNull();
   });
 
   it('revokes only one of two same-user sessions and forgets all Core cookies on restart', async () => {
