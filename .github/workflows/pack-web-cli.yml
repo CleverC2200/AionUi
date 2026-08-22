@@ -15,6 +15,26 @@ on:
         description: 'Skip code quality checks (caller already ran them)'
         type: boolean
         default: false
+      aioncore_run_id:
+        description: 'Optional AionCore Manual Build workflow run id'
+        type: string
+        default: ''
+      aioncore_repository:
+        description: 'Repository that owns the optional AionCore workflow run'
+        type: string
+        default: 'CleverC2200/AionCore'
+      aioncore_expected_head_sha:
+        description: 'Expected 40-character commit SHA for the AionCore workflow run'
+        type: string
+        default: ''
+      aioncore_sha256s:
+        description: 'JSON object mapping AionCore artifact names to archive SHA256 values'
+        type: string
+        default: '{}'
+      aioncore_source_policy:
+        description: 'AionCore source policy; verified-actions disables all fallback sources'
+        type: string
+        default: 'default'
   workflow_dispatch:
     inputs:
       ref:
@@ -25,6 +45,29 @@ on:
         description: 'Skip code quality checks'
         type: boolean
         default: false
+      aioncore_run_id:
+        description: 'Optional AionCore Manual Build workflow run id'
+        type: string
+        default: ''
+      aioncore_repository:
+        description: 'Repository that owns the optional AionCore workflow run'
+        type: string
+        default: 'CleverC2200/AionCore'
+      aioncore_expected_head_sha:
+        description: 'Optional expected commit SHA for the AionCore workflow run'
+        type: string
+        default: ''
+      aioncore_sha256s:
+        description: 'Optional JSON map of artifact names to expected archive SHA256 values'
+        type: string
+        default: '{}'
+      aioncore_source_policy:
+        description: 'AionCore source policy'
+        type: choice
+        options:
+          - default
+          - verified-actions
+        default: default
 
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
@@ -121,6 +164,11 @@ jobs:
           PACK_PLATFORM: ${{ matrix.platform }}
           PACK_ARCH: ${{ matrix.arch }}
           # Version is pinned in repo-root package.json (aioncoreVersion).
+          AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          AIONUI_BACKEND_ACTIONS_REPOSITORY: ${{ inputs.aioncore_repository }}
+          AIONUI_BACKEND_EXPECTED_HEAD_SHA: ${{ inputs.aioncore_expected_head_sha }}
+          AIONUI_BACKEND_SHA256S: ${{ inputs.aioncore_sha256s }}
+          AIONUI_BACKEND_SOURCE_POLICY: ${{ inputs.aioncore_source_policy || 'default' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload tarball artifact

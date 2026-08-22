@@ -40,7 +40,17 @@ on:
         description: 'Repository that owns the optional AionCore workflow run'
         required: false
         type: string
-        default: 'iOfficeAI/AionCore'
+        default: 'CleverC2200/AionCore'
+      aioncore_expected_head_sha:
+        description: 'Optional expected commit SHA for the AionCore workflow run'
+        required: false
+        type: string
+        default: ''
+      aioncore_sha256s:
+        description: 'Optional JSON map of artifact names to expected archive SHA256 values'
+        required: false
+        type: string
+        default: '{}'
 
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
@@ -95,6 +105,8 @@ jobs:
       skip_code_quality: ${{ inputs.skip_code_quality }}
       aioncore_run_id: ${{ inputs.aioncore_run_id }}
       aioncore_repository: ${{ inputs.aioncore_repository }}
+      aioncore_expected_head_sha: ${{ inputs.aioncore_expected_head_sha }}
+      aioncore_sha256s: ${{ inputs.aioncore_sha256s }}
       append_commit_hash: true
       upload_installers_only: true
     secrets: inherit

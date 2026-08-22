@@ -4,12 +4,20 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 
 const {
+  downloadAndExtractActionsArtifact,
   downloadFileWithAuth,
   getActionsArtifactName,
   getActionsArtifactMissingMessage,
   getActionsRepository,
+  getActionsRunProvenance,
+  getExpectedActionsHeadSha,
+  getExpectedActionsSha256,
   prepareAioncore,
+  validateActionsArtifactMetadata,
 } = require('../../../packages/shared-scripts/src/prepare-aioncore');
+
+const ARCHIVE_SHA256 = '0eb3e36bfb24dcd9bb1d1bece1531216b59539a8fde17ee80224af0653c92aa3';
+const HEAD_SHA = 'ace375767d0b2ece67edf4128f09401f1de2ba8f';
 
 const posixFakeToolchainIt = process.platform === 'win32' ? it.skip : it;
 
@@ -23,7 +31,7 @@ function writeExecutable(filePath: string, contents: string) {
   chmodSync(filePath, 0o755);
 }
 
-function createFakeToolchain(root: string, { curlFails = false } = {}) {
+function createFakeToolchain(root: string, { curlFails = false, artifactDigest = ARCHIVE_SHA256 } = {}) {
   const binDir = join(root, 'bin');
   mkdirSync(binDir, { recursive: true });
 
@@ -53,9 +61,21 @@ printf 'archive' > "$out"
   writeExecutable(
     join(binDir, 'gh'),
     `#!/usr/bin/env bash
-cat <<'JSON'
-{"artifacts":[{"id":123,"name":"aioncore-manual-linux-x64","archive_download_url":"https://example.invalid/artifact.zip"}]}
+case "$*" in
+  *"/actions/runs/123/artifacts"*)
+    cat <<'JSON'
+{"artifacts":[{"id":456,"name":"aioncore-manual-linux-x64","archive_download_url":"https://example.invalid/artifact.zip","expired":false,"digest":"sha256:${artifactDigest}","workflow_run":{"id":123}}]}
 JSON
+    ;;
+  *"/actions/runs/123"*)
+    cat <<'JSON'
+{"id":123,"name":"🔨 Manual Build","path":".github/workflows/build-manual.yml","event":"workflow_dispatch","status":"completed","conclusion":"success","head_sha":"ace375767d0b2ece67edf4128f09401f1de2ba8f","head_branch":"main","html_url":"https://github.com/CleverC2200/AionCore/actions/runs/123","created_at":"2026-08-22T00:00:00Z","updated_at":"2026-08-22T00:10:00Z","repository":{"full_name":"CleverC2200/AionCore"}}
+JSON
+    ;;
+  *)
+    printf '{"artifact":"aioncore-manual-linux-x64"}'
+    ;;
+esac
 `
   );
   writeExecutable(
@@ -101,6 +121,11 @@ chmod +x "$out/aioncore"
 afterEach(() => {
   delete process.env.AIONUI_BACKEND_RUN_ID;
   delete process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY;
+  delete process.env.AIONUI_BACKEND_SOURCE_POLICY;
+  delete process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA;
+  delete process.env.AIONUI_BACKEND_SHA256;
+  delete process.env.AIONUI_BACKEND_SHA256S;
+  delete process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR;
   delete process.env.AIONUI_BACKEND_LOCAL_BINARY;
   rmSync(join(tmpdir(), 'aioncore-prepare', 'v0.1.46'), { recursive: true, force: true });
   rmSync(join(tmpdir(), 'aioncore-prepare-actions', '123'), { recursive: true, force: true });
@@ -124,16 +149,326 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     }
   });
 
-  it('uses the official repository by default and accepts an explicit workflow repository', () => {
-    expect(getActionsRepository()).toBe('iOfficeAI/AionCore');
-
-    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+  it('uses the personal repository by default and accepts an explicit workflow repository', () => {
     expect(getActionsRepository()).toBe('CleverC2200/AionCore');
+
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'iOfficeAI/AionCore';
+    expect(getActionsRepository()).toBe('iOfficeAI/AionCore');
   });
 
   it('rejects malformed workflow repositories', () => {
     process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'https://github.com/CleverC2200/AionCore';
     expect(() => getActionsRepository()).toThrow(/Invalid AionCore Actions repository/);
+  });
+
+  it('requires a personal run, expected head, and checksum under verified-actions policy', () => {
+    process.env.AIONUI_BACKEND_SOURCE_POLICY = 'verified-actions';
+    expect(() =>
+      prepareAioncore({
+        projectRoot: '/unused',
+        platform: 'linux',
+        arch: 'x64',
+        version: 'v0.1.71',
+      })
+    ).toThrow(/AIONUI_BACKEND_RUN_ID is required/);
+
+    process.env.AIONUI_BACKEND_RUN_ID = '123';
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'iOfficeAI/AionCore';
+    process.env.AIONUI_BACKEND_SHA256 = ARCHIVE_SHA256;
+    expect(() =>
+      prepareAioncore({
+        projectRoot: '/unused',
+        platform: 'linux',
+        arch: 'x64',
+        version: 'v0.1.71',
+      })
+    ).toThrow(/requires AionCore repository CleverC2200\/AionCore/);
+
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    expect(() =>
+      prepareAioncore({
+        projectRoot: '/unused',
+        platform: 'linux',
+        arch: 'x64',
+        version: 'v0.1.71',
+      })
+    ).toThrow(/AIONUI_BACKEND_EXPECTED_HEAD_SHA is required/);
+
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = 'abc123';
+    expect(() =>
+      prepareAioncore({
+        projectRoot: '/unused',
+        platform: 'linux',
+        arch: 'x64',
+        version: 'v0.1.71',
+      })
+    ).toThrow(/exactly 40 lowercase hexadecimal characters/);
+
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
+    delete process.env.AIONUI_BACKEND_SHA256;
+    expect(() =>
+      prepareAioncore({
+        projectRoot: '/unused',
+        platform: 'linux',
+        arch: 'x64',
+        version: 'v0.1.71',
+      })
+    ).toThrow(/Missing SHA256 for AionCore artifact aioncore-manual-linux-x64/);
+
+    process.env.AIONUI_BACKEND_SHA256 = ARCHIVE_SHA256;
+    process.env.AIONUI_BACKEND_LOCAL_BINARY = '/tmp/untrusted-aioncore';
+    expect(() =>
+      prepareAioncore({
+        projectRoot: '/unused',
+        platform: 'linux',
+        arch: 'x64',
+        version: 'v0.1.71',
+      })
+    ).toThrow(/rejects local AionCore overrides/);
+  });
+
+  it('resolves checksums by frozen artifact name and rejects malformed maps', () => {
+    process.env.AIONUI_BACKEND_SHA256S = JSON.stringify({
+      'aioncore-manual-linux-x64': ARCHIVE_SHA256,
+    });
+    expect(getExpectedActionsSha256('aioncore-manual-linux-x64', { required: true })).toBe(ARCHIVE_SHA256);
+
+    process.env.AIONUI_BACKEND_SHA256S = '{bad json';
+    expect(() => getExpectedActionsSha256('aioncore-manual-linux-x64')).toThrow(/Invalid AIONUI_BACKEND_SHA256S JSON/);
+  });
+
+  it('accepts an exact expected head SHA', () => {
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
+    expect(getExpectedActionsHeadSha({ required: true })).toBe(HEAD_SHA);
+  });
+
+  it.each([
+    [
+      'missing',
+      {
+        id: 456,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+        workflow_run: { id: 123 },
+      },
+    ],
+    [
+      'null',
+      {
+        id: 456,
+        expired: null,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+        workflow_run: { id: 123 },
+      },
+    ],
+    [
+      'wrong',
+      {
+        id: 456,
+        expired: true,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+        workflow_run: { id: 123 },
+      },
+    ],
+  ])('rejects %s expired metadata in verified-actions mode', (_case, artifact) => {
+    expect(() =>
+      validateActionsArtifactMetadata(artifact, '123', 'aioncore-manual-linux-x64', { verifiedActions: true })
+    ).toThrow(/must explicitly report expired=false/);
+  });
+
+  it.each([
+    [
+      'missing',
+      {
+        id: 456,
+        expired: false,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+      },
+    ],
+    [
+      'null',
+      {
+        id: 456,
+        expired: false,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+        workflow_run: { id: null },
+      },
+    ],
+    [
+      'wrong',
+      {
+        id: 456,
+        expired: false,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+        workflow_run: { id: 999 },
+      },
+    ],
+  ])('rejects %s workflow run ownership in verified-actions mode', (_case, artifact) => {
+    expect(() =>
+      validateActionsArtifactMetadata(artifact, '123', 'aioncore-manual-linux-x64', { verifiedActions: true })
+    ).toThrow(/must explicitly belong to workflow run 123/);
+  });
+
+  it.each([
+    [
+      'missing',
+      {
+        id: 456,
+        expired: false,
+        workflow_run: { id: 123 },
+      },
+    ],
+    [
+      'null',
+      {
+        id: 456,
+        expired: false,
+        digest: null,
+        workflow_run: { id: 123 },
+      },
+    ],
+    [
+      'wrong',
+      {
+        id: 456,
+        expired: false,
+        digest: `sha512:${ARCHIVE_SHA256}`,
+        workflow_run: { id: 123 },
+      },
+    ],
+  ])('rejects %s artifact digest metadata in verified-actions mode', (_case, artifact) => {
+    expect(() =>
+      validateActionsArtifactMetadata(artifact, '123', 'aioncore-manual-linux-x64', { verifiedActions: true })
+    ).toThrow(/must provide a valid sha256 digest/);
+  });
+
+  it('keeps missing optional artifact metadata compatible in default mode', () => {
+    expect(
+      validateActionsArtifactMetadata({ id: 456 }, '123', 'aioncore-manual-linux-x64', {
+        verifiedActions: false,
+      })
+    ).toBeNull();
+  });
+
+  posixFakeToolchainIt('verifies downloaded checksums and records run provenance', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-verified-actions-'));
+    const fakeBin = createFakeToolchain(tmp);
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
+    process.env.AIONUI_BACKEND_SHA256 = ARCHIVE_SHA256;
+
+    try {
+      const result = downloadAndExtractActionsArtifact('linux', 'x64', '123', { verifiedActions: true });
+      expect(result.artifactName).toBe('aioncore-manual-linux-x64');
+      expect(result.artifactId).toBe(456);
+      expect(result.artifactDigest).toBe(ARCHIVE_SHA256);
+      expect(result.artifactZipSha256).toBe(ARCHIVE_SHA256);
+      expect(result.archiveSha256).toBe(ARCHIVE_SHA256);
+      expect(result.expectedArchiveSha256).toBe(ARCHIVE_SHA256);
+      expect(result.provenance).toMatchObject({
+        repository: 'CleverC2200/AionCore',
+        runId: '123',
+        workflowPath: '.github/workflows/build-manual.yml',
+        event: 'workflow_dispatch',
+        conclusion: 'success',
+        expectedHeadSha: HEAD_SHA,
+        actualHeadSha: HEAD_SHA,
+      });
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  posixFakeToolchainIt('rejects unsuccessful workflow run provenance before artifact use', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-provenance-'));
+    const fakeBin = createFakeToolchain(tmp);
+    writeExecutable(
+      join(fakeBin, 'gh'),
+      `#!/usr/bin/env bash
+cat <<'JSON'
+{"id":123,"path":".github/workflows/build-manual.yml","event":"workflow_dispatch","status":"completed","conclusion":"failure","head_sha":"ace375767d0b2ece67edf4128f09401f1de2ba8f","repository":{"full_name":"CleverC2200/AionCore"}}
+JSON
+`
+    );
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
+
+    try {
+      expect(() => getActionsRunProvenance('123', 'CleverC2200/AionCore')).toThrow(/not a completed success/);
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  posixFakeToolchainIt('rejects a workflow run whose head differs from the frozen expected SHA', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-head-'));
+    const fakeBin = createFakeToolchain(tmp);
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = 'b'.repeat(40);
+    process.env.AIONUI_BACKEND_SHA256 = ARCHIVE_SHA256;
+
+    try {
+      expect(() =>
+        downloadAndExtractActionsArtifact('linux', 'x64', '123', {
+          verifiedActions: true,
+        })
+      ).toThrow(/head SHA mismatch/);
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  posixFakeToolchainIt('rejects a downloaded artifact ZIP that mismatches its required digest', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-digest-'));
+    const fakeBin = createFakeToolchain(tmp, { artifactDigest: '0'.repeat(64) });
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
+    process.env.AIONUI_BACKEND_SHA256 = ARCHIVE_SHA256;
+
+    try {
+      expect(() =>
+        downloadAndExtractActionsArtifact('linux', 'x64', '123', {
+          verifiedActions: true,
+        })
+      ).toThrow(/SHA256 mismatch for artifact aioncore-manual-linux-x64/);
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  posixFakeToolchainIt('fails closed when the downloaded archive checksum differs', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-checksum-'));
+    const fakeBin = createFakeToolchain(tmp);
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
+    process.env.AIONUI_BACKEND_SHA256 = '0'.repeat(64);
+
+    try {
+      expect(() =>
+        downloadAndExtractActionsArtifact('linux', 'x64', '123', {
+          verifiedActions: true,
+        })
+      ).toThrow(/SHA256 mismatch for AionCore archive/);
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it.each([

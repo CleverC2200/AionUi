@@ -11,7 +11,11 @@
  *
  * Environment variables:
  *  - AIONUI_BACKEND_RUN_ID: AionCore Manual Build workflow run id
- *  - AIONUI_BACKEND_ACTIONS_REPOSITORY: repository that owns the workflow run (default: iOfficeAI/AionCore)
+ *  - AIONUI_BACKEND_ACTIONS_REPOSITORY: repository that owns the workflow run (default: CleverC2200/AionCore)
+ *  - AIONUI_BACKEND_EXPECTED_HEAD_SHA: expected 40-character commit SHA for the workflow run
+ *  - AIONUI_BACKEND_SHA256: expected SHA256 for the selected AionCore archive
+ *  - AIONUI_BACKEND_SHA256S: JSON map of artifact names to expected archive SHA256 values
+ *  - AIONUI_BACKEND_SOURCE_POLICY: set verified-actions for fail-closed Actions-only bundling
  *  - AIONUI_BACKEND_VERSION: override the pinned version
  *  - AIONUI_BACKEND_ARCH: target architecture (default: process.arch)
  *  - GH_TOKEN / GITHUB_TOKEN: GitHub API token (for rate limiting)
