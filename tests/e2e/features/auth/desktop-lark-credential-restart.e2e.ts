@@ -3,6 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type ElectronApplication, type Page, _electron as electron } from '@playwright/test';
+import type {
+  LarkAuthResult,
+  LarkQrLoginPollResult,
+  LarkQrLoginSession,
+} from '../../../../packages/desktop/src/common/types/platform/larkAuth';
 import { invokeBridge } from '../../helpers';
 import { startMockGeaLarkServer, type MockGeaLarkServer } from '../../helpers/mock-gea-lark-server';
 
@@ -74,6 +79,21 @@ async function readStatus(page: Page): Promise<LarkStatus> {
   return invokeBridge<LarkStatus>(page, 'lark-auth.status');
 }
 
+async function authenticateWithMockQr(page: Page): Promise<void> {
+  const created = await invokeBridge<LarkAuthResult<LarkQrLoginSession>>(page, 'lark-auth.create-qr-session');
+  expect(created.success).toBe(true);
+  if (!created.success) return;
+
+  const polled = await invokeBridge<LarkAuthResult<LarkQrLoginPollResult>>(
+    page,
+    'lark-auth.poll-qr-session',
+    { qrcodeId: created.data.qrcodeId },
+    60_000
+  );
+  expect(polled.success).toBe(true);
+  if (polled.success) expect(polled.data.status).toBe('authenticated');
+}
+
 test.describe.serial('Desktop Lark credential restart boundary', () => {
   test.skip(process.platform === 'linux', 'Linux CI basic_text safeStorage is intentionally rejected');
   test.skip(!backendBinary || !fs.existsSync(backendBinary), 'AIONUI_BACKEND_BIN must point to a real AionCore binary');
@@ -87,6 +107,7 @@ test.describe.serial('Desktop Lark credential restart boundary', () => {
 
     try {
       desktop = await launchDesktop(userDataDir, mockGea);
+      await authenticateWithMockQr(desktop.page);
       await expect
         .poll(async () => (await readStatus(desktop?.page as Page)).data?.authenticated, { timeout: 60_000 })
         .toBe(true);
