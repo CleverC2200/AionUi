@@ -26,6 +26,7 @@ function deferred<T>(): Deferred<T> {
 function coreSession(id: number, accessMs = 90_000): CoreSession {
   return {
     accessCookie: `aionui-session=access-${id}`,
+    csrfCookie: `aionui-csrf-token=csrf-${id}`,
     refreshCookie: `aionui-refresh-session=sid-${id}.refresh-${id}`,
     sessionGeneration: 1,
     session: {
@@ -41,6 +42,7 @@ function coreSession(id: number, accessMs = 90_000): CoreSession {
 function refreshedSession(id: number): CoreSessionRefresh {
   return {
     accessCookie: `aionui-session=access-${id}-rotated`,
+    csrfCookie: `aionui-csrf-token=csrf-${id}-rotated`,
     refreshCookie: `aionui-refresh-session=sid-${id}.refresh-${id}-rotated`,
     session: {
       accessExpiresAt: NOW + 960_000,
@@ -210,7 +212,10 @@ describe('LarkAuthGateway renewable Core sessions', () => {
     refresh.resolve(refreshedSession(1));
     const authorizedHeaders = await httpHeaders;
     const authorizedUpgrade = await upgrade;
-    expect(authorizedHeaders).toMatchObject({ cookie: 'aionui-session=access-1-rotated' });
+    expect(authorizedHeaders).toMatchObject({
+      cookie: 'aionui-session=access-1-rotated; aionui-csrf-token=csrf-1-rotated',
+      'x-csrf-token': 'csrf-1-rotated',
+    });
     expect(authorizedUpgrade).toEqual(expect.any(Buffer));
     expect(authorizedUpgrade?.toString('latin1')).toContain('Cookie: aionui-session=access-1-rotated');
     expect(JSON.stringify(authorizedHeaders)).not.toContain('refresh-1-rotated');
@@ -236,7 +241,7 @@ describe('LarkAuthGateway renewable Core sessions', () => {
     expect(core.refresh).toHaveBeenCalledTimes(2);
     expect(vi.mocked(core.refresh).mock.calls[1]).toEqual(vi.mocked(core.refresh).mock.calls[0]);
     await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toMatchObject({
-      cookie: 'aionui-session=access-1-rotated',
+      cookie: 'aionui-session=access-1-rotated; aionui-csrf-token=csrf-1-rotated',
     });
   });
 
@@ -303,14 +308,14 @@ describe('LarkAuthGateway renewable Core sessions', () => {
       const webCookie = await login(server.url, 'qr-1');
 
       await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toMatchObject({
-        cookie: 'aionui-session=access-1',
+        cookie: 'aionui-session=access-1; aionui-csrf-token=csrf-1',
       });
       await clock.advance(1_000);
 
       expect(core.refresh).toHaveBeenCalledTimes(2);
       expect(vi.mocked(core.refresh).mock.calls[1]).toEqual(vi.mocked(core.refresh).mock.calls[0]);
       await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toMatchObject({
-        cookie: 'aionui-session=access-1-rotated',
+        cookie: 'aionui-session=access-1-rotated; aionui-csrf-token=csrf-1-rotated',
       });
     }
   );
@@ -360,7 +365,7 @@ describe('LarkAuthGateway renewable Core sessions', () => {
     expect(core.revokeMatching).toHaveBeenCalledWith('aionui-refresh-session=sid-1.refresh-1');
     await expect(gateway.getBackendHeaders({ cookie: cookieA })).resolves.toBeNull();
     await expect(gateway.getBackendHeaders({ cookie: cookieB })).resolves.toMatchObject({
-      cookie: 'aionui-session=access-2',
+      cookie: 'aionui-session=access-2; aionui-csrf-token=csrf-2',
     });
 
     gateway.dispose();

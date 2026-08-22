@@ -291,6 +291,7 @@ ipcMain.handle('backend:recover-corrupted-database', async () => {
           },
           {
             allowPendingOnHealthTimeout: false,
+            local: !isWebUIMode,
             onHealthTimeout: async (error) => {
               markBackendStartupFailed(error);
               await captureBackendStartupFailure(error);
@@ -900,6 +901,7 @@ const handleAppReady = async (): Promise<void> => {
           },
           {
             allowPendingOnHealthTimeout: !(isWebUIMode || isResetPasswordMode),
+            local: !isWebUIMode,
             onHealthTimeout: async (error) => {
               markBackendStartupFailed(error);
               // Hard rule: while the process is still alive, a health timeout is a

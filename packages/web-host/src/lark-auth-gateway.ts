@@ -54,7 +54,7 @@ const systemClock: LarkAuthGatewayClock = {
   setTimeout: (callback, delayMs) => setTimeout(callback, delayMs),
 };
 
-type CoreCredentials = Pick<CoreSessionRefresh, 'accessCookie' | 'refreshCookie' | 'session'>;
+type CoreCredentials = Pick<CoreSessionRefresh, 'accessCookie' | 'csrfCookie' | 'refreshCookie' | 'session'>;
 
 type RefreshState = {
   attemptCount: number;
@@ -130,9 +130,16 @@ export class LarkAuthGateway {
       authorization: _authorization,
       'x-access-token': _accessToken,
       'x-aioncore-bootstrap-secret': _bootstrapSecret,
+      'x-csrf-token': _browserCsrfToken,
       ...forwardedHeaders
     } = headers;
-    return { ...forwardedHeaders, cookie: resolved.session.core.accessCookie };
+    const csrfToken = cookieValue(resolved.session.core.csrfCookie, 'aionui-csrf-token');
+    if (!csrfToken) return null;
+    return {
+      ...forwardedHeaders,
+      cookie: `${resolved.session.core.accessCookie}; ${resolved.session.core.csrfCookie}`,
+      'x-csrf-token': csrfToken,
+    };
   }
 
   async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
@@ -179,6 +186,7 @@ export class LarkAuthGateway {
           const session: WebSession = {
             core: {
               accessCookie: coreSession.accessCookie,
+              csrfCookie: coreSession.csrfCookie,
               refreshCookie: coreSession.refreshCookie,
               session: coreSession.session,
             },

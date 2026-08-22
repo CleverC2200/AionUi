@@ -66,6 +66,7 @@ describe('CoreSessionClient', () => {
         'set-cookie': [
           'aionui-session=access-1; Path=/; HttpOnly; SameSite=Lax; Max-Age=900',
           'aionui-refresh-session=sid-1.refresh-1; Path=/api/auth/internal/external-sessions; HttpOnly; SameSite=Lax; Max-Age=2592000',
+          'aionui-csrf-token=csrf-1; Path=/; SameSite=Strict',
         ],
       });
       res.end(
@@ -92,6 +93,7 @@ describe('CoreSessionClient', () => {
     expect(requestBody).toEqual({ identity });
     expect(result).toEqual({
       accessCookie: 'aionui-session=access-1',
+      csrfCookie: 'aionui-csrf-token=csrf-1',
       refreshCookie: 'aionui-refresh-session=sid-1.refresh-1',
       user: { id: 'core-user-1', username: 'zhangsan' },
       sessionGeneration: 3,
@@ -120,6 +122,7 @@ describe('CoreSessionClient', () => {
         'set-cookie': [
           'aionui-session=access-2; Path=/; HttpOnly; SameSite=Lax; Max-Age=900',
           'aionui-refresh-session=sid-1.refresh-2; Path=/api/auth/internal/external-sessions; HttpOnly; SameSite=Lax; Max-Age=2592000',
+          'aionui-csrf-token=csrf-2; Path=/; SameSite=Strict',
         ],
       });
       res.end(
@@ -149,6 +152,7 @@ describe('CoreSessionClient', () => {
     expect(idempotencyKey).toBe(refreshIdempotencyKey);
     expect(result).toEqual({
       accessCookie: 'aionui-session=access-2',
+      csrfCookie: 'aionui-csrf-token=csrf-2',
       refreshCookie: 'aionui-refresh-session=sid-1.refresh-2',
       session: {
         sid: 'sid-1',

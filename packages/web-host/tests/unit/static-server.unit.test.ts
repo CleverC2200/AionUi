@@ -220,6 +220,7 @@ describe('static-server', () => {
           'set-cookie': [
             `aionui-session=access-${identity.subject}; Path=/; HttpOnly; SameSite=Lax; Max-Age=900`,
             `aionui-refresh-session=sid-${identity.subject}.refresh-${identity.subject}; Path=/api/auth/internal/external-sessions; HttpOnly; SameSite=Lax; Max-Age=2592000`,
+            `aionui-csrf-token=csrf-${identity.subject}; Path=/; SameSite=Strict`,
           ],
         });
         res.end(
@@ -412,6 +413,7 @@ describe('static-server', () => {
             authorization: 'Bearer injected',
             'x-access-token': 'injected-token',
             'x-aioncore-bootstrap-secret': 'injected-secret',
+            'x-csrf-token': 'browser-injected',
           },
         })
       )
@@ -421,13 +423,14 @@ describe('static-server', () => {
       expect(apiResponse.headers.get('set-cookie')).toBeNull();
     }
     expect(forwardedHeaders.map((headers) => headers.cookie).toSorted()).toEqual([
-      'aionui-session=access-user-a',
-      'aionui-session=access-user-b',
+      'aionui-session=access-user-a; aionui-csrf-token=csrf-user-a',
+      'aionui-session=access-user-b; aionui-csrf-token=csrf-user-b',
     ]);
     for (const headers of forwardedHeaders) {
       expect(headers.authorization).toBeUndefined();
       expect(headers['x-access-token']).toBeUndefined();
       expect(headers['x-aioncore-bootstrap-secret']).toBeUndefined();
+      expect(headers['x-csrf-token']).toMatch(/^csrf-user-/);
     }
 
     const upgrade = async (cookie: string): Promise<void> => {

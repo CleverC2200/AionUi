@@ -5,6 +5,7 @@ const BOOTSTRAP_SECRET_ENV = 'AIONCORE_BOOTSTRAP_SECRET';
 const BOOTSTRAP_SECRET_HEADER = 'x-aioncore-bootstrap-secret';
 const CORE_SESSION_COOKIE = 'aionui-session';
 const CORE_REFRESH_SESSION_COOKIE = 'aionui-refresh-session';
+const CORE_CSRF_COOKIE = 'aionui-csrf-token';
 const PROVISION_PATH = '/api/auth/internal/external-identities';
 const EXCHANGE_PATH = '/api/auth/internal/external-sessions';
 const REVOKE_PATH = '/api/auth/internal/external-sessions/revoke';
@@ -19,6 +20,7 @@ export type CoreExternalIdentity = WebHostLarkExternalIdentity;
 
 export type CoreSession = {
   accessCookie: string;
+  csrfCookie: string;
   refreshCookie: string;
   sessionGeneration: number;
   session: CoreSessionMetadata;
@@ -34,6 +36,7 @@ export type CoreSessionMetadata = {
 
 export type CoreSessionRefresh = {
   accessCookie: string;
+  csrfCookie: string;
   refreshCookie: string;
   session: CoreSessionMetadata;
 };
@@ -108,6 +111,7 @@ export class CoreSessionClient {
     const session = parseSessionMetadata(data?.session);
     const accessCookie = extractCoreSessionCookie(response.headers, CORE_SESSION_COOKIE);
     const refreshCookie = extractCoreSessionCookie(response.headers, CORE_REFRESH_SESSION_COOKIE);
+    const csrfCookie = extractCoreSessionCookie(response.headers, CORE_CSRF_COOKIE);
     if (
       body.success !== true ||
       !id ||
@@ -116,11 +120,12 @@ export class CoreSessionClient {
       !session ||
       !accessCookie ||
       !refreshCookie ||
+      !csrfCookie ||
       !refreshCookieMatchesSid(refreshCookie, session.sid)
     ) {
       throw new CoreSessionClientError('CORE_SESSION_RESPONSE_INVALID', 502);
     }
-    return { accessCookie, refreshCookie, sessionGeneration, session, user: { id, username } };
+    return { accessCookie, csrfCookie, refreshCookie, sessionGeneration, session, user: { id, username } };
   }
 
   async refresh(refreshCookie: string, idempotencyKey: string): Promise<CoreSessionRefresh> {
@@ -130,16 +135,18 @@ export class CoreSessionClient {
     const session = parseSessionMetadata(data?.session);
     const accessCookie = extractCoreSessionCookie(response.headers, CORE_SESSION_COOKIE);
     const nextRefreshCookie = extractCoreSessionCookie(response.headers, CORE_REFRESH_SESSION_COOKIE);
+    const csrfCookie = extractCoreSessionCookie(response.headers, CORE_CSRF_COOKIE);
     if (
       body.success !== true ||
       !session ||
       !accessCookie ||
       !nextRefreshCookie ||
+      !csrfCookie ||
       !refreshCookieMatchesSid(nextRefreshCookie, session.sid)
     ) {
       throw new CoreSessionClientError('CORE_SESSION_RESPONSE_INVALID', 502);
     }
-    return { accessCookie, refreshCookie: nextRefreshCookie, session };
+    return { accessCookie, csrfCookie, refreshCookie: nextRefreshCookie, session };
   }
 
   async revoke(identity: CoreExternalIdentity): Promise<CoreSessionRevocation> {
