@@ -70,6 +70,7 @@ export const AIONUI_FILES_MARKER = '[[AION_FILES]]';
 /** 发送侧：用户用 `@@` 引用其他会话后，后端追加到消息末尾的块 */
 export const AIONUI_SESSIONS_MARKER = '[[AION_SESSIONS]]';
 export const AIONUI_SESSIONS_END_MARKER = '[[/AION_SESSIONS]]';
+export const AIONUI_SESSION_MARKER_ENVELOPE_VERSION = 'v2';
 
 /** 接收侧：跨会话投递时后端加在消息开头的来源块 */
 export const AIONUI_SESSION_MESSAGE_MARKER = '[[AION_SESSION_MESSAGE]]';

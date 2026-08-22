@@ -5,6 +5,7 @@
  */
 
 import {
+  AIONUI_SESSION_MARKER_ENVELOPE_VERSION,
   AIONUI_SESSION_MESSAGE_END_MARKER,
   AIONUI_SESSION_MESSAGE_MARKER,
   AIONUI_SESSIONS_END_MARKER,
@@ -24,33 +25,127 @@ export type SessionDeliverySource = {
   replyTo: string;
 };
 
-/**
- * Locate a marker-delimited block and return the text with it removed.
- *
- * A missing closing marker returns `null` so the caller renders the original
- * content untouched: showing a stray marker line is ugly, but swallowing the
- * user's message is data loss.
- */
-function extractBlock(
-  content: string,
-  startMarker: string,
-  endMarker: string
-): { body: string[]; text: string } | null {
-  const startIndex = content.indexOf(startMarker);
+type ContentLine = {
+  text: string;
+  start: number;
+  end: number;
+};
+
+type ExtractedBlock = {
+  body: string[];
+  text: string;
+};
+
+const REPLY_INSTRUCTION = 'session send-message, to=reply_to';
+
+function contentLines(content: string): ContentLine[] {
+  let start = 0;
+  return content.split('\n').map((text) => {
+    const line = { text, start, end: start + text.length };
+    start = line.end + 1;
+    return line;
+  });
+}
+
+/** Sender envelopes are backend-appended and must be the terminal block. */
+function extractTerminalBlock(content: string, startMarker: string, endMarker: string): ExtractedBlock | null {
+  const lines = contentLines(content);
+  const endIndex = lines.length - 1;
+  if (lines[endIndex]?.text !== endMarker) return null;
+
+  let startIndex = -1;
+  for (let index = endIndex - 1; index >= 0; index -= 1) {
+    if (lines[index].text === startMarker) {
+      startIndex = index;
+      break;
+    }
+  }
   if (startIndex === -1) return null;
-  const endIndex = content.indexOf(endMarker, startIndex + startMarker.length);
+
+  const markerOffset = lines[startIndex].start;
+  if (markerOffset < 2 || content.slice(markerOffset - 2, markerOffset) !== '\n\n') return null;
+
+  return {
+    body: lines.slice(startIndex + 1, endIndex).map((line) => line.text),
+    text: content.slice(0, markerOffset - 2),
+  };
+}
+
+/** Recipient envelopes are backend-prepended and must be the leading block. */
+function extractLeadingBlock(content: string, startMarker: string, endMarker: string): ExtractedBlock | null {
+  const lines = contentLines(content);
+  if (lines[0]?.text !== startMarker) return null;
+
+  let endIndex = -1;
+  for (let index = 1; index < lines.length; index += 1) {
+    if (lines[index].text === endMarker) {
+      endIndex = index;
+      break;
+    }
+  }
   if (endIndex === -1) return null;
 
-  const inner = content.slice(startIndex + startMarker.length, endIndex);
-  const before = content.slice(0, startIndex);
-  const after = content.slice(endIndex + endMarker.length);
+  const markerEndOffset = lines[endIndex].end;
+  if (content.slice(markerEndOffset, markerEndOffset + 2) !== '\n\n') return null;
+
   return {
-    body: inner
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0),
-    text: `${before}${after}`.trim(),
+    body: lines.slice(1, endIndex).map((line) => line.text),
+    text: content.slice(markerEndOffset + 2),
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasExactKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  if (!isRecord(value)) return false;
+  const actualKeys = Object.keys(value);
+  return actualKeys.length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+function parseJsonLine(line: string): unknown {
+  try {
+    return JSON.parse(line);
+  } catch {
+    return null;
+  }
+}
+
+function parseV2Sessions(body: string[]): SessionMentionChip[] | null {
+  if (body.length !== 2 || body[0] !== AIONUI_SESSION_MARKER_ENVELOPE_VERSION) return null;
+  const payload = parseJsonLine(body[1]);
+  if (!hasExactKeys(payload, ['sessions']) || !Array.isArray(payload.sessions) || payload.sessions.length === 0) {
+    return null;
+  }
+
+  const sessions: SessionMentionChip[] = [];
+  for (const target of payload.sessions) {
+    if (!hasExactKeys(target, ['name', 'id', 'workspace'])) return null;
+    if (!isNonEmptyString(target.name) || !isNonEmptyString(target.id) || !isNonEmptyString(target.workspace)) {
+      return null;
+    }
+    sessions.push({ name: target.name, id: target.id, workspace: target.workspace });
+  }
+  return sessions;
+}
+
+function parseLegacySessions(body: string[]): SessionMentionChip[] | null {
+  const sessions: SessionMentionChip[] = [];
+  for (const line of body.map((value) => value.trim()).filter((value) => value.length > 0)) {
+    const parts = line.split('\t');
+    if (parts.length !== 3) return null;
+    const [name, id, workspaceField] = parts;
+    if (!name || !id || !workspaceField.startsWith('workspace: ')) return null;
+    const workspace = workspaceField.slice('workspace: '.length);
+    if (!workspace) return null;
+    sessions.push({ name, id, workspace });
+  }
+  return sessions.length > 0 ? sessions : null;
 }
 
 /**
@@ -58,27 +153,14 @@ function extractBlock(
  * user's own message so the bubble shows chips instead of raw markers.
  */
 export function parseSessionsBlock(content: string): { text: string; sessions: SessionMentionChip[] } {
-  const block = extractBlock(content, AIONUI_SESSIONS_MARKER, AIONUI_SESSIONS_END_MARKER);
+  const block = extractTerminalBlock(content, AIONUI_SESSIONS_MARKER, AIONUI_SESSIONS_END_MARKER);
   if (!block) return { text: content, sessions: [] };
 
-  const sessions: SessionMentionChip[] = [];
-  for (const line of block.body) {
-    // `name \t id \t workspace: VALUE`
-    const parts = line.split('\t');
-    if (parts.length !== 3) return { text: content, sessions: [] };
-    const [name, id, workspaceField] = parts;
-    if (!name || !id || !workspaceField.startsWith('workspace: ')) {
-      return { text: content, sessions: [] };
-    }
-    const workspace = workspaceField.slice('workspace: '.length);
-    if (!workspace) return { text: content, sessions: [] };
-    sessions.push({
-      name,
-      id,
-      workspace,
-    });
-  }
-  if (sessions.length === 0) return { text: content, sessions: [] };
+  const sessions =
+    block.body[0] === AIONUI_SESSION_MARKER_ENVELOPE_VERSION
+      ? parseV2Sessions(block.body)
+      : parseLegacySessions(block.body);
+  if (!sessions) return { text: content, sessions: [] };
   return { text: block.text, sessions };
 }
 
@@ -88,8 +170,33 @@ export function parseSessionsBlock(content: string): { text: string; sessions: S
  * of truth, no artifact (spec §5.6).
  */
 export function parseSessionMessageBlock(content: string): { text: string; source: SessionDeliverySource | null } {
-  const block = extractBlock(content, AIONUI_SESSION_MESSAGE_MARKER, AIONUI_SESSION_MESSAGE_END_MARKER);
+  const block = extractLeadingBlock(content, AIONUI_SESSION_MESSAGE_MARKER, AIONUI_SESSION_MESSAGE_END_MARKER);
   if (!block) return { text: content, source: null };
+
+  if (block.body[0] === AIONUI_SESSION_MARKER_ENVELOPE_VERSION) {
+    if (block.body.length !== 2) return { text: content, source: null };
+    const payload = parseJsonLine(block.body[1]);
+    if (
+      !hasExactKeys(payload, ['from', 'workspace', 'reply_to', 'reply_instruction']) ||
+      !hasExactKeys(payload.from, ['name', 'id']) ||
+      !isNonEmptyString(payload.from.name) ||
+      !isNonEmptyString(payload.from.id) ||
+      !isNonEmptyString(payload.workspace) ||
+      !isNonEmptyString(payload.reply_to) ||
+      payload.reply_instruction !== REPLY_INSTRUCTION
+    ) {
+      return { text: content, source: null };
+    }
+    return {
+      text: block.text,
+      source: {
+        fromName: payload.from.name,
+        fromId: payload.from.id,
+        workspace: payload.workspace,
+        replyTo: payload.reply_to,
+      },
+    };
+  }
 
   let fromName = '';
   let fromId = '';
@@ -99,7 +206,7 @@ export function parseSessionMessageBlock(content: string): { text: string; sourc
   let hasWorkspace = false;
   let hasReplyTo = false;
   let invalid = false;
-  for (const line of block.body) {
+  for (const line of block.body.map((value) => value.trim()).filter((value) => value.length > 0)) {
     if (line.startsWith('from: ')) {
       const fromParts = line.slice('from: '.length).split('\t');
       if (hasFrom || fromParts.length !== 2) {
