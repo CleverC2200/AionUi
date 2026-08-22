@@ -72,6 +72,7 @@ jobs:
         ]}
       aioncore_run_id: ${{ vars.AIONCORE_STABLE_RUN_ID }}
       aioncore_repository: 'CleverC2200/AionCore'
+      aioncore_expected_head_sha: ${{ vars.AIONCORE_STABLE_HEAD_SHA }}
       aioncore_sha256s: ${{ vars.AIONCORE_STABLE_SHA256S }}
       aioncore_source_policy: 'verified-actions'
     secrets: inherit
@@ -88,6 +89,7 @@ jobs:
       skip_code_quality: true
       aioncore_run_id: ${{ vars.AIONCORE_STABLE_RUN_ID }}
       aioncore_repository: 'CleverC2200/AionCore'
+      aioncore_expected_head_sha: ${{ vars.AIONCORE_STABLE_HEAD_SHA }}
       aioncore_sha256s: ${{ vars.AIONCORE_STABLE_SHA256S }}
       aioncore_source_policy: 'verified-actions'
     secrets: inherit

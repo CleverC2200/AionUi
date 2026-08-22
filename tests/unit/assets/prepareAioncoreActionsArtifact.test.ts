@@ -10,11 +10,14 @@ const {
   getActionsArtifactMissingMessage,
   getActionsRepository,
   getActionsRunProvenance,
+  getExpectedActionsHeadSha,
   getExpectedActionsSha256,
   prepareAioncore,
+  validateActionsArtifactMetadata,
 } = require('../../../packages/shared-scripts/src/prepare-aioncore');
 
 const ARCHIVE_SHA256 = '0eb3e36bfb24dcd9bb1d1bece1531216b59539a8fde17ee80224af0653c92aa3';
+const HEAD_SHA = 'ace375767d0b2ece67edf4128f09401f1de2ba8f';
 
 const posixFakeToolchainIt = process.platform === 'win32' ? it.skip : it;
 
@@ -28,7 +31,7 @@ function writeExecutable(filePath: string, contents: string) {
   chmodSync(filePath, 0o755);
 }
 
-function createFakeToolchain(root: string, { curlFails = false } = {}) {
+function createFakeToolchain(root: string, { curlFails = false, artifactDigest = ARCHIVE_SHA256 } = {}) {
   const binDir = join(root, 'bin');
   mkdirSync(binDir, { recursive: true });
 
@@ -61,7 +64,7 @@ printf 'archive' > "$out"
 case "$*" in
   *"/actions/runs/123/artifacts"*)
     cat <<'JSON'
-{"artifacts":[{"id":456,"name":"aioncore-manual-linux-x64","archive_download_url":"https://example.invalid/artifact.zip","expired":false,"digest":"sha256:${ARCHIVE_SHA256}","workflow_run":{"id":123}}]}
+{"artifacts":[{"id":456,"name":"aioncore-manual-linux-x64","archive_download_url":"https://example.invalid/artifact.zip","expired":false,"digest":"sha256:${artifactDigest}","workflow_run":{"id":123}}]}
 JSON
     ;;
   *"/actions/runs/123"*)
@@ -119,6 +122,7 @@ afterEach(() => {
   delete process.env.AIONUI_BACKEND_RUN_ID;
   delete process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY;
   delete process.env.AIONUI_BACKEND_SOURCE_POLICY;
+  delete process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA;
   delete process.env.AIONUI_BACKEND_SHA256;
   delete process.env.AIONUI_BACKEND_SHA256S;
   delete process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR;
@@ -157,7 +161,7 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     expect(() => getActionsRepository()).toThrow(/Invalid AionCore Actions repository/);
   });
 
-  it('requires a personal run and checksum under verified-actions policy', () => {
+  it('requires a personal run, expected head, and checksum under verified-actions policy', () => {
     process.env.AIONUI_BACKEND_SOURCE_POLICY = 'verified-actions';
     expect(() =>
       prepareAioncore({
@@ -181,6 +185,26 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     ).toThrow(/requires AionCore repository CleverC2200\/AionCore/);
 
     process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    expect(() =>
+      prepareAioncore({
+        projectRoot: '/unused',
+        platform: 'linux',
+        arch: 'x64',
+        version: 'v0.1.71',
+      })
+    ).toThrow(/AIONUI_BACKEND_EXPECTED_HEAD_SHA is required/);
+
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = 'abc123';
+    expect(() =>
+      prepareAioncore({
+        projectRoot: '/unused',
+        platform: 'linux',
+        arch: 'x64',
+        version: 'v0.1.71',
+      })
+    ).toThrow(/exactly 40 lowercase hexadecimal characters/);
+
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
     delete process.env.AIONUI_BACKEND_SHA256;
     expect(() =>
       prepareAioncore({
@@ -213,16 +237,129 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     expect(() => getExpectedActionsSha256('aioncore-manual-linux-x64')).toThrow(/Invalid AIONUI_BACKEND_SHA256S JSON/);
   });
 
+  it('accepts an exact expected head SHA', () => {
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
+    expect(getExpectedActionsHeadSha({ required: true })).toBe(HEAD_SHA);
+  });
+
+  it.each([
+    [
+      'missing',
+      {
+        id: 456,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+        workflow_run: { id: 123 },
+      },
+    ],
+    [
+      'null',
+      {
+        id: 456,
+        expired: null,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+        workflow_run: { id: 123 },
+      },
+    ],
+    [
+      'wrong',
+      {
+        id: 456,
+        expired: true,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+        workflow_run: { id: 123 },
+      },
+    ],
+  ])('rejects %s expired metadata in verified-actions mode', (_case, artifact) => {
+    expect(() =>
+      validateActionsArtifactMetadata(artifact, '123', 'aioncore-manual-linux-x64', { verifiedActions: true })
+    ).toThrow(/must explicitly report expired=false/);
+  });
+
+  it.each([
+    [
+      'missing',
+      {
+        id: 456,
+        expired: false,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+      },
+    ],
+    [
+      'null',
+      {
+        id: 456,
+        expired: false,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+        workflow_run: { id: null },
+      },
+    ],
+    [
+      'wrong',
+      {
+        id: 456,
+        expired: false,
+        digest: `sha256:${ARCHIVE_SHA256}`,
+        workflow_run: { id: 999 },
+      },
+    ],
+  ])('rejects %s workflow run ownership in verified-actions mode', (_case, artifact) => {
+    expect(() =>
+      validateActionsArtifactMetadata(artifact, '123', 'aioncore-manual-linux-x64', { verifiedActions: true })
+    ).toThrow(/must explicitly belong to workflow run 123/);
+  });
+
+  it.each([
+    [
+      'missing',
+      {
+        id: 456,
+        expired: false,
+        workflow_run: { id: 123 },
+      },
+    ],
+    [
+      'null',
+      {
+        id: 456,
+        expired: false,
+        digest: null,
+        workflow_run: { id: 123 },
+      },
+    ],
+    [
+      'wrong',
+      {
+        id: 456,
+        expired: false,
+        digest: `sha512:${ARCHIVE_SHA256}`,
+        workflow_run: { id: 123 },
+      },
+    ],
+  ])('rejects %s artifact digest metadata in verified-actions mode', (_case, artifact) => {
+    expect(() =>
+      validateActionsArtifactMetadata(artifact, '123', 'aioncore-manual-linux-x64', { verifiedActions: true })
+    ).toThrow(/must provide a valid sha256 digest/);
+  });
+
+  it('keeps missing optional artifact metadata compatible in default mode', () => {
+    expect(
+      validateActionsArtifactMetadata({ id: 456 }, '123', 'aioncore-manual-linux-x64', {
+        verifiedActions: false,
+      })
+    ).toBeNull();
+  });
+
   posixFakeToolchainIt('verifies downloaded checksums and records run provenance', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'aionui-verified-actions-'));
     const fakeBin = createFakeToolchain(tmp);
     const previousPath = process.env.PATH;
     process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
     process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
     process.env.AIONUI_BACKEND_SHA256 = ARCHIVE_SHA256;
 
     try {
-      const result = downloadAndExtractActionsArtifact('linux', 'x64', '123', { requireChecksum: true });
+      const result = downloadAndExtractActionsArtifact('linux', 'x64', '123', { verifiedActions: true });
       expect(result.artifactName).toBe('aioncore-manual-linux-x64');
       expect(result.artifactId).toBe(456);
       expect(result.artifactDigest).toBe(ARCHIVE_SHA256);
@@ -235,7 +372,8 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
         workflowPath: '.github/workflows/build-manual.yml',
         event: 'workflow_dispatch',
         conclusion: 'success',
-        headSha: 'ace375767d0b2ece67edf4128f09401f1de2ba8f',
+        expectedHeadSha: HEAD_SHA,
+        actualHeadSha: HEAD_SHA,
       });
     } finally {
       if (previousPath === undefined) delete process.env.PATH;
@@ -267,18 +405,63 @@ JSON
     }
   });
 
+  posixFakeToolchainIt('rejects a workflow run whose head differs from the frozen expected SHA', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-head-'));
+    const fakeBin = createFakeToolchain(tmp);
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = 'b'.repeat(40);
+    process.env.AIONUI_BACKEND_SHA256 = ARCHIVE_SHA256;
+
+    try {
+      expect(() =>
+        downloadAndExtractActionsArtifact('linux', 'x64', '123', {
+          verifiedActions: true,
+        })
+      ).toThrow(/head SHA mismatch/);
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  posixFakeToolchainIt('rejects a downloaded artifact ZIP that mismatches its required digest', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-digest-'));
+    const fakeBin = createFakeToolchain(tmp, { artifactDigest: '0'.repeat(64) });
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
+    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
+    process.env.AIONUI_BACKEND_SHA256 = ARCHIVE_SHA256;
+
+    try {
+      expect(() =>
+        downloadAndExtractActionsArtifact('linux', 'x64', '123', {
+          verifiedActions: true,
+        })
+      ).toThrow(/SHA256 mismatch for artifact aioncore-manual-linux-x64/);
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   posixFakeToolchainIt('fails closed when the downloaded archive checksum differs', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-checksum-'));
     const fakeBin = createFakeToolchain(tmp);
     const previousPath = process.env.PATH;
     process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
     process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
+    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
     process.env.AIONUI_BACKEND_SHA256 = '0'.repeat(64);
 
     try {
       expect(() =>
         downloadAndExtractActionsArtifact('linux', 'x64', '123', {
-          requireChecksum: true,
+          verifiedActions: true,
         })
       ).toThrow(/SHA256 mismatch for AionCore archive/);
     } finally {

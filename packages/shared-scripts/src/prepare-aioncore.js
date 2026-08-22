@@ -8,7 +8,8 @@
  *  4. Local binary fallback from AIONUI_BACKEND_LOCAL_BINARY
  *
  * AIONUI_BACKEND_SOURCE_POLICY=verified-actions disables every fallback and
- * requires a successful personal-fork workflow run plus an archive SHA256.
+ * requires a successful personal-fork workflow run, its expected head SHA,
+ * strict artifact metadata, and an archive SHA256.
  *
  * Output: {projectRoot}/resources/bundled-aioncore/{platform}-{arch}/
  *   - aioncore[.exe]
@@ -161,6 +162,20 @@ function getExpectedActionsSha256(artifactName, { required = false } = {}) {
     return null;
   }
   return normalizeSha256(value, artifactName);
+}
+
+function getExpectedActionsHeadSha({ required = false } = {}) {
+  const expectedHeadSha = (process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA || '').trim();
+  if (!expectedHeadSha) {
+    if (required) {
+      throw new Error('AIONUI_BACKEND_EXPECTED_HEAD_SHA is required by verified-actions source policy');
+    }
+    return null;
+  }
+  if (!/^[a-f0-9]{40}$/.test(expectedHeadSha)) {
+    throw new Error('AIONUI_BACKEND_EXPECTED_HEAD_SHA must be exactly 40 lowercase hexadecimal characters');
+  }
+  return expectedHeadSha;
 }
 
 function sha256File(filePath) {
@@ -384,7 +399,7 @@ function githubApiGetJson(apiPath) {
   return JSON.parse(out);
 }
 
-function getActionsRunProvenance(runId, repository) {
+function getActionsRunProvenance(runId, repository, expectedHeadSha = null) {
   if (!/^[1-9][0-9]*$/.test(runId)) {
     throw new Error(`Invalid AionCore Actions run id: ${runId}`);
   }
@@ -392,7 +407,7 @@ function getActionsRunProvenance(runId, repository) {
   const run = githubApiGetJson(`repos/${repository}/actions/runs/${runId}`);
   const workflowPath = String(run?.path || '').split('@')[0];
   const sourceRepository = String(run?.repository?.full_name || '');
-  const headSha = String(run?.head_sha || '').toLowerCase();
+  const actualHeadSha = String(run?.head_sha || '');
 
   if (String(run?.id || '') !== runId) {
     throw new Error(`AionCore run metadata id mismatch for run ${runId}`);
@@ -414,8 +429,11 @@ function getActionsRunProvenance(runId, repository) {
       `AionCore run ${runId} is not a completed success (status=${run?.status || 'unknown'}, conclusion=${run?.conclusion || 'unknown'})`
     );
   }
-  if (!/^[a-f0-9]{40}$/.test(headSha)) {
+  if (!/^[a-f0-9]{40}$/.test(actualHeadSha)) {
     throw new Error(`AionCore run ${runId} is missing a valid head SHA`);
+  }
+  if (expectedHeadSha && actualHeadSha !== expectedHeadSha) {
+    throw new Error(`AionCore run ${runId} head SHA mismatch: expected ${expectedHeadSha}, got ${actualHeadSha}`);
   }
 
   return {
@@ -427,7 +445,8 @@ function getActionsRunProvenance(runId, repository) {
     event: run.event,
     status: run.status,
     conclusion: run.conclusion,
-    headSha,
+    expectedHeadSha,
+    actualHeadSha,
     headBranch: String(run.head_branch || ''),
     createdAt: String(run.created_at || ''),
     updatedAt: String(run.updated_at || ''),
@@ -472,14 +491,44 @@ function listActionsArtifacts(runId, repository) {
   return Array.isArray(response?.artifacts) ? response.artifacts : [];
 }
 
-function downloadAndExtractActionsArtifact(platform, arch, runId, { requireChecksum = false } = {}) {
+function validateActionsArtifactMetadata(artifact, runId, expectedArtifactName, { verifiedActions = false } = {}) {
+  if (!Number.isInteger(artifact?.id) || artifact.id <= 0) {
+    throw new Error(`AionCore artifact ${expectedArtifactName} from run ${runId} is missing a valid artifact id`);
+  }
+
+  if (verifiedActions) {
+    if (artifact.expired !== false) {
+      throw new Error(
+        `AionCore artifact ${expectedArtifactName} from run ${runId} must explicitly report expired=false`
+      );
+    }
+    if (!artifact.workflow_run || String(artifact.workflow_run.id || '') !== runId) {
+      throw new Error(`AionCore artifact ${expectedArtifactName} must explicitly belong to workflow run ${runId}`);
+    }
+    if (typeof artifact.digest !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(artifact.digest)) {
+      throw new Error(`AionCore artifact ${expectedArtifactName} must provide a valid sha256 digest`);
+    }
+  } else {
+    if (artifact.expired === true) {
+      throw new Error(`AionCore artifact ${expectedArtifactName} from run ${runId} has expired`);
+    }
+    if (artifact.workflow_run?.id && String(artifact.workflow_run.id) !== runId) {
+      throw new Error(`AionCore artifact ${expectedArtifactName} does not belong to run ${runId}`);
+    }
+  }
+
+  return artifact.digest ? normalizeSha256(artifact.digest, `artifact ${expectedArtifactName}`) : null;
+}
+
+function downloadAndExtractActionsArtifact(platform, arch, runId, { verifiedActions = false } = {}) {
   const expectedArtifactName = getActionsArtifactName(platform, arch);
   if (!expectedArtifactName) {
     throw new Error(`Unsupported AionCore Actions artifact target: ${platform}-${arch}`);
   }
 
   const repository = getActionsRepository();
-  const runProvenance = getActionsRunProvenance(runId, repository);
+  const expectedHeadSha = getExpectedActionsHeadSha({ required: verifiedActions });
+  const runProvenance = getActionsRunProvenance(runId, repository, expectedHeadSha);
   const artifacts = listActionsArtifacts(runId, repository);
   const availableArtifactNames = artifacts
     .map((artifact) => artifact.name)
@@ -497,17 +546,8 @@ function downloadAndExtractActionsArtifact(platform, arch, runId, { requireCheck
       })
     );
   }
-  if (!Number.isInteger(artifact.id) || artifact.id <= 0) {
-    throw new Error(`AionCore artifact ${expectedArtifactName} from run ${runId} is missing a valid artifact id`);
-  }
-  if (artifact.expired === true) {
-    throw new Error(`AionCore artifact ${expectedArtifactName} from run ${runId} has expired`);
-  }
-  if (artifact.workflow_run?.id && String(artifact.workflow_run.id) !== runId) {
-    throw new Error(`AionCore artifact ${expectedArtifactName} does not belong to run ${runId}`);
-  }
-
-  const expectedArchiveSha256 = getExpectedActionsSha256(expectedArtifactName, { required: requireChecksum });
+  const artifactDigest = validateActionsArtifactMetadata(artifact, runId, expectedArtifactName, { verifiedActions });
+  const expectedArchiveSha256 = getExpectedActionsSha256(expectedArtifactName, { required: verifiedActions });
 
   const tempDir = path.join(os.tmpdir(), 'aioncore-prepare-actions', runId, `${platform}-${arch}`);
   const artifactZipPath = path.join(tempDir, `${expectedArtifactName}.zip`);
@@ -521,7 +561,6 @@ function downloadAndExtractActionsArtifact(platform, arch, runId, { requireCheck
     artifact.archive_download_url || `https://api.github.com/repos/${repository}/actions/artifacts/${artifact.id}/zip`;
   console.log(`  Downloading aioncore from AionCore run ${runId} artifact ${expectedArtifactName}`);
   downloadFileWithAuth(downloadUrl, artifactZipPath);
-  const artifactDigest = artifact.digest ? normalizeSha256(artifact.digest, `artifact ${expectedArtifactName}`) : null;
   const artifactZipSha256 = artifactDigest
     ? verifyFileSha256(artifactZipPath, artifactDigest, `artifact ${expectedArtifactName}`)
     : sha256File(artifactZipPath);
@@ -622,6 +661,7 @@ function prepareAioncore(options) {
     if (!artifactName) {
       throw new Error(`Unsupported AionCore Actions artifact target: ${platform}-${arch}`);
     }
+    getExpectedActionsHeadSha({ required: true });
     getExpectedActionsSha256(artifactName, { required: true });
     if (localBundleDir || localBinary) {
       throw new Error('verified-actions source policy rejects local AionCore overrides');
@@ -692,7 +732,7 @@ function prepareAioncore(options) {
   // 1. Download from GitHub Actions artifacts when manual build run id is provided.
   if (actionsRunId) {
     const result = downloadAndExtractActionsArtifact(platform, arch, actionsRunId, {
-      requireChecksum: verifiedActionsOnly,
+      verifiedActions: verifiedActionsOnly,
     });
     sourcePath = result.binaryPath;
     tempDir = result.tempDir;
@@ -706,6 +746,8 @@ function prepareAioncore(options) {
       artifactZipSha256: result.artifactZipSha256,
       archiveSha256: result.archiveSha256,
       expectedArchiveSha256: result.expectedArchiveSha256,
+      expectedHeadSha: result.provenance.expectedHeadSha,
+      actualHeadSha: result.provenance.actualHeadSha,
       provenance: result.provenance,
       url: result.url,
     };
@@ -783,8 +825,10 @@ module.exports = {
   getActionsRepository,
   getActionsRunProvenance,
   getBackendSourcePolicy,
+  getExpectedActionsHeadSha,
   getExpectedActionsSha256,
   prepareAioncore,
+  validateActionsArtifactMetadata,
   verifyFileSha256,
   verifyPreparedAioncoreBundle,
 };

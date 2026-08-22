@@ -64,15 +64,22 @@ describe('release packaging configuration', () => {
 
     expect(releaseWorkflow.match(/aioncore_repository: 'CleverC2200\/AionCore'/g)).toHaveLength(2);
     expect(releaseWorkflow.match(/aioncore_run_id: \$\{\{ vars\.AIONCORE_STABLE_RUN_ID \}\}/g)).toHaveLength(2);
+    expect(
+      releaseWorkflow.match(/aioncore_expected_head_sha: \$\{\{ vars\.AIONCORE_STABLE_HEAD_SHA \}\}/g)
+    ).toHaveLength(2);
     expect(releaseWorkflow.match(/aioncore_sha256s: \$\{\{ vars\.AIONCORE_STABLE_SHA256S \}\}/g)).toHaveLength(2);
     expect(releaseWorkflow.match(/aioncore_source_policy: 'verified-actions'/g)).toHaveLength(2);
 
     expect(reusableWorkflow).toContain("default: 'CleverC2200/AionCore'");
+    expect(
+      reusableWorkflow.match(/AIONUI_BACKEND_EXPECTED_HEAD_SHA: \$\{\{ inputs\.aioncore_expected_head_sha \}\}/g)
+    ).toHaveLength(4);
     expect(reusableWorkflow.match(/AIONUI_BACKEND_SHA256S: \$\{\{ inputs\.aioncore_sha256s \}\}/g)).toHaveLength(4);
     expect(
       reusableWorkflow.match(/AIONUI_BACKEND_SOURCE_POLICY: \$\{\{ inputs\.aioncore_source_policy \}\}/g)
     ).toHaveLength(4);
     expect(webWorkflow).toContain('AIONUI_BACKEND_SHA256S: ${{ inputs.aioncore_sha256s }}');
+    expect(webWorkflow).toContain('AIONUI_BACKEND_EXPECTED_HEAD_SHA: ${{ inputs.aioncore_expected_head_sha }}');
     expect(webWorkflow).toContain("AIONUI_BACKEND_SOURCE_POLICY: ${{ inputs.aioncore_source_policy || 'default' }}");
   });
 
