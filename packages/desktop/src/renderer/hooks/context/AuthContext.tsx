@@ -46,7 +46,7 @@ const subscribeAuthSessionEpoch = (listener: () => void): (() => void) => {
   return () => authSessionEpochListeners.delete(listener);
 };
 
-const getAuthSessionEpoch = (): number => authSessionEpoch;
+export const getAuthSessionEpochSnapshot = (): number => authSessionEpoch;
 
 /** Publish an authenticated-session boundary without exposing an external id
  * as a Core user id. Shared caches subscribe to the monotonically increasing
@@ -57,7 +57,7 @@ export const notifyAuthSessionChanged = (): void => {
 };
 
 export const useAuthSessionEpoch = (): number =>
-  useSyncExternalStore(subscribeAuthSessionEpoch, getAuthSessionEpoch, getAuthSessionEpoch);
+  useSyncExternalStore(subscribeAuthSessionEpoch, getAuthSessionEpochSnapshot, getAuthSessionEpochSnapshot);
 
 /** Reset the module store between tests. */
 export const resetAuthSessionEpochForTests = (): void => {

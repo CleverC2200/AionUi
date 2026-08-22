@@ -71,6 +71,7 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
     onAddToDraft,
     addToDraftDisabled,
     selectedSessions,
+    sessionMentions,
     onSelectedSessionsChange,
     crossSessionEnabled,
     isTeamConversation,
@@ -85,9 +86,10 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
     sendDisabled?: boolean;
     sendButtonPrefix?: React.ReactNode;
     topRightOverlay?: React.ReactNode;
-    onAddToDraft?: () => void;
+    onAddToDraft?: (sessions?: Array<{ id: string; name: string }>) => void;
     addToDraftDisabled?: boolean;
     selectedSessions?: Array<{ id: string }>;
+    sessionMentions?: Array<{ id: string; name: string }>;
     onSelectedSessionsChange?: (sessions: Array<{ id: string }>) => void;
     crossSessionEnabled?: boolean;
     isTeamConversation?: boolean;
@@ -100,6 +102,7 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
       onAddToDraft,
       addToDraftDisabled,
       selectedSessions,
+      sessionMentions,
       onSelectedSessionsChange,
       crossSessionEnabled,
       isTeamConversation,
@@ -112,6 +115,19 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
         {topRightOverlay}
         <button type='button' onClick={() => onChange?.('hello')}>
           change
+        </button>
+        <button
+          type='button'
+          onClick={() =>
+            onAddToDraft?.(
+              selectedSessions?.map(({ id }) => ({
+                id,
+                name: id === 'conv_alpha' ? 'Alpha' : id === 'conv_beta' ? 'Beta' : 'target',
+              }))
+            )
+          }
+        >
+          add-to-draft
         </button>
         <button
           type='button'
@@ -532,7 +548,7 @@ describe('AionrsSendBox', () => {
       await waitFor(() => expect(ensureConversationRuntimeMock).toHaveBeenCalledWith('conv-1'));
 
       type SessionProps = {
-        onAddToDraft?: () => void;
+        onAddToDraft?: (sessions?: Array<{ id: string; name: string }>) => void;
         onSelectedSessionsChange?: (sessions: Array<{ id: string }>) => void;
         selectedSessions?: Array<{ id: string }>;
       };
@@ -544,35 +560,48 @@ describe('AionrsSendBox', () => {
       // Re-read: picking a session re-renders, so the previous props snapshot
       // holds a stale `onAddToDraft` closure over the empty selection.
       await act(async () => {
-        latestProps().onAddToDraft?.();
+        latestProps().onAddToDraft?.([{ id: 'conv_target', name: 'target' }]);
       });
 
-      expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining({ sessions: [{ id: 'conv_target' }] }));
+      expect(enqueueMock).toHaveBeenCalledWith(
+        expect.objectContaining({ sessions: [{ id: 'conv_target', name: 'target' }] })
+      );
       expect(latestProps().selectedSessions).toEqual([]);
     });
 
-    it('restores queued session references when editing and sends them again', async () => {
-      draftContentRef.current = 'ask @@target';
-      render(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} />);
+    it('keeps two session ids bound to their names after reorder, queue edit, deletion, and resend', async () => {
+      draftContentRef.current = 'ask @@Alpha then @@Beta';
+      const view = render(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} />);
       await waitFor(() => expect(ensureConversationRuntimeMock).toHaveBeenCalledWith('conv-1'));
 
       type SessionProps = {
-        onAddToDraft?: () => void;
+        onAddToDraft?: (sessions?: Array<{ id: string; name: string }>) => void;
         onSelectedSessionsChange?: (sessions: Array<{ id: string }>) => void;
         selectedSessions?: Array<{ id: string }>;
+        sessionMentions?: Array<{ id: string; name: string }>;
       };
       const latestProps = (): SessionProps => sendBoxPropsSpy.mock.calls.at(-1)?.[0] as SessionProps;
       await act(async () => {
-        latestProps().onSelectedSessionsChange?.([{ id: 'conv_target' }]);
+        latestProps().onSelectedSessionsChange?.([{ id: 'conv_alpha' }, { id: 'conv_beta' }]);
       });
+
+      draftContentRef.current = 'ask @@Beta then @@Alpha';
+      view.rerender(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} />);
       await act(async () => {
-        latestProps().onAddToDraft?.();
+        latestProps().onAddToDraft?.([
+          { id: 'conv_alpha', name: 'Alpha' },
+          { id: 'conv_beta', name: 'Beta' },
+        ]);
       });
       const queued = enqueueMock.mock.calls.at(-1)?.[0] as {
         input: string;
         files: [];
-        sessions: Array<{ id: string }>;
+        sessions: Array<{ id: string; name: string }>;
       };
+      expect(queued.sessions).toEqual([
+        { id: 'conv_alpha', name: 'Alpha' },
+        { id: 'conv_beta', name: 'Beta' },
+      ]);
       const onEdit = (commandQueuePanelPropsSpy.mock.calls.at(-1)![0] as {
         onEdit: (item: typeof queued & { id: string; created_at: number }) => void;
       }).onEdit;
@@ -580,14 +609,21 @@ describe('AionrsSendBox', () => {
       await act(async () => {
         onEdit({ ...queued, id: 'q-session', created_at: 1 });
       });
-      expect(latestProps().selectedSessions).toEqual([{ id: 'conv_target' }]);
+      expect(latestProps().selectedSessions).toEqual([{ id: 'conv_alpha' }, { id: 'conv_beta' }]);
+      expect(latestProps().sessionMentions).toEqual(queued.sessions);
+
+      draftContentRef.current = 'ask @@Beta';
+      view.rerender(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} />);
+      await act(async () => {
+        latestProps().onSelectedSessionsChange?.([{ id: 'conv_beta' }]);
+      });
 
       await act(async () => {
         screen.getByRole('button', { name: 'send' }).click();
       });
       await waitFor(() =>
         expect(sendMessageInvokeMock).toHaveBeenCalledWith(
-          expect.objectContaining({ sessions: [{ id: 'conv_target' }] })
+          expect.objectContaining({ sessions: [{ id: 'conv_beta' }] })
         )
       );
     });

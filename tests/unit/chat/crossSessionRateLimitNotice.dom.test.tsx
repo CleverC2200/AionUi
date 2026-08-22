@@ -120,6 +120,7 @@ describe('useCrossSessionRateLimitNotice — resolving the current user', () => 
       Promise.resolve({ id, runtime: { turn_id: `turn_${id}` } })
     );
     stopInvoke.mockResolvedValue({ runtime: { turn_id: null } });
+    setEnabled.mockResolvedValue(undefined);
   });
 
   /** The desktop case: AuthContext hands the hook nothing. */
@@ -196,6 +197,23 @@ describe('useCrossSessionRateLimitNotice — resolving the current user', () => 
     expect(notificationWarning).toHaveBeenCalledTimes(2);
   });
 
+  it('rejects an event delivered to the old subscription immediately after the auth epoch changes', async () => {
+    currentUserInvoke.mockResolvedValue({ id: 'core_user_a', username: 'a' });
+    render(<Host externalUserId='ou_lark_a' />);
+    await waitFor(() => expect(registrationCount).toBeGreaterThanOrEqual(2));
+    const staleHandler = registered;
+
+    act(() => {
+      notifyAuthSessionChanged();
+    });
+    act(() => {
+      staleHandler?.(payload({ user_id: 'core_user_a' }));
+    });
+
+    expect(notificationWarning).not.toHaveBeenCalled();
+    await waitFor(() => expect(currentUserInvoke).toHaveBeenCalledTimes(2));
+  });
+
   /** A failed lookup must not throw inside a render effect. */
   it('degrades quietly when the lookup fails', async () => {
     currentUserInvoke.mockRejectedValue(new Error('backend down'));
@@ -247,6 +265,44 @@ describe('useCrossSessionRateLimitNotice — resolving the current user', () => 
     await waitFor(() =>
       expect(messageError).toHaveBeenCalledWith('conversation.crossSession.stopPartialFailure')
     );
+    expect(notificationRemove).not.toHaveBeenCalled();
+  });
+
+  it('closes the notice only after disabling cross-conversation messages succeeds', async () => {
+    let resolveSetting!: () => void;
+    setEnabled.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolveSetting = resolve;
+      })
+    );
+    render(<Host />);
+    await waitFor(() => expect(registrationCount).toBeGreaterThanOrEqual(2));
+    act(() => {
+      registered?.(payload());
+    });
+
+    const config = notificationWarning.mock.calls[0][0] as { btn: React.ReactNode; id: string };
+    render(<>{config.btn}</>);
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.crossSession.disableFeature' }));
+    expect(notificationRemove).not.toHaveBeenCalled();
+
+    resolveSetting();
+    await waitFor(() => expect(notificationRemove).toHaveBeenCalledWith(config.id));
+  });
+
+  it('keeps the notice open when disabling cross-conversation messages fails', async () => {
+    setEnabled.mockRejectedValueOnce(new Error('failed'));
+    render(<Host />);
+    await waitFor(() => expect(registrationCount).toBeGreaterThanOrEqual(2));
+    act(() => {
+      registered?.(payload());
+    });
+
+    const config = notificationWarning.mock.calls[0][0] as { btn: React.ReactNode };
+    render(<>{config.btn}</>);
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.crossSession.disableFeature' }));
+
+    await waitFor(() => expect(messageError).toHaveBeenCalledWith('settings.crossSessionMessageUpdateFailed'));
     expect(notificationRemove).not.toHaveBeenCalled();
   });
 });

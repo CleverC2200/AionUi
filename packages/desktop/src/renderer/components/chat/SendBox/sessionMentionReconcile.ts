@@ -7,16 +7,6 @@
 import type { SessionRef } from '@/common/adapter/ipcBridge';
 import { getAllAtSessionQueries } from '@/renderer/utils/chat/atSessionQuery';
 
-/** Rebuild the display-name lookup for a queued draft restored from ids-only
- * SessionRefs. Only an exact positional match is safe; otherwise keep names
- * unknown rather than attaching an id to the wrong visible token. */
-export function buildSessionNameMap(value: string, selected: SessionRef[]): Record<string, string> {
-  const tokens = getAllAtSessionQueries(value);
-  if (tokens.length !== selected.length) return {};
-
-  return Object.fromEntries(selected.map((ref, index) => [ref.id, tokens[index].query]));
-}
-
 /**
  * Drop selected session references whose `@@` token the user has deleted from
  * the text.

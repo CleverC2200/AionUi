@@ -108,6 +108,7 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
     onAddToDraft,
     addToDraftDisabled,
     selectedSessions,
+    sessionMentions,
     onSelectedSessionsChange,
     crossSessionEnabled,
     isTeamConversation,
@@ -122,9 +123,10 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
     onFocused?: () => void;
     disabled?: boolean;
     sendDisabled?: boolean;
-    onAddToDraft?: () => void;
+    onAddToDraft?: (sessions?: Array<{ id: string; name: string }>) => void;
     addToDraftDisabled?: boolean;
     selectedSessions?: Array<{ id: string }>;
+    sessionMentions?: Array<{ id: string; name: string }>;
     onSelectedSessionsChange?: (sessions: Array<{ id: string }>) => void;
     crossSessionEnabled?: boolean;
     isTeamConversation?: boolean;
@@ -137,6 +139,8 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
       onAddToDraft,
       addToDraftDisabled,
       selectedSessions,
+      sessionMentions,
+      onSelectedSessionsChange,
       crossSessionEnabled,
       isTeamConversation,
     });
@@ -153,7 +157,17 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
         <button type='button' onClick={() => onSelectedSessionsChange?.([{ id: 'conv_target' }])}>
           pick-session
         </button>
-        <button type='button' onClick={() => onAddToDraft?.()}>
+        <button
+          type='button'
+          onClick={() =>
+            onAddToDraft?.(
+              selectedSessions?.map(({ id }) => ({
+                id,
+                name: id === 'conv_alpha' ? 'Alpha' : id === 'conv_beta' ? 'Beta' : 'target',
+              }))
+            )
+          }
+        >
           add-to-draft
         </button>
         <button
@@ -1001,13 +1015,13 @@ describe('AcpSendBox', () => {
       );
 
       await act(async () => {
-        await getOnSendNow()({ ...queuedItem, sessions: [{ id: 'conv_target' }] });
+        await getOnSendNow()({ ...queuedItem, sessions: [{ id: 'conv_target', name: 'target' }] });
       });
 
       expect(enqueueMock).toHaveBeenCalledWith({
         input: 'queued draft',
         files: [],
-        sessions: [{ id: 'conv_target' }],
+        sessions: [{ id: 'conv_target', name: 'target' }],
       });
     });
   });
@@ -1064,16 +1078,18 @@ describe('AcpSendBox', () => {
         screen.getByText('add-to-draft').click();
       });
 
-      expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining({ sessions: [{ id: 'conv_target' }] }));
+      expect(enqueueMock).toHaveBeenCalledWith(
+        expect.objectContaining({ sessions: [{ id: 'conv_target', name: 'target' }] })
+      );
 
       const props = sendBoxPropsSpy.mock.calls.at(-1)?.[0] as { selectedSessions?: Array<{ id: string }> };
       expect(props.selectedSessions).toEqual([]);
     });
 
-    it('restores queued session references when editing and sends them again', async () => {
-      draftContentRef.current = 'ask @@target';
+    it('keeps two session ids bound to their names after reorder, queue edit, deletion, and resend', async () => {
+      draftContentRef.current = 'ask @@Alpha then @@Beta';
       sendMessageInvokeMock.mockResolvedValue({ msg_id: 'm1', turn_id: 't1', runtime: {} });
-      render(
+      const view = render(
         <AcpSendBox
           conversation_id='conv-1'
           backend='claude'
@@ -1086,17 +1102,41 @@ describe('AcpSendBox', () => {
         screen.getByText('pick-session').click();
       });
       const latestProps = () => sendBoxPropsSpy.mock.calls.at(-1)?.[0] as {
-        onAddToDraft?: () => void;
+        onAddToDraft?: (sessions?: Array<{ id: string; name: string }>) => void;
+        onSelectedSessionsChange?: (sessions: Array<{ id: string }>) => void;
         selectedSessions?: Array<{ id: string }>;
+        sessionMentions?: Array<{ id: string; name: string }>;
       };
       await act(async () => {
-        latestProps().onAddToDraft?.();
+        latestProps().onSelectedSessionsChange?.([{ id: 'conv_alpha' }, { id: 'conv_beta' }]);
+      });
+
+      // Reorder only the visible tokens. The id/name binding must remain the
+      // one captured by the picker, not be reconstructed from token position.
+      draftContentRef.current = 'ask @@Beta then @@Alpha';
+      view.rerender(
+        <AcpSendBox
+          conversation_id='conv-1'
+          backend='claude'
+          workspacePath='/tmp/workspace'
+          messageState={makeMessageState()}
+        />
+      );
+      await act(async () => {
+        latestProps().onAddToDraft?.([
+          { id: 'conv_alpha', name: 'Alpha' },
+          { id: 'conv_beta', name: 'Beta' },
+        ]);
       });
       const queued = enqueueMock.mock.calls.at(-1)?.[0] as {
         input: string;
         files: [];
-        sessions: Array<{ id: string }>;
+        sessions: Array<{ id: string; name: string }>;
       };
+      expect(queued.sessions).toEqual([
+        { id: 'conv_alpha', name: 'Alpha' },
+        { id: 'conv_beta', name: 'Beta' },
+      ]);
       const onEdit = (commandQueuePanelPropsSpy.mock.calls.at(-1)![0] as {
         onEdit: (item: typeof queued & { id: string; created_at: number }) => void;
       }).onEdit;
@@ -1104,13 +1144,27 @@ describe('AcpSendBox', () => {
       await act(async () => {
         onEdit({ ...queued, id: 'q-session', created_at: 1 });
       });
-      expect(latestProps().selectedSessions).toEqual([{ id: 'conv_target' }]);
+      expect(latestProps().selectedSessions).toEqual([{ id: 'conv_alpha' }, { id: 'conv_beta' }]);
+      expect(latestProps().sessionMentions).toEqual(queued.sessions);
+
+      draftContentRef.current = 'ask @@Beta';
+      view.rerender(
+        <AcpSendBox
+          conversation_id='conv-1'
+          backend='claude'
+          workspacePath='/tmp/workspace'
+          messageState={makeMessageState()}
+        />
+      );
+      await act(async () => {
+        latestProps().onSelectedSessionsChange?.([{ id: 'conv_beta' }]);
+      });
 
       await act(async () => {
         screen.getByText('send').click();
       });
       expect(sendMessageInvokeMock).toHaveBeenCalledWith(
-        expect.objectContaining({ sessions: [{ id: 'conv_target' }] })
+        expect.objectContaining({ sessions: [{ id: 'conv_beta' }] })
       );
     });
 

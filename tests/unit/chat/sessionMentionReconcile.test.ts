@@ -5,10 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  buildSessionNameMap,
-  reconcileSessionRefs,
-} from '@/renderer/components/chat/SendBox/sessionMentionReconcile';
+import { reconcileSessionRefs } from '@/renderer/components/chat/SendBox/sessionMentionReconcile';
 
 describe('reconcileSessionRefs', () => {
   const nameById = { c1: 'auth', c2: 'docs' };
@@ -65,18 +62,5 @@ describe('reconcileSessionRefs', () => {
   it('drops every ref when the text is cleared', () => {
     const result = reconcileSessionRefs('', [{ id: 'c1' }, { id: 'c2' }], nameById);
     expect(result).toEqual([]);
-  });
-});
-
-describe('buildSessionNameMap', () => {
-  it('restores the id-to-name mapping from an edited queued draft', () => {
-    expect(buildSessionNameMap('ask @@auth and @@docs', [{ id: 'c1' }, { id: 'c2' }])).toEqual({
-      c1: 'auth',
-      c2: 'docs',
-    });
-  });
-
-  it('does not guess when token and reference counts disagree', () => {
-    expect(buildSessionNameMap('ask @@auth', [{ id: 'c1' }, { id: 'c2' }])).toEqual({});
   });
 });

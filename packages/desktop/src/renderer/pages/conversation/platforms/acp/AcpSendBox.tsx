@@ -32,6 +32,7 @@ import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/ho
 import {
   useConversationCommandQueue,
   type ConversationCommandQueueItem,
+  type QueuedSessionMention,
 } from '@/renderer/pages/conversation/platforms/useConversationCommandQueue';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { useConversationRuntimeView } from '@/renderer/pages/conversation/runtime/useConversationRuntimeView';
@@ -291,7 +292,7 @@ const AcpSendBox: React.FC<{
   });
 
   const executeCommand = useCallback(
-    async ({ input, files, sessions }: Pick<ConversationCommandQueueItem, 'input' | 'files' | 'sessions'>) => {
+    async ({ input, files, sessions }: { input: string; files: ChatFileRef[]; sessions?: SessionRef[] }) => {
       // Plain user text; the backend resolves each ChatFileRef and injects the
       // [[AION_FILES]] marker at the send edge (no front-end path/marker building).
       try {
@@ -314,7 +315,7 @@ const AcpSendBox: React.FC<{
           files,
           // `@@` references. Dropping this here is a silent failure: the agent
           // simply never receives the session block.
-          sessions,
+          sessions: sessions?.map(({ id }) => ({ id })),
         });
         markSendAccepted(result.turn_id, result.runtime, result.msg_id);
         emitter.emit('chat.history.refresh');
@@ -443,6 +444,7 @@ Please check your local CLI tool authentication status`,
   // `@@` session references the user picked. Declared before the handlers that
   // read it — every send path has to both forward and release it.
   const [selectedSessions, setSelectedSessions] = useState<SessionRef[]>([]);
+  const [restoredSessionMentions, setRestoredSessionMentions] = useState<QueuedSessionMention[]>([]);
   const { enabled: crossSessionEnabled } = useCrossSessionMessageEnabled();
 
   // Supporting agents (mid-turn delivery) send immediately, busy or not.
@@ -464,6 +466,7 @@ Please check your local CLI tool authentication status`,
     const sessions = selectedSessions.length > 0 ? selectedSessions : undefined;
     clearFiles();
     setSelectedSessions([]);
+    setRestoredSessionMentions([]);
     emitter.emit('acp.selected.file.clear');
     await executeCommand({ input: message, files: allFiles, sessions });
   };
@@ -480,6 +483,7 @@ Please check your local CLI tool authentication status`,
     // always empty here. Cleared anyway so the state cannot leak if that
     // relationship ever changes.
     setSelectedSessions([]);
+    setRestoredSessionMentions([]);
     emitter.emit('acp.selected.file.clear');
     setInterrupting(true);
     try {
@@ -496,23 +500,25 @@ Please check your local CLI tool authentication status`,
   // supporting and non-supporting backends. Clears the draft the same way a
   // send would.
   const canQueueCurrentDraft = content.trim().length > 0;
-  const handleAddToQueue = useCallback(() => {
+  const handleAddToQueue = useCallback((sessions?: QueuedSessionMention[]) => {
     const allFiles = collectChatFileRefs(uploadFile, atPath);
     // `@@` references must ride along, and must be released from the send box
     // the same way the draft text is — otherwise they leak into whatever the
     // user sends next.
-    enqueue({ input: content, files: allFiles, sessions: selectedSessions.length > 0 ? selectedSessions : undefined });
+    enqueue({ input: content, files: allFiles, sessions });
     setContent('');
     clearFiles();
     setSelectedSessions([]);
+    setRestoredSessionMentions([]);
     emitter.emit('acp.selected.file.clear');
-  }, [atPath, clearFiles, content, enqueue, selectedSessions, setContent, uploadFile]);
+  }, [atPath, clearFiles, content, enqueue, setContent, uploadFile]);
 
   const handleEditQueuedCommand = useCallback(
     (item: ConversationCommandQueueItem) => {
       remove(item.id);
       setContent(item.input);
-      setSelectedSessions(item.sessions ?? []);
+      setSelectedSessions(item.sessions?.map(({ id }) => ({ id })) ?? []);
+      setRestoredSessionMentions(item.sessions ?? []);
       // Restore upload refs → uploadFile paths, project refs → atPath items.
       const { uploadFiles, atPath: restoredAtPath } = splitChatFileRefs(item.files);
       setUploadFile(uploadFiles);
@@ -859,6 +865,7 @@ Please check your local CLI tool authentication status`,
           setAtPath(items);
         }}
         selectedSessions={selectedSessions}
+        sessionMentions={restoredSessionMentions}
         onSelectedSessionsChange={setSelectedSessions}
         crossSessionEnabled={crossSessionEnabled}
         isTeamConversation={Boolean(teamRuntime)}

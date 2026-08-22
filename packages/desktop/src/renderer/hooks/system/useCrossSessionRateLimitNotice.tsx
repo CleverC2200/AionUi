@@ -7,7 +7,7 @@
 import { ipcBridge } from '@/common';
 import type { SessionMessageRateLimitedPayload } from '@/common/adapter/ipcBridge';
 import { useCrossSessionMessageEnabled } from '@/renderer/hooks/chat/useCrossSessionMessageEnabled';
-import { useAuthSessionEpoch } from '@/renderer/hooks/context/AuthContext';
+import { getAuthSessionEpochSnapshot, useAuthSessionEpoch } from '@/renderer/hooks/context/AuthContext';
 import { resolveCurrentUserId } from '@/renderer/hooks/system/currentUserId';
 import { Button, Message, Notification } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -110,6 +110,10 @@ export function useCrossSessionRateLimitNotice(): void {
 
   const handlePayload = useCallback(
     (payload: SessionMessageRateLimitedPayload) => {
+      // An auth transition can happen before React flushes this effect and
+      // unsubscribes the old callback. Never attribute that stale callback's
+      // event using the previous user's resolved Core id.
+      if (getAuthSessionEpochSnapshot() !== authSessionEpoch) return;
       if (!shouldShowRateLimitNotice(payload, resolvedUserId)) return;
 
       const key = pairKey(payload);
@@ -161,10 +165,13 @@ export function useCrossSessionRateLimitNotice(): void {
               type='primary'
               status='warning'
               onClick={() => {
-                void setEnabled(false).catch(() => {
-                  Message.error(t('settings.crossSessionMessageUpdateFailed'));
-                });
-                Notification.remove(notificationId);
+                void setEnabled(false)
+                  .then(() => {
+                    Notification.remove(notificationId);
+                  })
+                  .catch(() => {
+                    Message.error(t('settings.crossSessionMessageUpdateFailed'));
+                  });
               }}
             >
               {t('conversation.crossSession.disableFeature', { defaultValue: 'Turn off cross-conversation messages' })}
@@ -173,7 +180,7 @@ export function useCrossSessionRateLimitNotice(): void {
         ),
       });
     },
-    [resolvedUserId, setEnabled, stopConversations, t]
+    [authSessionEpoch, resolvedUserId, setEnabled, stopConversations, t]
   );
 
   useEffect(() => {

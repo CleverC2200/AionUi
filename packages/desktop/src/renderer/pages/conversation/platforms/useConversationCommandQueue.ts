@@ -1,5 +1,4 @@
 import { ipcBridge } from '@/common';
-import type { SessionRef } from '@/common/adapter/ipcBridge';
 import { type ChatFileRef, chatFileRefKey, isChatFileRef } from '@/common/types/chatFile';
 import { uuid } from '@/common/utils';
 import {
@@ -13,15 +12,21 @@ import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 import { classifyConversationBusyError } from './conversationBusyError';
 
+export type QueuedSessionMention = {
+  id: string;
+  /** Immutable display name paired with the id when the draft is queued. */
+  name: string;
+};
+
 export type ConversationCommandQueueItem = {
   id: string;
   input: string;
   files: ChatFileRef[];
   /** `@@` session references. Must survive the draft box: a message that goes
    *  through the queue and loses its references is a silent failure — the agent
-   *  simply never sees the session block. Ids only, so this adds a handful of
-   *  bytes to the persisted state. */
-  sessions?: SessionRef[];
+   *  simply never sees the session block. Names are persisted with ids so an
+   *  edited draft never guesses bindings from token position. */
+  sessions?: QueuedSessionMention[];
   created_at: number;
 };
 
@@ -57,14 +62,21 @@ type QueueValidationFailure = {
 
 const COMMAND_QUEUE_LOG_PREFIX = '[conversation-command-queue]';
 
-/** Keep only well-formed `{ id }` refs from persisted state. Unknown shapes are
+/** Keep only well-formed `{ id, name }` bindings from persisted state. Unknown shapes are
  *  dropped rather than failing the whole item: losing a stale reference is
  *  recoverable, losing the user's typed message is not. */
-const normalizeSessionRefs = (value: unknown): SessionRef[] | undefined => {
+const normalizeSessionRefs = (value: unknown): QueuedSessionMention[] | undefined => {
   if (!Array.isArray(value)) return undefined;
   const refs = value.filter(
-    (entry): entry is SessionRef =>
-      typeof (entry as SessionRef | undefined)?.id === 'string' && (entry as SessionRef).id.length > 0
+    (entry): entry is QueuedSessionMention => {
+      const candidate = entry as Partial<QueuedSessionMention> | undefined;
+      return (
+        typeof candidate?.id === 'string' &&
+        candidate.id.length > 0 &&
+        typeof candidate.name === 'string' &&
+        candidate.name.length > 0
+      );
+    }
   );
   return refs.length > 0 ? refs : undefined;
 };

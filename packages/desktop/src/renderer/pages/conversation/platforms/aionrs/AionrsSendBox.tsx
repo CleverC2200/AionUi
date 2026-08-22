@@ -31,6 +31,7 @@ import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import {
   useConversationCommandQueue,
   type ConversationCommandQueueItem,
+  type QueuedSessionMention,
 } from '@/renderer/pages/conversation/platforms/useConversationCommandQueue';
 import { useConversationRuntimeView } from '@/renderer/pages/conversation/runtime/useConversationRuntimeView';
 import { getConversationRuntimeWorkspaceErrorMessage } from '@/renderer/pages/conversation/utils/conversationCreateError';
@@ -273,7 +274,7 @@ const AionrsSendBox: React.FC<{
   });
 
   const executeCommand = useCallback(
-    async ({ input, files, sessions }: Pick<ConversationCommandQueueItem, 'input' | 'files' | 'sessions'>) => {
+    async ({ input, files, sessions }: { input: string; files: ChatFileRef[]; sessions?: SessionRef[] }) => {
       if (teamPermission) await teamPermission.warmupSession();
       if (!current_model?.use_model) {
         Message.warning(t('conversation.chat.noModelSelected'));
@@ -302,7 +303,7 @@ const AionrsSendBox: React.FC<{
           files,
           // `@@` references. Omitting this makes the whole feature silently
           // no-op for this platform.
-          sessions,
+          sessions: sessions?.map(({ id }) => ({ id })),
         });
         setActiveMsgId(res.msg_id);
         markSendAccepted(res.turn_id, res.runtime, res.msg_id);
@@ -404,6 +405,7 @@ const AionrsSendBox: React.FC<{
   // `@@` session references the user picked. Declared before the handlers that
   // read it — every send path has to both forward and release it.
   const [selectedSessions, setSelectedSessions] = useState<SessionRef[]>([]);
+  const [restoredSessionMentions, setRestoredSessionMentions] = useState<QueuedSessionMention[]>([]);
   const { enabled: crossSessionEnabled } = useCrossSessionMessageEnabled();
 
   // aionrs backends never support mid-turn delivery: while the agent is
@@ -425,6 +427,7 @@ const AionrsSendBox: React.FC<{
     const sessions = selectedSessions.length > 0 ? selectedSessions : undefined;
     clearFiles();
     setSelectedSessions([]);
+    setRestoredSessionMentions([]);
     emitter.emit('aionrs.selected.file.clear');
     await executeCommand({ input: message, files: filesToSend, sessions });
   };
@@ -451,7 +454,7 @@ const AionrsSendBox: React.FC<{
   // mode governs (auto drains immediately, manual holds). Clears the draft
   // the same way a send would.
   const canQueueCurrentDraft = content.trim().length > 0;
-  const handleAddToQueue = useCallback(() => {
+  const handleAddToQueue = useCallback((sessions?: QueuedSessionMention[]) => {
     const filesToSend = collectChatFileRefs(uploadFile, atPath);
     // `@@` references must ride along, and must be released from the send box
     // the same way the draft text is — otherwise they leak into whatever the
@@ -459,19 +462,21 @@ const AionrsSendBox: React.FC<{
     enqueue({
       input: content,
       files: filesToSend,
-      sessions: selectedSessions.length > 0 ? selectedSessions : undefined,
+      sessions,
     });
     setContent('');
     clearFiles();
     setSelectedSessions([]);
+    setRestoredSessionMentions([]);
     emitter.emit('aionrs.selected.file.clear');
-  }, [atPath, clearFiles, content, enqueue, selectedSessions, setContent, uploadFile]);
+  }, [atPath, clearFiles, content, enqueue, setContent, uploadFile]);
 
   const handleEditQueuedCommand = useCallback(
     (item: ConversationCommandQueueItem) => {
       remove(item.id);
       setContent(item.input);
-      setSelectedSessions(item.sessions ?? []);
+      setSelectedSessions(item.sessions?.map(({ id }) => ({ id })) ?? []);
+      setRestoredSessionMentions(item.sessions ?? []);
       // Restore the two selection lanes: upload refs → uploadFile paths,
       // project refs → atPath items carrying their chatRef (so a re-send
       // collects the same project ref).
@@ -817,6 +822,7 @@ const AionrsSendBox: React.FC<{
           setAtPath(items);
         }}
         selectedSessions={selectedSessions}
+        sessionMentions={restoredSessionMentions}
         onSelectedSessionsChange={setSelectedSessions}
         crossSessionEnabled={crossSessionEnabled}
         isTeamConversation={Boolean(teamRuntime)}

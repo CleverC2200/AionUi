@@ -33,7 +33,7 @@ import {
 } from '@/renderer/utils/chat/atSessionQuery';
 import { buildAttachedMentionRanges } from '@/renderer/utils/chat/mentionHighlight';
 import { applyMentionInsertion, insertMentionAtCaret } from '@/renderer/utils/chat/mentionInsertion';
-import { buildSessionNameMap, reconcileSessionRefs } from './sessionMentionReconcile';
+import { reconcileSessionRefs } from './sessionMentionReconcile';
 import { getLastAssistantText } from '@/renderer/utils/chat/getLastAssistantText';
 import { dispatchChatScrollToBottom } from '@/renderer/utils/chat/chatMinimapEvents';
 import { formatRelativeTime } from '@/renderer/utils/chat/relativeTime';
@@ -256,7 +256,7 @@ const SendBox: React.FC<{
   defaultMultiLine?: boolean;
   lockMultiLine?: boolean;
   sendButtonPrefix?: React.ReactNode;
-  onAddToDraft?: () => void;
+  onAddToDraft?: (sessions?: Array<{ id: string; name: string }>) => void;
   addToDraftDisabled?: boolean;
   addToDraftTooltip?: React.ReactNode;
   sendDisabledTooltip?: React.ReactNode;
@@ -270,6 +270,8 @@ const SendBox: React.FC<{
   /** `@@` session references the user has picked. Authoritative; the visible
    *  token is only a label. */
   selectedSessions?: SessionRef[];
+  /** Authoritative id/name bindings restored with an edited queued draft. */
+  sessionMentions?: Array<{ id: string; name: string }>;
   onSelectedSessionsChange?: (sessions: SessionRef[]) => void;
   /** Master switch (spec §5.7). When off, `@@` must not trigger at all —
    *  otherwise the user picks a target the agent cannot deliver to. */
@@ -328,6 +330,7 @@ const SendBox: React.FC<{
   compactActions = false,
   selectedWorkspaceItems,
   selectedSessions,
+  sessionMentions,
   onSelectedSessionsChange,
   // Defaults to OFF: a call site that does not thread `sessions` through to
   // the wire must not offer `@@`, or the user picks a target that silently
@@ -1275,12 +1278,12 @@ const SendBox: React.FC<{
   }, [input, onSelectedSessionsChange, selectedSessions]);
 
   const restoredSessionNameById = useMemo(
-    () => buildSessionNameMap(input, selectedSessions ?? []),
-    [input, selectedSessions]
+    () => Object.fromEntries((sessionMentions ?? []).map(({ id, name }) => [id, name])),
+    [sessionMentions]
   );
   useEffect(() => {
     for (const [id, name] of Object.entries(restoredSessionNameById)) {
-      if (sessionNameByIdRef.current[id] === undefined) sessionNameByIdRef.current[id] = name;
+      sessionNameByIdRef.current[id] = name;
     }
   }, [restoredSessionNameById]);
 
@@ -1706,7 +1709,11 @@ const SendBox: React.FC<{
 
   const handleAddToDraftClick = () => {
     if (disabled || addToDraftDisabled || isUploading || !hasDraftToSend || !onAddToDraft) return;
-    onAddToDraft();
+    const sessions = (selectedSessions ?? []).flatMap(({ id }) => {
+      const name = sessionNameByIdRef.current[id] ?? restoredSessionNameById[id];
+      return name ? [{ id, name }] : [];
+    });
+    onAddToDraft(sessions.length > 0 ? sessions : undefined);
   };
 
   const handleAddToDraftShortcut = (event: React.KeyboardEvent) => {
