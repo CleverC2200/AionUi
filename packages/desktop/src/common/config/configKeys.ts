@@ -3,7 +3,6 @@ import type { Theme } from '@/common/theme/types';
 export type ConfigKeyMap = {
   language: string;
   'ui.zoomFactor': number | undefined;
-  'ui.fontSize.app': number | undefined;
   'ui.fontSize.chat': number | undefined;
   'ui.fontSize.markdown': number | undefined;
   'ui.fontSize.code': number | undefined;

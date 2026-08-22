@@ -97,10 +97,6 @@ body {
     'Microsoft YaHei',
     sans-serif
   );
-  /* Global ("app") region font size. --app-font-size defaults to 14px (Arco's
-     base), so the whole app scales with the global size, while regions with
-     their own size var (chat/markdown/code) still override within their scope. */
-  font-size: var(--app-font-size, 14px);
   /* 根元素必须自己铺底色。Electron 窗口底色是固定的白色，html/body 若保持透明，
      任何布局缝隙都会漏出白色 —— 深色模式下就是刺眼的白边。
      The root must paint its own background. The Electron window's own background

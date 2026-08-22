@@ -20,7 +20,6 @@ export interface IConfigStorageRefer {
   /** Persisted app-wide UI zoom factor for Display settings */
   'ui.zoomFactor'?: number;
   /** Per-region configurable font sizes (px), set in Appearance settings */
-  'ui.fontSize.app'?: number;
   'ui.fontSize.chat'?: number;
   'ui.fontSize.markdown'?: number;
   'ui.fontSize.code'?: number;

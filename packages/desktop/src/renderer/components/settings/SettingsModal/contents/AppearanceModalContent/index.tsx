@@ -9,17 +9,18 @@ import { useTranslation } from 'react-i18next';
 import ScaleControl from '@/renderer/components/settings/ScaleControl';
 import CssThemeSettings from '@renderer/pages/settings/AppearanceSettings/CssThemeSettings';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
-import { FONT_SIZE_KEYS, FONT_SIZE_SPECS, FONT_SIZE_STEP, type FontSizeKey } from '@/common/config/fontSizes';
+import { FONT_SIZE_SPECS, FONT_SIZE_STEP } from '@/common/config/fontSizes';
+import { FONT_FAMILY_KEYS, type FontFamilyKey } from '@/common/config/fontFamilies';
 import { useThemeContext } from '@renderer/hooks/context/ThemeContext';
 import { useSettingsViewMode } from '../../settingsViewContext';
 import FontSizeStepper from './FontSizeStepper';
 import FontFamilySelect from './FontFamilySelect';
 
 /**
- * Map each appearance region to its row-label i18n key. Regions match
- * FONT_SIZE_KEYS one-for-one — 'app' is the global default the others inherit.
+ * Map each appearance region to its row-label i18n key. The app region exposes
+ * only a family: global sizing remains the responsibility of the Scale control.
  */
-const FONT_REGION_LABEL_KEY: Record<FontSizeKey, string> = {
+const FONT_REGION_LABEL_KEY: Record<FontFamilyKey, string> = {
   app: 'settings.fontRegionApp',
   chat: 'settings.fontRegionChat',
   markdown: 'settings.fontRegionMarkdown',
@@ -51,9 +52,9 @@ const PreferenceRow: React.FC<{
  *
  * @features
  * - 统一主题画廊（浅色、深色及装饰主题）/ Unified theme gallery (light, dark, decorative)
- * - 分区字体：全局/聊天/Markdown/代码，每区可选字族与字号，未选字族的区继承全局
- *   Per-region fonts: global/chat/markdown/code, each with a family + size;
- *   regions without a family inherit the global one
+ * - 分区字体：全局/聊天/Markdown/代码可选字族，未选字族的区继承全局
+ *   Per-region families: global/chat/markdown/code; regions without a family
+ *   inherit the global one. Chat/Markdown/code retain independent font sizes.
  * - 缩放比例控制 / Zoom scale control
  */
 const AppearanceModalContent: React.FC = () => {
@@ -77,22 +78,24 @@ const AppearanceModalContent: React.FC = () => {
           <div className='px-16px md:px-24px lg:px-28px py-14px md:py-16px bg-2 rd-16px'>
             <div className='text-14px text-t-primary leading-22px mb-12px'>{t('settings.fonts')}</div>
             <div className='w-full flex flex-col divide-y divide-border-2'>
-              {FONT_SIZE_KEYS.map((key) => (
+              {FONT_FAMILY_KEYS.map((key) => (
                 <PreferenceRow key={key} label={t(FONT_REGION_LABEL_KEY[key])}>
                   <div className='flex items-center gap-12px flex-wrap justify-end'>
                     <FontFamilySelect
                       value={fontFamilies[key]}
                       onChange={(family) => void setFontFamily(key, family)}
                     />
-                    <FontSizeStepper
-                      value={fontSizes[key]}
-                      min={FONT_SIZE_SPECS[key].min}
-                      max={FONT_SIZE_SPECS[key].max}
-                      step={FONT_SIZE_STEP}
-                      defaultValue={FONT_SIZE_SPECS[key].default}
-                      resetLabel={t('settings.fontSizeStepperReset')}
-                      onChange={(px) => void setFontSize(key, px)}
-                    />
+                    {key === 'app' ? null : (
+                      <FontSizeStepper
+                        value={fontSizes[key]}
+                        min={FONT_SIZE_SPECS[key].min}
+                        max={FONT_SIZE_SPECS[key].max}
+                        step={FONT_SIZE_STEP}
+                        defaultValue={FONT_SIZE_SPECS[key].default}
+                        resetLabel={t('settings.fontSizeStepperReset')}
+                        onChange={(px) => void setFontSize(key, px)}
+                      />
+                    )}
                   </div>
                 </PreferenceRow>
               ))}
