@@ -80,21 +80,30 @@ async function readStatus(page: Page): Promise<LarkStatus> {
 }
 
 async function waitForBackend(page: Page): Promise<void> {
-  await expect
-    .poll(
-      () =>
-        page.evaluate(async () => {
-          const port = (window as unknown as { __backendPort?: number }).__backendPort;
-          if (!port) return false;
-          try {
-            return (await fetch(`http://127.0.0.1:${port}/api/gea/auth/session`)).ok;
-          } catch {
-            return false;
-          }
-        }),
-      { timeout: 90_000 }
-    )
-    .toBe(true);
+  let lastProbe: { error?: string; port: number; startupFailure?: string; status?: number } | undefined;
+  try {
+    await expect
+      .poll(
+        async () => {
+          lastProbe = await page.evaluate(async () => {
+            const startupFailure = window.__backendStartupBridge?.getState()?.reason;
+            const port = (window as unknown as { __backendPort?: number }).__backendPort;
+            if (!port) return { port: 0, startupFailure };
+            try {
+              const response = await fetch(`http://127.0.0.1:${port}/api/gea/auth/session`);
+              return { port, startupFailure, status: response.status };
+            } catch (error) {
+              return { error: error instanceof Error ? error.message : String(error), port, startupFailure };
+            }
+          });
+          return lastProbe.status === 200;
+        },
+        { timeout: 90_000 }
+      )
+      .toBe(true);
+  } catch (error) {
+    throw new Error(`desktop Core readiness failed: ${JSON.stringify(lastProbe)}`, { cause: error });
+  }
 }
 
 async function authenticateWithMockQr(page: Page): Promise<void> {
