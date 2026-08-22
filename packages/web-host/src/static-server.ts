@@ -84,13 +84,15 @@ function forwardToBackend(
   backendPort: number,
   gateway?: LarkAuthGateway
 ): void {
+  const candidateHeaders = gateway ? gateway.getBackendHeaders(req.headers) : req.headers;
+  const { 'x-aioncore-bootstrap-secret': _bootstrapSecret, ...publicHeaders } = candidateHeaders;
   const options: http.RequestOptions = {
     hostname: '127.0.0.1',
     port: backendPort,
     path: req.url,
     method: req.method,
     headers: {
-      ...(gateway ? gateway.getBackendHeaders(req.headers) : req.headers),
+      ...publicHeaders,
       host: `127.0.0.1:${backendPort}`,
     },
   };
@@ -171,6 +173,10 @@ function peekWsRoute(buf: Buffer): boolean | null {
   return /^GET\s+\/(?:ws|api\/stt\/stream)(?:\?[^\s]*)?\s+HTTP\/1\.[01]\r?$/.test(firstLine);
 }
 
+function isTrustedBackendRoute(url: string): boolean {
+  return url.split('?', 1)[0].startsWith('/api/auth/internal/');
+}
+
 export async function startStaticServer(opts: StaticServerOptions): Promise<StaticServerHandle> {
   const port = opts.port ?? DEFAULT_PORT;
   const allowRemote = opts.allowRemote === true;
@@ -199,7 +205,7 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
         return;
       }
 
-      if (authGateway && authGateway.isTrustedRoute(req.url)) {
+      if (isTrustedBackendRoute(req.url)) {
         res.writeHead(404, { 'content-type': 'application/json', 'cache-control': 'no-store' });
         res.end(JSON.stringify({ success: false, error: 'NOT_FOUND' }));
         return;

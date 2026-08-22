@@ -199,10 +199,6 @@ export class LarkAuthGateway {
     return Buffer.concat([nextHeader, requestBytes.subarray(headerEnd + 4)]);
   }
 
-  isTrustedRoute(url: string): boolean {
-    return url.split('?', 1)[0].startsWith('/api/auth/internal/');
-  }
-
   private getSession(cookieHeader: string | undefined): WebSession | null {
     const token = cookieValue(cookieHeader, WEB_SESSION_COOKIE);
     if (!token) return null;

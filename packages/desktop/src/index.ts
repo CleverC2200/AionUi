@@ -15,8 +15,6 @@ import { captureBackendStartupFailure, initSentry, scheduleStartupLogReport, set
 import { GEA_REMOTE_SERVICE_POLICY } from './common/config/geaManagedServices';
 import { shouldGrantPermissionRequest } from './process/utils/localFontPermission';
 
-initSentry();
-
 import './process/utils/configureConsoleLog';
 import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session } from 'electron';
 import fixPath from 'fix-path';
@@ -33,7 +31,7 @@ import { shouldRegisterBackendStartup } from './process/startup/singleInstanceGa
 import { ProcessConfig } from './process/utils/initStorage';
 import type { BackendStartupFailureInfo } from './common/types/platform/electron';
 import { registerWindowMaximizeListeners } from '@process/bridge';
-import { BackendLifecycleManager, getCoreSessionBootstrapSecret } from '@aionui/web-host';
+import { BackendLifecycleManager } from '@aionui/web-host';
 import { resolveBinaryPath } from '@process/backend';
 import './process/bridge/feedbackBridge';
 import { wasLaunchedAtLogin } from '@process/bridge/applicationBridge';
@@ -87,8 +85,17 @@ import {
   syncSharedPersonalModels,
 } from './process/services/LarkAuthService';
 import { getPersonalModelGatewayRuntime } from './process/services/PersonalModelGatewayRuntime';
-// @ts-expect-error - electron-squirrel-startup doesn't have types
-import electronSquirrelStartup from 'electron-squirrel-startup';
+import { initializeCoreSessionBootstrap } from './process/startup/coreSessionBootstrap';
+
+const { bootstrapSecret: coreSessionBootstrapSecret, initialized: electronSquirrelStartup } =
+  initializeCoreSessionBootstrap(() => {
+    // This package may synchronously spawn Update.exe while loading on Windows.
+    // Keep the load after the bootstrap secret has left the ambient environment.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('electron-squirrel-startup') as boolean;
+  });
+
+initSentry();
 
 // ============ Single Instance Lock ============
 // Acquire lock early so the second instance quits before doing unnecessary work.
@@ -221,7 +228,6 @@ let isExplicitQuit = false;
 let appReadyDone = false;
 
 let mainWindow: BrowserWindow;
-const coreSessionBootstrapSecret = getCoreSessionBootstrapSecret();
 const backendManager = new BackendLifecycleManager(
   {
     version: app.getVersion(),

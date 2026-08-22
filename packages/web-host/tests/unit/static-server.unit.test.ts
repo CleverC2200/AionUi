@@ -97,6 +97,38 @@ describe('static-server', () => {
     expect(json.path).toBe('/api/anything');
   });
 
+  it('blocks trusted Core routes and strips only the bootstrap header without Lark auth', async () => {
+    let trustedRequests = 0;
+    let publicHeaders: http.IncomingHttpHeaders | undefined;
+    const backend = await startMockBackend((req, res) => {
+      if (req.url?.startsWith('/api/auth/internal/')) trustedRequests += 1;
+      if (req.url === '/api/anything') publicHeaders = req.headers;
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    });
+    stopBackend = backend.close;
+    handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+
+    const trustedResponse = await fetch(`${handle.localUrl}/api/auth/internal/external-sessions`, {
+      method: 'POST',
+      headers: { 'x-aioncore-bootstrap-secret': 'browser-injected' },
+    });
+    expect(trustedResponse.status).toBe(404);
+    expect(trustedRequests).toBe(0);
+
+    const publicResponse = await fetch(`${handle.localUrl}/api/anything`, {
+      headers: {
+        authorization: 'Bearer public-api-token',
+        'x-access-token': 'public-upstream-token',
+        'x-aioncore-bootstrap-secret': 'browser-injected',
+      },
+    });
+    expect(publicResponse.status).toBe(200);
+    expect(publicHeaders?.['x-aioncore-bootstrap-secret']).toBeUndefined();
+    expect(publicHeaders?.authorization).toBe('Bearer public-api-token');
+    expect(publicHeaders?.['x-access-token']).toBe('public-upstream-token');
+  });
+
   it('/login reverse-proxies to backend (no local handler)', async () => {
     const backend = await startMockBackend((req, res) => {
       if (req.url === '/login' && req.method === 'POST') {

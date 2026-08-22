@@ -270,10 +270,17 @@ export class GeaLarkAuthService {
   }
 
   async pollQrSession(qrcodeId: string): Promise<WebHostLarkQrLoginPollResult> {
-    return (await this.pollQrSessionWithIdentity(qrcodeId)).result;
+    return (await this.pollQrSessionInternal(qrcodeId, false)).result;
   }
 
   async pollQrSessionWithIdentity(qrcodeId: string): Promise<GeaVerifiedLarkQrLogin> {
+    return this.pollQrSessionInternal(qrcodeId, true);
+  }
+
+  private async pollQrSessionInternal(
+    qrcodeId: string,
+    requireVerifiedTenant: boolean
+  ): Promise<GeaVerifiedLarkQrLogin> {
     if (!qrcodeId.trim()) {
       throw new GeaLarkAuthServiceError('invalidResponse');
     }
@@ -300,10 +307,16 @@ export class GeaLarkAuthService {
     }
 
     const { tenantId, user } = await this.fetchCurrentUser(token);
+    if (requireVerifiedTenant && tenantId === undefined) {
+      throw new GeaLarkAuthServiceError('invalidResponse');
+    }
+    const acceptedTenantId = tenantId ?? DEFAULT_GEA_TENANT_ID;
     await this.sessionStore?.save({ accessToken: token });
-    this.acceptAuthenticatedSession(token, tenantId, user);
+    this.acceptAuthenticatedSession(token, acceptedTenantId, user);
     return {
-      identity: buildLarkExternalIdentity(this.baseUrl, tenantId, user.id),
+      ...(requireVerifiedTenant
+        ? { identity: buildLarkExternalIdentity(this.baseUrl, acceptedTenantId, user.id) }
+        : {}),
       result: { status: 'authenticated', user },
     };
   }
@@ -575,7 +588,7 @@ export class GeaLarkAuthService {
   private async fetchCurrentUser(
     token: string,
     signal?: AbortSignal
-  ): Promise<{ tenantId: string; user: WebHostLarkAuthUser }> {
+  ): Promise<{ tenantId?: string; user: WebHostLarkAuthUser }> {
     let response: Response;
     try {
       response = await this.fetchImpl(`${this.baseUrl}/sys/user/getUserInfo`, {
@@ -596,8 +609,9 @@ export class GeaLarkAuthService {
     }
 
     const avatar = typeof raw?.avatar === 'string' ? resolveAvatarUrl(this.baseUrl, raw.avatar) : undefined;
+    const tenantId = resolveUserTenantId(raw);
     return {
-      tenantId: resolveUserTenantId(raw),
+      ...(tenantId ? { tenantId } : {}),
       user: {
         id,
         username,
@@ -619,7 +633,7 @@ export class GeaLarkAuthService {
         session.accessToken,
         AbortSignal.timeout(SESSION_RESTORE_TIMEOUT_MS)
       );
-      this.acceptAuthenticatedSession(session.accessToken, tenantId, user);
+      this.acceptAuthenticatedSession(session.accessToken, tenantId ?? DEFAULT_GEA_TENANT_ID, user);
     } catch (error) {
       if (error instanceof GeaLarkAuthServiceError && (error.httpStatus === 401 || error.httpStatus === 403)) {
         await sessionStore.clear().catch(() => {});
@@ -668,11 +682,14 @@ function normalizeTenantId(value: unknown): string {
   return tenantId;
 }
 
-function resolveUserTenantId(value: UserInfoResponse['userInfo']): string {
+function resolveUserTenantId(value: UserInfoResponse['userInfo']): string | undefined {
   const tenantId = value?.loginTenantId ?? value?.tenantId;
-  return tenantId === undefined || tenantId === null || tenantId === ''
-    ? DEFAULT_GEA_TENANT_ID
-    : normalizeTenantId(tenantId);
+  if (tenantId === undefined || tenantId === null || tenantId === '') return undefined;
+  try {
+    return normalizeTenantId(tenantId);
+  } catch {
+    throw new GeaLarkAuthServiceError('invalidResponse');
+  }
 }
 
 function parseClaimedPersonalCredential(value: PersonalCredentialClaimResponse): GeaClaimedPersonalModelCredential {

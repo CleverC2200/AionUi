@@ -36,6 +36,13 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+function verifiedUserInfoResponse(loginTenantId: string): unknown {
+  return {
+    success: true,
+    result: { userInfo: { id: '10086', username: 'zhangsan', realname: '张三', loginTenantId } },
+  };
+}
+
 const xor = (value: Buffer): Buffer => Buffer.from(value.map((byte) => byte ^ 0xa5));
 
 beforeEach(() => {
@@ -271,6 +278,65 @@ describe('LarkAuthService', () => {
       },
     });
     expect(JSON.stringify(result)).not.toContain('sensitive-token');
+  });
+
+  it.each([undefined, null, ''] as const)(
+    'fails closed when the verified identity tenant is %s',
+    async (loginTenantId) => {
+      const save = vi.fn();
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse({ success: true, result: { success: true, token: 'sensitive-token' } }))
+        .mockResolvedValueOnce(
+          jsonResponse({
+            success: true,
+            result: {
+              userInfo: {
+                id: '10086',
+                username: 'zhangsan',
+                realname: '张三',
+                ...(loginTenantId === undefined ? {} : { loginTenantId }),
+              },
+            },
+          })
+        );
+      const service = new LarkAuthService({
+        fetchImpl,
+        sessionStore: { clear: vi.fn(), load: vi.fn(), save },
+      });
+
+      await expect(service.pollQrSessionWithIdentity('QRCODELOGIN:1')).rejects.toMatchObject<LarkAuthServiceError>({
+        code: 'invalidResponse',
+      });
+      expect(save).not.toHaveBeenCalled();
+      expect(service.getStatus()).toEqual({ authenticated: false });
+    }
+  );
+
+  it('keeps otherwise identical users in different verified tenants as different identities', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ success: true, result: { success: true, token: 'token-a' } }))
+      .mockResolvedValueOnce(jsonResponse(verifiedUserInfoResponse('1001')))
+      .mockResolvedValueOnce(jsonResponse({ success: true, result: { success: true, token: 'token-b' } }))
+      .mockResolvedValueOnce(jsonResponse(verifiedUserInfoResponse('1002')));
+    const service = new LarkAuthService({ baseUrl: 'https://gea.example/gea-boot', fetchImpl });
+
+    const first = await service.pollQrSessionWithIdentity('QR-A');
+    const second = await service.pollQrSessionWithIdentity('QR-B');
+
+    expect(first.identity).toEqual({
+      provider: 'lark',
+      issuer: 'https://gea.example/gea-boot',
+      tenant_id: '1001',
+      subject: '10086',
+    });
+    expect(second.identity).toEqual({
+      provider: 'lark',
+      issuer: 'https://gea.example/gea-boot',
+      tenant_id: '1002',
+      subject: '10086',
+    });
   });
 
   it('does not expose a process-global logout through the WebHost auth adapter', () => {
