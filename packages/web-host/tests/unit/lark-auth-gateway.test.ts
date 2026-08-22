@@ -264,14 +264,18 @@ describe('LarkAuthGateway renewable Core sessions', () => {
   });
 
   it.each([
-    'EXTERNAL_SESSION_REFRESH_REPLAYED',
-    'EXTERNAL_SESSION_EXPIRED',
-    'EXTERNAL_SESSION_REVOKED',
-    'EXTERNAL_SESSION_GENERATION_MISMATCH',
-  ])('fails the explicit terminal refresh error %s closed', async (code) => {
+    ['EXTERNAL_SESSION_REFRESH_REPLAYED', 401],
+    ['EXTERNAL_SESSION_EXPIRED', 401],
+    ['EXTERNAL_SESSION_REVOKED', 401],
+    ['EXTERNAL_SESSION_GENERATION_MISMATCH', 401],
+    ['EXTERNAL_SESSION_REFRESH_INVALID', 401],
+    ['EXTERNAL_SESSION_REFRESH_REQUIRED', 401],
+    ['CORE_USER_DISABLED', 403],
+    ['UNRECOGNIZED_REFRESH_CLIENT_ERROR', 400],
+  ])('fails the non-retryable refresh error %s closed', async (code, status) => {
     const clock = new FakeClock();
     const core = createCorePort([coreSession(1, 30_000)]);
-    vi.mocked(core.refresh).mockRejectedValue(new CoreSessionClientError(code, 401));
+    vi.mocked(core.refresh).mockRejectedValue(new CoreSessionClientError(code, status));
     const gateway = new LarkAuthGateway(createLarkAuth(), core, clock);
     const server = await startGatewayServer(gateway);
     closes.push(server.close);
@@ -285,28 +289,31 @@ describe('LarkAuthGateway renewable Core sessions', () => {
     expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
   });
 
-  it('keeps valid access after an idempotency-key 400 and recovers on the bounded retry', async () => {
-    const clock = new FakeClock();
-    const core = createCorePort([coreSession(1, 30_000)]);
-    vi.mocked(core.refresh)
-      .mockRejectedValueOnce(new CoreSessionClientError('EXTERNAL_SESSION_REFRESH_IDEMPOTENCY_REQUIRED', 400))
-      .mockResolvedValueOnce(refreshedSession(1));
-    const gateway = new LarkAuthGateway(createLarkAuth(), core, clock);
-    const server = await startGatewayServer(gateway);
-    closes.push(server.close);
-    const webCookie = await login(server.url, 'qr-1');
+  it.each(['EXTERNAL_SESSION_REFRESH_IDEMPOTENCY_REQUIRED', 'EXTERNAL_SESSION_REFRESH_IDEMPOTENCY_INVALID'])(
+    'keeps valid access after the retryable idempotency error %s',
+    async (code) => {
+      const clock = new FakeClock();
+      const core = createCorePort([coreSession(1, 30_000)]);
+      vi.mocked(core.refresh)
+        .mockRejectedValueOnce(new CoreSessionClientError(code, 400))
+        .mockResolvedValueOnce(refreshedSession(1));
+      const gateway = new LarkAuthGateway(createLarkAuth(), core, clock);
+      const server = await startGatewayServer(gateway);
+      closes.push(server.close);
+      const webCookie = await login(server.url, 'qr-1');
 
-    await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toMatchObject({
-      cookie: 'aionui-session=access-1',
-    });
-    await clock.advance(1_000);
+      await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toMatchObject({
+        cookie: 'aionui-session=access-1',
+      });
+      await clock.advance(1_000);
 
-    expect(core.refresh).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(core.refresh).mock.calls[1]).toEqual(vi.mocked(core.refresh).mock.calls[0]);
-    await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toMatchObject({
-      cookie: 'aionui-session=access-1-rotated',
-    });
-  });
+      expect(core.refresh).toHaveBeenCalledTimes(2);
+      expect(vi.mocked(core.refresh).mock.calls[1]).toEqual(vi.mocked(core.refresh).mock.calls[0]);
+      await expect(gateway.getBackendHeaders({ cookie: webCookie })).resolves.toMatchObject({
+        cookie: 'aionui-session=access-1-rotated',
+      });
+    }
+  );
 
   it.each([
     {

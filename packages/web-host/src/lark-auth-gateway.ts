@@ -391,7 +391,7 @@ export class LarkAuthGateway {
       session.refreshInFlight = undefined;
       if (this.sessions.get(token) !== session || session.epoch !== epoch) return null;
       const failedAt = this.clock.now();
-      if (isTerminalRefreshError(error) || failedAt >= retryDeadline) {
+      if (!isRetryableRefreshError(error) || failedAt >= retryDeadline) {
         this.invalidateSession(token, session);
         return null;
       }
@@ -429,15 +429,15 @@ export class LarkAuthGateway {
   }
 }
 
-const TERMINAL_REFRESH_ERROR_CODES = new Set([
-  'EXTERNAL_SESSION_REFRESH_REPLAYED',
-  'EXTERNAL_SESSION_EXPIRED',
-  'EXTERNAL_SESSION_REVOKED',
-  'EXTERNAL_SESSION_GENERATION_MISMATCH',
+const RETRYABLE_REFRESH_CLIENT_ERROR_CODES = new Set([
+  'EXTERNAL_SESSION_REFRESH_IDEMPOTENCY_REQUIRED',
+  'EXTERNAL_SESSION_REFRESH_IDEMPOTENCY_INVALID',
 ]);
 
-function isTerminalRefreshError(error: unknown): boolean {
-  return error instanceof CoreSessionClientError && TERMINAL_REFRESH_ERROR_CODES.has(error.code);
+function isRetryableRefreshError(error: unknown): boolean {
+  if (!(error instanceof CoreSessionClientError)) return false;
+  if (error.status >= 500) return true;
+  return error.status === 400 && RETRYABLE_REFRESH_CLIENT_ERROR_CODES.has(error.code);
 }
 
 function sanitizeUser(user: WebHostLarkAuthUser): WebHostLarkAuthUser {
