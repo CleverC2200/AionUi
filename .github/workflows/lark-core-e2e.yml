@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  AIONCORE_LARK_E2E_REF: b60ce7c7c3d22e6864deff9c43b6734445c944f4
+  AIONCORE_LARK_E2E_REF: e7d991360d6dd0d4a7b6472606c7a512b0bfdffc
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
   CARGO_INCREMENTAL: '0'
   NODE_OPTIONS: '--max-old-space-size=8192'
@@ -67,7 +67,7 @@ jobs:
         working-directory: .aioncore
         env:
           CARGO_TARGET_DIR: ${{ runner.temp }}/aioncore-target
-        run: cargo build --locked --bin aioncore
+        run: cargo build --locked --bin aioncore --features test-support
 
       - name: Run Lark-to-Core boundary tests
         env:
