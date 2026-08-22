@@ -6,6 +6,10 @@ export type ConfigKeyMap = {
   'ui.fontSize.chat': number | undefined;
   'ui.fontSize.markdown': number | undefined;
   'ui.fontSize.code': number | undefined;
+  'ui.fontFamily.app': string | undefined;
+  'ui.fontFamily.chat': string | undefined;
+  'ui.fontFamily.markdown': string | undefined;
+  'ui.fontFamily.code': string | undefined;
   'window.bounds': { x?: number; y?: number; width: number; height: number } | undefined;
   'webui.desktop.enabled': boolean | undefined;
   'webui.desktop.allowRemote': boolean | undefined;

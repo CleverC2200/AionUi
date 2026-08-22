@@ -13,11 +13,12 @@ import type { UncaughtErrorDiagnostics } from './process/utils/describeUncaughtE
 import { createRendererRecoveryPolicy } from './process/utils/rendererRecovery';
 import { captureBackendStartupFailure, initSentry, scheduleStartupLogReport, setSentryDeviceId } from './sentry';
 import { GEA_REMOTE_SERVICE_POLICY } from './common/config/geaManagedServices';
+import { shouldGrantPermissionRequest } from './process/utils/localFontPermission';
 
 initSentry();
 
 import './process/utils/configureConsoleLog';
-import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session } from 'electron';
 import fixPath from 'fix-path';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -762,6 +763,15 @@ const handleAppReady = async (): Promise<void> => {
   }
 
   setSentryDeviceId();
+
+  // Electron 37 reports Local Font Access as `unknown`. Preserve Electron's
+  // existing default-grant behaviour for known permissions, but narrowly allow
+  // unknown requests only from the current top-level app renderer. This keeps
+  // queryLocalFonts working without granting unknown permissions to subframes or
+  // unrelated web contents.
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    callback(shouldGrantPermissionRequest(webContents, mainWindow?.webContents, permission, details));
+  });
 
   try {
     await initializeProcess();

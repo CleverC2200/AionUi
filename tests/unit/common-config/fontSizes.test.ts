@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FONT_SIZE_SPECS, FONT_SIZE_KEYS, clampFontSize, defaultFontSizes } from '@/common/config/fontSizes';
 
 describe('fontSizes', () => {
-  it('exposes three keys with sane defaults', () => {
+  it('exposes the independently sized regions with sane defaults', () => {
     expect(FONT_SIZE_KEYS).toEqual(['chat', 'markdown', 'code']);
     expect(defaultFontSizes()).toEqual({ chat: 14, markdown: 13, code: 12 });
   });
