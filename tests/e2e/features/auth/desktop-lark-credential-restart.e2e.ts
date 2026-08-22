@@ -118,7 +118,9 @@ async function waitForBackend(page: Page, diagnostics: string[]): Promise<void> 
       .toBe(true);
   } catch (error) {
     throw new Error(
-      `desktop Core readiness failed: ${JSON.stringify(lastProbe)}; startup diagnostics: ${JSON.stringify(diagnostics)}`,
+      `desktop Core readiness failed: ${JSON.stringify(lastProbe)}; final startup diagnostics: ${JSON.stringify(
+        diagnostics.slice(-8)
+      )}`,
       { cause: error }
     );
   }
