@@ -286,9 +286,16 @@ const ApprovalDetail: React.FC<{
         content={
           <div className='flex items-center justify-between gap-8px'>
             <span>{t('conversation.attention.approval.detail.loadFailed')}</span>
-            <Button size='mini' onClick={() => void mutate()}>
-              {t('common.retry')}
-            </Button>
+            <div className='flex items-center gap-8px'>
+              <Button size='mini' onClick={() => void mutate()}>
+                {t('common.retry')}
+              </Button>
+              {!item.supportApiOperate && feishuApprovalUrl ? (
+                <Button size='mini' onClick={() => void openExternalUrl(feishuApprovalUrl)}>
+                  {t('conversation.attention.approval.actions.openInFeishu')}
+                </Button>
+              ) : null}
+            </div>
           </div>
         }
       />

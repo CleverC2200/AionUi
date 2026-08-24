@@ -304,6 +304,35 @@ describe('AttentionInbox real Feishu approval integration', () => {
     expect(screen.getByText('conversation.attention.approval.actions.approve').closest('button')).toBeDisabled();
   });
 
+  it('keeps a trusted Feishu fallback available when third-party approval detail cannot load', async () => {
+    approvalApi.list.mockImplementation(({ topic }: { topic: string }) =>
+      Promise.resolve({
+        count: 1,
+        hasMore: false,
+        tasks:
+          topic === 'pending'
+            ? [
+                {
+                  ...pendingTask,
+                  supportApiOperate: false,
+                  link: 'https://applink.feishu.cn/client/approval/detail',
+                },
+              ]
+            : [doneTask],
+      })
+    );
+    approvalApi.get.mockRejectedValueOnce(new Error('third-party approval detail unavailable'));
+
+    renderInbox();
+    fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
+
+    expect(await screen.findByText('conversation.attention.approval.detail.loadFailed')).toBeInTheDocument();
+    expect(screen.getByText('conversation.attention.approval.actions.openInFeishu')).toBeVisible();
+    expect(screen.queryByText('conversation.attention.approval.actions.approve')).not.toBeInTheDocument();
+    expect(screen.queryByText('conversation.attention.approval.actions.reject')).not.toBeInTheDocument();
+    expect(screen.queryByText('conversation.attention.approval.actions.transfer')).not.toBeInTheDocument();
+  });
+
   it('requires confirmation before sending a real approve action with an idempotency key', async () => {
     renderInbox();
     fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
