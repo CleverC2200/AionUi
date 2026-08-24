@@ -9,6 +9,7 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { IProvider } from '@/common/config/storage';
 import {
+  createPersonalModelProviderId,
   LocalPersonalModelProxy,
   PersonalModelGatewayService,
   type PersonalModelAuthClient,
@@ -16,7 +17,9 @@ import {
   type PersonalModelProxy,
   type PersonalModelSecretRecord,
   type PersonalModelSecretVault,
-} from '@/process/services/PersonalModelGatewayService';
+} from '@/process/services/gea/PersonalModelGatewayService';
+
+const ENVIRONMENT_ID = 'gea-env-a';
 
 class MemoryVault implements PersonalModelSecretVault {
   available = true;
@@ -26,16 +29,16 @@ class MemoryVault implements PersonalModelSecretVault {
     return this.available;
   }
 
-  async get(userId: string, credentialId: string): Promise<PersonalModelSecretRecord | null> {
-    return this.records.get(`${userId}:${credentialId}`) ?? null;
+  async get(environmentId: string, userId: string, credentialId: string): Promise<PersonalModelSecretRecord | null> {
+    return this.records.get(`${environmentId}:${userId}:${credentialId}`) ?? null;
   }
 
   async put(record: PersonalModelSecretRecord): Promise<void> {
-    this.records.set(`${record.userId}:${record.credentialId}`, record);
+    this.records.set(`${record.environmentId}:${record.userId}:${record.credentialId}`, record);
   }
 
-  async delete(userId: string, credentialId: string): Promise<void> {
-    this.records.delete(`${userId}:${credentialId}`);
+  async delete(environmentId: string, userId: string, credentialId: string): Promise<void> {
+    this.records.delete(`${environmentId}:${userId}:${credentialId}`);
   }
 }
 
@@ -89,7 +92,7 @@ describe('PersonalModelGatewayService', () => {
       }),
     };
     const authClient = createAuthClient();
-    const service = new PersonalModelGatewayService(vault, providerStore, proxy);
+    const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, proxy);
 
     await expect(service.sync({ id: 'user-1', username: 'zhangsan', realname: '张三' }, authClient)).resolves.toEqual({
       configured: 1,
@@ -98,8 +101,12 @@ describe('PersonalModelGatewayService', () => {
       status: 'completed',
     });
 
-    const record = await vault.get('user-1', 'credential-1');
-    expect(record).toMatchObject({ secret: 'sk-user-sensitive', agentCode: 'sales-forecast' });
+    const record = await vault.get(ENVIRONMENT_ID, 'user-1', 'credential-1');
+    expect(record).toMatchObject({
+      environmentId: ENVIRONMENT_ID,
+      secret: 'sk-user-sensitive',
+      agentCode: 'sales-forecast',
+    });
     expect(providerStore.providers).toHaveLength(1);
     expect(providerStore.providers[0]).toMatchObject({
       id: expect.stringMatching(/^gea-personal-/),
@@ -122,7 +129,7 @@ describe('PersonalModelGatewayService', () => {
       register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
     };
     const firstAuth = createAuthClient();
-    const service = new PersonalModelGatewayService(vault, providerStore, firstProxy);
+    const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, firstProxy);
     const user = { id: 'user-1', username: 'zhangsan', realname: '张三' };
     await service.sync(user, firstAuth);
 
@@ -141,6 +148,50 @@ describe('PersonalModelGatewayService', () => {
     });
   });
 
+  it('isolates vault records and managed providers for the same user across GEA environments', async () => {
+    const vault = new MemoryVault();
+    const providerStore = new MemoryProviderStore();
+    const createProxy = (): PersonalModelProxy => ({
+      deactivate: vi.fn().mockResolvedValue(undefined),
+      register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
+    });
+    const user = { id: 'user-1', username: 'zhangsan', realname: '张三' };
+    const environmentA = new PersonalModelGatewayService(vault, providerStore, 'gea-env-a', createProxy());
+    const environmentB = new PersonalModelGatewayService(vault, providerStore, 'gea-env-b', createProxy());
+
+    await environmentA.sync(user, createAuthClient());
+    await environmentB.deactivate();
+
+    const providerA = createPersonalModelProviderId('gea-env-a', user.id, 'credential-1');
+    expect(providerStore.providers.find((provider) => provider.id === providerA)?.enabled).toBe(false);
+
+    const unavailableAuth = createAuthClient();
+    unavailableAuth.listPersonalModelCredentials.mockRejectedValueOnce(new Error('environment unavailable'));
+    await expect(environmentB.sync(user, unavailableAuth)).resolves.toMatchObject({
+      reason: 'credentialListFailed',
+      status: 'partial',
+    });
+    expect(providerStore.providers.find((provider) => provider.id === providerA)?.enabled).toBe(false);
+
+    await environmentB.sync(user, createAuthClient());
+
+    const providerB = createPersonalModelProviderId('gea-env-b', user.id, 'credential-1');
+    expect(providerA).not.toBe(providerB);
+    expect(await vault.get('gea-env-a', user.id, 'credential-1')).toMatchObject({ environmentId: 'gea-env-a' });
+    expect(await vault.get('gea-env-b', user.id, 'credential-1')).toMatchObject({ environmentId: 'gea-env-b' });
+    expect(providerStore.providers.find((provider) => provider.id === providerA)?.enabled).toBe(false);
+    expect(providerStore.providers.find((provider) => provider.id === providerB)?.enabled).toBe(true);
+
+    await environmentB.deactivate();
+
+    expect(providerStore.providers.find((provider) => provider.id === providerA)?.enabled).toBe(false);
+    expect(providerStore.providers.find((provider) => provider.id === providerB)?.enabled).toBe(false);
+
+    await environmentA.sync(user, createAuthClient('ENABLED'));
+    expect(providerStore.providers.find((provider) => provider.id === providerA)?.enabled).toBe(true);
+    expect(providerStore.providers.find((provider) => provider.id === providerB)?.enabled).toBe(false);
+  });
+
   it('suspends enabled managed providers without changing user-disabled providers and restores them after login', async () => {
     const vault = new MemoryVault();
     const providerStore = new MemoryProviderStore();
@@ -157,7 +208,7 @@ describe('PersonalModelGatewayService', () => {
       deactivate: vi.fn().mockResolvedValue(undefined),
       register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
     };
-    const service = new PersonalModelGatewayService(vault, providerStore, proxy);
+    const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, proxy);
     const user = { id: 'user-1', username: 'zhangsan', realname: '张三' };
     await service.sync(user, createAuthClient());
     const managed = providerStore.providers.find((provider) => provider.id.startsWith('gea-personal-'))!;
@@ -202,7 +253,7 @@ describe('PersonalModelGatewayService', () => {
       register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
     };
     const authClient = createAuthClient('ENABLED');
-    const service = new PersonalModelGatewayService(vault, providerStore, proxy);
+    const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, proxy);
 
     await expect(service.sync({ id: 'user-1', username: 'zhangsan', realname: '张三' }, authClient)).resolves.toEqual({
       configured: 0,
@@ -223,7 +274,7 @@ describe('PersonalModelGatewayService', () => {
       deactivate: vi.fn().mockResolvedValue(undefined),
       register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
     };
-    const service = new PersonalModelGatewayService(vault, providerStore, proxy);
+    const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, proxy);
     const user = { id: 'user-1', username: 'zhangsan', realname: '张三' };
     await service.sync(user, createAuthClient());
 
@@ -245,7 +296,7 @@ describe('PersonalModelGatewayService', () => {
       deactivate: vi.fn().mockResolvedValue(undefined),
       register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
     };
-    const service = new PersonalModelGatewayService(vault, providerStore, proxy);
+    const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, proxy);
     const user = { id: 'user-1', username: 'zhangsan', realname: '张三' };
     const initialAuth = createAuthClient();
     vi.mocked(initialAuth.listPersonalModels).mockResolvedValue(['liteLLM']);
@@ -266,7 +317,7 @@ describe('PersonalModelGatewayService', () => {
     const vault = new MemoryVault();
     vault.available = false;
     const authClient = createAuthClient();
-    const service = new PersonalModelGatewayService(vault, new MemoryProviderStore());
+    const service = new PersonalModelGatewayService(vault, new MemoryProviderStore(), ENVIRONMENT_ID);
 
     await expect(service.sync({ id: 'user-1', username: 'zhangsan', realname: '张三' }, authClient)).resolves.toEqual({
       configured: 0,
@@ -282,18 +333,18 @@ describe('PersonalModelGatewayService', () => {
   it('removes a revoked secret and keeps the managed provider disabled', async () => {
     const vault = new MemoryVault();
     const providerStore = new MemoryProviderStore();
-    const service = new PersonalModelGatewayService(vault, providerStore, {
+    const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, {
       deactivate: vi.fn().mockResolvedValue(undefined),
       register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
     });
     const user = { id: 'user-1', username: 'zhangsan', realname: '张三' };
     await service.sync(user, createAuthClient());
     const provider = providerStore.providers[0];
-    expect(await vault.get(user.id, 'credential-1')).not.toBeNull();
+    expect(await vault.get(ENVIRONMENT_ID, user.id, 'credential-1')).not.toBeNull();
 
     await service.sync(user, createAuthClient('REVOKED'));
 
-    expect(await vault.get(user.id, 'credential-1')).toBeNull();
+    expect(await vault.get(ENVIRONMENT_ID, user.id, 'credential-1')).toBeNull();
     expect(providerStore.providers.find((item) => item.id === provider.id)?.enabled).toBe(false);
   });
 });
@@ -321,6 +372,7 @@ describe('LocalPersonalModelProxy', () => {
     proxy = new LocalPersonalModelProxy();
     const config = await proxy.register(
       {
+        environmentId: ENVIRONMENT_ID,
         userId: 'user-1',
         credentialId: 'credential-1',
         accessKeyId: 'uk-gea-1',
@@ -361,6 +413,7 @@ describe('LocalPersonalModelProxy', () => {
     proxy = new LocalPersonalModelProxy();
     const config = await proxy.register(
       {
+        environmentId: ENVIRONMENT_ID,
         userId: 'user-1',
         credentialId: 'credential-1',
         accessKeyId: 'uk-gea-1',
@@ -415,6 +468,7 @@ describe('LocalPersonalModelProxy', () => {
     proxy = new LocalPersonalModelProxy();
     const config = await proxy.register(
       {
+        environmentId: ENVIRONMENT_ID,
         userId: 'user-1',
         credentialId: 'credential-1',
         accessKeyId: 'uk-gea-1',
@@ -471,7 +525,7 @@ describe('LocalPersonalModelProxy', () => {
       secret: 'sk-user-sensitive',
     });
     vi.mocked(authClient.listPersonalModels).mockResolvedValue(['deepseek-chat']);
-    const service = new PersonalModelGatewayService(vault, providerStore, proxy);
+    const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, proxy);
 
     await service.sync({ id: 'user-1', username: 'zhangsan', realname: '张三' }, authClient);
     const provider = providerStore.providers[0];

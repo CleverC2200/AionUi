@@ -24,14 +24,15 @@ export type PersonalModelSecretRecord = {
   agentCode: string;
   baseUrl: string;
   credentialId: string;
+  environmentId: string;
   proxyKey: string;
   secret: string;
   userId: string;
 };
 
 export interface PersonalModelSecretVault {
-  delete(userId: string, credentialId: string): Promise<void>;
-  get(userId: string, credentialId: string): Promise<PersonalModelSecretRecord | null>;
+  delete(environmentId: string, userId: string, credentialId: string): Promise<void>;
+  get(environmentId: string, userId: string, credentialId: string): Promise<PersonalModelSecretRecord | null>;
   isAvailable(): boolean;
   put(record: PersonalModelSecretRecord): Promise<void>;
 }
@@ -61,6 +62,7 @@ export class PersonalModelGatewayService {
   constructor(
     private readonly vault: PersonalModelSecretVault,
     private readonly providerStore: PersonalModelProviderStore,
+    private readonly environmentId: string,
     private readonly proxy: PersonalModelProxy = new LocalPersonalModelProxy()
   ) {}
 
@@ -80,21 +82,12 @@ export class PersonalModelGatewayService {
       return;
     }
     const updates = providers
+      // A process restart may select a different GEA before that environment
+      // can authenticate or finish a credential sync. Suspend every enabled
+      // GEA-managed provider at that boundary so a provider from the previous
+      // environment can never remain usable as a fallback.
       .filter((provider) => provider.enabled !== false && provider.id.startsWith(GEA_PERSONAL_PROVIDER_PREFIX))
-      .map((provider) =>
-        Object.assign({}, provider, {
-          enabled: false,
-          model_health: Object.fromEntries(
-            provider.models.map((model) => [
-              model,
-              {
-                status: 'unhealthy' as const,
-                error: GEA_PERSONAL_LOGIN_REQUIRED,
-              },
-            ])
-          ),
-        })
-      );
+      .map(suspendManagedProviderForLogin);
     await Promise.all(updates.map((provider) => this.providerStore.save(provider, true).catch(() => {})));
   }
 
@@ -135,6 +128,7 @@ export class PersonalModelGatewayService {
         status: 'partial',
       };
     }
+    providers = await this.suspendForeignEnvironmentProviders(providers);
 
     const providersById = new Map(providers.map((provider) => [provider.id, provider]));
     let configured = 0;
@@ -143,14 +137,14 @@ export class PersonalModelGatewayService {
     let skipped = 0;
 
     for (const credential of credentials) {
-      const providerId = createPersonalModelProviderId(user.id, credential.credentialId);
+      const providerId = createPersonalModelProviderId(this.environmentId, user.id, credential.credentialId);
       const existing = providersById.get(providerId);
       let failureReason: PersonalModelSyncResult['reason'] =
         credential.status === 'ENABLED' ? 'credentialSyncFailed' : 'credentialClaimFailed';
       try {
         if (credential.status === 'DISABLED' || credential.status === 'REVOKED') {
           if (credential.status === 'REVOKED') {
-            await this.vault.delete(user.id, credential.credentialId);
+            await this.vault.delete(this.environmentId, user.id, credential.credentialId);
           }
           if (existing) {
             const disabled = { ...existing, enabled: false };
@@ -217,7 +211,7 @@ export class PersonalModelGatewayService {
     authClient: PersonalModelAuthClient
   ): Promise<PersonalModelSecretRecord> {
     if (credential.status === 'ENABLED') {
-      const record = await this.vault.get(userId, credential.credentialId);
+      const record = await this.vault.get(this.environmentId, userId, credential.credentialId);
       if (!record) throw new PersonalModelCredentialRecoveryRequiredError();
       return record;
     }
@@ -232,6 +226,7 @@ export class PersonalModelGatewayService {
     }
 
     const record: PersonalModelSecretRecord = {
+      environmentId: this.environmentId,
       userId,
       credentialId: claimed.credentialId,
       accessKeyId: claimed.accessKeyId,
@@ -244,6 +239,21 @@ export class PersonalModelGatewayService {
     return record;
   }
 
+  private async suspendForeignEnvironmentProviders(providers: IProvider[]): Promise<IProvider[]> {
+    const currentScope = createPersonalModelProviderScope(this.environmentId);
+    const updates = providers
+      .filter(
+        (provider) =>
+          provider.enabled !== false &&
+          provider.id.startsWith(GEA_PERSONAL_PROVIDER_PREFIX) &&
+          !provider.id.startsWith(currentScope)
+      )
+      .map(suspendManagedProviderForLogin);
+    await Promise.all(updates.map((provider) => this.providerStore.save(provider, true)));
+    const updatesById = new Map(updates.map((provider) => [provider.id, provider]));
+    return providers.map((provider) => updatesById.get(provider.id) ?? provider);
+  }
+
   private async handleRejected(
     userId: string,
     credentialId: string,
@@ -251,7 +261,7 @@ export class PersonalModelGatewayService {
     status: 401 | 403
   ): Promise<void> {
     if (status === 401) {
-      await this.vault.delete(userId, credentialId).catch(() => {});
+      await this.vault.delete(this.environmentId, userId, credentialId).catch(() => {});
     }
     try {
       const providers = await this.providerStore.list();
@@ -265,9 +275,14 @@ export class PersonalModelGatewayService {
   }
 }
 
-function createPersonalModelProviderId(userId: string, credentialId: string): string {
+function createPersonalModelProviderScope(environmentId: string): string {
+  const environmentDigest = createHash('sha256').update(environmentId).digest('hex').slice(0, 12);
+  return `${GEA_PERSONAL_PROVIDER_PREFIX}${environmentDigest}-`;
+}
+
+export function createPersonalModelProviderId(environmentId: string, userId: string, credentialId: string): string {
   const digest = createHash('sha256').update(`${userId}\0${credentialId}`).digest('hex').slice(0, 24);
-  return `${GEA_PERSONAL_PROVIDER_PREFIX}${digest}`;
+  return `${createPersonalModelProviderScope(environmentId)}${digest}`;
 }
 
 function buildManagedProvider(
@@ -312,6 +327,22 @@ function buildManagedProvider(
   };
 }
 
+function suspendManagedProviderForLogin(provider: IProvider): IProvider {
+  return {
+    ...provider,
+    enabled: false,
+    model_health: Object.fromEntries(
+      provider.models.map((model) => [
+        model,
+        {
+          status: 'unhealthy' as const,
+          error: GEA_PERSONAL_LOGIN_REQUIRED,
+        },
+      ])
+    ),
+  };
+}
+
 type ProxyRoute = {
   onRejected: (status: 401 | 403) => Promise<void>;
   record: PersonalModelSecretRecord;
@@ -326,7 +357,7 @@ export class LocalPersonalModelProxy implements PersonalModelProxy {
     onRejected: (status: 401 | 403) => Promise<void>
   ): Promise<{ apiKey: string; baseUrl: string }> {
     const server = await this.ensureStarted();
-    const providerId = createPersonalModelProviderId(record.userId, record.credentialId);
+    const providerId = createPersonalModelProviderId(record.environmentId, record.userId, record.credentialId);
     this.routes.set(providerId, { record, onRejected });
     const port = (server.address() as AddressInfo).port;
     return {
@@ -360,7 +391,7 @@ export class LocalPersonalModelProxy implements PersonalModelProxy {
 
   private forward(req: IncomingMessage, res: ServerResponse): void {
     const incomingUrl = new URL(req.url ?? '/', 'http://127.0.0.1');
-    const match = incomingUrl.pathname.match(/^\/personal\/(gea-personal-[a-f0-9]{24})(\/.*)?$/);
+    const match = incomingUrl.pathname.match(/^\/personal\/(gea-personal-[a-f0-9]{12}-[a-f0-9]{24})(\/.*)?$/);
     const providerId = match?.[1] ?? '';
     const route = this.routes.get(providerId);
     if (!route || !hasExpectedBearer(req.headers.authorization, route.record.proxyKey)) {

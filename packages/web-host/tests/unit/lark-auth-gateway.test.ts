@@ -68,6 +68,12 @@ function createCorePort(exchangeResults: CoreSession[]): CoreSessionPort {
 
 function createLarkAuth(): WebHostLarkAuth {
   return {
+    getEnvironment: () => ({
+      baseUrl: 'https://gea.example',
+      editable: false,
+      environmentId: 'env-a',
+      source: 'environment',
+    }),
     createQrSession: async () => ({
       success: true,
       data: { expiresIn: 300, loginUrl: 'https://gea.example/login', qrcodeId: 'qr-1' },
@@ -164,6 +170,25 @@ describe('LarkAuthGateway renewable Core sessions', () => {
 
   afterEach(async () => {
     await Promise.all(closes.splice(0).map((close) => close()));
+  });
+
+  it('exposes the process-wide GEA environment to WebUI clients', async () => {
+    const gateway = new LarkAuthGateway(createLarkAuth(), createCorePort([]));
+    const server = await startGatewayServer(gateway);
+    closes.push(server.close);
+
+    const response = await fetch(`${server.url}/api/lark-auth/environment`);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: {
+        baseUrl: 'https://gea.example',
+        editable: false,
+        environmentId: 'env-a',
+        source: 'environment',
+      },
+    });
   });
 
   it.each([

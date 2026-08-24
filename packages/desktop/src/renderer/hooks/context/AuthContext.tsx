@@ -10,6 +10,8 @@ import React, {
 } from 'react';
 import { ipcBridge } from '@/common';
 import type {
+  GeaEnvironmentStatus,
+  GeaEnvironmentUpdateResult,
   LarkAuthResult,
   LarkAuthUser,
   LarkQrLoginPollResult,
@@ -28,6 +30,8 @@ type AuthContextValue = {
   status: AuthStatus;
   /** Changes whenever the authenticated session identity changes. */
   authSessionEpoch: number;
+  getGeaEnvironment: () => Promise<LarkAuthResult<GeaEnvironmentStatus>>;
+  updateGeaEnvironment: (baseUrl: string) => Promise<LarkAuthResult<GeaEnvironmentUpdateResult>>;
   startLarkQrLogin: () => Promise<LarkAuthResult<LarkQrLoginSession>>;
   pollLarkQrLogin: (qrcodeId: string) => Promise<LarkAuthResult<LarkQrLoginPollResult>>;
   logout: () => Promise<void>;
@@ -218,6 +222,22 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     []
   );
 
+  const getGeaEnvironment = useCallback(
+    () =>
+      isDesktopRuntime
+        ? ipcBridge.larkAuth.environment.invoke()
+        : fetchLarkAuthResult<GeaEnvironmentStatus>('/api/lark-auth/environment'),
+    []
+  );
+
+  const updateGeaEnvironment = useCallback(
+    (baseUrl: string) =>
+      isDesktopRuntime
+        ? ipcBridge.larkAuth.updateEnvironment.invoke({ baseUrl })
+        : Promise.resolve<LarkAuthResult<GeaEnvironmentUpdateResult>>({ success: false, code: 'invalidResponse' }),
+    []
+  );
+
   const pollLarkQrLogin = useCallback(
     async (qrcodeId: string) => {
       const operation = beginAuthOperation();
@@ -287,13 +307,26 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       user,
       status,
       authSessionEpoch: sessionEpoch,
+      getGeaEnvironment,
       startLarkQrLogin,
+      updateGeaEnvironment,
       pollLarkQrLogin,
       logout,
       refresh,
       clearAuthCache,
     }),
-    [logout, pollLarkQrLogin, ready, refresh, sessionEpoch, startLarkQrLogin, status, user]
+    [
+      getGeaEnvironment,
+      logout,
+      pollLarkQrLogin,
+      ready,
+      refresh,
+      sessionEpoch,
+      startLarkQrLogin,
+      status,
+      updateGeaEnvironment,
+      user,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

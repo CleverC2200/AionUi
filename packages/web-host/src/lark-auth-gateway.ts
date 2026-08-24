@@ -145,6 +145,11 @@ export class LarkAuthGateway {
   async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
     const url = req.url?.split('?', 1)[0];
 
+    if (url === '/api/lark-auth/environment' && req.method === 'GET' && this.larkAuth.getEnvironment) {
+      writeJson(res, 200, { success: true, data: this.larkAuth.getEnvironment() });
+      return true;
+    }
+
     if (url === '/api/lark-auth/qr-session' && req.method === 'POST') {
       writeJson(res, 200, sanitizeQrSessionResult(await this.larkAuth.createQrSession()));
       return true;

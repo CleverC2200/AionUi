@@ -4,22 +4,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Alert, Button, Message, Spin, Typography } from '@arco-design/web-react';
+import { Alert, Button, Input, Message, Spin, Typography } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
-import type { LarkAuthErrorCode, LarkQrLoginSession } from '@/common/types/platform/larkAuth';
+import { ipcBridge } from '@/common';
+import type { GeaEnvironmentStatus, LarkAuthErrorCode, LarkQrLoginSession } from '@/common/types/platform/larkAuth';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
 
 const POLL_INTERVAL_MS = 1500;
 
-type LoginPhase = 'loading' | 'waiting' | 'expired' | 'error';
+type LoginPhase = 'environmentLoading' | 'ready' | 'loading' | 'waiting' | 'expired' | 'error' | 'restartRequired';
+type EnvironmentError = 'invalidAddress' | 'loadFailed' | 'saveFailed' | null;
 
 const LarkQrLogin = () => {
   const { t } = useTranslation();
-  const { pollLarkQrLogin, startLarkQrLogin } = useAuth();
+  const { getGeaEnvironment, pollLarkQrLogin, startLarkQrLogin, updateGeaEnvironment } = useAuth();
+  const [environment, setEnvironment] = useState<GeaEnvironmentStatus | null>(null);
+  const [environmentAddress, setEnvironmentAddress] = useState('');
+  const [environmentError, setEnvironmentError] = useState<EnvironmentError>(null);
   const [session, setSession] = useState<LarkQrLoginSession | null>(null);
-  const [phase, setPhase] = useState<LoginPhase>('loading');
+  const [phase, setPhase] = useState<LoginPhase>('environmentLoading');
   const [errorCode, setErrorCode] = useState<LarkAuthErrorCode>('networkError');
   const requestVersionRef = useRef(0);
 
@@ -27,6 +32,7 @@ const LarkQrLogin = () => {
     const requestVersion = requestVersionRef.current + 1;
     requestVersionRef.current = requestVersion;
     setSession(null);
+    setEnvironmentError(null);
     setPhase('loading');
 
     try {
@@ -47,12 +53,36 @@ const LarkQrLogin = () => {
     }
   }, [startLarkQrLogin]);
 
+  const loadEnvironment = useCallback(async (): Promise<void> => {
+    const requestVersion = requestVersionRef.current + 1;
+    requestVersionRef.current = requestVersion;
+    setPhase('environmentLoading');
+    setEnvironmentError(null);
+    try {
+      const result = await getGeaEnvironment();
+      if (requestVersionRef.current !== requestVersion) return;
+      if (result.success === false) {
+        setEnvironmentError('loadFailed');
+        setPhase('error');
+        return;
+      }
+      setEnvironment(result.data);
+      setEnvironmentAddress(result.data.baseUrl);
+      setPhase('ready');
+    } catch {
+      if (requestVersionRef.current === requestVersion) {
+        setEnvironmentError('loadFailed');
+        setPhase('error');
+      }
+    }
+  }, [getGeaEnvironment]);
+
   useEffect(() => {
-    void startLogin();
+    void loadEnvironment();
     return () => {
       requestVersionRef.current += 1;
     };
-  }, [startLogin]);
+  }, [loadEnvironment]);
 
   useEffect(() => {
     if (!session || phase !== 'waiting') return;
@@ -106,12 +136,47 @@ const LarkQrLogin = () => {
     };
   }, [phase, pollLarkQrLogin, session, t]);
 
+  const applyEnvironment = useCallback(async (): Promise<void> => {
+    if (!environment?.editable || environmentAddress.trim() === environment.baseUrl) return;
+    requestVersionRef.current += 1;
+    setSession(null);
+    setEnvironmentError(null);
+    setPhase('loading');
+    try {
+      const result = await updateGeaEnvironment(environmentAddress);
+      if (result.success === false) {
+        setEnvironmentError(result.code === 'invalidResponse' ? 'invalidAddress' : 'saveFailed');
+        setPhase('error');
+        return;
+      }
+      setEnvironment(result.data.environment);
+      setEnvironmentAddress(result.data.environment.baseUrl);
+      if (!result.data.changed) {
+        await startLogin();
+        return;
+      }
+      const restartResult = await ipcBridge.application.restart.invoke();
+      if (restartResult.manualRestartRequired) setPhase('restartRequired');
+    } catch {
+      setEnvironmentError('saveFailed');
+      setPhase('error');
+    }
+  }, [environment, environmentAddress, startLogin, updateGeaEnvironment]);
+
   const errorMessage =
-    errorCode === 'invalidResponse'
-      ? t('login.lark.errors.invalidResponse')
-      : errorCode === 'serverError'
-        ? t('login.lark.errors.serverError')
-        : t('login.lark.errors.networkError');
+    environmentError === 'invalidAddress'
+      ? t('login.lark.environment.errors.invalidAddress')
+      : environmentError === 'loadFailed'
+        ? t('login.lark.environment.errors.loadFailed')
+        : environmentError === 'saveFailed'
+          ? t('login.lark.environment.errors.saveFailed')
+          : errorCode === 'invalidResponse'
+            ? t('login.lark.errors.invalidResponse')
+            : errorCode === 'serverError'
+              ? t('login.lark.errors.serverError')
+              : t('login.lark.errors.networkError');
+
+  const environmentChanged = Boolean(environment?.editable && environmentAddress.trim() !== environment.baseUrl);
 
   return (
     <div className='flex flex-col items-center gap-16px py-8px'>
@@ -122,9 +187,40 @@ const LarkQrLogin = () => {
         <Typography.Text type='secondary'>{t('login.lark.instruction')}</Typography.Text>
       </div>
 
-      {phase === 'loading' && (
+      <div className='w-full flex flex-col gap-8px'>
+        <Typography.Text className='font-500'>{t('login.lark.environment.label')}</Typography.Text>
+        <Input
+          aria-label={t('login.lark.environment.label')}
+          disabled={!environment?.editable || phase === 'environmentLoading' || phase === 'restartRequired'}
+          maxLength={2048}
+          onChange={setEnvironmentAddress}
+          placeholder={t('login.lark.environment.placeholder')}
+          size='large'
+          value={environmentAddress}
+        />
+        {environment && !environment.editable && (
+          <Typography.Text type='secondary' className='text-12px'>
+            {t('login.lark.environment.managed')}
+          </Typography.Text>
+        )}
+        {environment && (phase === 'ready' || (phase === 'error' && environmentError)) && (
+          <Button long onClick={() => void (environmentChanged ? applyEnvironment() : startLogin())} type='primary'>
+            {environmentChanged ? t('login.lark.environment.apply') : t('login.lark.environment.continue')}
+          </Button>
+        )}
+      </div>
+
+      {(phase === 'environmentLoading' || phase === 'loading') && (
         <div className='h-184px flex items-center justify-center'>
-          <Spin tip={t('login.lark.loading')} />
+          <Spin
+            tip={
+              phase === 'environmentLoading'
+                ? t('login.lark.environment.loading')
+                : environmentChanged
+                  ? t('login.lark.environment.saving')
+                  : t('login.lark.loading')
+            }
+          />
         </div>
       )}
 
@@ -140,9 +236,13 @@ const LarkQrLogin = () => {
 
       {phase === 'error' && <Alert type='error' content={errorMessage} className='w-full' showIcon />}
 
-      {(phase === 'expired' || phase === 'error') && (
-        <Button type='primary' onClick={() => void startLogin()}>
-          {t('login.lark.refresh')}
+      {phase === 'restartRequired' && (
+        <Alert type='info' content={t('login.lark.environment.restartRequired')} className='w-full' showIcon />
+      )}
+
+      {(phase === 'expired' || phase === 'error') && !environmentChanged && (
+        <Button type='primary' onClick={() => void (environmentError ? loadEnvironment() : startLogin())}>
+          {environmentError ? t('login.lark.environment.retry') : t('login.lark.refresh')}
         </Button>
       )}
     </div>

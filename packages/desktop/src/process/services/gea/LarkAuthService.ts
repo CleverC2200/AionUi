@@ -12,6 +12,7 @@ import { httpRequest } from '@/common/adapter/httpBridge';
 import {
   GeaLarkAuthService,
   GeaLarkAuthServiceError,
+  normalizeGeaBaseUrl,
   type GeaLarkAuthSession,
   type GeaLarkAuthSessionStore,
   type WebHostLarkAuth,
@@ -23,12 +24,12 @@ import type {
   PersonalModelSyncResult,
 } from '@/common/types/platform/larkAuth';
 import type { PersonalModelAuthClient } from './PersonalModelGatewayService';
+import { getGeaEnvironment } from './GeaEnvironmentService';
 
 export { GeaLarkAuthService as LarkAuthService, GeaLarkAuthServiceError as LarkAuthServiceError };
 
 const LARK_AUTH_SESSION_FILE_NAME = 'lark-auth-session.bin';
 const LEGACY_GEA_BASE_URL = 'https://gea.synear.cn/gea-boot';
-const DEFAULT_GEA_BASE_URL = 'https://gea.synear.cn:4443/gea-boot';
 const REQUIRE_GEA_AUTH_ENV = 'AIONUI_GEA_REQUIRE_AUTH';
 // Desktop development uses AionCore's local identity so restarts do not require
 // another QR scan. Live GEA integration can opt into the real authentication UI.
@@ -40,7 +41,7 @@ const DEVELOPMENT_LOCAL_AUTH_STATUS: LarkAuthStatus = {
     username: 'admin',
   },
 };
-const sharedLarkAuthService = new GeaLarkAuthService();
+let sharedLarkAuthService: GeaLarkAuthService | null = null;
 let sharedLarkAuthSessionStore: ElectronLarkAuthSessionStore | null = null;
 
 type StoredLarkAuthSession = GeaLarkAuthSession & { version: 1 };
@@ -148,23 +149,18 @@ export async function initializeSharedPersonalModelGateway(
 }
 
 export function initializeSharedLarkAuthSession(sessionStore: GeaLarkAuthSessionStore): Promise<void> {
-  return sharedLarkAuthService.initializeSession(sessionStore);
+  return getSharedLarkAuthService().initializeSession(sessionStore);
 }
 
 export function getSharedLarkAuthSessionStore(): ElectronLarkAuthSessionStore {
   sharedLarkAuthSessionStore ??= new ElectronLarkAuthSessionStore(
-    path.join(
-      app.getPath('userData'),
-      resolveLarkAuthSessionFileName(
-        process.env.AIONUI_GEA_BASE_URL ?? process.env.AUTH_BROKER_PUBLIC_URL ?? DEFAULT_GEA_BASE_URL
-      )
-    )
+    path.join(app.getPath('userData'), resolveLarkAuthSessionFileName(getGeaEnvironment().baseUrl))
   );
   return sharedLarkAuthSessionStore;
 }
 
 export function resolveLarkAuthSessionFileName(baseUrl: string): string {
-  const normalizedBaseUrl = new URL(baseUrl).toString().replace(/\/$/, '');
+  const normalizedBaseUrl = normalizeGeaBaseUrl(baseUrl, { allowLoopbackHttp: true });
   if (normalizedBaseUrl === LEGACY_GEA_BASE_URL) return LARK_AUTH_SESSION_FILE_NAME;
   const environmentKey = createHash('sha256').update(normalizedBaseUrl).digest('hex').slice(0, 12);
   return `lark-auth-session-${environmentKey}.bin`;
@@ -175,14 +171,15 @@ export async function pollSharedLarkAuthSession(qrcodeId: string): Promise<LarkQ
 }
 
 async function pollSharedLarkAuthSessionWithIdentity(qrcodeId: string) {
-  const verified = await sharedLarkAuthService.pollQrSessionWithIdentity(qrcodeId);
+  const service = getSharedLarkAuthService();
+  const verified = await service.pollQrSessionWithIdentity(qrcodeId);
   const result = verified.result;
   if (result.status !== 'authenticated' || !result.user) return verified;
   await syncSharedGeaSessionToBackend({ replaceInvalidated: true });
   if (!personalModelGateway) return verified;
   let personalModelSync: PersonalModelSyncResult;
   try {
-    personalModelSync = await personalModelGateway.sync(result.user, sharedLarkAuthService);
+    personalModelSync = await personalModelGateway.sync(result.user, service);
   } catch {
     personalModelSync = { configured: 0, failed: 1, skipped: 0, status: 'partial' };
   }
@@ -190,7 +187,8 @@ async function pollSharedLarkAuthSessionWithIdentity(qrcodeId: string) {
 }
 
 export async function syncSharedPersonalModels(): Promise<PersonalModelSyncResult> {
-  const status = sharedLarkAuthService.getStatus();
+  const service = getSharedLarkAuthService();
+  const status = service.getStatus();
   if (!status.authenticated || !status.user) {
     await personalModelGateway?.deactivate().catch(() => {});
     return {
@@ -210,12 +208,12 @@ export async function syncSharedPersonalModels(): Promise<PersonalModelSyncResul
       status: 'partial',
     };
   }
-  return personalModelGateway.sync(status.user, sharedLarkAuthService);
+  return personalModelGateway.sync(status.user, service);
 }
 
 export async function logoutSharedLarkAuthSession(): Promise<void> {
   await httpRequest<void>('DELETE', '/api/gea/auth/session').catch(() => {});
-  await sharedLarkAuthService.logout();
+  await getSharedLarkAuthService().logout();
   await personalModelGateway?.deactivate().catch(() => {});
 }
 
@@ -226,24 +224,31 @@ export function resolveDesktopLarkAuthStatus(isPackaged: boolean, status: LarkAu
 }
 
 export function getSharedLarkAuthService(): GeaLarkAuthService {
+  sharedLarkAuthService ??= new GeaLarkAuthService({
+    // The Main-owned environment resolver already enforces packaged HTTPS.
+    // Preserve loopback HTTP only for the validated development/E2E profile.
+    allowLoopbackHttp: true,
+    baseUrl: getGeaEnvironment().baseUrl,
+  });
   return sharedLarkAuthService;
 }
 
 export async function syncSharedGeaSessionToBackend(options: { replaceInvalidated?: boolean } = {}): Promise<boolean> {
-  const localStatus = sharedLarkAuthService.getStatus();
+  const service = getSharedLarkAuthService();
+  const localStatus = service.getStatus();
   if (!localStatus.authenticated) return false;
 
   if (options.replaceInvalidated !== true) {
     const backendStatus = await httpRequest<GeaBackendAuthSessionStatus>('GET', '/api/gea/auth/session');
     if (backendStatus.authenticated) return true;
     if (backendStatus.reauthRequired) {
-      await sharedLarkAuthService.logout();
+      await service.logout();
       await personalModelGateway?.deactivate().catch(() => {});
       return false;
     }
   }
 
-  return sharedLarkAuthService.forwardGatewayAuthSession(({ accessToken, tenantId }) =>
+  return service.forwardGatewayAuthSession(({ accessToken, tenantId }) =>
     httpRequest<void>('PUT', '/api/gea/auth/session', { accessToken, tenantId })
   );
 }
@@ -252,7 +257,7 @@ export function createSharedWebHostLarkAuth(): WebHostLarkAuth {
   return {
     createQrSession: async () => {
       try {
-        return { success: true, data: await sharedLarkAuthService.createQrSession() };
+        return { success: true, data: await getSharedLarkAuthService().createQrSession() };
       } catch (error) {
         return {
           success: false,
@@ -260,9 +265,10 @@ export function createSharedWebHostLarkAuth(): WebHostLarkAuth {
         };
       }
     },
+    getEnvironment: () => ({ ...getGeaEnvironment(), editable: false }),
     pollQrSession: async (qrcodeId) => {
       try {
-        const { identity, result } = await sharedLarkAuthService.pollQrSessionWithIdentity(qrcodeId);
+        const { identity, result } = await getSharedLarkAuthService().pollQrSessionWithIdentity(qrcodeId);
         return { ...(identity ? { identity } : {}), publicResult: { success: true, data: result } };
       } catch (error) {
         return {
@@ -274,4 +280,9 @@ export function createSharedWebHostLarkAuth(): WebHostLarkAuth {
       }
     },
   };
+}
+
+export function resetSharedLarkAuthServiceForTests(): void {
+  sharedLarkAuthService = null;
+  sharedLarkAuthSessionStore = null;
 }

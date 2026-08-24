@@ -26,8 +26,7 @@ const os = require('os');
 const path = require('path');
 const { verifyBundledAioncoreResources } = require('./verify-bundled-aioncore-resources');
 
-const GITHUB_OWNER = 'iOfficeAI';
-const GITHUB_REPO = 'AionCore';
+const DEFAULT_RELEASE_REPOSITORY = 'iOfficeAI/AionCore';
 const DEFAULT_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
 const VERIFIED_ACTIONS_POLICY = 'verified-actions';
 
@@ -109,6 +108,24 @@ function getActionsRepository() {
   const repository = (process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY || DEFAULT_ACTIONS_REPOSITORY).trim();
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
     throw new Error(`Invalid AionCore Actions repository: ${repository}`);
+  }
+  return repository;
+}
+
+function getReleaseRepository(projectRoot) {
+  const explicitRepository = (process.env.AIONUI_BACKEND_RELEASE_REPOSITORY || '').trim();
+  let pinnedRepository = '';
+  if (!explicitRepository) {
+    const packageJsonPath = path.join(projectRoot, 'package.json');
+    if (fs.existsSync(packageJsonPath)) {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      pinnedRepository =
+        typeof packageJson.aioncoreRepository === 'string' ? packageJson.aioncoreRepository.trim() : '';
+    }
+  }
+  const repository = explicitRepository || pinnedRepository || DEFAULT_RELEASE_REPOSITORY;
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
+    throw new Error(`Invalid AionCore release repository: ${repository}`);
   }
   return repository;
 }
@@ -250,12 +267,12 @@ function verifyPreparedAioncoreBundle(projectRoot, platform, arch) {
  * Uses GitHub API via `gh` CLI (needs GH_TOKEN in CI) or falls back to
  * `curl` with an optional Authorization header (GITHUB_TOKEN / GH_TOKEN).
  */
-function resolveLatestTag() {
+function resolveLatestTag(repository) {
   const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '';
 
   // 1. Try gh CLI (honours GH_TOKEN automatically)
   try {
-    const out = execSync(`gh api repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest --jq .tag_name`, {
+    const out = execSync(`gh api repos/${repository}/releases/latest --jq .tag_name`, {
       encoding: 'utf-8',
       timeout: 15000,
     }).trim();
@@ -267,7 +284,7 @@ function resolveLatestTag() {
   // 2. Curl with optional token to avoid rate-limit 403
   try {
     const authArgs = token ? ['-H', `Authorization: token ${token}`] : [];
-    const args = ['-fsSL', ...authArgs, `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`];
+    const args = ['-fsSL', ...authArgs, `https://api.github.com/repos/${repository}/releases/latest`];
     const out = execFileSync('curl', args, { encoding: 'utf-8', timeout: 15000 });
     const tag = JSON.parse(out).tag_name;
     if (tag) return tag;
@@ -298,8 +315,8 @@ function getAssetName(platform, arch, tag) {
   return `aioncore-${tag}-${normalizedArch}-${normalizedPlatform}${ext}`;
 }
 
-function getDownloadUrl(assetName, tag) {
-  return `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${tag}/${assetName}`;
+function getDownloadUrl(assetName, tag, repository) {
+  return `https://github.com/${repository}/releases/download/${tag}/${assetName}`;
 }
 
 function downloadFile(url, outputPath) {
@@ -598,13 +615,13 @@ function downloadAndExtractActionsArtifact(platform, arch, runId, { verifiedActi
   };
 }
 
-function downloadAndExtract(platform, arch, tag) {
+function downloadAndExtract(platform, arch, tag, repository) {
   const assetName = getAssetName(platform, arch, tag);
   if (!assetName) {
     throw new Error(`Unsupported aioncore target: ${platform}-${arch}`);
   }
 
-  const url = getDownloadUrl(assetName, tag);
+  const url = getDownloadUrl(assetName, tag, repository);
   const tempDir = path.join(os.tmpdir(), 'aioncore-prepare', tag, `${platform}-${arch}`);
   const archivePath = path.join(tempDir, assetName);
   const extractDir = path.join(tempDir, 'extracted');
@@ -669,10 +686,12 @@ function prepareAioncore(options) {
   }
 
   let tag = null;
+  let releaseRepository = null;
   if (!actionsRunId) {
+    releaseRepository = getReleaseRepository(projectRoot);
     // Resolve the actual version tag — release asset filenames include the tag.
     if (version === 'latest') {
-      const resolved = resolveLatestTag();
+      const resolved = resolveLatestTag(releaseRepository);
       if (!resolved) {
         throw new Error('Failed to resolve latest aioncore release tag from GitHub API');
       }
@@ -757,7 +776,7 @@ function prepareAioncore(options) {
   // 2. Download from GitHub releases.
   if (!sourcePath && tag) {
     try {
-      const result = downloadAndExtract(platform, arch, tag);
+      const result = downloadAndExtract(platform, arch, tag, releaseRepository);
       sourcePath = result.binaryPath;
       tempDir = result.tempDir;
       sourceType = 'download';
@@ -823,6 +842,7 @@ module.exports = {
   getActionsArtifactMissingMessage,
   getActionsArtifactName,
   getActionsRepository,
+  getReleaseRepository,
   getActionsRunProvenance,
   getBackendSourcePolicy,
   getExpectedActionsHeadSha,

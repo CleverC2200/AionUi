@@ -83,9 +83,14 @@ import {
   initializeSharedLarkAuthSession,
   syncSharedGeaSessionToBackend,
   syncSharedPersonalModels,
-} from './process/services/LarkAuthService';
-import { getPersonalModelGatewayRuntime } from './process/services/PersonalModelGatewayRuntime';
+} from './process/services/gea/LarkAuthService';
+import { getPersonalModelGatewayRuntime } from './process/services/gea/PersonalModelGatewayRuntime';
 import { initializeCoreSessionBootstrap } from './process/startup/coreSessionBootstrap';
+import {
+  GEA_ENDPOINT_PROFILE_KEY,
+  getGeaEnvironment,
+  initializeGeaEnvironment,
+} from './process/services/gea/GeaEnvironmentService';
 
 const { bootstrapSecret: coreSessionBootstrapSecret, initialized: electronSquirrelStartup } =
   initializeCoreSessionBootstrap(() => {
@@ -291,6 +296,7 @@ ipcMain.handle('backend:recover-corrupted-database', async () => {
           },
           {
             allowPendingOnHealthTimeout: false,
+            geaBaseUrl: getGeaEnvironment().baseUrl,
             local: !isWebUIMode,
             onHealthTimeout: async (error) => {
               markBackendStartupFailed(error);
@@ -784,6 +790,10 @@ const handleAppReady = async (): Promise<void> => {
 
   try {
     await initializeProcess();
+    initializeGeaEnvironment({
+      isPackaged: app.isPackaged,
+      profile: ProcessConfig.getSync(GEA_ENDPOINT_PROFILE_KEY),
+    });
     rendererInitialLanguage = ProcessConfig.getSync('language') ?? null;
     mark('initializeProcess');
   } catch (error) {
@@ -901,6 +911,7 @@ const handleAppReady = async (): Promise<void> => {
           },
           {
             allowPendingOnHealthTimeout: !(isWebUIMode || isResetPasswordMode),
+            geaBaseUrl: getGeaEnvironment().baseUrl,
             local: !isWebUIMode,
             onHealthTimeout: async (error) => {
               markBackendStartupFailed(error);

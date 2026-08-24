@@ -71,12 +71,20 @@ export type WebHostLarkAuthPoll = {
   publicResult: WebHostLarkAuthResult<WebHostLarkQrLoginPollResult>;
 };
 
+export type WebHostGeaEnvironment = {
+  baseUrl: string;
+  editable: false;
+  environmentId: string;
+  source: 'default' | 'environment' | 'legacyEnvironment' | 'profile';
+};
+
 /**
  * Lark authentication operations supplied by the host process.
  * GEA access tokens stay inside the host process and are never exposed here.
  */
 export type WebHostLarkAuth = {
   createQrSession: () => Promise<WebHostLarkAuthResult<WebHostLarkQrLoginSession>>;
+  getEnvironment?: () => WebHostGeaEnvironment;
   pollQrSession: (qrcodeId: string) => Promise<WebHostLarkAuthPoll>;
 };
 

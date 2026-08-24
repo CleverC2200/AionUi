@@ -77,6 +77,8 @@ import type {
 import type {
   LarkAuthResult,
   LarkAuthStatus,
+  GeaEnvironmentStatus,
+  GeaEnvironmentUpdateResult,
   LarkQrLoginPollResult,
   LarkQrLoginSession,
   PersonalModelSyncResult,
@@ -967,6 +969,10 @@ export const application = {
 // ---------------------------------------------------------------------------
 
 export const larkAuth = {
+  environment: bridge.buildProvider<LarkAuthResult<GeaEnvironmentStatus>, void>('lark-auth.environment'),
+  updateEnvironment: bridge.buildProvider<LarkAuthResult<GeaEnvironmentUpdateResult>, { baseUrl: string }>(
+    'lark-auth.update-environment'
+  ),
   createQrSession: bridge.buildProvider<LarkAuthResult<LarkQrLoginSession>, void>('lark-auth.create-qr-session'),
   pollQrSession: bridge.buildProvider<LarkAuthResult<LarkQrLoginPollResult>, { qrcodeId: string }>(
     'lark-auth.poll-qr-session'

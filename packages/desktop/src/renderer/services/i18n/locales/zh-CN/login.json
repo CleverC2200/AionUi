@@ -23,6 +23,22 @@
     "waiting": "等待手机确认...",
     "expired": "二维码已过期",
     "refresh": "刷新二维码",
+    "environment": {
+      "label": "GEA 地址",
+      "placeholder": "https://gea.example.com",
+      "loading": "正在读取 GEA 地址...",
+      "saving": "正在保存 GEA 地址...",
+      "apply": "切换 GEA 环境",
+      "continue": "继续登录",
+      "managed": "此地址由应用运行环境统一管理。",
+      "restartRequired": "GEA 地址已保存，请重启应用以使用新环境。",
+      "retry": "重试",
+      "errors": {
+        "invalidAddress": "请输入有效的 HTTPS GEA 地址。仅开发环境允许本机 HTTP 地址。",
+        "loadFailed": "无法读取 GEA 地址。",
+        "saveFailed": "无法保存 GEA 地址。"
+      }
+    },
     "personalModels": {
       "configured": "已自动配置 {{count}} 个个人授权模型服务",
       "partial": "部分个人模型未能自动配置，请检查授权状态或联系管理员。",

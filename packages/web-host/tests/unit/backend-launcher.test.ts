@@ -243,6 +243,12 @@ describe('buildSpawnEnv', () => {
     expect(env.PATH).toBe(process.env.PATH); // inherits
   });
 
+  it('injects the canonical GEA address explicitly for the AionCore child', () => {
+    const env = buildSpawnEnv(undefined, undefined, 'https://test.example:4443/gea-boot');
+
+    expect(env.AIONUI_GEA_BASE_URL).toBe('https://test.example:4443/gea-boot');
+  });
+
   it('strips PREBUILDS_ONLY so agent CLIs spawned under aioncore can load their build/Release natives (#4070)', () => {
     const prev = process.env.PREBUILDS_ONLY;
     process.env.PREBUILDS_ONLY = '1';
