@@ -5,10 +5,12 @@
  */
 
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import http, { type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LarkAuthServiceError } from '@/process/services/LarkAuthService';
+import type { LarkAuthServiceError } from '@/process/services/gea/LarkAuthService';
 import {
   configureSharedPersonalModelGateway,
   createSharedWebHostLarkAuth,
@@ -18,10 +20,12 @@ import {
   LarkAuthService,
   type LarkAuthSafeStorageAdapter,
   pollSharedLarkAuthSession,
+  resetSharedLarkAuthServiceForTests,
   resolveDesktopLarkAuthStatus,
   resolveLarkAuthSessionFileName,
   syncSharedGeaSessionToBackend,
-} from '@/process/services/LarkAuthService';
+} from '@/process/services/gea/LarkAuthService';
+import { initializeGeaEnvironment, resetGeaEnvironmentForTests } from '@/process/services/gea/GeaEnvironmentService';
 
 const httpRequestMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
@@ -44,8 +48,16 @@ function verifiedUserInfoResponse(loginTenantId: string): unknown {
 }
 
 const xor = (value: Buffer): Buffer => Buffer.from(value.map((byte) => byte ^ 0xa5));
+const listen = (server: Server): Promise<void> =>
+  new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+const close = (server: Server): Promise<void> => new Promise<void>((resolve) => server.close(() => resolve()));
 
 beforeEach(() => {
+  delete process.env.AIONUI_GEA_BASE_URL;
+  delete process.env.AUTH_BROKER_PUBLIC_URL;
+  resetGeaEnvironmentForTests();
+  initializeGeaEnvironment({ isPackaged: false });
+  resetSharedLarkAuthServiceForTests();
   httpRequestMock.mockClear();
   httpRequestMock.mockResolvedValue(undefined);
 });
@@ -55,6 +67,15 @@ afterEach(() => {
 });
 
 describe('LarkAuthService', () => {
+  it.each([
+    'http://gea.example/gea-boot',
+    'https://user:password@gea.example/gea-boot',
+    'https://gea.example/gea-boot?tenant=1',
+    'https://gea.example/gea-boot#fragment',
+  ])('rejects an unsafe GEA base URL: %s', (baseUrl) => {
+    expect(() => new LarkAuthService({ baseUrl })).toThrow();
+  });
+
   it('isolates persisted login sessions by GEA environment', () => {
     expect(resolveLarkAuthSessionFileName('https://gea.synear.cn/gea-boot')).toBe('lark-auth-session.bin');
     expect(resolveLarkAuthSessionFileName('https://gea.synear.cn/gea-boot/')).toBe('lark-auth-session.bin');
@@ -249,6 +270,17 @@ describe('LarkAuthService', () => {
     await service.createQrSession();
 
     expect(fetchImpl.mock.calls[0]?.[0]).toBe('https://gea.example:4443/gea-boot/sys/getLoginQrcode');
+  });
+
+  it('constructs the shared authentication service only after the Main environment is finalized', () => {
+    resetSharedLarkAuthServiceForTests();
+    resetGeaEnvironmentForTests();
+    initializeGeaEnvironment({
+      env: { AIONUI_GEA_BASE_URL: 'https://final-gea.example:4443/gea-boot///' },
+      isPackaged: true,
+    });
+
+    expect(getSharedLarkAuthService().getBaseUrl()).toBe('https://final-gea.example:4443/gea-boot');
   });
 
   it('builds the exact server-only identity from the normalized GEA issuer and verified user', async () => {
@@ -601,6 +633,45 @@ describe('LarkAuthService', () => {
     await expect(service.createQrSession()).rejects.toMatchObject<LarkAuthServiceError>({ code: 'networkError' });
   });
 
+  it('does not forward a GEA credential across an origin redirect', async () => {
+    let redirectedRequests = 0;
+    const redirectedHeaders: string[] = [];
+    const redirectTarget = http.createServer((req, res) => {
+      redirectedRequests += 1;
+      redirectedHeaders.push(req.headers['x-access-token'] ?? '');
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(verifiedUserInfoResponse('1')));
+    });
+    await listen(redirectTarget);
+    const redirectedPort = (redirectTarget.address() as AddressInfo).port;
+    const source = http.createServer((req, res) => {
+      if (req.url?.startsWith('/sys/getQrcodeToken')) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ success: true, result: { success: true, token: 'sensitive-token' } }));
+        return;
+      }
+      res.writeHead(302, { location: `http://127.0.0.1:${redirectedPort}/credential-target` });
+      res.end();
+    });
+    await listen(source);
+    const sourcePort = (source.address() as AddressInfo).port;
+    const service = new LarkAuthService({
+      allowLoopbackHttp: true,
+      baseUrl: `http://127.0.0.1:${sourcePort}`,
+    });
+
+    try {
+      await expect(service.pollQrSession('QRCODELOGIN:1')).rejects.toMatchObject<LarkAuthServiceError>({
+        code: 'networkError',
+      });
+      expect(redirectedRequests).toBe(0);
+      expect(redirectedHeaders).toEqual([]);
+      expect(service.getStatus()).toEqual({ authenticated: false });
+    } finally {
+      await Promise.all([close(source), close(redirectTarget)]);
+    }
+  });
+
   it('does not authenticate when the current-user response is empty', async () => {
     const fetchImpl = vi
       .fn()
@@ -750,6 +821,7 @@ describe('LarkAuthService', () => {
       }),
     });
     expect(fetchImpl.mock.calls[4][1]?.headers).toMatchObject({ Authorization: 'Bearer sk-user-sensitive' });
+    expect(fetchImpl.mock.calls.every(([, init]) => init?.redirect === 'error')).toBe(true);
     expect(JSON.stringify(fetchImpl.mock.calls.slice(0, 4))).not.toContain('sk-user-sensitive');
   });
 });

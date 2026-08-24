@@ -23,6 +23,22 @@
     "waiting": "スマートフォンでの確認を待っています...",
     "expired": "QRコードの有効期限が切れました",
     "refresh": "QRコードを更新",
+    "environment": {
+      "label": "GEA アドレス",
+      "placeholder": "https://gea.example.com",
+      "loading": "GEA アドレスを読み込んでいます...",
+      "saving": "GEA アドレスを保存しています...",
+      "apply": "GEA 環境を切り替える",
+      "continue": "ログインに進む",
+      "managed": "このアドレスはアプリケーション環境によって管理されています。",
+      "restartRequired": "GEA アドレスを保存しました。新しい環境を使用するにはアプリケーションを再起動してください。",
+      "retry": "再試行",
+      "errors": {
+        "invalidAddress": "有効な HTTPS の GEA アドレスを入力してください。ローカル HTTP アドレスは開発時のみ使用できます。",
+        "loadFailed": "GEA アドレスを読み込めませんでした。",
+        "saveFailed": "GEA アドレスを保存できませんでした。"
+      }
+    },
     "personalModels": {
       "configured": "個人認証済みモデルサービスを {{count}} 件自動設定しました",
       "partial": "一部の個人モデルを設定できませんでした。認証状態を確認するか、管理者にお問い合わせください。",

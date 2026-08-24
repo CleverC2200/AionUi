@@ -8,6 +8,7 @@ import type { SpeechToTextConfig } from '@/common/types/provider/speech';
 import type { ConversationConfigurationSnapshot } from '@/common/types/conversationConfiguration';
 import type { Theme } from '@/common/theme/types';
 import { buildStorage } from '@/common/platform/storage';
+import type { GeaEndpointProfileV1 } from '@/common/types/platform/larkAuth';
 
 // 系统配置存储
 export const ConfigStorage = buildStorage<IConfigStorageRefer>('agent.config');
@@ -17,6 +18,8 @@ export const EnvStorage = buildStorage<IEnvStorageRefer>('agent.env');
 
 export interface IConfigStorageRefer {
   language: string;
+  /** App bootstrap configuration resolved before GEA auth and AionCore start. */
+  'gea.endpointProfile'?: GeaEndpointProfileV1;
   /** Persisted app-wide UI zoom factor for Display settings */
   'ui.zoomFactor'?: number;
   /** Per-region configurable font sizes (px), set in Appearance settings */

@@ -4,6 +4,7 @@ export type {
   AppMetadata,
   BackendBinaryResolver,
   WebHostLarkAuth,
+  WebHostGeaEnvironment,
   WebHostLarkAuthPoll,
   WebHostLarkAuthResult,
   WebHostLarkExternalIdentity,
@@ -23,11 +24,14 @@ export type {
 export { startStaticServer, stopStaticServer } from './static-server.js';
 export type { StaticServerOptions, StaticServerHandle } from './static-server.js';
 export {
+  createGeaEnvironmentId,
   createGeaLarkAuth,
+  DEFAULT_GEA_BASE_URL,
   GeaLarkAuthService,
   GeaLarkAuthServiceError,
   GeaMcpGatewayError,
   GeaPersonalModelError,
+  normalizeGeaBaseUrl,
 } from './gea-lark-auth.js';
 export type {
   GeaClaimedPersonalModelCredential,

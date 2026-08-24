@@ -24,17 +24,22 @@ import {
   resolveDesktopLarkAuthStatus,
   syncSharedGeaSessionToBackend,
   syncSharedPersonalModels,
-} from '@process/services/LarkAuthService';
+} from '@process/services/gea/LarkAuthService';
 import type { LarkAuthErrorCode, LarkAuthResult } from '@/common/types/platform/larkAuth';
+import { getGeaEnvironment, saveGeaEnvironment } from '@process/services/gea/GeaEnvironmentService';
 
 let mainWindowRef: BrowserWindow | null = null;
-const larkAuthService = getSharedLarkAuthService();
 
 const withLarkAuthResult = async <T>(operation: () => Promise<T> | T): Promise<LarkAuthResult<T>> => {
   try {
     return { success: true, data: await operation() };
   } catch (error) {
-    const code: LarkAuthErrorCode = error instanceof LarkAuthServiceError ? error.code : 'serverError';
+    const code: LarkAuthErrorCode =
+      error instanceof LarkAuthServiceError
+        ? error.code
+        : error instanceof TypeError || (error instanceof Error && error.message === 'GEA_ENVIRONMENT_MANAGED')
+          ? 'invalidResponse'
+          : 'serverError';
     return { success: false, code };
   }
 };
@@ -121,7 +126,18 @@ export function initApplicationBridge(): void {
   // Platform-agnostic handlers: systemInfo, updateSystemInfo, getPath
   initApplicationBridgeCore();
 
-  ipcBridge.larkAuth.createQrSession.provider(() => withLarkAuthResult(() => larkAuthService.createQrSession()));
+  ipcBridge.larkAuth.environment.provider(() => withLarkAuthResult(getGeaEnvironment));
+  ipcBridge.larkAuth.updateEnvironment.provider(({ baseUrl }) =>
+    withLarkAuthResult(() =>
+      saveGeaEnvironment(baseUrl, {
+        isPackaged: app.isPackaged,
+        persist: (profile) => ProcessConfig.setAtomic('gea.endpointProfile', profile),
+      })
+    )
+  );
+  ipcBridge.larkAuth.createQrSession.provider(() =>
+    withLarkAuthResult(() => getSharedLarkAuthService().createQrSession())
+  );
   ipcBridge.larkAuth.pollQrSession.provider(({ qrcodeId }) =>
     withLarkAuthResult(() => pollSharedLarkAuthSession(qrcodeId))
   );
@@ -129,13 +145,13 @@ export function initApplicationBridge(): void {
   ipcBridge.larkAuth.status.provider(() =>
     withLarkAuthResult(async () => {
       await syncSharedGeaSessionToBackend().catch(() => false);
-      return resolveDesktopLarkAuthStatus(app.isPackaged, larkAuthService.getStatus());
+      return resolveDesktopLarkAuthStatus(app.isPackaged, getSharedLarkAuthService().getStatus());
     })
   );
   ipcBridge.larkAuth.logout.provider(() =>
     withLarkAuthResult(async () => {
       await logoutSharedLarkAuthSession();
-      return larkAuthService.getStatus();
+      return getSharedLarkAuthService().getStatus();
     })
   );
 

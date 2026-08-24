@@ -10,6 +10,26 @@ export type LarkQrLoginSession = {
   qrcodeId: string;
 };
 
+export type GeaEndpointProfileV1 = {
+  baseUrl: string;
+  environmentId: string;
+  revision: 1;
+};
+
+export type GeaEnvironmentSource = 'default' | 'environment' | 'legacyEnvironment' | 'profile';
+
+export type GeaEnvironmentStatus = {
+  baseUrl: string;
+  editable: boolean;
+  environmentId: string;
+  source: GeaEnvironmentSource;
+};
+
+export type GeaEnvironmentUpdateResult = {
+  changed: boolean;
+  environment: GeaEnvironmentStatus;
+};
+
 export type LarkAuthUser = {
   avatar?: string;
   email?: string;

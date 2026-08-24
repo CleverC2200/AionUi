@@ -16,12 +16,13 @@ import {
   type PersonalModelSecretRecord,
   type PersonalModelSecretVault,
 } from './PersonalModelGatewayService';
+import { getGeaEnvironment } from './GeaEnvironmentService';
 
 const VAULT_FILE_NAME = 'personal-model-vault.bin';
 
 type VaultContents = {
   entries: Record<string, PersonalModelSecretRecord>;
-  version: 1;
+  version: 2;
 };
 
 export type SafeStorageAdapter = Pick<
@@ -42,24 +43,27 @@ export class ElectronSafeStorageVault implements PersonalModelSecretVault {
     return process.platform !== 'linux' || this.storage.getSelectedStorageBackend() !== 'basic_text';
   }
 
-  async get(userId: string, credentialId: string): Promise<PersonalModelSecretRecord | null> {
+  async get(environmentId: string, userId: string, credentialId: string): Promise<PersonalModelSecretRecord | null> {
     await this.mutation;
     const contents = await this.readContents();
-    return contents.entries[vaultKey(userId, credentialId)] ?? null;
+    const record = contents.entries[vaultKey(environmentId, userId, credentialId)] ?? null;
+    return record?.environmentId === environmentId && record.userId === userId && record.credentialId === credentialId
+      ? record
+      : null;
   }
 
   put(record: PersonalModelSecretRecord): Promise<void> {
     return this.enqueueMutation(async () => {
       const contents = await this.readContents();
-      contents.entries[vaultKey(record.userId, record.credentialId)] = record;
+      contents.entries[vaultKey(record.environmentId, record.userId, record.credentialId)] = record;
       await this.writeContents(contents);
     });
   }
 
-  delete(userId: string, credentialId: string): Promise<void> {
+  delete(environmentId: string, userId: string, credentialId: string): Promise<void> {
     return this.enqueueMutation(async () => {
       const contents = await this.readContents();
-      delete contents.entries[vaultKey(userId, credentialId)];
+      delete contents.entries[vaultKey(environmentId, userId, credentialId)];
       await this.writeContents(contents);
     });
   }
@@ -75,11 +79,15 @@ export class ElectronSafeStorageVault implements PersonalModelSecretVault {
       encrypted = await readFile(this.filePath);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return { version: 1, entries: {} };
+        return { version: 2, entries: {} };
       }
       throw error;
     }
     const parsed = JSON.parse(this.storage.decryptString(encrypted)) as unknown;
+    if (isLegacyVaultContents(parsed)) {
+      // V1 records did not identify their GEA environment and cannot be safely reused.
+      return { version: 2, entries: {} };
+    }
     if (!isVaultContents(parsed)) {
       throw new Error('GEA_PERSONAL_VAULT_INVALID');
     }
@@ -119,26 +127,33 @@ let runtime: PersonalModelGatewayService | null = null;
 export function getPersonalModelGatewayRuntime(): PersonalModelGatewayService {
   runtime ??= new PersonalModelGatewayService(
     new ElectronSafeStorageVault(path.join(app.getPath('userData'), VAULT_FILE_NAME)),
-    new AionCoreProviderStore()
+    new AionCoreProviderStore(),
+    getGeaEnvironment().environmentId
   );
   return runtime;
 }
 
-function vaultKey(userId: string, credentialId: string): string {
-  return createHash('sha256').update(`${userId}\0${credentialId}`).digest('hex');
+function vaultKey(environmentId: string, userId: string, credentialId: string): string {
+  return createHash('sha256').update(`${environmentId}\0${userId}\0${credentialId}`).digest('hex');
 }
 
 function isVaultContents(value: unknown): value is VaultContents {
   if (!value || typeof value !== 'object') return false;
   const raw = value as { entries?: unknown; version?: unknown };
-  if (raw.version !== 1 || !raw.entries || typeof raw.entries !== 'object' || Array.isArray(raw.entries)) return false;
+  if (raw.version !== 2 || !raw.entries || typeof raw.entries !== 'object' || Array.isArray(raw.entries)) return false;
   return Object.values(raw.entries as Record<string, unknown>).every(isSecretRecord);
+}
+
+function isLegacyVaultContents(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const raw = value as { entries?: unknown; version?: unknown };
+  return raw.version === 1 && raw.entries !== null && typeof raw.entries === 'object' && !Array.isArray(raw.entries);
 }
 
 function isSecretRecord(value: unknown): value is PersonalModelSecretRecord {
   if (!value || typeof value !== 'object') return false;
   const raw = value as Record<string, unknown>;
-  return ['accessKeyId', 'agentCode', 'baseUrl', 'credentialId', 'proxyKey', 'secret', 'userId'].every(
+  return ['accessKeyId', 'agentCode', 'baseUrl', 'credentialId', 'environmentId', 'proxyKey', 'secret', 'userId'].every(
     (key) => typeof raw[key] === 'string' && (raw[key] as string).length > 0
   );
 }

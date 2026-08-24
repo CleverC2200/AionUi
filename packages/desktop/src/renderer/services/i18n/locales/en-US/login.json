@@ -23,6 +23,22 @@
     "waiting": "Waiting for confirmation on your phone...",
     "expired": "This QR code has expired",
     "refresh": "Refresh QR code",
+    "environment": {
+      "label": "GEA address",
+      "placeholder": "https://gea.example.com",
+      "loading": "Loading GEA address...",
+      "saving": "Saving GEA address...",
+      "apply": "Switch GEA environment",
+      "continue": "Continue to sign in",
+      "managed": "This address is managed by the application environment.",
+      "restartRequired": "The GEA address was saved. Restart the application to use the new environment.",
+      "retry": "Retry",
+      "errors": {
+        "invalidAddress": "Enter a valid HTTPS GEA address. Local HTTP addresses are allowed in development only.",
+        "loadFailed": "Unable to load the GEA address.",
+        "saveFailed": "Unable to save the GEA address."
+      }
+    },
     "personalModels": {
       "configured": "Configured {{count}} authorized personal model provider",
       "partial": "Some personal models could not be configured. Check your authorization or contact an administrator.",

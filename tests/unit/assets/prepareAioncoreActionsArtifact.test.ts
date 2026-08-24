@@ -9,6 +9,7 @@ const {
   getActionsArtifactName,
   getActionsArtifactMissingMessage,
   getActionsRepository,
+  getReleaseRepository,
   getActionsRunProvenance,
   getExpectedActionsHeadSha,
   getExpectedActionsSha256,
@@ -121,6 +122,7 @@ chmod +x "$out/aioncore"
 afterEach(() => {
   delete process.env.AIONUI_BACKEND_RUN_ID;
   delete process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY;
+  delete process.env.AIONUI_BACKEND_RELEASE_REPOSITORY;
   delete process.env.AIONUI_BACKEND_SOURCE_POLICY;
   delete process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA;
   delete process.env.AIONUI_BACKEND_SHA256;
@@ -159,6 +161,39 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
   it('rejects malformed workflow repositories', () => {
     process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'https://github.com/CleverC2200/AionCore';
     expect(() => getActionsRepository()).toThrow(/Invalid AionCore Actions repository/);
+  });
+
+  it('uses the pinned release repository and accepts an explicit override', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-release-repository-'));
+    try {
+      writeFile(join(tmp, 'package.json'), JSON.stringify({ aioncoreRepository: 'CleverC2200/AionCore' }));
+      expect(getReleaseRepository(tmp)).toBe('CleverC2200/AionCore');
+
+      process.env.AIONUI_BACKEND_RELEASE_REPOSITORY = 'iOfficeAI/AionCore';
+      expect(getReleaseRepository(tmp)).toBe('iOfficeAI/AionCore');
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a malformed pinned release repository', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-release-repository-invalid-'));
+    try {
+      writeFile(join(tmp, 'package.json'), JSON.stringify({ aioncoreRepository: 'https://github.com/AionCore' }));
+      expect(() => getReleaseRepository(tmp)).toThrow(/Invalid AionCore release repository/);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('does not hide a malformed package pin by falling back to the official repository', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-release-repository-malformed-package-'));
+    try {
+      writeFile(join(tmp, 'package.json'), '{');
+      expect(() => getReleaseRepository(tmp)).toThrow(SyntaxError);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it('requires a personal run, expected head, and checksum under verified-actions policy', () => {

@@ -260,7 +260,8 @@
   "engines": {
     "node": ">=22 <25"
   },
-  "aioncoreVersion": "v0.1.71",
+  "aioncoreRepository": "CleverC2200/AionCore",
+  "aioncoreVersion": "v0.1.72-aionui.1",
   "electronRebuild": {
     "electronVersion": "^37.3.1"
   },

@@ -11,7 +11,7 @@ import { networkInterfaces } from 'os';
 import { getSystemDir } from './initStorage';
 import { httpRequest } from '@/common/adapter/httpBridge';
 import { startWebHost, type WebHostHandle } from '@aionui/web-host';
-import { createSharedWebHostLarkAuth } from '@process/services/LarkAuthService';
+import { createSharedWebHostLarkAuth } from '@process/services/gea/LarkAuthService';
 import { getDataPath } from './utils';
 
 const WEBUI_CONFIG_FILE = 'webui.config.json';

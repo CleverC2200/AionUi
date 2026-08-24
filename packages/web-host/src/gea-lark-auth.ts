@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type {
   WebHostLarkAuth,
   WebHostLarkAuthPoll,
@@ -8,7 +9,7 @@ import type {
   WebHostLarkQrLoginSession,
 } from './types.js';
 
-const DEFAULT_GEA_BASE_URL = 'https://gea.synear.cn:4443/gea-boot';
+export const DEFAULT_GEA_BASE_URL = 'https://gea.synear.cn:4443/gea-boot';
 const DEFAULT_GEA_TENANT_ID = '0';
 const QR_CODE_EXPIRES_IN_SECONDS = 300;
 const SESSION_RESTORE_ATTEMPTS = 2;
@@ -190,9 +191,24 @@ export class GeaPersonalModelError extends Error {
   }
 }
 
-function normalizeBaseUrl(value: string): string {
-  const url = new URL(value);
+export function normalizeGeaBaseUrl(value: string, options: { allowLoopbackHttp?: boolean } = {}): string {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 2048) throw new TypeError('GEA_BASE_URL_INVALID');
+
+  const url = new URL(trimmed);
+  const isLoopbackHttp =
+    options.allowLoopbackHttp === true &&
+    url.protocol === 'http:' &&
+    (url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '[::1]');
+  if (url.protocol !== 'https:' && !isLoopbackHttp) throw new TypeError('GEA_BASE_URL_INSECURE');
+  if (url.username || url.password || url.search || url.hash || !url.hostname) {
+    throw new TypeError('GEA_BASE_URL_INVALID');
+  }
   return url.toString().replace(/\/+$/, '');
+}
+
+export function createGeaEnvironmentId(baseUrl: string): string {
+  return createHash('sha256').update(baseUrl).digest('hex');
 }
 
 function resolveAvatarUrl(baseUrl: string, value: string): string | undefined {
@@ -222,9 +238,17 @@ export class GeaLarkAuthService {
   private currentTenantId = DEFAULT_GEA_TENANT_ID;
   private currentUser: WebHostLarkAuthUser | null = null;
 
-  constructor(options: { baseUrl?: string; fetchImpl?: FetchLike; sessionStore?: GeaLarkAuthSessionStore } = {}) {
-    this.baseUrl = normalizeBaseUrl(
-      options.baseUrl ?? process.env.AIONUI_GEA_BASE_URL ?? process.env.AUTH_BROKER_PUBLIC_URL ?? DEFAULT_GEA_BASE_URL
+  constructor(
+    options: {
+      allowLoopbackHttp?: boolean;
+      baseUrl?: string;
+      fetchImpl?: FetchLike;
+      sessionStore?: GeaLarkAuthSessionStore;
+    } = {}
+  ) {
+    this.baseUrl = normalizeGeaBaseUrl(
+      options.baseUrl ?? process.env.AIONUI_GEA_BASE_URL ?? process.env.AUTH_BROKER_PUBLIC_URL ?? DEFAULT_GEA_BASE_URL,
+      { allowLoopbackHttp: options.allowLoopbackHttp }
     );
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.sessionStore = options.sessionStore ?? null;
@@ -246,11 +270,16 @@ export class GeaLarkAuthService {
     await this.restoreSession(session, store, SESSION_RESTORE_ATTEMPTS);
   }
 
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
   async createQrSession(): Promise<WebHostLarkQrLoginSession> {
     let response: Response;
     try {
       response = await this.fetchImpl(`${this.baseUrl}/sys/getLoginQrcode`, {
         headers: { Accept: 'application/json' },
+        redirect: 'error',
       });
     } catch {
       throw new GeaLarkAuthServiceError('networkError');
@@ -289,7 +318,7 @@ export class GeaLarkAuthService {
     url.searchParams.set('qrcodeId', qrcodeId);
     let response: Response;
     try {
-      response = await this.fetchImpl(url, { headers: { Accept: 'application/json' } });
+      response = await this.fetchImpl(url, { headers: { Accept: 'application/json' }, redirect: 'error' });
     } catch {
       throw new GeaLarkAuthServiceError('networkError');
     }
@@ -420,6 +449,7 @@ export class GeaLarkAuthService {
           Accept: 'application/json',
           Authorization: `Bearer ${normalizedSecret}`,
         },
+        redirect: 'error',
       });
     } catch {
       throw new GeaPersonalModelError('GEA_PERSONAL_MODELS_NETWORK_ERROR');
@@ -539,6 +569,7 @@ export class GeaLarkAuthService {
           'X-Access-Token': accessToken,
         },
         body: JSON.stringify(body),
+        redirect: 'error',
       });
     } catch {
       throw new GeaMcpGatewayError('GEA_NETWORK_ERROR');
@@ -569,6 +600,7 @@ export class GeaLarkAuthService {
           'X-Access-Token': accessToken,
           'X-Tenant-Id': tenantId,
         },
+        redirect: 'error',
       });
     } catch {
       throw new GeaPersonalModelError('GEA_PERSONAL_NETWORK_ERROR');
@@ -593,6 +625,7 @@ export class GeaLarkAuthService {
     try {
       response = await this.fetchImpl(`${this.baseUrl}/sys/user/getUserInfo`, {
         headers: { Accept: 'application/json', 'X-Access-Token': token },
+        redirect: 'error',
         signal,
       });
     } catch {
@@ -785,6 +818,16 @@ export function createGeaLarkAuth(): WebHostLarkAuth {
   const service = new GeaLarkAuthService();
   return {
     createQrSession: () => asResult(() => service.createQrSession()),
+    getEnvironment: () => ({
+      baseUrl: service.getBaseUrl(),
+      editable: false,
+      environmentId: createGeaEnvironmentId(service.getBaseUrl()),
+      source: process.env.AIONUI_GEA_BASE_URL
+        ? 'environment'
+        : process.env.AUTH_BROKER_PUBLIC_URL
+          ? 'legacyEnvironment'
+          : 'default',
+    }),
     pollQrSession: (qrcodeId) => asWebHostPoll(() => service.pollQrSessionWithIdentity(qrcodeId)),
   };
 }

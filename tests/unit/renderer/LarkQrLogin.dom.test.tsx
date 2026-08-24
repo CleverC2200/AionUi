@@ -5,13 +5,17 @@
  */
 
 import React from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const authMocks = vi.hoisted(() => ({
+  getGeaEnvironment: vi.fn(),
   pollLarkQrLogin: vi.fn(),
   startLarkQrLogin: vi.fn(),
+  updateGeaEnvironment: vi.fn(),
 }));
+
+const bridgeMocks = vi.hoisted(() => ({ restart: vi.fn() }));
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -21,11 +25,24 @@ vi.mock('@renderer/hooks/context/AuthContext', () => ({
   useAuth: () => authMocks,
 }));
 
+vi.mock('@/common', () => ({
+  ipcBridge: { application: { restart: { invoke: bridgeMocks.restart } } },
+}));
+
 import LarkQrLogin from '@renderer/pages/login/LarkQrLogin';
 
 describe('LarkQrLogin', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    authMocks.getGeaEnvironment.mockReset().mockResolvedValue({
+      success: true,
+      data: {
+        baseUrl: 'https://gea.example',
+        editable: true,
+        environmentId: 'env-a',
+        source: 'default',
+      },
+    });
     authMocks.startLarkQrLogin.mockReset().mockResolvedValue({
       success: true,
       data: {
@@ -35,15 +52,34 @@ describe('LarkQrLogin', () => {
       },
     });
     authMocks.pollLarkQrLogin.mockReset().mockResolvedValue({ success: true, data: { status: 'pending' } });
+    authMocks.updateGeaEnvironment.mockReset().mockResolvedValue({
+      success: true,
+      data: {
+        changed: true,
+        environment: {
+          baseUrl: 'https://gea-test.example',
+          editable: true,
+          environmentId: 'env-b',
+          source: 'profile',
+        },
+        restartRequired: true,
+      },
+    });
+    bridgeMocks.restart.mockReset().mockResolvedValue({ manualRestartRequired: true });
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('renders the GEA login URL as a QR code and starts polling', async () => {
+  it('waits for the selected GEA address to be confirmed before creating a QR code', async () => {
     render(<LarkQrLogin />);
 
+    await act(async () => Promise.resolve());
+    expect(authMocks.startLarkQrLogin).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('login.lark.qrCodeLabel')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('login.lark.environment.continue'));
     await act(async () => Promise.resolve());
     expect(screen.getByLabelText('login.lark.qrCodeLabel')).toBeInTheDocument();
 
@@ -53,9 +89,46 @@ describe('LarkQrLogin', () => {
     expect(authMocks.pollLarkQrLogin).toHaveBeenCalledWith('QRCODELOGIN:1');
   });
 
+  it('saves a changed GEA address and requires a restart before starting another login', async () => {
+    render(<LarkQrLogin />);
+    await act(async () => Promise.resolve());
+
+    fireEvent.change(screen.getByLabelText('login.lark.environment.label'), {
+      target: { value: 'https://gea-test.example' },
+    });
+    fireEvent.click(screen.getByText('login.lark.environment.apply'));
+    await act(async () => Promise.resolve());
+
+    expect(authMocks.updateGeaEnvironment).toHaveBeenCalledWith('https://gea-test.example');
+    expect(bridgeMocks.restart).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('login.lark.environment.restartRequired')).toBeInTheDocument();
+    expect(authMocks.startLarkQrLogin).not.toHaveBeenCalled();
+  });
+
+  it('keeps a managed GEA address read-only', async () => {
+    authMocks.getGeaEnvironment.mockResolvedValueOnce({
+      success: true,
+      data: {
+        baseUrl: 'https://managed-gea.example',
+        editable: false,
+        environmentId: 'env-managed',
+        source: 'environment',
+      },
+    });
+    render(<LarkQrLogin />);
+    await act(async () => Promise.resolve());
+
+    expect(screen.getByLabelText('login.lark.environment.label')).toBeDisabled();
+    expect(screen.getByText('login.lark.environment.managed')).toBeInTheDocument();
+    expect(screen.queryByText('login.lark.environment.apply')).not.toBeInTheDocument();
+    expect(screen.getByText('login.lark.environment.continue')).toBeInTheDocument();
+  });
+
   it('stops polling and offers refresh when the QR code expires', async () => {
     authMocks.pollLarkQrLogin.mockResolvedValueOnce({ success: true, data: { status: 'expired' } });
     render(<LarkQrLogin />);
+    await act(async () => Promise.resolve());
+    fireEvent.click(screen.getByText('login.lark.environment.continue'));
     await act(async () => Promise.resolve());
 
     await act(async () => {

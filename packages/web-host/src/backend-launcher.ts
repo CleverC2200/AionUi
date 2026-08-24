@@ -99,6 +99,8 @@ export type BackendLaunchOptions = {
    */
   dirs?: BackendDirConfig;
   coreSessionBootstrapSecret?: string;
+  /** Canonical GEA base URL injected explicitly into the AionCore child. */
+  geaBaseUrl?: string;
 };
 
 export type BackendHandle = {
@@ -173,6 +175,7 @@ export type BackendStartupErrorDetails = {
 
 export type BackendStartOptions = {
   allowPendingOnHealthTimeout?: boolean;
+  geaBaseUrl?: string;
   local?: boolean;
   onHealthTimeout?: (error: BackendStartupError) => Promise<void> | void;
   onPendingExit?: (error: BackendStartupError) => Promise<void> | void;
@@ -227,7 +230,11 @@ export function buildSpawnArgs(config: SpawnConfig): string[] {
  * Electron main process. The bootstrap secret is removed from ambient env and
  * may be reintroduced only for the direct aioncore child.
  */
-export function buildSpawnEnv(dirs?: BackendDirConfig, coreSessionBootstrapSecret?: string): NodeJS.ProcessEnv {
+export function buildSpawnEnv(
+  dirs?: BackendDirConfig,
+  coreSessionBootstrapSecret?: string,
+  geaBaseUrl?: string
+): NodeJS.ProcessEnv {
   // PREBUILDS_ONLY protects the packaged Electron process's own node-gyp-build
   // natives (see desktop process/index.ts) and must stay scoped to it. Agent
   // CLIs spawned under aioncore (e.g. cursor-agent) ship natives under
@@ -238,7 +245,7 @@ export function buildSpawnEnv(dirs?: BackendDirConfig, coreSessionBootstrapSecre
     AIONCORE_BOOTSTRAP_SECRET: _ambientBootstrapSecret,
     ...parentEnv
   } = process.env;
-  if (!dirs && !coreSessionBootstrapSecret) return parentEnv;
+  if (!dirs && !coreSessionBootstrapSecret && !geaBaseUrl) return parentEnv;
   return {
     ...parentEnv,
     ...(dirs
@@ -250,6 +257,7 @@ export function buildSpawnEnv(dirs?: BackendDirConfig, coreSessionBootstrapSecre
         }
       : {}),
     ...(coreSessionBootstrapSecret ? { AIONCORE_BOOTSTRAP_SECRET: coreSessionBootstrapSecret } : {}),
+    ...(geaBaseUrl ? { AIONUI_GEA_BASE_URL: geaBaseUrl } : {}),
   };
 }
 
@@ -706,7 +714,7 @@ export class BackendLifecycleManager {
     try {
       this.childProcess = spawn(binaryPath, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: buildSpawnEnv(dirs, this.coreSessionBootstrapSecret),
+        env: buildSpawnEnv(dirs, this.coreSessionBootstrapSecret, options?.geaBaseUrl),
         cwd: dirs?.workDir ?? dbPath,
         detached: process.platform !== 'win32',
       });
@@ -1098,7 +1106,7 @@ export async function startBackend(opts: BackendLaunchOptions): Promise<BackendH
   if (!dataDir) {
     throw new Error('startBackend: dataDir is required');
   }
-  const port = await manager.start(dataDir, opts.logDir, opts.dirs, { local: opts.local });
+  const port = await manager.start(dataDir, opts.logDir, opts.dirs, { geaBaseUrl: opts.geaBaseUrl, local: opts.local });
   return {
     port,
     stop: () => manager.stop(),

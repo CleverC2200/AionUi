@@ -112,6 +112,18 @@ const WriteFile = async (file_path: string, data: string) => {
   return fs.writeFile(file_path, data);
 };
 
+const AtomicWriteFile = async (file_path: string, data: string) => {
+  const dir = nodePath.dirname(file_path);
+  const tempPath = `${file_path}.${process.pid}.tmp`;
+  await fs.mkdir(dir, { recursive: true });
+  try {
+    await fs.writeFile(tempPath, data);
+    await fs.rename(tempPath, file_path);
+  } finally {
+    await fs.rm(tempPath, { force: true }).catch(() => {});
+  }
+};
+
 /**
  * In-memory JSON store backed by a file on disk.
  *
@@ -156,12 +168,12 @@ const JsonFileBuilder = <S extends object = Record<string, unknown>>(file_path: 
   // -- serialized disk persistence --
   let writeChain: Promise<unknown> = Promise.resolve();
 
-  const persist = (): Promise<S> => {
+  const persistWith = (writer: (targetPath: string, data: string) => Promise<void>): Promise<S> => {
     const data = cache ?? ({} as S);
     const encoded = encode(JSON.stringify(data));
     // Write once, branch the promise: writeChain stays resolved (so one
     // failure doesn't block subsequent writes), callers get the real error.
-    const writeOp = writeChain.then(() => WriteFile(file_path, encoded));
+    const writeOp = writeChain.then(() => writer(file_path, encoded));
     writeChain = writeOp.catch(() => {});
     return writeOp.then(
       () => data,
@@ -171,6 +183,8 @@ const JsonFileBuilder = <S extends object = Record<string, unknown>>(file_path: 
       }
     );
   };
+
+  const persist = (): Promise<S> => persistWith(WriteFile);
 
   // -- public API (same shape as before) --
   const toJson = async (): Promise<S> => ensureLoaded();
@@ -191,6 +205,20 @@ const JsonFileBuilder = <S extends object = Record<string, unknown>>(file_path: 
       data[key] = value;
       await persist();
       return value;
+    },
+    async setAtomic<K extends keyof S>(key: K, value: Awaited<S>[K]): Promise<Awaited<S>[K]> {
+      const data = ensureLoaded();
+      const hadPreviousValue = Object.hasOwn(data, key);
+      const previousValue = data[key];
+      data[key] = value;
+      try {
+        await persistWith(AtomicWriteFile);
+        return value;
+      } catch (error) {
+        if (hadPreviousValue) data[key] = previousValue;
+        else delete data[key];
+        throw error;
+      }
     },
     async get<K extends keyof S>(key: K): Promise<Awaited<S>[K]> {
       return ensureLoaded()[key] as Awaited<S>[K];

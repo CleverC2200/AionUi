@@ -23,6 +23,22 @@
     "waiting": "等待手機確認...",
     "expired": "QR Code 已過期",
     "refresh": "重新整理 QR Code",
+    "environment": {
+      "label": "GEA 位址",
+      "placeholder": "https://gea.example.com",
+      "loading": "正在讀取 GEA 位址...",
+      "saving": "正在儲存 GEA 位址...",
+      "apply": "切換 GEA 環境",
+      "continue": "繼續登入",
+      "managed": "此位址由應用程式執行環境統一管理。",
+      "restartRequired": "GEA 位址已儲存，請重新啟動應用程式以使用新環境。",
+      "retry": "重試",
+      "errors": {
+        "invalidAddress": "請輸入有效的 HTTPS GEA 位址。僅開發環境允許本機 HTTP 位址。",
+        "loadFailed": "無法讀取 GEA 位址。",
+        "saveFailed": "無法儲存 GEA 位址。"
+      }
+    },
     "personalModels": {
       "configured": "已自動設定 {{count}} 個個人授權模型服務",
       "partial": "部分個人模型未能自動設定，請檢查授權狀態或聯絡管理員。",

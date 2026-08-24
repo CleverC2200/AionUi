@@ -23,6 +23,22 @@
     "waiting": "Telefonda onay bekleniyor...",
     "expired": "Bu QR kodunun süresi doldu",
     "refresh": "QR kodunu yenile",
+    "environment": {
+      "label": "GEA adresi",
+      "placeholder": "https://gea.example.com",
+      "loading": "GEA adresi yükleniyor...",
+      "saving": "GEA adresi kaydediliyor...",
+      "apply": "GEA ortamını değiştir",
+      "continue": "Oturum açmaya devam et",
+      "managed": "Bu adres uygulama ortamı tarafından yönetiliyor.",
+      "restartRequired": "GEA adresi kaydedildi. Yeni ortamı kullanmak için uygulamayı yeniden başlatın.",
+      "retry": "Yeniden dene",
+      "errors": {
+        "invalidAddress": "Geçerli bir HTTPS GEA adresi girin. Yerel HTTP adreslerine yalnızca geliştirme sırasında izin verilir.",
+        "loadFailed": "GEA adresi yüklenemedi.",
+        "saveFailed": "GEA adresi kaydedilemedi."
+      }
+    },
     "personalModels": {
       "configured": "{{count}} yetkili kişisel model hizmeti otomatik olarak yapılandırıldı",
       "partial": "Bazı kişisel modeller yapılandırılamadı. Yetkilendirmeyi kontrol edin veya bir yöneticiyle iletişime geçin.",

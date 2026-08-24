@@ -23,6 +23,22 @@
     "waiting": "En attente de confirmation sur votre téléphone...",
     "expired": "Ce code QR a expiré",
     "refresh": "Actualiser le code QR",
+    "environment": {
+      "label": "Adresse GEA",
+      "placeholder": "https://gea.example.com",
+      "loading": "Chargement de l’adresse GEA...",
+      "saving": "Enregistrement de l’adresse GEA...",
+      "apply": "Changer d’environnement GEA",
+      "continue": "Continuer vers la connexion",
+      "managed": "Cette adresse est gérée par l’environnement de l’application.",
+      "restartRequired": "L’adresse GEA a été enregistrée. Redémarrez l’application pour utiliser le nouvel environnement.",
+      "retry": "Réessayer",
+      "errors": {
+        "invalidAddress": "Saisissez une adresse GEA HTTPS valide. Les adresses HTTP locales ne sont autorisées qu’en développement.",
+        "loadFailed": "Impossible de charger l’adresse GEA.",
+        "saveFailed": "Impossible d’enregistrer l’adresse GEA."
+      }
+    },
     "personalModels": {
       "configured": "{{count}} services de modèles personnels autorisés ont été configurés automatiquement",
       "partial": "Certains modèles personnels n’ont pas pu être configurés. Vérifiez l’autorisation ou contactez un administrateur.",
