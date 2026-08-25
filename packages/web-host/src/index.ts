@@ -41,6 +41,10 @@ export type {
   GeaMcpGatewayCallResult,
   GeaMcpGatewaySession,
   GeaMcpGatewayTool,
+  GeaMcpCallOptions,
+  GeaMcpCorrelationMeta,
+  GeaMcpErrorEnvelope,
+  GeaMcpOperationContext,
   GeaPersonalModelCredential,
   GeaPersonalModelCredentialStatus,
 } from './gea-lark-auth.js';

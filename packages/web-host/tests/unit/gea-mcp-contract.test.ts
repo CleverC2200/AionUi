@@ -202,7 +202,12 @@ describe('GEA MCP client contract', () => {
     );
     expect(upstreamSuccess?.body?.params).toMatchObject({
       arguments: { mode: 'success', query: { measures: ['Cube.count'] } },
-      _meta: { attempt: 2, operationId, parentRequestId: 'parent-1' },
+      _meta: {
+        attempt: 2,
+        deadlineAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
+        operationId,
+        parentRequestId: 'parent-1',
+      },
     });
 
     const legacyOperationId = '22222222-2222-4222-8222-222222222222';
@@ -267,7 +272,7 @@ describe('GEA MCP client contract', () => {
       expect(mockGea.requests.some((request) => request.body?.method === 'notifications/cancelled')).toBe(true);
     });
     const callCount = mockGea.requests.filter((request) => request.body?.method === 'tools/call').length;
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await new Promise((resolve) => setTimeout(resolve, 2050));
     expect(mockGea.requests.filter((request) => request.body?.method === 'tools/call')).toHaveLength(callCount);
 
     const outputs = JSON.stringify([success, legacy, limited, incomplete]);

@@ -114,6 +114,17 @@ describe('GeaLarkAuthService MCP Resources', () => {
             },
           });
         }
+        if (callArguments?.mode === 'unknown-error') {
+          return jsonResponse({
+            jsonrpc: '2.0',
+            id,
+            error: {
+              code: -32000,
+              message: 'sensitive unknown upstream message',
+              data: { detail: 'must-not-pass' },
+            },
+          });
+        }
         if (callArguments?.mode === 'tool-error') {
           return jsonResponse({
             jsonrpc: '2.0',
@@ -271,6 +282,27 @@ describe('GeaLarkAuthService MCP Resources', () => {
         traceId: 'trace-error-1',
       },
       message: 'CAPABILITY_RATE_LIMITED',
+    });
+    await expect(
+      session.callTool(
+        tool!,
+        { mode: 'unknown-error' },
+        {
+          operation: {
+            attempt: 1,
+            deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+            operationId: '77777777-7777-4777-8777-777777777777',
+          },
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'GEA_MCP_CALL_FAILED',
+      envelope: {
+        code: 'GEA_MCP_CALL_FAILED',
+        operationId: '77777777-7777-4777-8777-777777777777',
+        retryable: false,
+      },
+      message: 'GEA_MCP_CALL_FAILED',
     });
     const toolError = await session.callTool(
       tool!,
