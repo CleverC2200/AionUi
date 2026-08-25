@@ -67,6 +67,25 @@ const mainAliases = {
 
 export default defineConfig(({ mode }) => {
   const isDevelopment = mode === 'development';
+  const buildCommit =
+    process.env.AIONUI_BUILD_COMMIT?.trim() ||
+    process.env.GITHUB_SHA?.trim() ||
+    (() => {
+      try {
+        return execSync('git rev-parse --verify HEAD', { encoding: 'utf8' }).trim();
+      } catch {
+        return '';
+      }
+    })();
+  const buildChannel =
+    process.env.AIONUI_BUILD_CHANNEL?.trim() ||
+    (isDevelopment
+      ? 'development'
+      : process.env.GITHUB_REF?.startsWith('refs/tags/')
+        ? 'release'
+        : process.env.CI === 'true'
+          ? 'ci'
+          : 'local');
   const enableSentrySourceMaps =
     !isDevelopment &&
     !!process.env.SENTRY_AUTH_TOKEN &&
@@ -152,6 +171,8 @@ export default defineConfig(({ mode }) => {
       define: {
         'process.env.NODE_ENV': JSON.stringify(mode),
         'process.env.env': JSON.stringify(process.env.env),
+        'process.env.AIONUI_BUILD_CHANNEL': JSON.stringify(buildChannel),
+        'process.env.AIONUI_BUILD_COMMIT': JSON.stringify(buildCommit),
         'process.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN ?? ''),
       },
     },

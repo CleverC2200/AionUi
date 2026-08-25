@@ -10,6 +10,14 @@ export interface WebUIStatus {
   initialPassword?: string;
 }
 
+export interface RuntimeDiagnostics {
+  appVersion: string;
+  buildChannel: string;
+  buildCommit: string | null;
+  coreVersion: string | null;
+  dataDir: string;
+}
+
 export interface ElectronBridgeAPI {
   emit: (name: string, data: unknown) => Promise<unknown> | void;
   on: (callback: (event: { value: string }) => void) => void;
@@ -22,6 +30,7 @@ export interface ElectronBridgeAPI {
   // Forward feedback diagnostics logs to the main process console / 转发反馈诊断日志到主进程控制台
   logFeedbackEvent?: (payload: { details?: unknown; level: 'info' | 'warn' | 'error'; message: string }) => void;
   recoverCorruptedDatabase?: () => Promise<void>;
+  getRuntimeDiagnostics?: () => Promise<RuntimeDiagnostics>;
 }
 
 export type BackendStartupFailureReason =
