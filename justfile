@@ -336,6 +336,14 @@ gate: quick-check test
 push *ARGS: gate
     git push {{ ARGS }}
 
+# Wait for one PR's checks without manual status polling. Defaults to origin.
+[no-exit-message]
+watch-pr pr remote='origin':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    repo=$(gh repo view "$(git remote get-url "{{ remote }}")" --json nameWithOwner --jq .nameWithOwner)
+    gh pr checks "{{ pr }}" --repo "$repo" --watch --interval 30
+
 # Lint with only errors reported (for CI/push gates)
 lint-strict:
     bun run lint -- --quiet

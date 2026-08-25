@@ -78,6 +78,8 @@ just push <remote> <branch>
 
 `just quick-check` runs formatting checks, strict lint, type checking, and i18n validation without the full unit-test suite. Use it during implementation together with the closest targeted tests. `just push` then runs that quick gate plus the full unit-test suite once on the final commit before calling `git push`. Omit `<remote> <branch>` when the current branch already has an upstream.
 
+After opening a PR, use `just watch-pr <pr-number>` for one continuous check wait instead of repeatedly polling GitHub. It reads the repository from `origin`; pass a second remote name only when the PR targets another configured remote.
+
 Use the individual commands below only to diagnose or fix a failed gate:
 
 ```bash

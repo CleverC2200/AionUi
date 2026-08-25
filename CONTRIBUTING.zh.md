@@ -78,6 +78,8 @@ just push <remote> <branch>
 
 `just quick-check` 会运行格式检查、严格 lint、类型检查和 i18n 校验，但不会运行完整单元测试。开发过程中将它和最接近本次改动的定向测试配合使用；最终提交再由 `just push` 运行快速门禁和完整单元测试，通过后调用 `git push`。当前分支已有 upstream 时可省略 `<remote> <branch>`。
 
+创建 PR 后使用 `just watch-pr <PR 编号>` 连续等待检查结果，不再反复手工轮询 GitHub。该命令默认从 `origin` 解析仓库；只有 PR 位于其他已配置远端时，才传入第二个远端名称参数。
+
 只有门禁失败、需要定位或修复时，才单独运行下面的命令：
 
 ```bash
