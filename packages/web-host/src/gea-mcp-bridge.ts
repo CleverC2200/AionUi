@@ -2,7 +2,17 @@ import { createHash, randomUUID } from 'node:crypto';
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  CallToolRequestSchema,
+  ListResourceTemplatesRequestSchema,
+  ListResourcesRequestSchema,
+  ListToolsRequestSchema,
+  ReadResourceRequestSchema,
+  type ContentBlock,
+  type Resource,
+  type ResourceContents,
+  type ResourceTemplate,
+} from '@modelcontextprotocol/sdk/types.js';
 import {
   GeaMcpGatewayError,
   type GeaLarkAuthService,
@@ -45,6 +55,47 @@ function errorCode(error: unknown): string {
 function resultText(value: unknown): string {
   if (typeof value === 'string') return value;
   return JSON.stringify(value ?? null);
+}
+
+function safeMeta(meta: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (!meta) return undefined;
+  const safe: Record<string, unknown> = {};
+  if (typeof meta.sha256 === 'string' && /^[a-f\d]{64}$/i.test(meta.sha256)) safe.sha256 = meta.sha256.toLowerCase();
+  if (typeof meta.expiresAt === 'string' && meta.expiresAt.trim()) safe.expiresAt = meta.expiresAt.trim();
+  return Object.keys(safe).length ? safe : undefined;
+}
+
+function safeResource<T extends Resource>(resource: T): T {
+  if (!resource.uri.startsWith('data-artifact://gateway/')) {
+    throw new GeaMcpGatewayError('GEA_RESOURCE_URI_INVALID');
+  }
+  const meta = safeMeta(resource._meta);
+  if (!meta?.sha256 || !meta.expiresAt) {
+    throw new GeaMcpGatewayError('GEA_RESOURCE_METADATA_INVALID');
+  }
+  return { ...resource, ...(meta ? { _meta: meta } : { _meta: undefined }) };
+}
+
+function safeResourceTemplate(template: ResourceTemplate): ResourceTemplate {
+  if (!template.uriTemplate.startsWith('data-artifact://gateway/')) {
+    throw new GeaMcpGatewayError('GEA_RESOURCE_URI_INVALID');
+  }
+  return { ...template, _meta: undefined };
+}
+
+function safeResourceContents(content: ResourceContents): ResourceContents {
+  if (!content.uri.startsWith('data-artifact://gateway/')) {
+    throw new GeaMcpGatewayError('GEA_RESOURCE_URI_INVALID');
+  }
+  const meta = safeMeta(content._meta);
+  if (!meta?.sha256 || !meta.expiresAt) {
+    throw new GeaMcpGatewayError('GEA_RESOURCE_METADATA_INVALID');
+  }
+  return { ...content, ...(meta ? { _meta: meta } : { _meta: undefined }) };
+}
+
+function safeToolContent(content: ContentBlock): ContentBlock {
+  return content.type === 'resource_link' ? safeResource(content) : content;
 }
 
 const MAX_TOOL_NAME_LENGTH = 64;
@@ -135,11 +186,17 @@ function createMcpServer(authService: GeaLarkAuthService, agentCode: string): Se
   const server = new Server(
     { name: 'gea-gateway', version: '1.0.0' },
     {
-      capabilities: { tools: {} },
+      capabilities: { resources: {}, tools: {} },
     }
   );
   let gatewaySession: GeaMcpGatewaySession | null = null;
   let toolsByName = new Map<string, GeaMcpGatewayTool>();
+
+  server.onclose = () => {
+    const session = gatewaySession;
+    gatewaySession = null;
+    if (session && typeof session.close === 'function') void session.close();
+  };
 
   const loadTools = async (): Promise<ExposedGeaMcpGatewayTool[]> => {
     gatewaySession ??= await authService.createMcpGatewaySession(agentCode);
@@ -181,10 +238,42 @@ function createMcpServer(authService: GeaLarkAuthService, agentCode: string): Se
       const argumentsValue =
         request.params.arguments && typeof request.params.arguments === 'object' ? request.params.arguments : {};
       const result = await gatewaySession.callTool(tool, gatewayArguments(tool, argumentsValue));
-      return { content: [{ type: 'text', text: resultText(result.result) }] };
+      const content = result.content?.map(safeToolContent) ?? [
+        { type: 'text' as const, text: resultText(result.result) },
+      ];
+      return {
+        content,
+        ...(result.isError !== undefined ? { isError: result.isError } : {}),
+        ...(result.result && typeof result.result === 'object' ? { structuredContent: result.result } : {}),
+      };
     } catch (error) {
       return { isError: true, content: [{ type: 'text', text: errorCode(error) }] };
     }
+  });
+
+  server.setRequestHandler(ListResourcesRequestSchema, async (request) => {
+    gatewaySession ??= await authService.createMcpGatewaySession(agentCode);
+    const result = await gatewaySession.listResources(request.params?.cursor);
+    return {
+      resources: result.resources.map(safeResource),
+      ...(result.nextCursor ? { nextCursor: result.nextCursor } : {}),
+    };
+  });
+
+  server.setRequestHandler(ListResourceTemplatesRequestSchema, async (request) => {
+    gatewaySession ??= await authService.createMcpGatewaySession(agentCode);
+    const result = await gatewaySession.listResourceTemplates(request.params?.cursor);
+    return {
+      resourceTemplates: result.resourceTemplates.map(safeResourceTemplate),
+      ...(result.nextCursor ? { nextCursor: result.nextCursor } : {}),
+    };
+  });
+
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    gatewaySession ??= await authService.createMcpGatewaySession(agentCode);
+    return {
+      contents: (await gatewaySession.readResource(request.params.uri)).map(safeResourceContents),
+    };
   });
 
   return server;
