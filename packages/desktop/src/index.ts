@@ -29,7 +29,7 @@ import { classifyBackendStartupFailure } from './process/startup/backendStartupF
 import { installQuitCleanup } from './process/startup/quitCleanup';
 import { shouldRegisterBackendStartup } from './process/startup/singleInstanceGating';
 import { ProcessConfig } from './process/utils/initStorage';
-import type { BackendStartupFailureInfo } from './common/types/platform/electron';
+import type { BackendStartupFailureInfo, RuntimeDiagnostics } from './common/types/platform/electron';
 import { registerWindowMaximizeListeners } from '@process/bridge';
 import { BackendLifecycleManager } from '@aionui/web-host';
 import { resolveBinaryPath } from '@process/backend';
@@ -270,6 +270,27 @@ ipcMain.on('get-backend-startup-failed', (event) => {
 
 ipcMain.on('get-backend-startup-failure', (event) => {
   event.returnValue = backendStartupFailureInfo;
+});
+
+function readInstalledCoreVersion(): string | null {
+  try {
+    const manifestPath = path.join(path.dirname(resolveBinaryPath()), 'manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { version?: unknown };
+    return typeof manifest.version === 'string' && manifest.version.trim() ? manifest.version.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+ipcMain.handle('diagnostics:get-runtime-info', (): RuntimeDiagnostics => {
+  const buildCommit = process.env.AIONUI_BUILD_COMMIT?.trim();
+  return {
+    appVersion: app.getVersion(),
+    buildChannel: process.env.AIONUI_BUILD_CHANNEL?.trim() || (app.isPackaged ? 'release' : 'development'),
+    buildCommit: buildCommit || null,
+    coreVersion: readInstalledCoreVersion(),
+    dataDir: app.getPath('userData'),
+  };
 });
 
 ipcMain.handle('backend:recover-corrupted-database', async () => {
