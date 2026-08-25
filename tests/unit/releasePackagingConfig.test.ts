@@ -57,18 +57,16 @@ describe('release packaging configuration', () => {
     expect(workflow).not.toContain('out/GEAUi-*-win32-*.zip');
   });
 
-  it('pins stable desktop and web bundles to verified personal AionCore artifacts', () => {
+  it('fetches stable AionCore artifacts without freezing provenance as product identity', () => {
     const releaseWorkflow = readProjectFile('.github/workflows/build-and-release.yml');
     const reusableWorkflow = readProjectFile('.github/workflows/_build-reusable.yml');
     const webWorkflow = readProjectFile('.github/workflows/pack-web-cli.yml');
 
     expect(releaseWorkflow.match(/aioncore_repository: 'CleverC2200\/AionCore'/g)).toHaveLength(2);
     expect(releaseWorkflow.match(/aioncore_run_id: \$\{\{ vars\.AIONCORE_STABLE_RUN_ID \}\}/g)).toHaveLength(2);
-    expect(
-      releaseWorkflow.match(/aioncore_expected_head_sha: \$\{\{ vars\.AIONCORE_STABLE_HEAD_SHA \}\}/g)
-    ).toHaveLength(2);
-    expect(releaseWorkflow.match(/aioncore_sha256s: \$\{\{ vars\.AIONCORE_STABLE_SHA256S \}\}/g)).toHaveLength(2);
     expect(releaseWorkflow.match(/aioncore_source_policy: 'verified-actions'/g)).toHaveLength(2);
+    expect(releaseWorkflow).not.toContain('AIONCORE_STABLE_HEAD_SHA');
+    expect(releaseWorkflow).not.toContain('AIONCORE_STABLE_SHA256S');
 
     expect(reusableWorkflow).toContain("default: 'CleverC2200/AionCore'");
     expect(
