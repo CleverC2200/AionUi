@@ -5,7 +5,7 @@ import { SWRConfig } from 'swr';
 import { AttentionInbox } from '@/renderer/pages/conversation/AttentionInbox';
 import zhCNConversation from '@/renderer/services/i18n/locales/zh-CN/conversation.json';
 
-const { approvalApi, interactionApi, navigate, talkToButler } = vi.hoisted(() => ({
+const { approvalApi, interactionApi, notificationApi, navigate, talkToButler } = vi.hoisted(() => ({
   approvalApi: {
     list: vi.fn(),
     get: vi.fn(),
@@ -18,8 +18,24 @@ const { approvalApi, interactionApi, navigate, talkToButler } = vi.hoisted(() =>
     list: vi.fn(),
     reconnectedOn: vi.fn(() => vi.fn()),
   },
+  notificationApi: {
+    list: vi.fn(),
+  },
   navigate: vi.fn(),
   talkToButler: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/renderer/hooks/context/AuthContext', () => ({
+  useAuth: () => ({ status: 'authenticated', user: { id: 'user-1' } }),
+}));
+
+vi.mock('@/renderer/services/notificationInbox', () => ({
+  notificationInboxKey: (userId: string) => `notifications.active.test:${userId}`,
+  fetchActiveNotifications: notificationApi.list,
+}));
+
+vi.mock('@/renderer/pages/conversation/NotificationInbox', () => ({
+  NotificationInbox: () => <div data-testid='embedded-notification-inbox'>Notification inbox</div>,
 }));
 
 vi.mock('@/common', () => ({
@@ -199,6 +215,12 @@ describe('AttentionInbox real Feishu approval integration', () => {
         },
       ],
     });
+    notificationApi.list.mockResolvedValue({
+      revision: 'notifications-r1',
+      sync_state: 'fresh',
+      failure_codes: [],
+      items: [{ id: 'notification-1', status: 'unread' }],
+    });
   });
 
   it('loads real pending and done lists, then renders the real instance form and workflow', async () => {
@@ -206,7 +228,7 @@ describe('AttentionInbox real Feishu approval integration', () => {
     await waitFor(() => expect(approvalApi.list).toHaveBeenCalledTimes(2));
 
     const trigger = screen.getByTestId('attention-inbox-trigger');
-    expect(trigger).toHaveAttribute('aria-label', 'conversation.attention.open:2');
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-label', 'conversation.attention.open:3'));
     fireEvent.click(trigger);
 
     expect(await screen.findByTestId('approval-inbox')).toBeInTheDocument();
@@ -267,10 +289,21 @@ describe('AttentionInbox real Feishu approval integration', () => {
     await waitFor(() => expect(approvalApi.list).toHaveBeenCalledTimes(3));
     expect(screen.getByTestId('attention-inbox-trigger')).toHaveAttribute(
       'aria-label',
-      'conversation.attention.open:3'
+      'conversation.attention.open:4'
     );
     fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
     expect(await screen.findByTestId('approval-card-task-page-2')).toBeInTheDocument();
+  });
+
+  it('exposes notifications and approval work from one inbox entry', async () => {
+    renderInbox();
+    const trigger = screen.getByTestId('attention-inbox-trigger');
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-label', 'conversation.attention.open:3'));
+
+    fireEvent.click(trigger);
+    expect(screen.queryByTestId('notification-inbox-trigger')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('conversation.notifications.title 1'));
+    expect(await screen.findByTestId('embedded-notification-inbox')).toBeVisible();
   });
 
   it('does not expose an unsafe attachment URL as an open action', async () => {
@@ -480,7 +513,7 @@ describe('AttentionInbox real Feishu approval integration', () => {
 
     expect(screen.getByTestId('attention-inbox-trigger')).toHaveAttribute(
       'aria-label',
-      'conversation.attention.open:1'
+      'conversation.attention.open:2'
     );
     fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
     fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:3'));
