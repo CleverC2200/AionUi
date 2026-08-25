@@ -18,6 +18,8 @@ import { isBackendHttpError } from '@/common/adapter/httpBridge';
 
 type NotificationInboxProps = {
   onNavigate?: () => void;
+  embedded?: boolean;
+  onRequestClose?: () => void;
 };
 
 const severityColor = (severity: NotificationItem['severity']): 'blue' | 'green' | 'orange' | 'red' => {
@@ -27,7 +29,11 @@ const severityColor = (severity: NotificationItem['severity']): 'blue' | 'green'
   return 'blue';
 };
 
-export const NotificationInbox: React.FC<NotificationInboxProps> = ({ onNavigate }) => {
+export const NotificationInbox: React.FC<NotificationInboxProps> = ({
+  onNavigate,
+  embedded = false,
+  onRequestClose,
+}) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { status, user } = useAuth();
@@ -124,11 +130,149 @@ export const NotificationInbox: React.FC<NotificationInboxProps> = ({ onNavigate
       setVisible(false);
       setSelectedId(undefined);
       if (user?.id) void clearNotificationDetailCache(user.id, mutateCache);
+      onRequestClose?.();
       onNavigate?.();
       void navigate(destination.pathname, { state: destination.state });
     },
-    [detailRequestController, mutateCache, navigate, onNavigate, user?.id]
+    [detailRequestController, mutateCache, navigate, onNavigate, onRequestClose, user?.id]
   );
+
+  const content = isLoading ? (
+    <div className='py-48px flex-center'>
+      <Spin aria-label={t('common.loading')} />
+    </div>
+  ) : listError ? (
+    <Alert
+      type='error'
+      showIcon
+      content={t('conversation.notifications.loadFailed')}
+      action={
+        <Button size='mini' loading={isValidating} onClick={() => void mutate()}>
+          {t('common.retry')}
+        </Button>
+      }
+    />
+  ) : (
+    <div className='flex flex-col gap-12px'>
+      {actionError ? (
+        <Alert type='error' showIcon content={t(`conversation.notifications.action.${actionError}`)} />
+      ) : null}
+      {data && ['stale', 'partial', 'failed'].includes(data.sync_state) ? (
+        <Alert
+          type='warning'
+          showIcon
+          content={t(`conversation.notifications.sync.${data.sync_state}`)}
+          action={
+            <Button size='mini' loading={isValidating} onClick={() => void mutate()}>
+              {t('common.retry')}
+            </Button>
+          }
+          data-testid='notification-sync-warning'
+        />
+      ) : null}
+      {data?.sync_state === 'syncing' || isValidating ? (
+        <Alert
+          type='info'
+          showIcon
+          content={t('conversation.notifications.sync.syncing')}
+          data-testid='notification-syncing'
+        />
+      ) : null}
+      {items.length === 0 ? (
+        <Empty description={t('conversation.notifications.empty')} />
+      ) : (
+        <div className='flex flex-col gap-8px' role='list' data-testid='notification-list'>
+          {items.map((item) => {
+            const selected = selectedId === item.id;
+            const selectedItem = selected && detail?.id === item.id ? detail : undefined;
+            const readPending = pendingAction === `${item.id}:read`;
+            const dismissPending = pendingAction === `${item.id}:dismiss`;
+            return (
+              <section
+                key={item.id}
+                className='rounded-8px border border-b-base bg-base p-12px'
+                data-testid={`notification-${item.id}`}
+              >
+                <Button
+                  long
+                  type='text'
+                  className='!h-auto !p-0 !justify-start !text-left'
+                  onClick={() => setSelectedId(selected ? undefined : item.id)}
+                >
+                  <span className='flex min-w-0 w-full items-start gap-10px'>
+                    <span className='flex-1 min-w-0'>
+                      <span className='flex items-center gap-6px'>
+                        {item.status === 'unread' ? <Badge status='processing' /> : null}
+                        <Typography.Text className='font-600 text-t-primary'>{item.title}</Typography.Text>
+                        <Tag size='small' color={severityColor(item.severity)}>
+                          {t(`conversation.notifications.severity.${item.severity}`)}
+                        </Tag>
+                      </span>
+                      {item.summary ? (
+                        <Typography.Text className='block mt-4px text-12px text-t-secondary' ellipsis>
+                          {item.summary}
+                        </Typography.Text>
+                      ) : null}
+                      <Typography.Text className='block mt-5px text-12px text-t-tertiary'>
+                        {item.source} · {new Date(item.created_at).toLocaleString()}
+                      </Typography.Text>
+                    </span>
+                    <Right theme='outline' size='16' className='shrink-0 text-t-tertiary' />
+                  </span>
+                </Button>
+                {selected ? (
+                  <div className='mt-12px border-t border-b-base pt-12px'>
+                    {detailLoading ? (
+                      <Spin aria-label={t('common.loading')} />
+                    ) : detailError ? (
+                      <Alert type='error' showIcon content={t('conversation.notifications.detailFailed')} />
+                    ) : null}
+                    {selectedItem?.body ? (
+                      <Typography.Paragraph className='whitespace-pre-wrap text-t-secondary'>
+                        {selectedItem.body}
+                      </Typography.Paragraph>
+                    ) : null}
+                    <div className='flex flex-wrap gap-8px'>
+                      {(selectedItem ?? item).status === 'unread' ? (
+                        <Button
+                          size='small'
+                          icon={<CheckOne theme='outline' />}
+                          loading={readPending}
+                          onClick={() => void runAction(selectedItem ?? item, 'read')}
+                        >
+                          {t('conversation.notifications.actions.read')}
+                        </Button>
+                      ) : null}
+                      {(selectedItem ?? item).dismissible ? (
+                        <Button
+                          size='small'
+                          loading={dismissPending}
+                          onClick={() => void runAction(selectedItem ?? item, 'dismiss')}
+                        >
+                          {t('conversation.notifications.actions.dismiss')}
+                        </Button>
+                      ) : null}
+                      {selectedItem && selectedItem.target.type !== 'notification' ? (
+                        <Button size='small' type='primary' onClick={() => openTarget(selectedItem)}>
+                          {t('conversation.notifications.actions.openTarget')}
+                        </Button>
+                      ) : selectedItem ? (
+                        <Typography.Text className='text-12px text-t-tertiary'>
+                          {t('conversation.notifications.navigationUnavailable')}
+                        </Typography.Text>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  if (embedded) return content;
 
   return (
     <>
@@ -167,140 +311,7 @@ export const NotificationInbox: React.FC<NotificationInboxProps> = ({ onNavigate
         getPopupContainer={() => document.body}
         data-testid='notification-inbox-drawer'
       >
-        {isLoading ? (
-          <div className='py-48px flex-center'>
-            <Spin aria-label={t('common.loading')} />
-          </div>
-        ) : listError ? (
-          <Alert
-            type='error'
-            showIcon
-            content={t('conversation.notifications.loadFailed')}
-            action={
-              <Button size='mini' loading={isValidating} onClick={() => void mutate()}>
-                {t('common.retry')}
-              </Button>
-            }
-          />
-        ) : (
-          <div className='flex flex-col gap-12px'>
-            {actionError ? (
-              <Alert type='error' showIcon content={t(`conversation.notifications.action.${actionError}`)} />
-            ) : null}
-            {data && ['stale', 'partial', 'failed'].includes(data.sync_state) ? (
-              <Alert
-                type='warning'
-                showIcon
-                content={t(`conversation.notifications.sync.${data.sync_state}`)}
-                action={
-                  <Button size='mini' loading={isValidating} onClick={() => void mutate()}>
-                    {t('common.retry')}
-                  </Button>
-                }
-                data-testid='notification-sync-warning'
-              />
-            ) : null}
-            {data?.sync_state === 'syncing' || isValidating ? (
-              <Alert
-                type='info'
-                showIcon
-                content={t('conversation.notifications.sync.syncing')}
-                data-testid='notification-syncing'
-              />
-            ) : null}
-            {items.length === 0 ? (
-              <Empty description={t('conversation.notifications.empty')} />
-            ) : (
-              <div className='flex flex-col gap-8px' role='list' data-testid='notification-list'>
-                {items.map((item) => {
-                  const selected = selectedId === item.id;
-                  const selectedItem = selected && detail?.id === item.id ? detail : undefined;
-                  const readPending = pendingAction === `${item.id}:read`;
-                  const dismissPending = pendingAction === `${item.id}:dismiss`;
-                  return (
-                    <section
-                      key={item.id}
-                      className='rounded-8px border border-b-base bg-base p-12px'
-                      data-testid={`notification-${item.id}`}
-                    >
-                      <Button
-                        long
-                        type='text'
-                        className='!h-auto !p-0 !justify-start !text-left'
-                        onClick={() => setSelectedId(selected ? undefined : item.id)}
-                      >
-                        <span className='flex min-w-0 w-full items-start gap-10px'>
-                          <span className='flex-1 min-w-0'>
-                            <span className='flex items-center gap-6px'>
-                              {item.status === 'unread' ? <Badge status='processing' /> : null}
-                              <Typography.Text className='font-600 text-t-primary'>{item.title}</Typography.Text>
-                              <Tag size='small' color={severityColor(item.severity)}>
-                                {t(`conversation.notifications.severity.${item.severity}`)}
-                              </Tag>
-                            </span>
-                            {item.summary ? (
-                              <Typography.Text className='block mt-4px text-12px text-t-secondary' ellipsis>
-                                {item.summary}
-                              </Typography.Text>
-                            ) : null}
-                            <Typography.Text className='block mt-5px text-12px text-t-tertiary'>
-                              {item.source} · {new Date(item.created_at).toLocaleString()}
-                            </Typography.Text>
-                          </span>
-                          <Right theme='outline' size='16' className='shrink-0 text-t-tertiary' />
-                        </span>
-                      </Button>
-                      {selected ? (
-                        <div className='mt-12px border-t border-b-base pt-12px'>
-                          {detailLoading ? (
-                            <Spin aria-label={t('common.loading')} />
-                          ) : detailError ? (
-                            <Alert type='error' showIcon content={t('conversation.notifications.detailFailed')} />
-                          ) : null}
-                          {selectedItem?.body ? (
-                            <Typography.Paragraph className='whitespace-pre-wrap text-t-secondary'>
-                              {selectedItem.body}
-                            </Typography.Paragraph>
-                          ) : null}
-                          <div className='flex flex-wrap gap-8px'>
-                            {(selectedItem ?? item).status === 'unread' ? (
-                              <Button
-                                size='small'
-                                icon={<CheckOne theme='outline' />}
-                                loading={readPending}
-                                onClick={() => void runAction(selectedItem ?? item, 'read')}
-                              >
-                                {t('conversation.notifications.actions.read')}
-                              </Button>
-                            ) : null}
-                            {(selectedItem ?? item).dismissible ? (
-                              <Button
-                                size='small'
-                                loading={dismissPending}
-                                onClick={() => void runAction(selectedItem ?? item, 'dismiss')}
-                              >
-                                {t('conversation.notifications.actions.dismiss')}
-                              </Button>
-                            ) : null}
-                            {selectedItem && selectedItem.target.type !== 'notification' ? (
-                              <Button size='small' type='primary' onClick={() => openTarget(selectedItem)}>
-                                {t('conversation.notifications.actions.openTarget')}
-                              </Button>
-                            ) : selectedItem ? (
-                              <Typography.Text className='text-12px text-t-tertiary'>
-                                {t('conversation.notifications.navigationUnavailable')}
-                              </Typography.Text>
-                            ) : null}
-                          </div>
-                        </div>
-                      ) : null}
-                    </section>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        {content}
       </Drawer>
     </>
   );

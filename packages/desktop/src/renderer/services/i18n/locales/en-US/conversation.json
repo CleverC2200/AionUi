@@ -32,8 +32,8 @@
     }
   },
   "attention": {
-    "title": "Approvals",
-    "open": "Open approvals with {{count}} pending items",
+    "title": "Inbox",
+    "open": "Open inbox with {{count}} unread or pending items",
     "empty": "No approval items",
     "loadFailed": "Approval items could not be loaded. Your work has not been changed.",
     "syncPartial": "{{count}} sessions could not be synchronized. Affected cached items cannot be submitted yet.",

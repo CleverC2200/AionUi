@@ -8,11 +8,14 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { useTalkToButler } from '@/renderer/hooks/assistant/useTalkToButler';
+import { useAuth } from '@/renderer/hooks/context/AuthContext';
 import {
   fetchActiveInteractionRequests,
   INTERACTION_REQUESTS_ACTIVE_KEY,
 } from '@/renderer/services/interactionRequestActions';
+import { fetchActiveNotifications, notificationInboxKey } from '@/renderer/services/notificationInbox';
 import { FeishuApprovalInbox } from './ApprovalPrototype';
+import { NotificationInbox } from './NotificationInbox';
 import styles from './ApprovalPrototype/ApprovalPrototype.module.css';
 
 type AttentionInboxProps = {
@@ -25,9 +28,10 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
   const { t } = useTranslation();
   const navigate = useNavigate();
   const talkToButler = useTalkToButler();
+  const { status, user } = useAuth();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [visible, setVisible] = useState(false);
-  const [source, setSource] = useState<'approval' | 'interaction'>('approval');
+  const [source, setSource] = useState<'notification' | 'approval' | 'interaction'>('approval');
   const loadApprovalTopic = useCallback(async (topic: 'pending' | 'done'): Promise<ApprovalTask[]> => {
     const tasks: ApprovalTask[] = [];
     let pageToken: string | undefined;
@@ -65,9 +69,14 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
     isValidating: interactionRefreshing,
     mutate: refreshInteractions,
   } = useSWR(INTERACTION_REQUESTS_ACTIVE_KEY, fetchActiveInteractionRequests);
+  const { data: notifications } = useSWR(
+    status === 'authenticated' && user ? notificationInboxKey(user.id) : null,
+    () => fetchActiveNotifications()
+  );
   const pendingApprovals = approvals?.pending ?? [];
   const doneApprovals = approvals?.done ?? [];
   const interactionItems = interactions?.items ?? [];
+  const unreadNotifications = notifications?.items.filter((item) => item.status === 'unread').length ?? 0;
   const demoInteractionItems = useMemo<InteractionRequest[]>(
     () => [
       {
@@ -120,7 +129,7 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
     !interactionError &&
     interactionItems.length === 0;
   const visibleInteractionItems = showInteractionDemo ? demoInteractionItems : interactionItems;
-  const pendingCount = pendingApprovals.length + interactionItems.length;
+  const pendingCount = unreadNotifications + pendingApprovals.length + interactionItems.length;
   const syncWarning = interactions?.sync_state === 'partial' || interactions?.sync_state === 'failed';
 
   useEffect(() => {
@@ -218,8 +227,9 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
         <Tabs
           className={styles.sourceTabs}
           activeTab={source}
-          onChange={(key) => setSource(key as 'approval' | 'interaction')}
+          onChange={(key) => setSource(key as 'notification' | 'approval' | 'interaction')}
         >
+          <Tabs.TabPane key='notification' title={`${t('conversation.notifications.title')} ${unreadNotifications}`} />
           <Tabs.TabPane
             key='approval'
             title={t('conversation.attention.sourceTabs.approval', { count: pendingApprovals.length })}
@@ -229,7 +239,11 @@ export const AttentionInbox: React.FC<AttentionInboxProps> = ({ onNavigate }) =>
             title={t('conversation.attention.sourceTabs.interaction', { count: visibleInteractionItems.length })}
           />
         </Tabs>
-        {source === 'approval' ? (
+        {source === 'notification' ? (
+          <div className='p-12px'>
+            <NotificationInbox embedded onNavigate={onNavigate} onRequestClose={close} />
+          </div>
+        ) : source === 'approval' ? (
           <FeishuApprovalInbox
             pendingItems={pendingApprovals}
             doneItems={doneApprovals}
