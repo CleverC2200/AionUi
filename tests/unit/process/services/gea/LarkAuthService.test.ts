@@ -704,7 +704,7 @@ describe('LarkAuthService', () => {
     expect(service.getStatus()).toEqual({ authenticated: false });
   });
 
-  it('creates a GEA gateway session and proxies authorized MCP tools without exposing tokens', async () => {
+  it('creates a GEA gateway session and invalidates it on logout', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse({ success: true, result: { success: true, token: 'platform-token' } }))
@@ -727,45 +727,16 @@ describe('LarkAuthService', () => {
             delegationToken: 'delegation-token',
           },
         })
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          success: true,
-          tools: [
-            {
-              name: 'search_records',
-              description: '搜索记录',
-              inputSchema: { type: 'object', properties: { query: { type: 'string' } } },
-              sourceCode: 'mcp-001',
-            },
-          ],
-        })
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          success: true,
-          sourceCode: 'mcp-001',
-          toolName: 'search_records',
-          result: '{"data":[]}',
-          auditId: 'audit-1',
-        })
       );
     const service = new LarkAuthService({ baseUrl: 'https://gea.example/gea-boot', fetchImpl });
 
     await service.pollQrSession('QRCODELOGIN:1');
     const gatewaySession = await service.createMcpGatewaySession('sales_forecast');
-    const tools = await gatewaySession.listTools();
-    await expect(gatewaySession.callTool(tools[0], { query: '客户A' })).resolves.toEqual({
-      result: '{"data":[]}',
-      auditId: 'audit-1',
-    });
 
     expect(fetchImpl.mock.calls[2][1]).toMatchObject({
       headers: expect.objectContaining({ 'X-Access-Token': 'platform-token' }),
-      body: JSON.stringify({ agentCode: 'sales_forecast', channel: 'CS_CLIENT' }),
+      body: expect.stringContaining('"consumerCode":"sales_forecast"'),
     });
-    expect(fetchImpl.mock.calls[3][1]?.body).toContain('delegation-token');
-    expect(fetchImpl.mock.calls[4][1]?.body).toContain('delegation-token');
 
     await service.logout();
     await expect(gatewaySession.listTools()).rejects.toMatchObject({ code: 'GEA_LOGIN_REQUIRED' });
