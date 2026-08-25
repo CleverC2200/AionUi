@@ -119,7 +119,11 @@ type UserInfoResponse = {
 };
 
 export type GeaPersonalModelCredentialStatus =
-  'PENDING_CLAIM' | 'ENABLED' | 'ROTATION_PENDING' | 'DISABLED' | 'REVOKED';
+  | 'PENDING_CLAIM'
+  | 'ENABLED'
+  | 'ROTATION_PENDING'
+  | 'DISABLED'
+  | 'REVOKED';
 
 export type GeaPersonalModelCredential = {
   accessKeyId: string;
