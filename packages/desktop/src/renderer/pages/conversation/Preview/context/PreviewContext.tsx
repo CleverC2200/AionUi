@@ -105,6 +105,8 @@ export interface PreviewContextValue {
 
   // 获取当前激活的 tab / Get active tab
   activeTab: PreviewTab | null;
+  /** Browser-only focus mode: the preview occupies the whole interaction region. */
+  isBrowserFocused: boolean;
 
   // 预览面板操作 / Preview panel operations
   openPreview: (
@@ -118,6 +120,9 @@ export interface PreviewContextValue {
    * Open a browser tab; blank page when url is omitted.
    */
   openBrowserTab: (url?: string) => void;
+  /** Reveal the preview, optionally selecting an existing tab first. */
+  showPreview: (tabId?: string) => void;
+  setBrowserFocused: (focused: boolean) => void;
   closePreview: () => void;
   /** Discard this scope's tabs entirely (see closePreview for the difference). */
   clearPreviewForScope: () => void;
@@ -519,6 +524,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isOpen, setIsOpen] = useState(false);
   const [tabs, setTabs] = useState<PreviewTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [isBrowserFocused, setBrowserFocused] = useState(false);
   // The preview scope currently loaded into state (project id / workspace / null).
   const currentScopeRef = useRef<PreviewScopeKey>(null);
   // Mirror activeTabId in a ref so setTabs updaters can read the latest value
@@ -781,10 +787,10 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // new tab so changes aren't lost.
       const replaceTarget = (() => {
         if (existingTab || !options?.replace) return null;
-        const activeTab = activeTabIdRef.current
+        const activePreviewTab = activeTabIdRef.current
           ? currentTabs.find((tab) => tab.id === activeTabIdRef.current)
           : undefined;
-        return activeTab && !activeTab.isDirty ? activeTab : null;
+        return activePreviewTab && !activePreviewTab.isDirty ? activePreviewTab : null;
       })();
 
       // 上限触发时被复用的最旧浏览器 tab / Oldest browser tab reused at the cap
@@ -863,6 +869,18 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [openPreview]
   );
 
+  const showPreview = useCallback((tabId?: string) => {
+    if (tabId && tabsRef.current.some((tab) => tab.id === tabId)) {
+      activeTabIdRef.current = tabId;
+      setActiveTabId(tabId);
+    }
+    setIsOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab?.content_type !== 'browser' && isBrowserFocused) setBrowserFocused(false);
+  }, [activeTab?.content_type, isBrowserFocused]);
+
   useEffect(
     () =>
       ipcBridge.application?.openBrowserForAgent?.on(() => {
@@ -905,6 +923,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
    */
   const closePreview = useCallback(() => {
     setIsOpen(false);
+    setBrowserFocused(false);
     // DOM snippets are per-session scratch state tied to the visible HTML inspector,
     // not tab content, so they are cleared with the view.
     setDomSnippets([]);
@@ -919,6 +938,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
    */
   const clearPreviewForScope = useCallback(() => {
     setIsOpen(false);
+    setBrowserFocused(false);
     setTabs([]);
     setActiveTabId(null);
     setDomSnippets([]);
@@ -954,6 +974,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setActiveTabId(loaded.activeTabId);
       activeTabIdRef.current = loaded.activeTabId;
       setIsOpen(loaded.isOpen);
+      setBrowserFocused(false);
       setDomSnippets([]);
     },
     [isOpen, tabs, activeTabId]
@@ -1358,6 +1379,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
       tabs,
       activeTabId,
       activeTab,
+      isBrowserFocused,
       openPreview,
       closePreview,
       clearPreviewForScope,
@@ -1366,6 +1388,8 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
       updateContent,
       updateTab,
       openBrowserTab,
+      showPreview,
+      setBrowserFocused,
       browserTabLimitHitAt,
       persistQuotaExceededAt,
       saveContent,
@@ -1387,6 +1411,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
     tabs,
     activeTabId,
     activeTab,
+    isBrowserFocused,
     openPreview,
     closePreview,
     clearPreviewForScope,
@@ -1395,6 +1420,8 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
     updateContent,
     updateTab,
     openBrowserTab,
+    showPreview,
+    setBrowserFocused,
     browserTabLimitHitAt,
     persistQuotaExceededAt,
     saveContent,

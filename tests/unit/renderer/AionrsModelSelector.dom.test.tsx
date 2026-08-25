@@ -171,6 +171,22 @@ describe('AionrsModelSelector runtime options', () => {
     expect(screen.getByTestId('aionrs-model-selector')).not.toHaveClass('header-model-btn');
   });
 
+  it('keeps an ultra-long composer model label truncatable and exposes its full value', () => {
+    const longModel = 'deepseek-v4-flash-vision-experimental-with-an-extremely-long-provider-suffix';
+    render(
+      <AionrsModelSelector
+        selection={makeSelection({
+          current_model: { ...provider, use_model: longModel } as TProviderWithModel,
+          getDisplayModelName: () => longModel,
+        })}
+        placement='composer'
+      />
+    );
+
+    expect(screen.getByTitle(longModel)).toHaveClass('truncate');
+    expect(screen.getByTestId('aionrs-model-selector')).toHaveClass('composer-model-selector');
+  });
+
   it('shows the model submenu before the thought level submenu, each with its current value', () => {
     render(
       <AionrsModelSelector

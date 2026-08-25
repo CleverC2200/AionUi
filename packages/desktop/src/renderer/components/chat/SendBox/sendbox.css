@@ -645,8 +645,9 @@ body[arco-theme='dark'] .sendbox-panel .send-button-custom--disabled svg * {
   justify-content: flex-start !important;
   gap: 6px !important;
   width: auto !important;
-  max-width: max-content !important;
-  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  flex: 1 1 auto !important;
   position: static !important;
 }
 
@@ -661,10 +662,21 @@ body[arco-theme='dark'] .sendbox-panel .send-button-custom--disabled svg * {
 /* Allow sendbox tools area to shrink so the send button stays visible */
 .sendbox-tools {
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+
+.sendbox-actions {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  flex: 0 1 auto;
 }
 
 /* Circle / icon-only buttons must not shrink */
-.sendbox-tools .arco-btn-shape-circle {
+.sendbox-tools .arco-btn-shape-circle,
+.sendbox-actions .arco-btn-shape-circle {
   flex-shrink: 0 !important;
 }
 
@@ -685,6 +697,18 @@ body[arco-theme='dark'] .sendbox-panel .send-button-custom--disabled svg * {
 .sendbox-actions .agent-mode-compact-pill .arco-btn-content {
   min-width: 0 !important;
   overflow: hidden !important;
+}
+
+/* A provider can expose arbitrarily long model ids. Keep the composer action
+ * bounded so it cannot push the microphone or send button out of view. */
+.sendbox-tools .composer-model-selector,
+.sendbox-actions .composer-model-selector {
+  max-width: min(180px, 42vw) !important;
+}
+
+.composer-model-selector .arco-btn-content > span {
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Pill marquee animation for overflowing text */

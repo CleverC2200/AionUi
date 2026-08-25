@@ -435,6 +435,15 @@
       "terminal": "終端機",
       "explorer": "檔案總管",
       "browser": "瀏覽器"
+    },
+    "panelLayout": {
+      "files": "檔案",
+      "browser": "瀏覽器",
+      "settings": "面板配置",
+      "conversationLeft": "對話在左",
+      "conversationRight": "對話在右",
+      "focusBrowser": "放大瀏覽器",
+      "exitBrowserFocus": "退出瀏覽器放大"
     }
   },
   "minimap": {
