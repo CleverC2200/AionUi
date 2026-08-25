@@ -6,10 +6,6 @@
 
 import React, { useCallback } from 'react';
 import WebviewHost from '@/renderer/components/media/WebviewHost';
-import { Button, Tooltip } from '@arco-design/web-react';
-import { FullScreen, OffScreen } from '@icon-park/react';
-import { useTranslation } from 'react-i18next';
-import { usePreviewContext } from '../context';
 import {
   BROWSER_BLANK_URL,
   BROWSER_SESSION_PARTITION,
@@ -53,8 +49,6 @@ const BrowserViewer: React.FC<BrowserViewerProps> = ({
   onTitleChange,
   onFaviconChange,
 }) => {
-  const { t } = useTranslation();
-  const { isBrowserFocused, setBrowserFocused } = usePreviewContext();
   const handleUrlChange = useCallback((next: string) => onUrlChange(tabId, next), [tabId, onUrlChange]);
 
   const handleTitleChange = useCallback(
@@ -86,29 +80,6 @@ const BrowserViewer: React.FC<BrowserViewerProps> = ({
       partition={BROWSER_SESSION_PARTITION}
       agentControlActive={isActive}
       showNavBar
-      navBarActions={
-        <Tooltip
-          content={
-            isBrowserFocused
-              ? t('conversation.workspace.panelLayout.exitBrowserFocus', { defaultValue: 'Exit browser focus' })
-              : t('conversation.workspace.panelLayout.focusBrowser', { defaultValue: 'Focus browser' })
-          }
-        >
-          <Button
-            type='text'
-            className='toolbar-btn icon-btn'
-            aria-label={
-              isBrowserFocused
-                ? t('conversation.workspace.panelLayout.exitBrowserFocus', { defaultValue: 'Exit browser focus' })
-                : t('conversation.workspace.panelLayout.focusBrowser', { defaultValue: 'Focus browser' })
-            }
-            aria-pressed={isBrowserFocused}
-            onClick={() => setBrowserFocused(!isBrowserFocused)}
-          >
-            {isBrowserFocused ? <OffScreen theme='outline' size={16} /> : <FullScreen theme='outline' size={16} />}
-          </Button>
-        </Tooltip>
-      }
       className='bg-bg-1'
       resolveUrlInput={resolveAddressBarInput}
       onUrlChange={handleUrlChange}

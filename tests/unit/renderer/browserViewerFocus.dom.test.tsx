@@ -1,60 +1,45 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const preview = vi.hoisted(() => ({ isBrowserFocused: false, setBrowserFocused: vi.fn() }));
-
-vi.mock('@/renderer/pages/conversation/Preview/context', () => ({
-  usePreviewContext: () => preview,
-}));
-
-vi.mock('@/renderer/components/media/WebviewHost', () => ({
-  default: ({ navBarActions }: { navBarActions?: React.ReactNode }) => <div>{navBarActions}</div>,
-}));
+import { describe, expect, it, vi } from 'vitest';
+import PreviewTabs from '@/renderer/pages/conversation/Preview/components/PreviewPanel/PreviewTabs';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock('@arco-design/web-react', () => ({
-  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button type='button' {...props}>
-      {children}
-    </button>
-  ),
-  Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-}));
+const tabs = [{ id: 'browser-1', title: 'New Tab' }];
 
-vi.mock('@icon-park/react', () => ({
-  FullScreen: () => <span>expand</span>,
-  OffScreen: () => <span>collapse</span>,
-}));
-
-import BrowserViewer from '@/renderer/pages/conversation/Preview/browser/BrowserViewer';
-
-describe('BrowserViewer focus action', () => {
-  beforeEach(() => {
-    preview.isBrowserFocused = false;
-    vi.clearAllMocks();
-  });
-
-  it('enters and exits browser focus mode from the navigation bar', () => {
+describe('Browser focus action placement', () => {
+  it('keeps browser focus and panel collapse controls in the same toolbar row', () => {
+    const onToggle = vi.fn();
+    const onClosePanel = vi.fn();
+    const tabsContainerRef = React.createRef<HTMLDivElement>();
     const props = {
-      url: 'about:blank',
-      tabId: 'browser-1',
-      isActive: true,
-      onUrlChange: vi.fn(),
-      onTitleChange: vi.fn(),
-      onFaviconChange: vi.fn(),
+      tabs,
+      activeTabId: 'browser-1',
+      tabFadeState: { left: false, right: false },
+      tabsContainerRef,
+      onSwitchTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onContextMenu: vi.fn(),
+      onClosePanel,
     };
-    const { rerender } = render(<BrowserViewer {...props} />);
+    const { rerender } = render(<PreviewTabs {...props} browserFocus={{ active: false, onToggle }} />);
+    const focus = screen.getByRole('button', { name: 'conversation.workspace.panelLayout.focusBrowser' });
+    const collapse = screen.getByRole('button', { name: 'preview.collapsePanel' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.panelLayout.focusBrowser' }));
-    expect(preview.setBrowserFocused).toHaveBeenCalledWith(true);
+    expect(focus.parentElement).toBe(collapse.parentElement);
+    expect(collapse.compareDocumentPosition(focus) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(focus).toHaveClass('!w-24px', '!h-24px');
+    expect(collapse).toHaveClass('!w-24px', '!h-24px');
 
-    preview.isBrowserFocused = true;
-    rerender(<BrowserViewer {...props} />);
+    fireEvent.click(focus);
+    fireEvent.click(collapse);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(onClosePanel).toHaveBeenCalledTimes(1);
+
+    rerender(<PreviewTabs {...props} browserFocus={{ active: true, onToggle }} />);
     fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.panelLayout.exitBrowserFocus' }));
-    expect(preview.setBrowserFocused).toHaveBeenCalledWith(false);
+    expect(onToggle).toHaveBeenCalledTimes(2);
   });
 });

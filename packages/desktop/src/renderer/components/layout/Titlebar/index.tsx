@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
-import { ArrowCircleLeft, ArrowLeft, ArrowRight, Browser, FolderOpen, Peoples, Search } from '@icon-park/react';
+import { ArrowCircleLeft, ArrowLeft, ArrowRight, BrowserChrome, FolderOpen, Peoples, Search } from '@icon-park/react';
 import { Button } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -463,7 +463,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
               aria-pressed={isPreviewOpen && activeTab?.content_type === 'browser'}
               data-testid='workspace-browser-toggle'
             >
-              <Browser theme='outline' size={iconSize} fill='currentColor' />
+              <BrowserChrome theme='outline' size={iconSize} fill='currentColor' />
             </Button>
             <Button
               type='text'
