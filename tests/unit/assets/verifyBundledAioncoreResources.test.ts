@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 const {
+  refreshBundledAioncoreContentIdentity,
   sha256Directory,
   sha256File,
   verifyBundledAioncoreResources,
@@ -154,18 +155,8 @@ function seedRuntimeKey(
 }
 
 function refreshBundleContentIdentity(resourcesDir: string, runtimeKey: string, platform: string) {
-  const bundleDir = join(resourcesDir, 'bundled-aioncore', runtimeKey);
-  const manifestPath = join(bundleDir, 'manifest.json');
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  const binaryName = platform === 'win32' ? 'aioncore.exe' : 'aioncore';
-  manifest.content = {
-    binary: { path: binaryName, sha256: sha256File(join(bundleDir, binaryName)) },
-    managedResources: {
-      path: 'managed-resources',
-      sha256: sha256Directory(join(bundleDir, 'managed-resources')),
-    },
-  };
-  writeJson(manifestPath, manifest);
+  const [, arch] = runtimeKey.split('-');
+  refreshBundledAioncoreContentIdentity({ resourcesDir, electronPlatformName: platform, targetArch: arch });
 }
 
 describe('verifyBundledAioncoreResources', () => {
@@ -227,6 +218,32 @@ describe('verifyBundledAioncoreResources', () => {
     expect(result.failures).toContainEqual(
       expect.objectContaining({ component: 'managed-resources', reason: 'content_hash_mismatch' })
     );
+  });
+
+  it('atomically refreshes content identity after packaging transforms the final resource tree', () => {
+    const binaryPath = join(resourcesDir, 'bundled-aioncore', 'win32-x64', 'aioncore.exe');
+    writeFileSync(binaryPath, 'signed');
+    writeFileSync(join(managedResourcesDir, 'packaged.txt'), 'copied');
+
+    refreshBundledAioncoreContentIdentity({
+      resourcesDir,
+      electronPlatformName: 'win32',
+      targetArch: 'x64',
+    });
+
+    const result = verifyBundledAioncoreResources({
+      resourcesDir,
+      electronPlatformName: 'win32',
+      targetArch: 'x64',
+    });
+    expect(result.failures).toEqual([]);
+    const manifest = JSON.parse(
+      readFileSync(join(resourcesDir, 'bundled-aioncore', 'win32-x64', 'manifest.json'), 'utf8')
+    );
+    expect(manifest.content).toEqual({
+      binary: { path: 'aioncore.exe', sha256: sha256File(binaryPath) },
+      managedResources: { path: 'managed-resources', sha256: sha256Directory(managedResourcesDir) },
+    });
   });
 
   it('fails when managed resources contract is missing', () => {

@@ -59,6 +59,35 @@ function sha256Directory(rootDir) {
   return hash.digest('hex');
 }
 
+function refreshBundledAioncoreContentIdentity({ resourcesDir, electronPlatformName, targetArch }) {
+  const runtimeKey = `${electronPlatformName}-${targetArch}`;
+  const baseDir = path.join(resourcesDir, 'bundled-aioncore', runtimeKey);
+  const manifestPath = path.join(baseDir, 'manifest.json');
+  const manifest = readManifest(manifestPath);
+  const binaryName = backendBinaryName(electronPlatformName);
+  const binaryPath = path.join(baseDir, binaryName);
+  const managedResourcesPath = path.join(baseDir, 'managed-resources');
+  if (!manifest || !isFile(binaryPath) || !isDirectory(managedResourcesPath)) {
+    throw new Error(`Cannot refresh incomplete AionCore bundle identity for ${runtimeKey}`);
+  }
+
+  manifest.content = {
+    binary: { path: binaryName, sha256: sha256File(binaryPath) },
+    managedResources: { path: 'managed-resources', sha256: sha256Directory(managedResourcesPath) },
+  };
+  const temporaryPath = path.join(
+    path.dirname(manifestPath),
+    `.${path.basename(manifestPath)}.${process.pid}.${crypto.randomUUID()}.tmp`
+  );
+  try {
+    fs.writeFileSync(temporaryPath, `${JSON.stringify(manifest, null, 2)}\n`, { flag: 'wx' });
+    fs.renameSync(temporaryPath, manifestPath);
+  } finally {
+    fs.rmSync(temporaryPath, { force: true });
+  }
+  return manifest.content;
+}
+
 function bundledPath(runtimeKey, ...parts) {
   return normalize(path.join('bundled-aioncore', runtimeKey, ...parts));
 }
@@ -433,6 +462,7 @@ function verifyBundledAioncoreResources({ resourcesDir, electronPlatformName, ta
 }
 
 module.exports = {
+  refreshBundledAioncoreContentIdentity,
   sha256Directory,
   sha256File,
   verifyBundledAioncoreResources,
