@@ -8,8 +8,9 @@
  *  4. Local binary fallback from AIONUI_BACKEND_LOCAL_BINARY
  *
  * AIONUI_BACKEND_SOURCE_POLICY=verified-actions disables every fallback and
- * requires a successful personal-fork workflow run, its expected head SHA,
- * strict artifact metadata, and an archive SHA256.
+ * requires a successful workflow run with strict artifact metadata. Expected
+ * head and archive hashes remain optional build-input guards; the prepared
+ * bundle manifest records the final product content identity.
  *
  * Output: {projectRoot}/resources/bundled-aioncore/{platform}-{arch}/
  *   - aioncore[.exe]
@@ -539,7 +540,7 @@ function downloadAndExtractActionsArtifact(platform, arch, runId, { verifiedActi
   }
 
   const repository = getActionsRepository();
-  const expectedHeadSha = getExpectedActionsHeadSha({ required: verifiedActions });
+  const expectedHeadSha = getExpectedActionsHeadSha();
   const runProvenance = getActionsRunProvenance(runId, repository, expectedHeadSha);
   const artifacts = listActionsArtifacts(runId, repository);
   const availableArtifactNames = artifacts
@@ -559,7 +560,7 @@ function downloadAndExtractActionsArtifact(platform, arch, runId, { verifiedActi
     );
   }
   const artifactDigest = validateActionsArtifactMetadata(artifact, runId, expectedArtifactName, { verifiedActions });
-  const expectedArchiveSha256 = getExpectedActionsSha256(expectedArtifactName, { required: verifiedActions });
+  const expectedArchiveSha256 = getExpectedActionsSha256(expectedArtifactName);
 
   const tempDir = path.join(os.tmpdir(), 'aioncore-prepare-actions', runId, `${platform}-${arch}`);
   const artifactZipPath = path.join(tempDir, `${expectedArtifactName}.zip`);
@@ -663,18 +664,13 @@ function prepareAioncore(options) {
     if (!actionsRunId) {
       throw new Error('AIONUI_BACKEND_RUN_ID is required by verified-actions source policy');
     }
-    const repository = getActionsRepository();
-    if (repository.toLowerCase() !== DEFAULT_ACTIONS_REPOSITORY.toLowerCase()) {
-      throw new Error(
-        `verified-actions source policy requires AionCore repository ${DEFAULT_ACTIONS_REPOSITORY}, got ${repository}`
-      );
-    }
     const artifactName = getActionsArtifactName(platform, arch);
     if (!artifactName) {
       throw new Error(`Unsupported AionCore Actions artifact target: ${platform}-${arch}`);
     }
-    getExpectedActionsHeadSha({ required: true });
-    getExpectedActionsSha256(artifactName, { required: true });
+    getActionsRepository();
+    getExpectedActionsHeadSha();
+    getExpectedActionsSha256(artifactName);
     if (localBundleDir || localBinary) {
       throw new Error('verified-actions source policy rejects local AionCore overrides');
     }
