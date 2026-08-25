@@ -268,7 +268,7 @@ function createMcpServer(authService: GeaLarkAuthService, agentCode: string): Se
     };
   });
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
     const operation = operationContext(request.params._meta);
     try {
       if (!gatewaySession || !toolsByName.has(request.params.name)) {
@@ -282,6 +282,7 @@ function createMcpServer(authService: GeaLarkAuthService, agentCode: string): Se
         request.params.arguments && typeof request.params.arguments === 'object' ? request.params.arguments : {};
       const result = await gatewaySession.callTool(tool, gatewayArguments(tool, argumentsValue), {
         operation,
+        signal: extra.signal,
       });
       if (result.isError) {
         return errorResult(

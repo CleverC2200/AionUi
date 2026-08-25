@@ -52,9 +52,10 @@ describe('startGeaMcpBridge', () => {
     expect(callTool).toHaveBeenCalledWith(
       expect.objectContaining({ sourceCode: 'mcp-001' }),
       { query: '客户A' },
-      {
+      expect.objectContaining({
         operation: expect.objectContaining({ attempt: 2, operationId, parentRequestId: 'parent-1' }),
-      }
+        signal: expect.anything(),
+      })
     );
     const options = callTool.mock.calls[0]?.[2];
     expect(Date.parse(options.operation.deadlineAt)).toBeGreaterThanOrEqual(startedAt);
@@ -359,6 +360,52 @@ describe('startGeaMcpBridge', () => {
       },
     });
     expect(JSON.stringify([limited, incomplete])).not.toContain('sensitive');
+
+    await client.close();
+  });
+
+  it('propagates caller cancellation without interrupting a parallel call', async () => {
+    let slowSignal: AbortSignal | undefined;
+    const callTool = vi.fn(
+      async (_tool: unknown, argumentsValue: Record<string, unknown>, options: { signal?: AbortSignal }) => {
+        if (argumentsValue.mode !== 'slow') return { result: '{"ok":true}' };
+        slowSignal = options.signal;
+        return new Promise((_resolve, reject) => {
+          const abort = () => reject(new GeaMcpGatewayError('MCP_REQUEST_CANCELLED'));
+          if (options.signal?.aborted) abort();
+          else options.signal?.addEventListener('abort', abort, { once: true });
+        });
+      }
+    );
+    const authService = {
+      createMcpGatewaySession: vi.fn().mockResolvedValue({
+        listTools: vi.fn().mockResolvedValue([
+          {
+            name: 'query_business_data',
+            inputSchema: { type: 'object' },
+            sourceCode: 'mcp-business-data',
+          },
+        ]),
+        callTool,
+      }),
+    } as unknown as GeaLarkAuthService;
+    handle = await startGeaMcpBridge(authService, 'sales_forecast');
+
+    const client = new Client({ name: 'test-client', version: '1.0.0' });
+    await client.connect(new StreamableHTTPClientTransport(new URL(handle.url)));
+    const controller = new AbortController();
+    const slowCall = client.callTool({ name: 'query_business_data', arguments: { mode: 'slow' } }, undefined, {
+      signal: controller.signal,
+    });
+    await vi.waitFor(() => expect(slowSignal).toBeDefined());
+    const fastCall = client.callTool({ name: 'query_business_data', arguments: { mode: 'fast' } });
+
+    controller.abort();
+    await expect(slowCall).rejects.toBeDefined();
+    await expect(fastCall).resolves.toMatchObject({ content: [{ type: 'text', text: '{"ok":true}' }] });
+    await vi.waitFor(() => expect(slowSignal?.aborted).toBe(true));
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    expect(callTool).toHaveBeenCalledTimes(2);
 
     await client.close();
   });

@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import {
+  ErrorCode,
   McpError,
   type ContentBlock,
   type Resource,
@@ -103,6 +104,7 @@ export type GeaMcpOperationContext = {
 
 export type GeaMcpCallOptions = {
   operation: GeaMcpOperationContext;
+  signal?: AbortSignal;
 };
 
 export type GeaMcpErrorEnvelope = {
@@ -615,19 +617,49 @@ export class GeaLarkAuthService {
       },
       callTool: async (tool, argumentsValue = {}, options) => {
         const client = await getMcpClient();
+        const control = options ? createGeaMcpCallControl(options) : undefined;
         let response: Awaited<ReturnType<Client['callTool']>>;
         try {
-          response = await client.callTool({
-            name: tool.name,
-            arguments: argumentsValue,
-            _meta: {
-              ...sessionPayload,
-              mcpCode: tool.sourceCode,
-              ...options?.operation,
+          response = await client.callTool(
+            {
+              name: tool.name,
+              arguments: argumentsValue,
+              _meta: {
+                ...sessionPayload,
+                mcpCode: tool.sourceCode,
+                ...options?.operation,
+              },
             },
-          });
+            undefined,
+            control
+              ? {
+                  maxTotalTimeout: control.timeoutMs,
+                  signal: control.signal,
+                  timeout: control.timeoutMs,
+                }
+              : undefined
+          );
         } catch (error) {
           if (error instanceof GeaMcpGatewayError) throw error;
+          if (control?.reason() === 'caller') {
+            throw new GeaMcpGatewayError({
+              code: 'MCP_REQUEST_CANCELLED',
+              operationId: options?.operation.operationId,
+              retryable: false,
+              stage: 'TOOL_CALL',
+            });
+          }
+          if (
+            control?.reason() === 'deadline' ||
+            (error instanceof McpError && error.code === ErrorCode.RequestTimeout)
+          ) {
+            throw new GeaMcpGatewayError({
+              code: 'MCP_UPSTREAM_TIMEOUT',
+              operationId: options?.operation.operationId,
+              retryable: true,
+              stage: 'TOOL_CALL',
+            });
+          }
           const envelope =
             error instanceof McpError
               ? parseGeaMcpErrorEnvelope(error.data, options?.operation.operationId)
@@ -639,6 +671,8 @@ export class GeaLarkAuthService {
               ...(options?.operation.operationId ? { operationId: options.operation.operationId } : {}),
             }
           );
+        } finally {
+          control?.cleanup();
         }
         const meta = parseGeaMcpCorrelationMeta(response._meta, options?.operation.operationId);
         const error = response.isError
@@ -937,6 +971,40 @@ function parseGeaMcpCorrelationMeta(value: unknown, operationId?: string): GeaMc
   }
   if (operationId) meta.operationId = operationId;
   return Object.keys(meta).length ? meta : undefined;
+}
+
+function createGeaMcpCallControl(options: GeaMcpCallOptions): {
+  cleanup: () => void;
+  reason: () => 'caller' | 'deadline' | undefined;
+  signal: AbortSignal;
+  timeoutMs: number;
+} {
+  const controller = new AbortController();
+  let abortReason: 'caller' | 'deadline' | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const abort = (reason: 'caller' | 'deadline') => {
+    if (abortReason) return;
+    abortReason = reason;
+    controller.abort();
+  };
+  const onCallerAbort = () => abort('caller');
+  if (options.signal?.aborted) onCallerAbort();
+  else options.signal?.addEventListener('abort', onCallerAbort, { once: true });
+
+  const deadlineMs = Date.parse(options.operation.deadlineAt);
+  const timeoutMs = Math.max(1, Number.isFinite(deadlineMs) ? deadlineMs - Date.now() : 1);
+  if (timeoutMs <= 1) abort('deadline');
+  else timer = setTimeout(() => abort('deadline'), timeoutMs);
+
+  return {
+    signal: controller.signal,
+    timeoutMs,
+    reason: () => abortReason,
+    cleanup: () => {
+      if (timer) clearTimeout(timer);
+      options.signal?.removeEventListener('abort', onCallerAbort);
+    },
+  };
 }
 
 function parseGeaMcpErrorEnvelope(value: unknown, operationId?: string): GeaMcpErrorEnvelope | undefined {

@@ -67,6 +67,7 @@ describe('GeaLarkAuthService MCP Resources', () => {
         );
       }
       if (method === 'notifications/initialized') return new Response(null, { status: 202 });
+      if (method === 'notifications/cancelled') return new Response(null, { status: 202 });
       if (method === 'tools/list') {
         return jsonResponse({
           jsonrpc: '2.0',
@@ -84,6 +85,13 @@ describe('GeaLarkAuthService MCP Resources', () => {
       }
       if (method === 'tools/call') {
         const callArguments = (body?.params as { arguments?: Record<string, unknown> } | undefined)?.arguments;
+        if (callArguments?.mode === 'slow') {
+          return new Promise<Response>((_resolve, reject) => {
+            const abort = () => reject(new DOMException('Aborted', 'AbortError'));
+            if (request.signal.aborted) abort();
+            else request.signal.addEventListener('abort', abort, { once: true });
+          });
+        }
         if (callArguments?.mode === 'jsonrpc-error') {
           return jsonResponse({
             jsonrpc: '2.0',
@@ -223,7 +231,7 @@ describe('GeaLarkAuthService MCP Resources', () => {
       {
         operation: {
           attempt: 2,
-          deadlineAt: '2026-08-25T15:00:00.000Z',
+          deadlineAt: new Date(Date.now() + 60_000).toISOString(),
           operationId: '11111111-1111-4111-8111-111111111111',
           parentRequestId: 'parent-1',
         },
@@ -243,7 +251,7 @@ describe('GeaLarkAuthService MCP Resources', () => {
         {
           operation: {
             attempt: 1,
-            deadlineAt: '2026-08-25T15:00:00.000Z',
+            deadlineAt: new Date(Date.now() + 60_000).toISOString(),
             operationId: '22222222-2222-4222-8222-222222222222',
           },
         }
@@ -270,7 +278,7 @@ describe('GeaLarkAuthService MCP Resources', () => {
       {
         operation: {
           attempt: 1,
-          deadlineAt: '2026-08-25T15:00:00.000Z',
+          deadlineAt: new Date(Date.now() + 60_000).toISOString(),
           operationId: '33333333-3333-4333-8333-333333333333',
         },
       }
@@ -282,6 +290,45 @@ describe('GeaLarkAuthService MCP Resources', () => {
       stage: 'RESOURCE_READ',
     });
     expect(JSON.stringify(toolError.error)).not.toContain('sensitive');
+    await expect(
+      session.callTool(
+        tool!,
+        { mode: 'slow' },
+        {
+          operation: {
+            attempt: 1,
+            deadlineAt: new Date(Date.now() + 25).toISOString(),
+            operationId: '55555555-5555-4555-8555-555555555555',
+          },
+        }
+      )
+    ).rejects.toMatchObject({ code: 'MCP_UPSTREAM_TIMEOUT', message: 'MCP_UPSTREAM_TIMEOUT' });
+    await vi.waitFor(() => {
+      expect(requests.some((request) => request.body?.method === 'notifications/cancelled')).toBe(true);
+    });
+    const controller = new AbortController();
+    const cancelled = session.callTool(
+      tool!,
+      { mode: 'slow' },
+      {
+        operation: {
+          attempt: 1,
+          deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+          operationId: '66666666-6666-4666-8666-666666666666',
+        },
+        signal: controller.signal,
+      }
+    );
+    await vi.waitFor(() => {
+      const slowCalls = requests.filter(
+        (request) =>
+          request.body?.method === 'tools/call' &&
+          (request.body.params as { arguments?: { mode?: unknown } } | undefined)?.arguments?.mode === 'slow'
+      );
+      expect(slowCalls).toHaveLength(2);
+    });
+    controller.abort();
+    await expect(cancelled).rejects.toMatchObject({ code: 'MCP_REQUEST_CANCELLED', message: 'MCP_REQUEST_CANCELLED' });
     await expect(session.listResources()).resolves.toMatchObject({ resources: [{ uri }] });
     await expect(session.listResourceTemplates()).resolves.toMatchObject({
       resourceTemplates: [{ uriTemplate: 'data-artifact://gateway/{artifactId}' }],
@@ -298,7 +345,7 @@ describe('GeaLarkAuthService MCP Resources', () => {
       _meta: {
         delegationToken: 'delegation-secret',
         attempt: 2,
-        deadlineAt: '2026-08-25T15:00:00.000Z',
+        deadlineAt: expect.any(String),
         mcpCode: 'cube',
         operationId: '11111111-1111-4111-8111-111111111111',
         parentRequestId: 'parent-1',
