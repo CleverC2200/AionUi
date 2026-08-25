@@ -80,6 +80,8 @@ just push <remote> <branch>
 
 创建 PR 后使用 `just watch-pr <PR 编号>` 连续等待检查结果，不再反复手工轮询 GitHub。该命令默认从 `origin` 解析仓库；只有 PR 位于其他已配置远端时，才传入第二个远端名称参数。
 
+个人 Fork 无法使用 GitHub 仅面向组织仓库的原生 merge queue。合并已得到明确授权时，可使用 `just integrate-pr <PR 编号>` 作为安全失败的本地替代：命令只接受目标为 `main`、已开放且非 Draft 的 PR，在当前 clone 内串行执行，先更新分支，等待至少一项 required check，再用已验收的精确 head commit 做 squash merge。该命令会修改远端状态并合并 PR，只读监控时不得运行；本地锁只能协调共用同一 clone 的操作者，不能跨机器。若 `main` 或 PR head 发生变化，应重新执行并由分支保护要求新一轮检查。
+
 只有门禁失败、需要定位或修复时，才单独运行下面的命令：
 
 ```bash

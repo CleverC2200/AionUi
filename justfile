@@ -344,6 +344,55 @@ watch-pr pr remote='origin':
     repo=$(gh repo view "$(git remote get-url "{{ remote }}")" --json nameWithOwner --jq .nameWithOwner)
     gh pr checks "{{ pr }}" --repo "$repo" --watch --interval 30
 
+# Serialize one personal-fork PR integration in this clone. This updates and merges the PR.
+[no-exit-message]
+integrate-pr pr remote='origin':
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    pr="{{ pr }}"
+    repo=$(gh repo view "$(git remote get-url "{{ remote }}")" --json nameWithOwner --jq .nameWithOwner)
+    common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
+    lock_dir="$common_dir/aionui-integrate-pr.lock"
+
+    if ! mkdir "$lock_dir" 2>/dev/null; then
+      echo "Another integration is already running in this clone: $lock_dir" >&2
+      exit 1
+    fi
+    trap 'rmdir "$lock_dir"' EXIT
+
+    state=$(gh pr view "$pr" --repo "$repo" --json state --jq .state)
+    is_draft=$(gh pr view "$pr" --repo "$repo" --json isDraft --jq .isDraft)
+    base=$(gh pr view "$pr" --repo "$repo" --json baseRefName --jq .baseRefName)
+    if [[ "$state" != "OPEN" || "$is_draft" != "false" || "$base" != "main" ]]; then
+      echo "PR must be open, ready for review, and target main (state=$state draft=$is_draft base=$base)." >&2
+      exit 1
+    fi
+
+    gh pr update-branch "$pr" --repo "$repo"
+    head_sha=$(gh pr view "$pr" --repo "$repo" --json headRefOid --jq .headRefOid)
+
+    required_count=0
+    for _ in {1..12}; do
+      required_count=$(gh pr checks "$pr" --repo "$repo" --required --json name --jq 'length' 2>/dev/null || true)
+      if [[ "$required_count" =~ ^[1-9][0-9]*$ ]]; then
+        break
+      fi
+      sleep 5
+    done
+    if ! [[ "$required_count" =~ ^[1-9][0-9]*$ ]]; then
+      echo "No required checks appeared for PR $pr after its branch update; refusing to merge." >&2
+      exit 1
+    fi
+
+    gh pr checks "$pr" --repo "$repo" --required --watch --interval 30
+    current_head=$(gh pr view "$pr" --repo "$repo" --json headRefOid --jq .headRefOid)
+    if [[ "$current_head" != "$head_sha" ]]; then
+      echo "PR head changed while checks were running; rerun this command." >&2
+      exit 1
+    fi
+    gh pr merge "$pr" --repo "$repo" --squash --match-head-commit "$head_sha"
+
 # Lint with only errors reported (for CI/push gates)
 lint-strict:
     bun run lint -- --quiet
