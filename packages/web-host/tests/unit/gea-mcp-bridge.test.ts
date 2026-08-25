@@ -169,4 +169,83 @@ describe('startGeaMcpBridge', () => {
 
     await client.close();
   });
+
+  it('preserves resource links and removes signed storage URLs', async () => {
+    const uri = 'data-artifact://gateway/artifact-1';
+    const resource = {
+      uri,
+      name: 'query-result',
+      mimeType: 'application/json',
+      size: 12,
+      _meta: {
+        sha256: 'a'.repeat(64),
+        expiresAt: '2026-08-25T18:00:00+08:00',
+        oss_url: 'https://private.example/signed-secret',
+      },
+    };
+    const authService = {
+      createMcpGatewaySession: vi.fn().mockResolvedValue({
+        listTools: vi.fn().mockResolvedValue([
+          {
+            name: 'query_business_data',
+            inputSchema: { type: 'object' },
+            sourceCode: 'mcp-business-data',
+          },
+        ]),
+        callTool: vi.fn().mockResolvedValue({
+          content: [{ type: 'resource_link', ...resource }],
+          isError: false,
+        }),
+        listResources: vi.fn().mockResolvedValue({ resources: [resource] }),
+        listResourceTemplates: vi.fn().mockResolvedValue({
+          resourceTemplates: [
+            {
+              uriTemplate: 'data-artifact://gateway/{artifactId}',
+              name: 'gateway-data-artifact',
+              mimeType: 'application/json',
+              _meta: { oss_url: 'https://private.example/signed-secret' },
+            },
+          ],
+        }),
+        readResource: vi.fn().mockResolvedValue([
+          {
+            uri,
+            mimeType: 'application/json',
+            text: '{"rows":[1]}',
+            _meta: resource._meta,
+          },
+        ]),
+      }),
+    } as unknown as GeaLarkAuthService;
+    handle = await startGeaMcpBridge(authService, 'sales_forecast');
+
+    const client = new Client({ name: 'test-client', version: '1.0.0' });
+    await client.connect(new StreamableHTTPClientTransport(new URL(handle.url)));
+
+    const called = await client.callTool({ name: 'query_business_data', arguments: {} });
+    expect(called.content).toEqual([
+      expect.objectContaining({
+        type: 'resource_link',
+        uri,
+        _meta: {
+          sha256: 'a'.repeat(64),
+          expiresAt: '2026-08-25T18:00:00+08:00',
+        },
+      }),
+    ]);
+    expect(JSON.stringify(called)).not.toContain('oss_url');
+
+    const listed = await client.listResources();
+    expect(JSON.stringify(listed)).not.toContain('oss_url');
+    const templates = await client.listResourceTemplates();
+    expect(templates.resourceTemplates).toEqual([
+      expect.objectContaining({ uriTemplate: 'data-artifact://gateway/{artifactId}' }),
+    ]);
+    expect(JSON.stringify(templates)).not.toContain('oss_url');
+    const read = await client.readResource({ uri });
+    expect(read.contents[0]).toMatchObject({ uri, text: '{"rows":[1]}' });
+    expect(JSON.stringify(read)).not.toContain('oss_url');
+
+    await client.close();
+  });
 });
