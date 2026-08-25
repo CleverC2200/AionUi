@@ -49,32 +49,36 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       docs_only: ${{ steps.classify.outputs.docs_only }}
+      cross_platform_tests: ${{ steps.classify.outputs.cross_platform_tests }}
+      installer_smoke: ${{ steps.classify.outputs.installer_smoke }}
+      release_scripts: ${{ steps.classify.outputs.release_scripts }}
     steps:
-      - name: Detect docs-only PR
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve PR context
+        uses: ./.github/actions/checkout-pr
+        with:
+          pr_number: ${{ inputs.pr_number }}
+          github_token: ${{ github.token }}
+
+      - name: Classify PR gate depth
         id: classify
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
         run: |
-          docs_only=false
-          if paths=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" --jq '.[].filename'); then
-            if [ -n "$paths" ]; then
-              docs_only=true
-              while IFS= read -r path; do
-                case "$path" in
-                  *.md|docs/*|.vscode/*|.github/ISSUE_TEMPLATE/*) ;;
-                  *) docs_only=false; break ;;
-                esac
-              done <<< "$paths"
-            else
-              echo "::warning::PR file list is empty; running the full CI suite."
-            fi
-          else
+          set -o pipefail
+          paths=''
+          if ! paths=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" --jq '.[].filename'); then
             echo "::warning::Unable to read PR files; running the full CI suite."
+          elif [ -z "$paths" ]; then
+            echo "::warning::PR file list is empty; running the full CI suite."
           fi
-          echo "docs_only=${docs_only}" >> "$GITHUB_OUTPUT"
-          echo "docs_only=${docs_only}" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$paths" | node scripts/classify-pr-gates.js | tee -a "$GITHUB_STEP_SUMMARY"
 
   # Job 1: Code quality checks (TypeScript, Oxlint, Oxfmt)
   code-quality:
@@ -131,27 +135,31 @@ jobs:
         os: [ubuntu-latest, macos-14, windows-2022]
     steps:
       - name: Checkout code
+        if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         uses: actions/checkout@v4
 
       - name: Resolve PR context
+        if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         uses: ./.github/actions/checkout-pr
         with:
           pr_number: ${{ inputs.pr_number }}
           github_token: ${{ github.token }}
 
       - name: Setup Node.js
+        if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
       - name: Setup bun
+        if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
           cache: true
 
       - name: Disable Windows Defender (Windows only)
-        if: matrix.os == 'windows-2022'
+        if: matrix.os == 'windows-2022' && needs.classify-changes.outputs.cross_platform_tests == 'true'
         shell: pwsh
         continue-on-error: true
         run: |
@@ -159,13 +167,20 @@ jobs:
           try { Add-MpPreference -ExclusionPath "${{ github.workspace }}" } catch { Write-Host "::warning::Failed to add exclusion path: $_" }
 
       - name: Install dependencies
+        if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         run: bun install --frozen-lockfile
 
       - name: Run postinstall
+        if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         run: npm run postinstall || true
 
       - name: Run extension system tests
+        if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         run: bunx vitest run
+
+      - name: Record lightweight platform pass
+        if: matrix.os != 'ubuntu-latest' && needs.classify-changes.outputs.cross_platform_tests != 'true'
+        run: echo "No platform-sensitive paths changed; Linux unit coverage is authoritative for this PR."
 
   # Job 3: Coverage test (Linux only)
   coverage-tests:
@@ -316,7 +331,7 @@ jobs:
   build-test:
     name: Build Test (${{ matrix.platform }})
     needs: classify-changes
-    if: github.event.action != 'closed' && github.event.pull_request.draft == false && inputs.skip_build_test != true && needs.classify-changes.outputs.docs_only != 'true'
+    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)) && inputs.skip_build_test != true && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -344,38 +359,52 @@ jobs:
 
     steps:
       - name: Checkout code
+        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
         uses: actions/checkout@v4
 
+      - name: Resolve PR context
+        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
+        uses: ./.github/actions/checkout-pr
+        with:
+          pr_number: ${{ inputs.pr_number }}
+          github_token: ${{ github.token }}
+
       - name: Setup Node.js
+        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
       - name: Setup bun
+        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
           cache: true
 
       - name: Setup Python
+        if: needs.classify-changes.outputs.installer_smoke == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Install dependencies
+        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
         run: bun install --frozen-lockfile
 
       - name: Run postinstall
+        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
         run: npm run postinstall || true
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'linux-x64'
+        if: matrix.platform == 'linux-x64' && needs.classify-changes.outputs.installer_smoke == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential python3 python3-pip pkg-config libsqlite3-dev fakeroot dpkg-dev rpm libnss3-dev libatk-bridge2.0-dev libdrm2 libxkbcommon-dev libxss1 libatspi2.0-dev libgtk-3-dev libxrandr2 libasound2-dev
 
       - name: Get Electron version
         id: electron-version
+        if: needs.classify-changes.outputs.installer_smoke == 'true'
         shell: bash
         run: |
           ELECTRON_VERSION=$(node -p "require('./package.json').devDependencies.electron.replace(/[\^~]/g, '')")
@@ -385,6 +414,7 @@ jobs:
       # Restore Electron/Electron-Builder caches before install-app-deps
       - name: Cache Electron artifacts
         id: electron-cache
+        if: needs.classify-changes.outputs.installer_smoke == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -399,10 +429,11 @@ jobs:
             electron-cache-${{ matrix.platform }}-
 
       - name: Cache status
+        if: needs.classify-changes.outputs.installer_smoke == 'true'
         run: echo "electron-cache-hit=${{ steps.electron-cache.outputs.cache-hit }}"
 
       - name: Rebuild native modules for Electron (non-Windows)
-        if: "!startsWith(matrix.platform, 'windows')"
+        if: needs.classify-changes.outputs.installer_smoke == 'true' && !startsWith(matrix.platform, 'windows')
         run: bunx electron-builder install-app-deps
         env:
           npm_config_runtime: electron
@@ -411,13 +442,13 @@ jobs:
           ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/.cache/electron-builder
 
       - name: Setup MSBuild (Windows only)
-        if: startsWith(matrix.platform, 'windows')
+        if: needs.classify-changes.outputs.installer_smoke == 'true' && startsWith(matrix.platform, 'windows')
         uses: microsoft/setup-msbuild@v2
         with:
           vs-version: '17.0'
 
       - name: Build test (Windows x64)
-        if: matrix.platform == 'windows-x64'
+        if: needs.classify-changes.outputs.installer_smoke == 'true' && matrix.platform == 'windows-x64'
         shell: pwsh
         run: |
           Write-Host "=========================================="
@@ -439,7 +470,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Build test (non-Windows)
-        if: "!startsWith(matrix.platform, 'windows')"
+        if: needs.classify-changes.outputs.installer_smoke == 'true' && !startsWith(matrix.platform, 'windows')
         shell: bash
         run: |
           echo "=========================================="
@@ -457,7 +488,19 @@ jobs:
           CI: true
           GH_TOKEN: ${{ github.token }}
 
+      - name: Fast renderer package test (Linux)
+        if: needs.classify-changes.outputs.installer_smoke != 'true' && matrix.platform == 'linux-x64'
+        run: bun run package
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+          CI: true
+
+      - name: Record lightweight build pass
+        if: needs.classify-changes.outputs.installer_smoke != 'true' && matrix.platform != 'linux-x64'
+        run: echo "No installer-sensitive paths changed; the Linux renderer package is authoritative for this PR."
+
       - name: Verify build artifacts exist
+        if: needs.classify-changes.outputs.installer_smoke == 'true'
         shell: bash
         run: |
           echo "=========================================="
@@ -478,7 +521,7 @@ jobs:
           esac
 
       - name: Silent install smoke test (Windows x64)
-        if: matrix.platform == 'windows-x64'
+        if: needs.classify-changes.outputs.installer_smoke == 'true' && matrix.platform == 'windows-x64'
         shell: pwsh
         run: |
           Write-Host "=========================================="
@@ -507,7 +550,7 @@ jobs:
           Write-Host "Installed executable: $installedExe"
 
       - name: Install smoke test (macOS arm64)
-        if: matrix.platform == 'macos-arm64'
+        if: needs.classify-changes.outputs.installer_smoke == 'true' && matrix.platform == 'macos-arm64'
         shell: bash
         run: |
           set -euo pipefail
@@ -533,7 +576,7 @@ jobs:
           "$APP_BIN" --version || true
 
       - name: Install smoke test (Linux)
-        if: matrix.platform == 'linux-x64'
+        if: needs.classify-changes.outputs.installer_smoke == 'true' && matrix.platform == 'linux-x64'
         shell: bash
         run: |
           set -euo pipefail
@@ -559,26 +602,34 @@ jobs:
   release-script-test:
     name: Release Script Test
     needs: classify-changes
-    if: github.event.action != 'closed' && github.event.pull_request.draft == false && needs.classify-changes.outputs.docs_only != 'true'
+    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)) && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout code
+        if: needs.classify-changes.outputs.release_scripts == 'true'
         uses: actions/checkout@v4
 
       - name: Create mock build artifacts
+        if: needs.classify-changes.outputs.release_scripts == 'true'
         shell: bash
         run: bash scripts/create-mock-release-artifacts.sh build-artifacts
 
       - name: Run prepare-release-assets script
+        if: needs.classify-changes.outputs.release_scripts == 'true'
         shell: bash
         env:
           MOCK_VERSION: '1.0.0'
         run: bash scripts/prepare-release-assets.sh build-artifacts release-assets
 
       - name: Validate script output
+        if: needs.classify-changes.outputs.release_scripts == 'true'
         shell: bash
         run: bash scripts/verify-release-assets.sh release-assets
+
+      - name: Record lightweight release-script pass
+        if: needs.classify-changes.outputs.release_scripts != 'true'
+        run: echo "No release-script contract changed."
 
   # The main ruleset requires these eight contexts. For docs-only PRs, publish
   # lightweight successes with the same names instead of leaving them Expected.
