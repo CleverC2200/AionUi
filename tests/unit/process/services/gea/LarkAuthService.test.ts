@@ -15,6 +15,7 @@ import {
   configureSharedPersonalModelGateway,
   createSharedWebHostLarkAuth,
   ElectronLarkAuthSessionStore,
+  ensureSharedPersonalModels,
   getSharedLarkAuthService,
   initializeSharedPersonalModelGateway,
   LarkAuthService,
@@ -223,6 +224,24 @@ describe('LarkAuthService', () => {
       status: 'completed',
     });
     expect(sync).toHaveBeenCalledWith(user, service);
+    statusSpy.mockRestore();
+  });
+
+  it('retries an incomplete personal model restore and stops once the gateway is ready', async () => {
+    const service = getSharedLarkAuthService();
+    const user = { id: '10086', realname: '张三', username: 'zhangsan' };
+    const statusSpy = vi.spyOn(service, 'getStatus').mockReturnValue({ authenticated: true, user });
+    const sync = vi
+      .fn()
+      .mockResolvedValueOnce({ configured: 0, failed: 1, skipped: 0, status: 'partial' })
+      .mockResolvedValueOnce({ configured: 1, failed: 0, skipped: 0, status: 'completed' });
+    configureSharedPersonalModelGateway({ deactivate: vi.fn(), sync });
+
+    await ensureSharedPersonalModels();
+    await ensureSharedPersonalModels();
+    await ensureSharedPersonalModels();
+
+    expect(sync).toHaveBeenCalledTimes(2);
     statusSpy.mockRestore();
   });
 

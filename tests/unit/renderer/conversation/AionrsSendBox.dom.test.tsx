@@ -20,6 +20,7 @@ const {
   enqueueMock,
   removeMock,
   commandQueuePanelPropsSpy,
+  thoughtDisplayPropsSpy,
   clearFilesMock,
   draftMutateMock,
   draftContentRef,
@@ -37,6 +38,7 @@ const {
   enqueueMock: vi.fn(),
   removeMock: vi.fn(),
   commandQueuePanelPropsSpy: vi.fn(),
+  thoughtDisplayPropsSpy: vi.fn(),
   clearFilesMock: vi.fn(),
   draftMutateMock: vi.fn(),
   draftContentRef: { current: '' },
@@ -163,7 +165,12 @@ vi.mock('@/renderer/components/chat/MobileActionSheet', () => ({
   default: () => null,
   useAttachEntry: () => ({ entries: [], hiddenFileInput: null }),
 }));
-vi.mock('@/renderer/components/chat/ThoughtDisplay', () => ({ default: () => null }));
+vi.mock('@/renderer/components/chat/ThoughtDisplay', () => ({
+  default: (props: unknown) => {
+    thoughtDisplayPropsSpy(props);
+    return null;
+  },
+}));
 vi.mock('@/renderer/components/media/FileAttachButton', () => ({ default: () => null }));
 vi.mock('@/renderer/components/media/FilePreview', () => ({ default: () => null }));
 vi.mock('@/renderer/components/media/HorizontalFileList', () => ({
@@ -431,6 +438,15 @@ describe('AionrsSendBox', () => {
     await waitFor(() => {
       expect(ensureConversationRuntimeMock).toHaveBeenCalledWith('conv-1');
     });
+  });
+
+  it('shows persistent processing feedback as soon as the shared runtime marks the send in progress', async () => {
+    runtimeViewIsProcessingRef.current = true;
+
+    render(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} />);
+
+    await waitFor(() => expect(ensureConversationRuntimeMock).toHaveBeenCalledWith('conv-1'));
+    expect(thoughtDisplayPropsSpy.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ running: true }));
   });
 
   it('suppresses visible error and preserves runtime gate for active-turn busy conflicts', async () => {

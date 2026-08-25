@@ -32,6 +32,11 @@ vi.mock('@/common', () => ({
         on: vi.fn().mockReturnValue(() => {}),
       },
     },
+    realtime: {
+      reconnected: {
+        on: vi.fn().mockReturnValue(() => {}),
+      },
+    },
     database: {
       getConversationMessages: {
         invoke: vi.fn(),
@@ -280,6 +285,48 @@ describe('message merging', () => {
       limit: 50,
       content_mode: 'compact',
     });
+  });
+
+  it('reloads persisted messages after realtime reconnect fills a missed stream gap', async () => {
+    const invoke = vi.mocked(ipcBridge.database.getConversationMessages.invoke);
+    invoke.mockResolvedValueOnce({
+      items: [],
+      oldest_cursor: null,
+      newest_cursor: null,
+      has_more_before: false,
+      has_more_after: false,
+    });
+
+    let emitReconnected: (() => void) | undefined;
+    vi.mocked(ipcBridge.realtime.reconnected.on).mockImplementation((callback: () => void) => {
+      emitReconnected = callback;
+      return () => {};
+    });
+
+    function useCacheAndListHarness() {
+      useMessageLstCache(CONVERSATION_ID);
+      return { messages: useMessageList() };
+    }
+
+    const { result } = renderHook(() => useCacheAndListHarness(), { wrapper: CacheWrapper });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    invoke.mockResolvedValueOnce({
+      items: [createTextMessage('agent-after-gap', 'pong')],
+      oldest_cursor: null,
+      newest_cursor: null,
+      has_more_before: false,
+      has_more_after: false,
+    });
+
+    await act(async () => {
+      emitReconnected?.();
+      await Promise.resolve();
+    });
+
+    expect(result.current.messages).toEqual([expect.objectContaining({ msg_id: 'agent-after-gap' })]);
   });
 
   it('flips a pending user message to finish when message.statusChanged arrives for it', async () => {

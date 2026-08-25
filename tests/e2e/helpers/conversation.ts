@@ -352,7 +352,7 @@ export async function waitForAiReply(page: Page, timeoutMs = 120_000): Promise<s
           // Try shadow DOM first (MarkdownView renders via ShadowView)
           const shadow = last.querySelector('.markdown-shadow');
           if (shadow?.shadowRoot) {
-            return shadow.shadowRoot.textContent?.trim() ?? '';
+            return shadow.shadowRoot.querySelector('.markdown-shadow-body')?.textContent?.trim() ?? '';
           }
           // Fallback: plain text messages (user messages, non-shadow)
           return last.textContent?.trim() ?? '';
@@ -367,7 +367,7 @@ export async function waitForAiReply(page: Page, timeoutMs = 120_000): Promise<s
     const last = items[items.length - 1];
     const shadow = last?.querySelector('.markdown-shadow');
     if (shadow?.shadowRoot) {
-      return shadow.shadowRoot.textContent?.trim() ?? '';
+      return shadow.shadowRoot.querySelector('.markdown-shadow-body')?.textContent?.trim() ?? '';
     }
     return last?.textContent?.trim() ?? '';
   }, aiSelector);

@@ -8,7 +8,7 @@ import { ipcBridge } from '@/common';
 import type { TConversationRuntimeSummary } from '@/common/config/storage';
 import { reconcileGeneratingFromRuntime } from '@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync';
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import {
   conversationDeleted,
   getConversationRuntimeViewSnapshot,
@@ -78,41 +78,53 @@ const getRuntimeOrNull = (runtime: TConversationRuntimeSummary | undefined): TCo
 export const useConversationRuntimeView = (conversation_id: string): UseConversationRuntimeViewReturn => {
   const getSnapshot = useCallback(() => getConversationRuntimeViewSnapshot(conversation_id), [conversation_id]);
   const view = useSyncExternalStore(subscribeConversationRuntimeView, getSnapshot, getSnapshot);
+  const hydrationEpochRef = useRef(0);
+
+  const hydrateRuntimeView = useCallback(async () => {
+    const hydrationEpoch = ++hydrationEpochRef.current;
+    flushRuntimeViewLogs(hydrateStarted(conversation_id));
+    try {
+      const conversation = await getConversationOrNull(conversation_id);
+      if (hydrationEpochRef.current !== hydrationEpoch) {
+        return;
+      }
+      const runtime = getRuntimeOrNull(conversation?.runtime);
+      flushRuntimeViewLogs(hydrateSucceeded(conversation_id, runtime));
+      // Reconcile the sidebar spinner against authoritative runtime state:
+      // a missed WS frame (window reload/reconnect race) can otherwise
+      // leave the row dark even though the runtime is still processing.
+      if (runtime) {
+        reconcileGeneratingFromRuntime(conversation_id, runtime.is_processing === true);
+      }
+    } catch (error: unknown) {
+      if (hydrationEpochRef.current !== hydrationEpoch) {
+        return;
+      }
+      const reason = error instanceof Error ? error.message : String(error);
+      flushRuntimeViewLogs(hydrateFailed(conversation_id, normalizeReason(reason)));
+    }
+  }, [conversation_id]);
 
   useEffect(() => {
     if (!conversation_id) {
       return;
     }
 
-    let cancelled = false;
-    flushRuntimeViewLogs(hydrateStarted(conversation_id));
-
-    void getConversationOrNull(conversation_id)
-      .then((conversation) => {
-        if (cancelled) {
-          return;
-        }
-        const runtime = getRuntimeOrNull(conversation?.runtime);
-        flushRuntimeViewLogs(hydrateSucceeded(conversation_id, runtime));
-        // Reconcile the sidebar spinner against authoritative runtime state:
-        // a missed WS frame (window reload/reconnect race) can otherwise
-        // leave the row dark even though the runtime is still processing.
-        if (runtime) {
-          reconcileGeneratingFromRuntime(conversation_id, runtime.is_processing === true);
-        }
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        const reason = error instanceof Error ? error.message : String(error);
-        flushRuntimeViewLogs(hydrateFailed(conversation_id, normalizeReason(reason)));
-      });
+    void hydrateRuntimeView();
 
     return () => {
-      cancelled = true;
+      hydrationEpochRef.current++;
     };
-  }, [conversation_id]);
+  }, [conversation_id, hydrateRuntimeView]);
+
+  useEffect(() => {
+    if (!conversation_id) {
+      return;
+    }
+    return ipcBridge.realtime.reconnected.on(() => {
+      void hydrateRuntimeView();
+    });
+  }, [conversation_id, hydrateRuntimeView]);
 
   useEffect(() => {
     if (!conversation_id) {

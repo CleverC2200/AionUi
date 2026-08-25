@@ -449,10 +449,6 @@ function ensureWs(): void {
   current.addEventListener('close', (e) => {
     console.debug('[ensureWs] CLOSED code=' + e.code + ' reason=' + e.reason);
     if (ws === current) ws = null;
-    if (e.code === 1008) {
-      stopWsAuthReconnect();
-      return;
-    }
     scheduleWsReconnect();
   });
 
@@ -472,6 +468,12 @@ function ensureWs(): void {
       const eventName = msg.name ?? msg.event;
       const payload = msg.data ?? msg.payload;
       console.debug('[WS:msg]', eventName, JSON.stringify(payload).slice(0, 200));
+      if (eventName === 'ping') {
+        if (current.readyState === WebSocket.OPEN) {
+          current.send(JSON.stringify({ name: 'pong', data: { timestamp: Date.now() } }));
+        }
+        return;
+      }
       if (isTerminalAuthWsMessage(eventName, payload)) {
         stopWsAuthReconnect(current);
         return;

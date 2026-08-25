@@ -436,6 +436,30 @@ describe('useGuidSend', () => {
     expect(payload.assistant.conversation_overrides.model).toBe('gemini-3.1-pro-preview');
   });
 
+  it('keeps the selected aionrs provider model when stale ACP model state is still cached', async () => {
+    const deps = createDeps();
+    deps.selectedAssistantBackend = 'aionrs';
+    deps.selectedAcpModel = 'deepseek-chat';
+    deps.currentAcpCachedModelInfo = {
+      current_model_id: 'deepseek-chat',
+      available_models: [{ id: 'deepseek-chat', label: 'DeepSeek Chat' }],
+    } as never;
+    deps.current_model = {
+      id: 'personal-deepseek',
+      name: 'DeepSeek',
+      use_model: 'deepseek-v4-flash-vision-exp',
+    } as never;
+
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      await result.current.handleSend();
+    });
+
+    const payload = createConversationInvokeMock.mock.calls[0][0];
+    expect(payload.model).toBe(deps.current_model);
+    expect(payload.assistant.conversation_overrides.model).toBe('deepseek-v4-flash-vision-exp');
+  });
+
   it('prefers the agent catalog model once it has been probed', async () => {
     // The path that makes this bug invisible after first use.
     const deps = createDeps();
