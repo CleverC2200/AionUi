@@ -101,6 +101,8 @@ const PreviewPanel: React.FC = () => {
     openBrowserTab,
     browserTabLimitHitAt,
     persistQuotaExceededAt,
+    isBrowserFocused,
+    setBrowserFocused,
   } = usePreviewContext();
   const layout = useLayoutContext();
 
@@ -1085,6 +1087,14 @@ const PreviewPanel: React.FC = () => {
           // browser) instead of requiring the user to open a browser first. It stays
           // hidden only while the panel is empty, so the plus never appears alone.
           onNewBrowserTab={previewTabs.length > 0 ? handleNewBrowserTab : undefined}
+          browserFocus={
+            content_type === 'browser'
+              ? {
+                  active: isBrowserFocused,
+                  onToggle: () => setBrowserFocused(!isBrowserFocused),
+                }
+              : undefined
+          }
         />
 
         {/* 工具栏（URL / 浏览器 类型不显示工具栏，因为不需要下载/编辑等功能）

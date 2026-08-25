@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
-import { ArrowCircleLeft, ArrowLeft, ArrowRight, ExpandLeft, ExpandRight, Peoples, Search } from '@icon-park/react';
+import { ArrowCircleLeft, ArrowLeft, ArrowRight, BrowserChrome, FolderOpen, Peoples, Search } from '@icon-park/react';
+import { Button } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -10,11 +11,17 @@ import ConversationSearchPopover from '@renderer/pages/conversation/GroupedHisto
 import VoiceConversation from '@/renderer/components/chat/VoiceConversation';
 import MobileConversationBrand from './MobileConversationBrand';
 import WindowControls from '../WindowControls';
-import { WORKSPACE_STATE_EVENT, dispatchWorkspaceToggleEvent } from '@renderer/utils/workspace/workspaceEvents';
+import {
+  WORKSPACE_STATE_EVENT,
+  dispatchWorkspaceToggleEvent,
+  readWorkspaceCollapsedState,
+} from '@renderer/utils/workspace/workspaceEvents';
 import type { WorkspaceStateDetail } from '@renderer/utils/workspace/workspaceEvents';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useNavigationHistory } from '@/renderer/hooks/context/NavigationHistoryContext';
 import { isElectronDesktop, isMacOS } from '@/renderer/utils/platform';
+import { usePreviewContext } from '@renderer/pages/conversation/Preview';
+import { setConversationPanelSide, useConversationPanelSide } from './conversationPanelLayout';
 import './titlebar.css';
 
 interface TitlebarProps {
@@ -50,14 +57,46 @@ const SidebarIcon: React.FC<{ size?: number; strokeWidth?: number }> = ({ size =
   </svg>
 );
 
+const ConversationLayoutIcon: React.FC<{
+  conversationSide: 'left' | 'right';
+  size?: number;
+  strokeWidth?: number;
+}> = ({ conversationSide, size = 18, strokeWidth = 3 }) => {
+  const lineStart = conversationSide === 'left' ? 10 : 28;
+  const lineEnd = conversationSide === 'left' ? 20 : 38;
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox='0 0 48 48'
+      fill='none'
+      stroke='currentColor'
+      strokeWidth={strokeWidth}
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      aria-hidden='true'
+      focusable='false'
+    >
+      <rect x='6' y='6' width='36' height='36' rx='4' />
+      <line x1='24' y1='6' x2='24' y2='42' />
+      <line x1={lineStart} y1='16' x2={lineEnd} y2='16' />
+      <line x1={lineStart} y1='24' x2={lineEnd} y2='24' />
+      <line x1={lineStart} y1='32' x2={lineEnd} y2='32' />
+    </svg>
+  );
+};
+
 const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   const { t } = useTranslation();
   const appTitle = useMemo(() => 'GEAUi', []);
-  const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
+  const [workspaceCollapsed, setWorkspaceCollapsed] = useState(readWorkspaceCollapsedState);
   const [mobileCenterTitle, setMobileCenterTitle] = useState(appTitle);
   const [mobileCenterOffset, setMobileCenterOffset] = useState(0);
   const layout = useLayoutContext();
   const navigationHistory = useNavigationHistory();
+  const { activeTab, closePreview, isOpen: isPreviewOpen, openBrowserTab, showPreview, tabs } = usePreviewContext();
+  const conversationPanelSide = useConversationPanelSide();
   const location = useLocation();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -89,9 +128,13 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   // Keep the workspace entry in the titlebar on every platform.
   const showWorkspaceButton = workspaceAvailable;
 
-  const workspaceTooltip = workspaceCollapsed
-    ? t('common.expandMore', { defaultValue: 'Expand workspace' })
-    : t('common.collapse', { defaultValue: 'Collapse workspace' });
+  const filesTooltip = t('conversation.workspace.panelLayout.files', { defaultValue: 'Files' });
+  const browserTooltip = t('conversation.workspace.panelLayout.browser', { defaultValue: 'Browser' });
+  const conversationSide = conversationPanelSide === 'right' ? 'left' : 'right';
+  const panelLayoutTooltip =
+    conversationSide === 'left'
+      ? t('conversation.workspace.panelLayout.conversationLeft', { defaultValue: 'Conversation left' })
+      : t('conversation.workspace.panelLayout.conversationRight', { defaultValue: 'Conversation right' });
   const backToChatTooltip = t('common.back', { defaultValue: 'Back to Chat' });
   const conversationId = location.pathname.match(/^\/conversation\/([^/]+)/)?.[1];
   const isSettingsRoute = location.pathname.startsWith('/settings');
@@ -126,6 +169,24 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
       return;
     }
     dispatchWorkspaceToggleEvent();
+  };
+
+  const handleBrowserToggle = () => {
+    if (isPreviewOpen && activeTab?.content_type === 'browser') {
+      closePreview();
+      return;
+    }
+    const browserTab =
+      activeTab?.content_type === 'browser' ? activeTab : tabs.findLast((tab) => tab.content_type === 'browser');
+    if (browserTab) {
+      showPreview(browserTab.id);
+      return;
+    }
+    openBrowserTab();
+  };
+
+  const handlePanelSideToggle = () => {
+    setConversationPanelSide(conversationPanelSide === 'right' ? 'left' : 'right');
   };
 
   const handleBackToChat = () => {
@@ -373,20 +434,53 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
           />
         ) : null}
         {showWorkspaceButton && (
-          <button
-            type='button'
-            className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
-            onClick={handleWorkspaceToggle}
-            aria-label={workspaceTooltip}
-            data-testid='workspace-toggle'
-            data-collapsed={workspaceCollapsed ? 'true' : 'false'}
-          >
-            {workspaceCollapsed ? (
-              <ExpandRight theme='outline' size={iconSize} fill='currentColor' />
-            ) : (
-              <ExpandLeft theme='outline' size={iconSize} fill='currentColor' />
-            )}
-          </button>
+          <>
+            <Button
+              type='text'
+              className={classNames(
+                'app-titlebar__button',
+                !workspaceCollapsed && 'app-titlebar__button--selected',
+                layout?.isMobile && 'app-titlebar__button--mobile'
+              )}
+              onClick={handleWorkspaceToggle}
+              aria-label={filesTooltip}
+              title={filesTooltip}
+              aria-pressed={!workspaceCollapsed}
+              data-testid='workspace-files-toggle'
+            >
+              <FolderOpen theme='outline' size={iconSize} fill='currentColor' />
+            </Button>
+            <Button
+              type='text'
+              className={classNames(
+                'app-titlebar__button',
+                isPreviewOpen && activeTab?.content_type === 'browser' && 'app-titlebar__button--selected',
+                layout?.isMobile && 'app-titlebar__button--mobile'
+              )}
+              onClick={handleBrowserToggle}
+              aria-label={browserTooltip}
+              title={browserTooltip}
+              aria-pressed={isPreviewOpen && activeTab?.content_type === 'browser'}
+              data-testid='workspace-browser-toggle'
+            >
+              <BrowserChrome theme='outline' size={iconSize} fill='currentColor' />
+            </Button>
+            <Button
+              type='text'
+              className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
+              onClick={handlePanelSideToggle}
+              aria-label={panelLayoutTooltip}
+              title={panelLayoutTooltip}
+              data-conversation-side={conversationSide}
+              data-testid='workspace-layout-toggle'
+            >
+              <ConversationLayoutIcon
+                conversationSide={conversationSide}
+                size={iconSize}
+                strokeWidth={desktopIconStroke}
+              />
+            </Button>
+          </>
         )}
         {showWindowControls && <WindowControls />}
       </div>

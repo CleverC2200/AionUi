@@ -1,4 +1,5 @@
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 
 function backendBinaryName(platform) {
@@ -7,6 +8,84 @@ function backendBinaryName(platform) {
 
 function normalize(relativePath) {
   return relativePath.split(path.sep).join('/');
+}
+
+function sha256File(filePath) {
+  const hash = crypto.createHash('sha256');
+  const buffer = Buffer.allocUnsafe(1024 * 1024);
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    let bytesRead;
+    do {
+      bytesRead = fs.readSync(fd, buffer, 0, buffer.length, null);
+      if (bytesRead > 0) hash.update(buffer.subarray(0, bytesRead));
+    } while (bytesRead > 0);
+  } finally {
+    fs.closeSync(fd);
+  }
+  return hash.digest('hex');
+}
+
+function sha256Directory(rootDir) {
+  const entries = [];
+
+  function visit(relativeDir) {
+    const absoluteDir = relativeDir ? path.join(rootDir, relativeDir) : rootDir;
+    for (const name of fs.readdirSync(absoluteDir).sort()) {
+      const relativePath = relativeDir ? path.join(relativeDir, name) : name;
+      const absolutePath = path.join(rootDir, relativePath);
+      const stat = fs.lstatSync(absolutePath);
+      const logicalPath = normalize(relativePath);
+      if (stat.isDirectory()) {
+        entries.push({ type: 'directory', path: logicalPath });
+        visit(relativePath);
+      } else if (stat.isFile()) {
+        entries.push({ type: 'file', path: logicalPath, sha256: sha256File(absolutePath) });
+      } else if (stat.isSymbolicLink()) {
+        entries.push({ type: 'symlink', path: logicalPath, target: fs.readlinkSync(absolutePath) });
+      } else {
+        throw new Error(`Unsupported managed resource entry: ${logicalPath}`);
+      }
+    }
+  }
+
+  visit('');
+  const hash = crypto.createHash('sha256');
+  for (const entry of entries) {
+    hash.update(`${entry.type}\0${entry.path}\0`);
+    if (entry.type === 'file') hash.update(`${entry.sha256}\0`);
+    if (entry.type === 'symlink') hash.update(`${entry.target}\0`);
+  }
+  return hash.digest('hex');
+}
+
+function refreshBundledAioncoreContentIdentity({ resourcesDir, electronPlatformName, targetArch }) {
+  const runtimeKey = `${electronPlatformName}-${targetArch}`;
+  const baseDir = path.join(resourcesDir, 'bundled-aioncore', runtimeKey);
+  const manifestPath = path.join(baseDir, 'manifest.json');
+  const manifest = readManifest(manifestPath);
+  const binaryName = backendBinaryName(electronPlatformName);
+  const binaryPath = path.join(baseDir, binaryName);
+  const managedResourcesPath = path.join(baseDir, 'managed-resources');
+  if (!manifest || !isFile(binaryPath) || !isDirectory(managedResourcesPath)) {
+    throw new Error(`Cannot refresh incomplete AionCore bundle identity for ${runtimeKey}`);
+  }
+
+  manifest.content = {
+    binary: { path: binaryName, sha256: sha256File(binaryPath) },
+    managedResources: { path: 'managed-resources', sha256: sha256Directory(managedResourcesPath) },
+  };
+  const temporaryPath = path.join(
+    path.dirname(manifestPath),
+    `.${path.basename(manifestPath)}.${process.pid}.${crypto.randomUUID()}.tmp`
+  );
+  try {
+    fs.writeFileSync(temporaryPath, `${JSON.stringify(manifest, null, 2)}\n`, { flag: 'wx' });
+    fs.renameSync(temporaryPath, manifestPath);
+  } finally {
+    fs.rmSync(temporaryPath, { force: true });
+  }
+  return manifest.content;
 }
 
 function bundledPath(runtimeKey, ...parts) {
@@ -91,6 +170,44 @@ function verifyBundleManifest(baseDir, runtimeKey, electronPlatformName, targetA
   if (manifest.arch !== targetArch) {
     missing.push(`${relativePath}<arch:${targetArch}>`);
     failures.push({ component: 'bundle-manifest', reason: 'runtime_key_mismatch', path: relativePath });
+  }
+
+  const binaryName = backendBinaryName(electronPlatformName);
+  const expectedContent = {
+    binary: { path: binaryName, fullPath: path.join(baseDir, binaryName), hash: sha256File },
+    managedResources: {
+      path: 'managed-resources',
+      fullPath: path.join(baseDir, 'managed-resources'),
+      hash: sha256Directory,
+    },
+  };
+  for (const [name, expected] of Object.entries(expectedContent)) {
+    const content = manifest.content?.[name];
+    if (
+      !content ||
+      content.path !== expected.path ||
+      typeof content.sha256 !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(content.sha256)
+    ) {
+      missing.push(`${relativePath}<content:${name}>`);
+      failures.push({
+        component: 'bundle-manifest',
+        reason: 'invalid_content_identity',
+        path: relativePath,
+        content: name,
+      });
+      continue;
+    }
+    if (!fs.existsSync(expected.fullPath)) continue;
+    if (expected.hash(expected.fullPath) !== content.sha256) {
+      const contentPath = bundledPath(runtimeKey, expected.path);
+      missing.push(`${contentPath}<content_hash_mismatch>`);
+      failures.push({
+        component: name === 'binary' ? 'aioncore' : 'managed-resources',
+        reason: 'content_hash_mismatch',
+        path: contentPath,
+      });
+    }
   }
 }
 
@@ -345,5 +462,8 @@ function verifyBundledAioncoreResources({ resourcesDir, electronPlatformName, ta
 }
 
 module.exports = {
+  refreshBundledAioncoreContentIdentity,
+  sha256Directory,
+  sha256File,
   verifyBundledAioncoreResources,
 };

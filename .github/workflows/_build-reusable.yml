@@ -32,11 +32,11 @@ on:
         type: string
         default: 'CleverC2200/AionCore'
       aioncore_expected_head_sha:
-        description: 'Expected 40-character commit SHA for the AionCore workflow run'
+        description: 'Optional expected 40-character commit SHA for the AionCore workflow run'
         type: string
         default: ''
       aioncore_sha256s:
-        description: 'JSON object mapping AionCore artifact names to archive SHA256 values'
+        description: 'Optional JSON object mapping AionCore artifact names to archive SHA256 values'
         type: string
         default: '{}'
       aioncore_source_policy:

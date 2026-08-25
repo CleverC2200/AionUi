@@ -21,6 +21,12 @@ export interface WorkspaceHasFilesDetail {
   isInitial: boolean;
 }
 
+let workspaceCollapsedSnapshot = true;
+
+export function readWorkspaceCollapsedState(): boolean {
+  return workspaceCollapsedSnapshot;
+}
+
 /** Dispatch a workspace toggle request and report whether an enabled workspace handled it. */
 export function dispatchWorkspaceToggleEvent(): boolean {
   if (typeof window === 'undefined') return false;
@@ -31,6 +37,7 @@ export function dispatchWorkspaceToggleEvent(): boolean {
 
 export function dispatchWorkspaceStateEvent(collapsed: boolean) {
   if (typeof window === 'undefined') return;
+  workspaceCollapsedSnapshot = collapsed;
   window.dispatchEvent(new CustomEvent<WorkspaceStateDetail>(WORKSPACE_STATE_EVENT, { detail: { collapsed } }));
 }
 

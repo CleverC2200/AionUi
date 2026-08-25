@@ -435,6 +435,15 @@
       "terminal": "터미널",
       "explorer": "파일 탐색기",
       "browser": "브라우저"
+    },
+    "panelLayout": {
+      "files": "Files",
+      "browser": "Browser",
+      "settings": "Panel layout",
+      "conversationLeft": "Conversation left",
+      "conversationRight": "Conversation right",
+      "focusBrowser": "Focus browser",
+      "exitBrowserFocus": "Exit browser focus"
     }
   },
   "minimap": {

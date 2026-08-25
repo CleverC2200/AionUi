@@ -109,3 +109,20 @@ describe('PreviewContext scope isolation (closePreviewIfScopeChanged)', () => {
     expect(ctx.tabs[0].title).toBe('A.md');
   });
 });
+
+describe('PreviewContext browser focus', () => {
+  it('leaves focus mode when the preview closes or switches away from a browser tab', () => {
+    mount();
+    act(() => ctx.openBrowserTab());
+    act(() => ctx.setBrowserFocused(true));
+    expect(ctx.isBrowserFocused).toBe(true);
+
+    act(() => ctx.openPreview('# doc', 'markdown', { title: 'Doc' }));
+    expect(ctx.isBrowserFocused).toBe(false);
+
+    act(() => ctx.showPreview(ctx.tabs.find((tab) => tab.content_type === 'browser')?.id));
+    act(() => ctx.setBrowserFocused(true));
+    act(() => ctx.closePreview());
+    expect(ctx.isBrowserFocused).toBe(false);
+  });
+});
