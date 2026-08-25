@@ -136,9 +136,11 @@ type PersonalModelGatewayLifecycle = {
 };
 
 let personalModelGateway: PersonalModelGatewayLifecycle | null = null;
+let personalModelGatewayReady = false;
 
 export function configureSharedPersonalModelGateway(lifecycle: PersonalModelGatewayLifecycle): void {
   personalModelGateway = lifecycle;
+  personalModelGatewayReady = false;
 }
 
 export async function initializeSharedPersonalModelGateway(
@@ -179,7 +181,7 @@ async function pollSharedLarkAuthSessionWithIdentity(qrcodeId: string) {
   if (!personalModelGateway) return verified;
   let personalModelSync: PersonalModelSyncResult;
   try {
-    personalModelSync = await personalModelGateway.sync(result.user, service);
+    personalModelSync = await syncSharedPersonalModels();
   } catch {
     personalModelSync = { configured: 0, failed: 1, skipped: 0, status: 'partial' };
   }
@@ -190,7 +192,7 @@ export async function syncSharedPersonalModels(): Promise<PersonalModelSyncResul
   const service = getSharedLarkAuthService();
   const status = service.getStatus();
   if (!status.authenticated || !status.user) {
-    await personalModelGateway?.deactivate().catch(() => {});
+    await deactivateSharedPersonalModels();
     return {
       configured: 0,
       failed: 0,
@@ -208,13 +210,21 @@ export async function syncSharedPersonalModels(): Promise<PersonalModelSyncResul
       status: 'partial',
     };
   }
-  return personalModelGateway.sync(status.user, service);
+  personalModelGatewayReady = false;
+  const result = await personalModelGateway.sync(status.user, service);
+  personalModelGatewayReady = result.status === 'completed';
+  return result;
+}
+
+export async function ensureSharedPersonalModels(): Promise<void> {
+  if (personalModelGatewayReady) return;
+  await syncSharedPersonalModels();
 }
 
 export async function logoutSharedLarkAuthSession(): Promise<void> {
   await httpRequest<void>('DELETE', '/api/gea/auth/session').catch(() => {});
   await getSharedLarkAuthService().logout();
-  await personalModelGateway?.deactivate().catch(() => {});
+  await deactivateSharedPersonalModels();
 }
 
 export function resolveDesktopLarkAuthStatus(isPackaged: boolean, status: LarkAuthStatus): LarkAuthStatus {
@@ -243,7 +253,7 @@ export async function syncSharedGeaSessionToBackend(options: { replaceInvalidate
     if (backendStatus.authenticated) return true;
     if (backendStatus.reauthRequired) {
       await service.logout();
-      await personalModelGateway?.deactivate().catch(() => {});
+      await deactivateSharedPersonalModels();
       return false;
     }
   }
@@ -285,4 +295,10 @@ export function createSharedWebHostLarkAuth(): WebHostLarkAuth {
 export function resetSharedLarkAuthServiceForTests(): void {
   sharedLarkAuthService = null;
   sharedLarkAuthSessionStore = null;
+  personalModelGatewayReady = false;
+}
+
+async function deactivateSharedPersonalModels(): Promise<void> {
+  personalModelGatewayReady = false;
+  await personalModelGateway?.deactivate().catch(() => {});
 }

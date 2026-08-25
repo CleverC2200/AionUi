@@ -17,6 +17,7 @@ import { initApplicationBridgeCore } from './applicationBridgeCore';
 import type { IStartOnBootStatus } from '@/common/adapter/ipcBridge';
 import { restartApplication } from './restartApplication';
 import {
+  ensureSharedPersonalModels,
   getSharedLarkAuthService,
   LarkAuthServiceError,
   logoutSharedLarkAuthSession,
@@ -144,7 +145,8 @@ export function initApplicationBridge(): void {
   ipcBridge.larkAuth.syncPersonalModels.provider(() => withLarkAuthResult(syncSharedPersonalModels));
   ipcBridge.larkAuth.status.provider(() =>
     withLarkAuthResult(async () => {
-      await syncSharedGeaSessionToBackend().catch(() => false);
+      const backendSessionReady = await syncSharedGeaSessionToBackend().catch(() => false);
+      if (backendSessionReady) await ensureSharedPersonalModels().catch(() => {});
       return resolveDesktopLarkAuthStatus(app.isPackaged, getSharedLarkAuthService().getStatus());
     })
   );

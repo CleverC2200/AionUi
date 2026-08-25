@@ -45,6 +45,7 @@ class FakeWebSocket {
   static instances: FakeWebSocket[] = [];
 
   readyState = FakeWebSocket.CONNECTING;
+  sent: string[] = [];
   private readonly listeners: { [K in keyof FakeSocketEventMap]: FakeSocketEventMap[K][] } = {
     open: [],
     message: [],
@@ -64,6 +65,10 @@ class FakeWebSocket {
     this.readyState = FakeWebSocket.CLOSED;
   }
 
+  send(payload: string) {
+    this.sent.push(payload);
+  }
+
   dispatchOpen() {
     this.readyState = FakeWebSocket.OPEN;
     for (const listener of this.listeners.open) listener();
@@ -73,9 +78,9 @@ class FakeWebSocket {
     this.dispatchCloseWithCode(1006);
   }
 
-  dispatchCloseWithCode(code: number) {
+  dispatchCloseWithCode(code: number, reason = '') {
     this.readyState = FakeWebSocket.CLOSED;
-    for (const listener of this.listeners.close) listener({ code, reason: '' } as CloseEvent);
+    for (const listener of this.listeners.close) listener({ code, reason } as CloseEvent);
   }
 
   dispatchMessage(payload: unknown) {
@@ -435,7 +440,49 @@ describe('httpBridge', () => {
       expect(events).toHaveLength(1);
       expect(events[0]).toEqual({ timestamp: expect.any(Number) });
 
-      FakeWebSocket.instances[1].dispatchClose();
+      FakeWebSocket.instances[1].close();
+      vi.clearAllTimers();
+      unsubscribe();
+      vi.useRealTimers();
+    });
+
+    it('responds to backend heartbeat pings so the desktop realtime socket stays alive', () => {
+      vi.useFakeTimers();
+      vi.stubGlobal('window', { __backendPort: 13400 });
+      vi.stubGlobal('WebSocket', FakeWebSocket as unknown as typeof WebSocket);
+      vi.spyOn(console, 'debug').mockImplementation(() => {});
+      FakeWebSocket.instances = [];
+
+      const unsubscribe = wsEmitter('test-heartbeat').on(() => {});
+      const socket = FakeWebSocket.instances[0];
+      socket.dispatchOpen();
+      socket.dispatchMessage({ name: 'ping', data: { timestamp: 1 } });
+
+      expect(socket.sent).toHaveLength(1);
+      expect(JSON.parse(socket.sent[0])).toEqual({ name: 'pong', data: { timestamp: expect.any(Number) } });
+
+      socket.close();
+      vi.clearAllTimers();
+      unsubscribe();
+      vi.useRealTimers();
+    });
+
+    it('reconnects after a policy close caused by heartbeat timeout', () => {
+      vi.useFakeTimers();
+      vi.stubGlobal('window', { __backendPort: 13400 });
+      vi.stubGlobal('WebSocket', FakeWebSocket as unknown as typeof WebSocket);
+      vi.spyOn(console, 'debug').mockImplementation(() => {});
+      FakeWebSocket.instances = [];
+
+      const unsubscribe = wsEmitter('test-heartbeat-timeout').on(() => {});
+      const socket = FakeWebSocket.instances[0];
+      socket.dispatchOpen();
+      socket.dispatchCloseWithCode(1008, 'heartbeat timeout');
+      vi.advanceTimersByTime(1000);
+
+      expect(FakeWebSocket.instances).toHaveLength(2);
+
+      FakeWebSocket.instances[1].close();
       vi.clearAllTimers();
       unsubscribe();
       vi.useRealTimers();
@@ -463,6 +510,10 @@ describe('httpBridge', () => {
 
       resumeRealtimeWebSocket(1);
       expect(FakeWebSocket.instances).toHaveLength(2);
+      FakeWebSocket.instances[1].dispatchMessage({
+        name: 'realtime.error',
+        data: { code: 'REALTIME_AUTH_EXPIRED', recoverable: false },
+      });
       FakeWebSocket.instances[1].dispatchCloseWithCode(1008);
       resumeRealtimeWebSocket(1);
       expect(FakeWebSocket.instances).toHaveLength(2);
