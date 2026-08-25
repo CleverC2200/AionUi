@@ -1,4 +1,7 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { ContentBlock, Resource, ResourceContents, ResourceTemplate } from '@modelcontextprotocol/sdk/types.js';
 import type {
   WebHostLarkAuth,
   WebHostLarkAuthPoll,
@@ -55,6 +58,7 @@ type GeaGatewaySessionResponse = {
   delegationToken?: string;
   gatewayContext?: {
     agentId?: string;
+    consumerCode?: string;
     conversationId?: string;
     sessionId?: string;
   };
@@ -63,23 +67,10 @@ type GeaGatewaySessionResponse = {
 type GeaGatewayToolResponse = {
   description?: unknown;
   inputSchema?: unknown;
+  mcpCode?: unknown;
+  _meta?: Record<string, unknown>;
   name?: unknown;
   sourceCode?: unknown;
-};
-
-type GeaGatewayToolListResponse = {
-  code?: string;
-  success?: boolean;
-  tools?: GeaGatewayToolResponse[];
-};
-
-type GeaGatewayToolCallResponse = {
-  auditId?: unknown;
-  code?: string;
-  result?: unknown;
-  sourceCode?: unknown;
-  success?: boolean;
-  toolName?: unknown;
 };
 
 export type GeaMcpGatewayTool = {
@@ -91,12 +82,18 @@ export type GeaMcpGatewayTool = {
 
 export type GeaMcpGatewayCallResult = {
   auditId?: string;
-  result: unknown;
+  content?: ContentBlock[];
+  isError?: boolean;
+  result?: unknown;
 };
 
 export type GeaMcpGatewaySession = {
   callTool: (tool: GeaMcpGatewayTool, argumentsValue?: Record<string, unknown>) => Promise<GeaMcpGatewayCallResult>;
+  close: () => Promise<void>;
+  listResourceTemplates: (cursor?: string) => Promise<{ nextCursor?: string; resourceTemplates: ResourceTemplate[] }>;
+  listResources: (cursor?: string) => Promise<{ nextCursor?: string; resources: Resource[] }>;
   listTools: () => Promise<GeaMcpGatewayTool[]>;
+  readResource: (uri: string) => Promise<ResourceContents[]>;
 };
 
 type QrCodeResponse = {
@@ -479,18 +476,35 @@ export class GeaLarkAuthService {
 
     const generation = this.authGeneration;
     const accessToken = this.requireAccessToken(generation);
-    const payload = await this.requestGatewayJson<GeaResponse<GeaGatewaySessionResponse>>(
-      '/ai/gateway/agent/session',
-      accessToken,
-      {
-        agentCode: normalizedAgentCode,
-        channel: 'CS_CLIENT',
-      }
-    );
+    const requestedConversationId = randomUUID();
+    let payload: GeaResponse<GeaGatewaySessionResponse>;
+    try {
+      payload = await this.requestGatewayJson<GeaResponse<GeaGatewaySessionResponse>>(
+        '/ai/gateway/session',
+        accessToken,
+        {
+          consumerType: 'CLIENT_APP',
+          consumerCode: normalizedAgentCode,
+          requestId: randomUUID(),
+          conversationId: requestedConversationId,
+          channel: 'AION_WEB',
+        }
+      );
+    } catch (error) {
+      if (!(error instanceof GeaMcpGatewayError) || error.code !== 'GEA_HTTP_404') throw error;
+      payload = await this.requestGatewayJson<GeaResponse<GeaGatewaySessionResponse>>(
+        '/ai/gateway/agent/session',
+        accessToken,
+        {
+          agentCode: normalizedAgentCode,
+          channel: 'CS_CLIENT',
+        }
+      );
+    }
     const gatewayContext = payload.result?.gatewayContext;
     const sessionId = gatewayContext?.sessionId?.trim() ?? '';
     const conversationId = gatewayContext?.conversationId?.trim() ?? '';
-    const returnedAgentCode = gatewayContext?.agentId?.trim() ?? '';
+    const returnedAgentCode = gatewayContext?.agentId?.trim() || gatewayContext?.consumerCode?.trim() || '';
     const delegationToken = payload.result?.delegationToken?.trim() ?? '';
     if (
       payload.success !== true ||
@@ -510,43 +524,94 @@ export class GeaLarkAuthService {
       delegationToken,
     };
 
+    let mcpClient: Client | null = null;
+    let mcpConnecting: Promise<Client> | null = null;
+    const getMcpClient = async (): Promise<Client> => {
+      if (mcpClient) return mcpClient;
+      mcpConnecting ??= (async () => {
+        const currentToken = this.requireAccessToken(generation);
+        const client = new Client({ name: 'aion-ui-web-host', version: '1.0.0' });
+        const transport = new StreamableHTTPClientTransport(new URL(`${this.baseUrl}/ai/gateway/mcp/proxy/mcp`), {
+          fetch: this.fetchImpl,
+          requestInit: {
+            headers: {
+              Accept: 'application/json, text/event-stream',
+              'X-Access-Token': currentToken,
+            },
+            redirect: 'error',
+          },
+        });
+        try {
+          await client.connect(transport);
+          this.requireAccessToken(generation);
+          mcpClient = client;
+          return client;
+        } catch (error) {
+          await client.close().catch((): undefined => undefined);
+          throw new GeaMcpGatewayError(
+            error instanceof Error && error.message.includes('404')
+              ? 'GEA_MCP_STREAMABLE_HTTP_UNAVAILABLE'
+              : 'GEA_MCP_INITIALIZE_FAILED'
+          );
+        } finally {
+          mcpConnecting = null;
+        }
+      })();
+      return mcpConnecting;
+    };
+
     return {
       listTools: async () => {
-        const currentToken = this.requireAccessToken(generation);
-        const listPayload = await this.requestGatewayJson<GeaGatewayToolListResponse>(
-          '/ai/gateway/mcp/proxy/list',
-          currentToken,
-          sessionPayload
-        );
-        if (listPayload.success !== true || !Array.isArray(listPayload.tools)) {
-          throw new GeaMcpGatewayError(toGatewayErrorCode(listPayload.code, 'GEA_MCP_LIST_FAILED'));
-        }
-        return listPayload.tools.map(parseGatewayTool);
+        const client = await getMcpClient();
+        const response = await client.listTools({ _meta: sessionPayload });
+        return response.tools.map((tool) => parseGatewayTool(tool as GeaGatewayToolResponse));
       },
       callTool: async (tool, argumentsValue = {}) => {
-        const currentToken = this.requireAccessToken(generation);
-        const callPayload = await this.requestGatewayJson<GeaGatewayToolCallResponse>(
-          '/ai/gateway/mcp/proxy/call',
-          currentToken,
-          {
-            ...sessionPayload,
-            mcpCode: tool.sourceCode,
-            toolName: tool.name,
-            arguments: argumentsValue,
-          }
-        );
-        if (callPayload.success !== true) {
-          throw new GeaMcpGatewayError(toGatewayErrorCode(callPayload.code, 'GEA_MCP_CALL_FAILED'));
-        }
-        if (callPayload.sourceCode !== tool.sourceCode || callPayload.toolName !== tool.name) {
-          throw new GeaMcpGatewayError('GEA_MCP_RESPONSE_MISMATCH');
-        }
+        const client = await getMcpClient();
+        const response = await client.callTool({
+          name: tool.name,
+          arguments: argumentsValue,
+          _meta: { ...sessionPayload, mcpCode: tool.sourceCode },
+        });
+        const auditId = response._meta?.auditId;
         return {
-          result: callPayload.result,
-          ...(typeof callPayload.auditId === 'string' && callPayload.auditId.trim()
-            ? { auditId: callPayload.auditId.trim() }
-            : {}),
+          content: response.content as ContentBlock[],
+          ...(response.structuredContent !== undefined ? { result: response.structuredContent } : {}),
+          ...(typeof response.isError === 'boolean' ? { isError: response.isError } : {}),
+          ...(typeof auditId === 'string' && auditId.trim() ? { auditId: auditId.trim() } : {}),
         };
+      },
+      listResources: async (cursor) => {
+        const client = await getMcpClient();
+        const response = await client.listResources({
+          ...(cursor ? { cursor } : {}),
+          _meta: sessionPayload,
+        });
+        return {
+          resources: response.resources,
+          ...(response.nextCursor ? { nextCursor: response.nextCursor } : {}),
+        };
+      },
+      listResourceTemplates: async (cursor) => {
+        const client = await getMcpClient();
+        const response = await client.listResourceTemplates({
+          ...(cursor ? { cursor } : {}),
+          _meta: sessionPayload,
+        });
+        return {
+          resourceTemplates: response.resourceTemplates,
+          ...(response.nextCursor ? { nextCursor: response.nextCursor } : {}),
+        };
+      },
+      readResource: async (uri) => {
+        const client = await getMcpClient();
+        const response = await client.readResource({ uri, _meta: sessionPayload });
+        return response.contents;
+      },
+      close: async () => {
+        const client = mcpClient;
+        mcpClient = null;
+        if (client) await client.close();
       },
     };
   }
@@ -787,7 +852,8 @@ function toGatewayErrorCode(code: unknown, fallback: string): string {
 
 function parseGatewayTool(raw: GeaGatewayToolResponse): GeaMcpGatewayTool {
   const name = typeof raw.name === 'string' ? raw.name.trim() : '';
-  const sourceCode = typeof raw.sourceCode === 'string' ? raw.sourceCode.trim() : '';
+  const rawSourceCode = raw.sourceCode ?? raw.mcpCode ?? raw._meta?.mcpCode;
+  const sourceCode = typeof rawSourceCode === 'string' ? rawSourceCode.trim() : '';
   const inputSchema =
     raw.inputSchema && typeof raw.inputSchema === 'object' && !Array.isArray(raw.inputSchema)
       ? (raw.inputSchema as Record<string, unknown>)
