@@ -66,11 +66,17 @@ CI 会在这些检查失败时拒绝你的 PR。**推送前**在本地运行，�
 ### 推荐流程
 
 ```bash
-# 只运行一次完整本地门禁，通过后自动推送
+# 开发过程中快速反馈
+just quick-check
+
+# 运行与本次改动最接近的定向测试
+bunx vitest run <test-file>
+
+# 最终提交只运行一次完整本地门禁，通过后自动推送
 just push <remote> <branch>
 ```
 
-`just push` 会依次执行格式检查、lint、类型检查、i18n 校验和单元测试，通过后再调用 `git push`。当前分支已有 upstream 时可省略 `<remote> <branch>`。
+`just quick-check` 会运行格式检查、严格 lint、类型检查和 i18n 校验，但不会运行完整单元测试。开发过程中将它和最接近本次改动的定向测试配合使用；最终提交再由 `just push` 运行快速门禁和完整单元测试，通过后调用 `git push`。当前分支已有 upstream 时可省略 `<remote> <branch>`。
 
 只有门禁失败、需要定位或修复时，才单独运行下面的命令：
 

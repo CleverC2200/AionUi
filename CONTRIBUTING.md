@@ -66,11 +66,17 @@ CI will reject your PR if these checks fail. Run them locally **before pushing**
 ### Recommended workflow
 
 ```bash
-# Run the complete local gate once, then push.
+# Fast feedback while iterating
+just quick-check
+
+# Run relevant targeted tests for the files or behavior you changed
+bunx vitest run <test-file>
+
+# Run the complete local gate once on the final commit, then push.
 just push <remote> <branch>
 ```
 
-`just push` runs formatting checks, lint, type checking, i18n validation, and unit tests before calling `git push`. Omit `<remote> <branch>` when the current branch already has an upstream.
+`just quick-check` runs formatting checks, strict lint, type checking, and i18n validation without the full unit-test suite. Use it during implementation together with the closest targeted tests. `just push` then runs that quick gate plus the full unit-test suite once on the final commit before calling `git push`. Omit `<remote> <branch>` when the current branch already has an upstream.
 
 Use the individual commands below only to diagnose or fix a failed gate:
 
