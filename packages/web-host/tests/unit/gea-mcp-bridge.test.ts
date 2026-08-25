@@ -21,7 +21,11 @@ describe('startGeaMcpBridge', () => {
         sourceCode: 'mcp-001',
       },
     ]);
-    const callTool = vi.fn().mockResolvedValue({ result: '{"data":[]}', auditId: 'audit-1' });
+    const operationId = '11111111-1111-4111-8111-111111111111';
+    const callTool = vi.fn().mockResolvedValue({
+      result: '{"data":[]}',
+      meta: { auditId: 'audit-1', operationId, requestId: 'request-1' },
+    });
     const authService = {
       createMcpGatewaySession: vi.fn().mockResolvedValue({ listTools, callTool }),
     } as unknown as GeaLarkAuthService;
@@ -33,10 +37,28 @@ describe('startGeaMcpBridge', () => {
     await expect(client.listTools()).resolves.toMatchObject({
       tools: [{ name: 'search_records', description: '搜索记录' }],
     });
-    await expect(client.callTool({ name: 'search_records', arguments: { query: '客户A' } })).resolves.toEqual({
+    const requestedDeadline = new Date(Date.now() + 5 * 60_000).toISOString();
+    const startedAt = Date.now();
+    await expect(
+      client.callTool({
+        name: 'search_records',
+        arguments: { query: '客户A' },
+        _meta: { attempt: 2, deadlineAt: requestedDeadline, operationId, parentRequestId: 'parent-1' },
+      })
+    ).resolves.toEqual({
       content: [{ type: 'text', text: '{"data":[]}' }],
+      _meta: { auditId: 'audit-1', operationId, requestId: 'request-1' },
     });
-    expect(callTool).toHaveBeenCalledWith(expect.objectContaining({ sourceCode: 'mcp-001' }), { query: '客户A' });
+    expect(callTool).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceCode: 'mcp-001' }),
+      { query: '客户A' },
+      {
+        operation: expect.objectContaining({ attempt: 2, operationId, parentRequestId: 'parent-1' }),
+      }
+    );
+    const options = callTool.mock.calls[0]?.[2];
+    expect(Date.parse(options.operation.deadlineAt)).toBeGreaterThanOrEqual(startedAt);
+    expect(Date.parse(options.operation.deadlineAt)).toBeLessThanOrEqual(startedAt + 60_500);
 
     await client.close();
   });
@@ -99,10 +121,14 @@ describe('startGeaMcpBridge', () => {
     ];
     await client.callTool({ name: 'query_business_data', arguments: { action: 'query', queries } });
 
-    expect(callTool).toHaveBeenCalledWith(legacyTool, {
-      action: 'query',
-      queries: JSON.stringify(queries),
-    });
+    expect(callTool).toHaveBeenCalledWith(
+      legacyTool,
+      {
+        action: 'query',
+        queries: JSON.stringify(queries),
+      },
+      expect.objectContaining({ operation: expect.any(Object) })
+    );
     await client.close();
   });
 
@@ -136,7 +162,11 @@ describe('startGeaMcpBridge', () => {
     const queries = [{ name: 'probe', query: { measures: ['Cube.count'] } }];
     await client.callTool({ name: 'query_business_data', arguments: { action: 'query', queries } });
 
-    expect(callTool).toHaveBeenCalledWith(modernTool, { action: 'query', queries });
+    expect(callTool).toHaveBeenCalledWith(
+      modernTool,
+      { action: 'query', queries },
+      expect.objectContaining({ operation: expect.any(Object) })
+    );
     await client.close();
   });
 
@@ -165,7 +195,7 @@ describe('startGeaMcpBridge', () => {
     await expect(client.callTool({ name: 'gateway_session_currentUser_resolve', arguments: {} })).resolves.toEqual({
       content: [{ type: 'text', text: '{"id":"user-1"}' }],
     });
-    expect(callTool).toHaveBeenCalledWith(dottedTool, {});
+    expect(callTool).toHaveBeenCalledWith(dottedTool, {}, expect.objectContaining({ operation: expect.any(Object) }));
 
     await client.close();
   });

@@ -18,6 +18,7 @@ import {
   type GeaLarkAuthService,
   type GeaMcpGatewaySession,
   type GeaMcpGatewayTool,
+  type GeaMcpOperationContext,
 } from './gea-lark-auth.js';
 
 type BridgeSession = {
@@ -100,6 +101,29 @@ function safeToolContent(content: ContentBlock): ContentBlock {
 
 const MAX_TOOL_NAME_LENGTH = 64;
 const BUSINESS_DATA_TOOL_NAME = 'query_business_data';
+const DEFAULT_GEA_MCP_CALL_TIMEOUT_MS = 60_000;
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function operationContext(meta: Record<string, unknown> | undefined): GeaMcpOperationContext {
+  const now = Date.now();
+  const defaultDeadline = now + DEFAULT_GEA_MCP_CALL_TIMEOUT_MS;
+  const requestedDeadline = typeof meta?.deadlineAt === 'string' ? Date.parse(meta.deadlineAt) : Number.NaN;
+  const deadline = Number.isFinite(requestedDeadline) ? Math.min(requestedDeadline, defaultDeadline) : defaultDeadline;
+  const operationId =
+    typeof meta?.operationId === 'string' && UUID_V4_PATTERN.test(meta.operationId) ? meta.operationId : randomUUID();
+  const attempt =
+    typeof meta?.attempt === 'number' && Number.isInteger(meta.attempt) && meta.attempt >= 1 ? meta.attempt : 1;
+  const parentRequestId =
+    typeof meta?.parentRequestId === 'string' && /^[A-Za-z0-9._:-]{1,128}$/.test(meta.parentRequestId)
+      ? meta.parentRequestId
+      : undefined;
+  return {
+    operationId,
+    attempt,
+    deadlineAt: new Date(deadline).toISOString(),
+    ...(parentRequestId ? { parentRequestId } : {}),
+  };
+}
 
 const LEGACY_BUSINESS_DATA_INPUT_SCHEMA: Record<string, unknown> = {
   type: 'object',
@@ -237,7 +261,9 @@ function createMcpServer(authService: GeaLarkAuthService, agentCode: string): Se
       }
       const argumentsValue =
         request.params.arguments && typeof request.params.arguments === 'object' ? request.params.arguments : {};
-      const result = await gatewaySession.callTool(tool, gatewayArguments(tool, argumentsValue));
+      const result = await gatewaySession.callTool(tool, gatewayArguments(tool, argumentsValue), {
+        operation: operationContext(request.params._meta),
+      });
       const content = result.content?.map(safeToolContent) ?? [
         { type: 'text' as const, text: resultText(result.result) },
       ];
@@ -245,6 +271,7 @@ function createMcpServer(authService: GeaLarkAuthService, agentCode: string): Se
         content,
         ...(result.isError !== undefined ? { isError: result.isError } : {}),
         ...(result.result && typeof result.result === 'object' ? { structuredContent: result.result } : {}),
+        ...(result.meta ? { _meta: result.meta } : {}),
       };
     } catch (error) {
       return { isError: true, content: [{ type: 'text', text: errorCode(error) }] };

@@ -19,6 +19,7 @@ const SESSION_RESTORE_ATTEMPTS = 2;
 const SESSION_RESTORE_RETRY_DELAY_MS = 100;
 const SESSION_RESTORE_TIMEOUT_MS = 2_500;
 const PERSONAL_CREDENTIAL_PAGE_SIZE = 100;
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type FetchLike = typeof fetch;
 type LarkAuthErrorCode = 'invalidResponse' | 'networkError' | 'serverError';
@@ -80,15 +81,38 @@ export type GeaMcpGatewayTool = {
   sourceCode: string;
 };
 
+export type GeaMcpCorrelationMeta = {
+  auditId?: string;
+  operationId?: string;
+  requestId?: string;
+  traceId?: string;
+};
+
+export type GeaMcpOperationContext = {
+  attempt: number;
+  deadlineAt: string;
+  operationId: string;
+  parentRequestId?: string;
+};
+
+export type GeaMcpCallOptions = {
+  operation: GeaMcpOperationContext;
+};
+
 export type GeaMcpGatewayCallResult = {
   auditId?: string;
   content?: ContentBlock[];
   isError?: boolean;
+  meta?: GeaMcpCorrelationMeta;
   result?: unknown;
 };
 
 export type GeaMcpGatewaySession = {
-  callTool: (tool: GeaMcpGatewayTool, argumentsValue?: Record<string, unknown>) => Promise<GeaMcpGatewayCallResult>;
+  callTool: (
+    tool: GeaMcpGatewayTool,
+    argumentsValue?: Record<string, unknown>,
+    options?: GeaMcpCallOptions
+  ) => Promise<GeaMcpGatewayCallResult>;
   close: () => Promise<void>;
   listResourceTemplates: (cursor?: string) => Promise<{ nextCursor?: string; resourceTemplates: ResourceTemplate[] }>;
   listResources: (cursor?: string) => Promise<{ nextCursor?: string; resources: Resource[] }>;
@@ -566,19 +590,24 @@ export class GeaLarkAuthService {
         const response = await client.listTools({ _meta: sessionPayload });
         return response.tools.map((tool) => parseGatewayTool(tool as GeaGatewayToolResponse));
       },
-      callTool: async (tool, argumentsValue = {}) => {
+      callTool: async (tool, argumentsValue = {}, options) => {
         const client = await getMcpClient();
         const response = await client.callTool({
           name: tool.name,
           arguments: argumentsValue,
-          _meta: { ...sessionPayload, mcpCode: tool.sourceCode },
+          _meta: {
+            ...sessionPayload,
+            mcpCode: tool.sourceCode,
+            ...options?.operation,
+          },
         });
-        const auditId = response._meta?.auditId;
+        const meta = parseGeaMcpCorrelationMeta(response._meta, options?.operation.operationId);
         return {
           content: response.content as ContentBlock[],
           ...(response.structuredContent !== undefined ? { result: response.structuredContent } : {}),
           ...(typeof response.isError === 'boolean' ? { isError: response.isError } : {}),
-          ...(typeof auditId === 'string' && auditId.trim() ? { auditId: auditId.trim() } : {}),
+          ...(meta ? { meta } : {}),
+          ...(meta?.auditId ? { auditId: meta.auditId } : {}),
         };
       },
       listResources: async (cursor) => {
@@ -848,6 +877,23 @@ function parseOpenAiModelId(value: unknown): string {
 
 function toGatewayErrorCode(code: unknown, fallback: string): string {
   return typeof code === 'string' && code.trim() ? code.trim() : fallback;
+}
+
+function parseGeaMcpCorrelationMeta(value: unknown, operationId?: string): GeaMcpCorrelationMeta | undefined {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  const meta: GeaMcpCorrelationMeta = {};
+  for (const key of ['auditId', 'requestId', 'traceId'] as const) {
+    const candidate = source[key];
+    if (typeof candidate === 'string' && /^[A-Za-z0-9._:-]{1,128}$/.test(candidate)) {
+      meta[key] = candidate;
+    }
+  }
+  const returnedOperationId = source.operationId;
+  if (typeof returnedOperationId === 'string' && UUID_V4_PATTERN.test(returnedOperationId)) {
+    meta.operationId = returnedOperationId;
+  }
+  if (operationId) meta.operationId = operationId;
+  return Object.keys(meta).length ? meta : undefined;
 }
 
 function parseGatewayTool(raw: GeaGatewayToolResponse): GeaMcpGatewayTool {

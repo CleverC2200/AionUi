@@ -87,6 +87,13 @@ describe('GeaLarkAuthService MCP Resources', () => {
           jsonrpc: '2.0',
           id,
           result: {
+            _meta: {
+              auditId: 'audit-1',
+              operationId: '11111111-1111-4111-8111-111111111111',
+              requestId: 'request-1',
+              secret: 'must-not-pass',
+              traceId: 'trace-1',
+            },
             content: [
               {
                 type: 'resource_link',
@@ -170,8 +177,25 @@ describe('GeaLarkAuthService MCP Resources', () => {
     const session = await service.createMcpGatewaySession('sales_forecast');
     const [tool] = await session.listTools();
     expect(tool).toMatchObject({ name: 'query_business_data', sourceCode: 'cube' });
-    const called = await session.callTool(tool!, { queries: [] });
+    const called = await session.callTool(
+      tool!,
+      { queries: [] },
+      {
+        operation: {
+          attempt: 2,
+          deadlineAt: '2026-08-25T15:00:00.000Z',
+          operationId: '11111111-1111-4111-8111-111111111111',
+          parentRequestId: 'parent-1',
+        },
+      }
+    );
     expect(called.content).toEqual([expect.objectContaining({ type: 'resource_link', uri })]);
+    expect(called.meta).toEqual({
+      auditId: 'audit-1',
+      operationId: '11111111-1111-4111-8111-111111111111',
+      requestId: 'request-1',
+      traceId: 'trace-1',
+    });
     await expect(session.listResources()).resolves.toMatchObject({ resources: [{ uri }] });
     await expect(session.listResourceTemplates()).resolves.toMatchObject({
       resourceTemplates: [{ uriTemplate: 'data-artifact://gateway/{artifactId}' }],
@@ -187,7 +211,11 @@ describe('GeaLarkAuthService MCP Resources', () => {
       arguments: { queries: [] },
       _meta: {
         delegationToken: 'delegation-secret',
+        attempt: 2,
+        deadlineAt: '2026-08-25T15:00:00.000Z',
         mcpCode: 'cube',
+        operationId: '11111111-1111-4111-8111-111111111111',
+        parentRequestId: 'parent-1',
         sessionId: 'gea-session-1',
       },
     });
