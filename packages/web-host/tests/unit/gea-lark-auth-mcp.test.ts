@@ -83,6 +83,46 @@ describe('GeaLarkAuthService MCP Resources', () => {
         });
       }
       if (method === 'tools/call') {
+        const callArguments = (body?.params as { arguments?: Record<string, unknown> } | undefined)?.arguments;
+        if (callArguments?.mode === 'jsonrpc-error') {
+          return jsonResponse({
+            jsonrpc: '2.0',
+            id,
+            error: {
+              code: -32000,
+              message: 'sensitive upstream message',
+              data: {
+                auditId: 'audit-error-1',
+                businessCode: 'CAPABILITY_RATE_LIMITED',
+                category: 'RATE_LIMIT',
+                details: { secret: 'must-not-pass' },
+                requestId: 'request-error-1',
+                retryAfterMs: 1500,
+                retryable: true,
+                stage: 'ADMISSION',
+                suggestedAction: 'RETRY_LATER',
+                traceId: 'trace-error-1',
+              },
+            },
+          });
+        }
+        if (callArguments?.mode === 'tool-error') {
+          return jsonResponse({
+            jsonrpc: '2.0',
+            id,
+            result: {
+              content: [{ type: 'text', text: 'sensitive partial resource message' }],
+              isError: true,
+              structuredContent: {
+                error: {
+                  code: 'MCP_RESOURCE_INCOMPLETE',
+                  retryable: false,
+                  stage: 'RESOURCE_READ',
+                },
+              },
+            },
+          });
+        }
         return jsonResponse({
           jsonrpc: '2.0',
           id,
@@ -196,6 +236,52 @@ describe('GeaLarkAuthService MCP Resources', () => {
       requestId: 'request-1',
       traceId: 'trace-1',
     });
+    await expect(
+      session.callTool(
+        tool!,
+        { mode: 'jsonrpc-error' },
+        {
+          operation: {
+            attempt: 1,
+            deadlineAt: '2026-08-25T15:00:00.000Z',
+            operationId: '22222222-2222-4222-8222-222222222222',
+          },
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'CAPABILITY_RATE_LIMITED',
+      envelope: {
+        auditId: 'audit-error-1',
+        category: 'RATE_LIMIT',
+        code: 'CAPABILITY_RATE_LIMITED',
+        operationId: '22222222-2222-4222-8222-222222222222',
+        requestId: 'request-error-1',
+        retryAfterMs: 1500,
+        retryable: true,
+        stage: 'ADMISSION',
+        suggestedAction: 'RETRY_LATER',
+        traceId: 'trace-error-1',
+      },
+      message: 'CAPABILITY_RATE_LIMITED',
+    });
+    const toolError = await session.callTool(
+      tool!,
+      { mode: 'tool-error' },
+      {
+        operation: {
+          attempt: 1,
+          deadlineAt: '2026-08-25T15:00:00.000Z',
+          operationId: '33333333-3333-4333-8333-333333333333',
+        },
+      }
+    );
+    expect(toolError.error).toEqual({
+      code: 'MCP_RESOURCE_INCOMPLETE',
+      operationId: '33333333-3333-4333-8333-333333333333',
+      retryable: false,
+      stage: 'RESOURCE_READ',
+    });
+    expect(JSON.stringify(toolError.error)).not.toContain('sensitive');
     await expect(session.listResources()).resolves.toMatchObject({ resources: [{ uri }] });
     await expect(session.listResourceTemplates()).resolves.toMatchObject({
       resourceTemplates: [{ uriTemplate: 'data-artifact://gateway/{artifactId}' }],

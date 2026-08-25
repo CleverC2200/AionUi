@@ -1,7 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { ContentBlock, Resource, ResourceContents, ResourceTemplate } from '@modelcontextprotocol/sdk/types.js';
+import {
+  McpError,
+  type ContentBlock,
+  type Resource,
+  type ResourceContents,
+  type ResourceTemplate,
+} from '@modelcontextprotocol/sdk/types.js';
 import type {
   WebHostLarkAuth,
   WebHostLarkAuthPoll,
@@ -99,9 +105,23 @@ export type GeaMcpCallOptions = {
   operation: GeaMcpOperationContext;
 };
 
+export type GeaMcpErrorEnvelope = {
+  auditId?: string;
+  category?: string;
+  code: string;
+  operationId?: string;
+  requestId?: string;
+  retryAfterMs?: number;
+  retryable: boolean;
+  stage?: string;
+  suggestedAction?: string;
+  traceId?: string;
+};
+
 export type GeaMcpGatewayCallResult = {
   auditId?: string;
   content?: ContentBlock[];
+  error?: GeaMcpErrorEnvelope;
   isError?: boolean;
   meta?: GeaMcpCorrelationMeta;
   result?: unknown;
@@ -194,11 +214,14 @@ export class GeaLarkAuthServiceError extends Error {
 
 export class GeaMcpGatewayError extends Error {
   readonly code: string;
+  readonly envelope: GeaMcpErrorEnvelope;
 
-  constructor(code: string) {
-    super(code);
+  constructor(value: string | GeaMcpErrorEnvelope) {
+    const envelope = typeof value === 'string' ? { code: value, retryable: false } : value;
+    super(envelope.code);
     this.name = 'GeaMcpGatewayError';
-    this.code = code;
+    this.code = envelope.code;
+    this.envelope = envelope;
   }
 }
 
@@ -592,20 +615,40 @@ export class GeaLarkAuthService {
       },
       callTool: async (tool, argumentsValue = {}, options) => {
         const client = await getMcpClient();
-        const response = await client.callTool({
-          name: tool.name,
-          arguments: argumentsValue,
-          _meta: {
-            ...sessionPayload,
-            mcpCode: tool.sourceCode,
-            ...options?.operation,
-          },
-        });
+        let response: Awaited<ReturnType<Client['callTool']>>;
+        try {
+          response = await client.callTool({
+            name: tool.name,
+            arguments: argumentsValue,
+            _meta: {
+              ...sessionPayload,
+              mcpCode: tool.sourceCode,
+              ...options?.operation,
+            },
+          });
+        } catch (error) {
+          if (error instanceof GeaMcpGatewayError) throw error;
+          const envelope =
+            error instanceof McpError
+              ? parseGeaMcpErrorEnvelope(error.data, options?.operation.operationId)
+              : undefined;
+          throw new GeaMcpGatewayError(
+            envelope ?? {
+              code: 'GEA_MCP_CALL_FAILED',
+              retryable: false,
+              ...(options?.operation.operationId ? { operationId: options.operation.operationId } : {}),
+            }
+          );
+        }
         const meta = parseGeaMcpCorrelationMeta(response._meta, options?.operation.operationId);
+        const error = response.isError
+          ? parseGeaMcpToolError(response.structuredContent, response.content, options?.operation.operationId)
+          : undefined;
         return {
           content: response.content as ContentBlock[],
           ...(response.structuredContent !== undefined ? { result: response.structuredContent } : {}),
           ...(typeof response.isError === 'boolean' ? { isError: response.isError } : {}),
+          ...(error ? { error } : {}),
           ...(meta ? { meta } : {}),
           ...(meta?.auditId ? { auditId: meta.auditId } : {}),
         };
@@ -894,6 +937,55 @@ function parseGeaMcpCorrelationMeta(value: unknown, operationId?: string): GeaMc
   }
   if (operationId) meta.operationId = operationId;
   return Object.keys(meta).length ? meta : undefined;
+}
+
+function parseGeaMcpErrorEnvelope(value: unknown, operationId?: string): GeaMcpErrorEnvelope | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const outer = value as Record<string, unknown>;
+  const source =
+    outer.error && typeof outer.error === 'object' && !Array.isArray(outer.error)
+      ? (outer.error as Record<string, unknown>)
+      : outer;
+  const rawCode = source.businessCode ?? source.code;
+  if (typeof rawCode !== 'string' || !/^[A-Z][A-Z0-9_]{2,127}$/.test(rawCode)) return undefined;
+
+  const envelope: GeaMcpErrorEnvelope = {
+    code: rawCode,
+    retryable: source.retryable === true,
+  };
+  for (const key of ['category', 'stage', 'suggestedAction'] as const) {
+    const candidate = source[key];
+    if (typeof candidate === 'string' && /^[A-Za-z0-9._:-]{1,128}$/.test(candidate)) {
+      envelope[key] = candidate;
+    }
+  }
+  const retryAfterMs = source.retryAfterMs;
+  if (typeof retryAfterMs === 'number' && Number.isSafeInteger(retryAfterMs) && retryAfterMs >= 0) {
+    envelope.retryAfterMs = retryAfterMs;
+  }
+  const meta = parseGeaMcpCorrelationMeta(source, operationId);
+  if (meta) Object.assign(envelope, meta);
+  return envelope;
+}
+
+function parseGeaMcpToolError(structuredContent: unknown, content: unknown, operationId?: string): GeaMcpErrorEnvelope {
+  const structured = parseGeaMcpErrorEnvelope(structuredContent, operationId);
+  if (structured) return structured;
+  if (Array.isArray(content)) {
+    const text = content
+      .find(
+        (item): item is { text: string; type: 'text' } =>
+          !!item &&
+          typeof item === 'object' &&
+          (item as { type?: unknown }).type === 'text' &&
+          typeof (item as { text?: unknown }).text === 'string'
+      )
+      ?.text.trim();
+    if (text && /^[A-Z][A-Z0-9_]{2,127}$/.test(text)) {
+      return { code: text, retryable: false, ...(operationId ? { operationId } : {}) };
+    }
+  }
+  return { code: 'GEA_MCP_TOOL_FAILED', retryable: false, ...(operationId ? { operationId } : {}) };
 }
 
 function parseGatewayTool(raw: GeaGatewayToolResponse): GeaMcpGatewayTool {

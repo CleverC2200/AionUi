@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { GeaLarkAuthService } from '../../src/gea-lark-auth.js';
+import { GeaMcpGatewayError, type GeaLarkAuthService } from '../../src/gea-lark-auth.js';
 import { startGeaMcpBridge, type GeaMcpBridgeHandle } from '../../src/gea-mcp-bridge.js';
 
 describe('startGeaMcpBridge', () => {
@@ -275,6 +275,90 @@ describe('startGeaMcpBridge', () => {
     const read = await client.readResource({ uri });
     expect(read.contents[0]).toMatchObject({ uri, text: '{"rows":[1]}' });
     expect(JSON.stringify(read)).not.toContain('oss_url');
+
+    await client.close();
+  });
+
+  it('returns structured GEA failures without exposing upstream messages', async () => {
+    const operationId = '44444444-4444-4444-8444-444444444444';
+    const callTool = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new GeaMcpGatewayError({
+          auditId: 'audit-error-1',
+          category: 'RATE_LIMIT',
+          code: 'CAPABILITY_RATE_LIMITED',
+          operationId,
+          requestId: 'request-error-1',
+          retryAfterMs: 2500,
+          retryable: true,
+          stage: 'ADMISSION',
+          traceId: 'trace-error-1',
+        })
+      )
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'sensitive partial resource message' }],
+        error: { code: 'MCP_RESOURCE_INCOMPLETE', operationId, retryable: false, stage: 'RESOURCE_READ' },
+        isError: true,
+      });
+    const authService = {
+      createMcpGatewaySession: vi.fn().mockResolvedValue({
+        listTools: vi.fn().mockResolvedValue([
+          {
+            name: 'query_business_data',
+            inputSchema: { type: 'object' },
+            sourceCode: 'mcp-business-data',
+          },
+        ]),
+        callTool,
+      }),
+    } as unknown as GeaLarkAuthService;
+    handle = await startGeaMcpBridge(authService, 'sales_forecast');
+
+    const client = new Client({ name: 'test-client', version: '1.0.0' });
+    await client.connect(new StreamableHTTPClientTransport(new URL(handle.url)));
+
+    const limited = await client.callTool({
+      name: 'query_business_data',
+      arguments: {},
+      _meta: { operationId },
+    });
+    expect(limited).toEqual({
+      content: [{ type: 'text', text: 'CAPABILITY_RATE_LIMITED' }],
+      isError: true,
+      structuredContent: {
+        error: {
+          auditId: 'audit-error-1',
+          category: 'RATE_LIMIT',
+          code: 'CAPABILITY_RATE_LIMITED',
+          operationId,
+          requestId: 'request-error-1',
+          retryAfterMs: 2500,
+          retryable: true,
+          stage: 'ADMISSION',
+          traceId: 'trace-error-1',
+        },
+      },
+      _meta: {
+        auditId: 'audit-error-1',
+        operationId,
+        requestId: 'request-error-1',
+        traceId: 'trace-error-1',
+      },
+    });
+    const incomplete = await client.callTool({
+      name: 'query_business_data',
+      arguments: {},
+      _meta: { operationId },
+    });
+    expect(incomplete).toMatchObject({
+      content: [{ type: 'text', text: 'MCP_RESOURCE_INCOMPLETE' }],
+      isError: true,
+      structuredContent: {
+        error: { code: 'MCP_RESOURCE_INCOMPLETE', operationId, retryable: false, stage: 'RESOURCE_READ' },
+      },
+    });
+    expect(JSON.stringify([limited, incomplete])).not.toContain('sensitive');
 
     await client.close();
   });
