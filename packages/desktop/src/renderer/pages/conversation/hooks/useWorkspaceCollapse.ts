@@ -161,10 +161,10 @@ export function useWorkspaceCollapse({
 
   // Broadcast workspace state event
   useEffect(() => {
-    if (!workspaceEnabled) {
-      dispatchWorkspaceStateEvent(true);
-      return;
-    }
+    // A project conversation disables this legacy panel because the Layout-level
+    // project host owns the same workspace event bus. Staying silent here avoids
+    // overwriting that host's real expanded state with a stale "collapsed" event.
+    if (!workspaceEnabled) return;
     dispatchWorkspaceStateEvent(rightSiderCollapsed);
   }, [rightSiderCollapsed, workspaceEnabled]);
 

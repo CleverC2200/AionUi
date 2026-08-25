@@ -420,6 +420,15 @@
       "terminal": "Terminal",
       "explorer": "Dosya Gezgini",
       "browser": "Tarayıcı"
+    },
+    "panelLayout": {
+      "files": "Files",
+      "browser": "Browser",
+      "settings": "Panel layout",
+      "conversationLeft": "Conversation left",
+      "conversationRight": "Conversation right",
+      "focusBrowser": "Focus browser",
+      "exitBrowserFocus": "Exit browser focus"
     }
   },
   "minimap": {

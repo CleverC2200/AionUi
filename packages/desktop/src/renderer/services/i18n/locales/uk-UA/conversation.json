@@ -439,6 +439,15 @@
       "terminal": "Термінал",
       "explorer": "Провідник",
       "browser": "Браузер"
+    },
+    "panelLayout": {
+      "files": "Files",
+      "browser": "Browser",
+      "settings": "Panel layout",
+      "conversationLeft": "Conversation left",
+      "conversationRight": "Conversation right",
+      "focusBrowser": "Focus browser",
+      "exitBrowserFocus": "Exit browser focus"
     }
   },
   "minimap": {

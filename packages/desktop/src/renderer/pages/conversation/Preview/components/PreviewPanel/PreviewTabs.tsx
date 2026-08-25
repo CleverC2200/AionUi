@@ -5,7 +5,8 @@
  */
 
 import { iconColors } from '@/renderer/styles/colors';
-import { Close, Plus } from '@icon-park/react';
+import { Close, FullScreen, OffScreen, Plus } from '@icon-park/react';
+import { Button, Tooltip } from '@arco-design/web-react';
 import { IconShrink } from '@arco-design/web-react/icon';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -121,6 +122,12 @@ interface PreviewTabsProps {
    * the plus button never appears in a document-only panel.
    */
   onNewBrowserTab?: () => void;
+
+  /** 浏览器聚焦模式；与面板收起按钮同处标签栏右侧。 */
+  browserFocus?: {
+    active: boolean;
+    onToggle: () => void;
+  };
 }
 
 /**
@@ -143,6 +150,7 @@ const PreviewTabs: React.FC<PreviewTabsProps> = ({
   onContextMenu,
   onClosePanel,
   onNewBrowserTab,
+  browserFocus,
 }) => {
   const { t } = useTranslation();
   const { left: showLeftFade, right: showRightFade } = tabFadeState;
@@ -259,16 +267,48 @@ const PreviewTabs: React.FC<PreviewTabsProps> = ({
           )}
         </div>
 
-        {/* 收起面板按钮 / Collapse panel button */}
-        {onClosePanel && (
-          <div className='flex items-center h-full px-10px flex-shrink-0 rounded-se-[16px]'>
-            <div
-              className='flex items-center justify-center w-20px h-20px rd-4px cursor-pointer hover:bg-bg-3 transition-colors'
-              onClick={onClosePanel}
-              title={t('preview.collapsePanel')}
-            >
-              <IconShrink style={{ fontSize: 14, color: iconColors.secondary }} />
-            </div>
+        {/* 浏览器聚焦与面板收起保持在同一行、同一点击尺寸。 */}
+        {(browserFocus || onClosePanel) && (
+          <div className='flex items-center h-full gap-4px px-8px flex-shrink-0 rounded-se-[16px]'>
+            {onClosePanel && (
+              <Tooltip content={t('preview.collapsePanel')}>
+                <Button
+                  type='text'
+                  className='!w-24px !min-w-24px !h-24px !p-0 !text-t-secondary hover:!text-t-primary hover:!bg-bg-3'
+                  aria-label={t('preview.collapsePanel')}
+                  onClick={onClosePanel}
+                  icon={<IconShrink style={{ fontSize: 14, color: 'currentColor' }} />}
+                />
+              </Tooltip>
+            )}
+            {browserFocus && (
+              <Tooltip
+                content={
+                  browserFocus.active
+                    ? t('conversation.workspace.panelLayout.exitBrowserFocus')
+                    : t('conversation.workspace.panelLayout.focusBrowser')
+                }
+              >
+                <Button
+                  type='text'
+                  className='!w-24px !min-w-24px !h-24px !p-0 !text-t-secondary hover:!text-t-primary hover:!bg-bg-3'
+                  aria-label={
+                    browserFocus.active
+                      ? t('conversation.workspace.panelLayout.exitBrowserFocus')
+                      : t('conversation.workspace.panelLayout.focusBrowser')
+                  }
+                  aria-pressed={browserFocus.active}
+                  onClick={browserFocus.onToggle}
+                  icon={
+                    browserFocus.active ? (
+                      <OffScreen theme='outline' size={14} />
+                    ) : (
+                      <FullScreen theme='outline' size={14} />
+                    )
+                  }
+                />
+              </Tooltip>
+            )}
           </div>
         )}
       </div>
