@@ -441,6 +441,15 @@
       "terminal": "Terminal",
       "explorer": "Explorador de Arquivos",
       "browser": "Navegador"
+    },
+    "panelLayout": {
+      "files": "Files",
+      "browser": "Browser",
+      "settings": "Panel layout",
+      "conversationLeft": "Conversation left",
+      "conversationRight": "Conversation right",
+      "focusBrowser": "Focus browser",
+      "exitBrowserFocus": "Exit browser focus"
     }
   },
   "minimap": {

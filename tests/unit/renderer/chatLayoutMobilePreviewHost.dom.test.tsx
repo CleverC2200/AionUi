@@ -15,13 +15,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // non-project conversations already render.
 
 let mockIsMobile = false;
+let mockBrowserFocused = false;
+let mockActiveTab: null | { content_type: string } = null;
 
 vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
   useLayoutContext: () => ({ isMobile: mockIsMobile }),
 }));
 
 vi.mock('@/renderer/pages/conversation/Preview', () => ({
-  usePreviewContext: () => ({ isOpen: true }),
+  usePreviewContext: () => ({
+    activeTab: mockActiveTab,
+    isBrowserFocused: mockBrowserFocused,
+    isOpen: true,
+  }),
   PreviewPanel: () => <div data-testid='preview-panel'>preview</div>,
 }));
 
@@ -90,6 +96,9 @@ function renderChatLayout(previewHosted: boolean) {
 describe('ChatLayout mobile preview host fallback', () => {
   afterEach(() => {
     mockIsMobile = false;
+    mockBrowserFocused = false;
+    mockActiveTab = null;
+    localStorage.clear();
   });
 
   it('renders the preview overlay on mobile even for hoisted (project) conversations', () => {
@@ -110,5 +119,25 @@ describe('ChatLayout mobile preview host fallback', () => {
     mockIsMobile = false;
     renderChatLayout(false);
     expect(screen.getByTestId('preview-panel')).toBeInTheDocument();
+  });
+
+  it('lets an active browser occupy the full interaction region in focus mode', () => {
+    mockBrowserFocused = true;
+    mockActiveTab = { content_type: 'browser' };
+    const { container } = renderChatLayout(false);
+
+    expect(container.querySelector('[data-conversation-chat-region]')).toHaveStyle({ display: 'none' });
+    expect(container.querySelector('[data-conversation-preview-region]')).toHaveAttribute(
+      'data-browser-focused',
+      'true'
+    );
+  });
+
+  it('reverses the conversation and extension regions from the persisted preference', () => {
+    localStorage.setItem('conversation-extension-panel-side', 'left');
+    const { container } = renderChatLayout(false);
+    expect(container.querySelector('[data-conversation-chat-region]')?.parentElement).toHaveStyle({
+      flexDirection: 'row-reverse',
+    });
   });
 });

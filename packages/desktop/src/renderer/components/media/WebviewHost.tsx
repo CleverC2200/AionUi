@@ -25,6 +25,8 @@ export interface WebviewHostProps {
   style?: React.CSSProperties;
   /** Whether this webview is the visible in-app browser target for agent control. */
   agentControlActive?: boolean;
+  /** Optional owner actions rendered at the end of the navigation toolbar. */
+  navBarActions?: React.ReactNode;
   /** Called when the page finishes loading */
   onDidFinishLoad?: () => void;
   /** Called when the page fails to load */
@@ -67,6 +69,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
   className,
   style,
   agentControlActive = false,
+  navBarActions,
   onDidFinishLoad,
   onDidFailLoad,
   onUrlChange,
@@ -760,6 +763,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
               placeholder={t('preview.browser.addressPlaceholder')}
             />
           </form>
+          {navBarActions}
         </div>
       )}
 

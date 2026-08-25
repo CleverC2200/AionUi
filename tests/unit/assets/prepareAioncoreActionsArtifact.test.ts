@@ -196,7 +196,7 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     }
   });
 
-  it('requires a personal run, expected head, and checksum under verified-actions policy', () => {
+  it('requires one unambiguous workflow artifact source under verified-actions policy', () => {
     process.env.AIONUI_BACKEND_SOURCE_POLICY = 'verified-actions';
     expect(() =>
       prepareAioncore({
@@ -208,27 +208,6 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     ).toThrow(/AIONUI_BACKEND_RUN_ID is required/);
 
     process.env.AIONUI_BACKEND_RUN_ID = '123';
-    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'iOfficeAI/AionCore';
-    process.env.AIONUI_BACKEND_SHA256 = ARCHIVE_SHA256;
-    expect(() =>
-      prepareAioncore({
-        projectRoot: '/unused',
-        platform: 'linux',
-        arch: 'x64',
-        version: 'v0.1.71',
-      })
-    ).toThrow(/requires AionCore repository CleverC2200\/AionCore/);
-
-    process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
-    expect(() =>
-      prepareAioncore({
-        projectRoot: '/unused',
-        platform: 'linux',
-        arch: 'x64',
-        version: 'v0.1.71',
-      })
-    ).toThrow(/AIONUI_BACKEND_EXPECTED_HEAD_SHA is required/);
-
     process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = 'abc123';
     expect(() =>
       prepareAioncore({
@@ -239,18 +218,7 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
       })
     ).toThrow(/exactly 40 lowercase hexadecimal characters/);
 
-    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
-    delete process.env.AIONUI_BACKEND_SHA256;
-    expect(() =>
-      prepareAioncore({
-        projectRoot: '/unused',
-        platform: 'linux',
-        arch: 'x64',
-        version: 'v0.1.71',
-      })
-    ).toThrow(/Missing SHA256 for AionCore artifact aioncore-manual-linux-x64/);
-
-    process.env.AIONUI_BACKEND_SHA256 = ARCHIVE_SHA256;
+    delete process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA;
     process.env.AIONUI_BACKEND_LOCAL_BINARY = '/tmp/untrusted-aioncore';
     expect(() =>
       prepareAioncore({
@@ -384,14 +352,12 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     ).toBeNull();
   });
 
-  posixFakeToolchainIt('verifies downloaded checksums and records run provenance', () => {
+  posixFakeToolchainIt('verifies artifact content and records provenance without frozen build identity', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'aionui-verified-actions-'));
     const fakeBin = createFakeToolchain(tmp);
     const previousPath = process.env.PATH;
     process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
     process.env.AIONUI_BACKEND_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
-    process.env.AIONUI_BACKEND_EXPECTED_HEAD_SHA = HEAD_SHA;
-    process.env.AIONUI_BACKEND_SHA256 = ARCHIVE_SHA256;
 
     try {
       const result = downloadAndExtractActionsArtifact('linux', 'x64', '123', { verifiedActions: true });
@@ -400,14 +366,14 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
       expect(result.artifactDigest).toBe(ARCHIVE_SHA256);
       expect(result.artifactZipSha256).toBe(ARCHIVE_SHA256);
       expect(result.archiveSha256).toBe(ARCHIVE_SHA256);
-      expect(result.expectedArchiveSha256).toBe(ARCHIVE_SHA256);
+      expect(result.expectedArchiveSha256).toBeNull();
       expect(result.provenance).toMatchObject({
         repository: 'CleverC2200/AionCore',
         runId: '123',
         workflowPath: '.github/workflows/build-manual.yml',
         event: 'workflow_dispatch',
         conclusion: 'success',
-        expectedHeadSha: HEAD_SHA,
+        expectedHeadSha: null,
         actualHeadSha: HEAD_SHA,
       });
     } finally {

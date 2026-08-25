@@ -30,17 +30,25 @@ import React, { useRef } from 'react';
 
 import { ExplorerContainer } from '@/renderer/pages/conversation/explorer/ExplorerContainer';
 import { useCurrentProject } from '@/renderer/pages/conversation/explorer/currentProjectStore';
+import type { ConversationPanelSide } from './Titlebar/conversationPanelLayout';
 
 export type ProjectPanelHostProps = {
   /** Rendered width in px (clamped by Layout against the chat+preview reserve). */
   widthPx: number;
   /** Collapsed → width 0, component kept mounted (no remount). */
   collapsed: boolean;
+  /** Which side of the conversation owns the extension panels. */
+  side?: ConversationPanelSide;
   /** Left-edge resize handle from Layout's `useResizableSplit`. */
   dragHandle?: React.ReactNode;
 };
 
-export const ProjectPanelHost: React.FC<ProjectPanelHostProps> = ({ widthPx, collapsed, dragHandle }) => {
+export const ProjectPanelHost: React.FC<ProjectPanelHostProps> = ({
+  widthPx,
+  collapsed,
+  side = 'right',
+  dragHandle,
+}) => {
   const projectId = useCurrentProject();
   const mountIdRef = useRef<string>('');
   if (mountIdRef.current === '') mountIdRef.current = `pec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -57,7 +65,8 @@ export const ProjectPanelHost: React.FC<ProjectPanelHostProps> = ({ widthPx, col
       className='!bg-1 h-full flex-shrink-0 overflow-hidden relative'
       style={{
         width: collapsed ? '0px' : `${widthPx}px`,
-        borderLeft: collapsed ? 'none' : '1px solid var(--bg-3)',
+        borderLeft: collapsed || side === 'left' ? 'none' : '1px solid var(--bg-3)',
+        borderRight: collapsed || side === 'right' ? 'none' : '1px solid var(--bg-3)',
       }}
     >
       {!collapsed && dragHandle}
