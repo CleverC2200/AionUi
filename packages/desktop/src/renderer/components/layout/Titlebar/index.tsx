@@ -78,11 +78,11 @@ const ConversationLayoutIcon: React.FC<{
       aria-hidden='true'
       focusable='false'
     >
-      <rect x='5' y='9' width='38' height='30' rx='5' />
-      <line x1='24' y1='9' x2='24' y2='39' />
-      <line x1={lineStart} y1='17' x2={lineEnd} y2='17' />
-      <line x1={lineStart} y1='23' x2={lineEnd} y2='23' />
-      <line x1={lineStart} y1='29' x2={lineEnd} y2='29' />
+      <rect x='6' y='6' width='36' height='36' rx='4' />
+      <line x1='24' y1='6' x2='24' y2='42' />
+      <line x1={lineStart} y1='16' x2={lineEnd} y2='16' />
+      <line x1={lineStart} y1='24' x2={lineEnd} y2='24' />
+      <line x1={lineStart} y1='32' x2={lineEnd} y2='32' />
     </svg>
   );
 };

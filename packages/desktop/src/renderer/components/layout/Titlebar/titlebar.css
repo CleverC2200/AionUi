@@ -147,7 +147,10 @@
 .app-titlebar__button {
   -webkit-app-region: no-drag;
   width: var(--titlebar-height);
+  min-width: var(--titlebar-height);
   height: var(--titlebar-height);
+  padding: 0;
+  flex-shrink: 0;
   border: none;
   border-radius: 6px;
   background-color: transparent;
@@ -222,6 +225,7 @@
 
 .app-titlebar__button--mobile {
   width: 32px;
+  min-width: 32px;
   height: 32px;
   border-radius: 8px;
 }
