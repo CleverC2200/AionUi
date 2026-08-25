@@ -148,6 +148,58 @@ describe('PersonalModelGatewayService', () => {
     });
   });
 
+  it('keeps the current proxy alive when credential discovery fails before reconciliation', async () => {
+    const vault = new MemoryVault();
+    const providerStore = new MemoryProviderStore();
+    const proxy: PersonalModelProxy = {
+      deactivate: vi.fn().mockResolvedValue(undefined),
+      register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
+    };
+    const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, proxy);
+    const user = { id: 'user-1', username: 'zhangsan', realname: '张三' };
+    await service.sync(user, createAuthClient());
+    vi.mocked(proxy.deactivate).mockClear();
+    const unavailableAuth = createAuthClient();
+    unavailableAuth.listPersonalModelCredentials.mockRejectedValueOnce(new Error('environment unavailable'));
+
+    await expect(service.sync(user, unavailableAuth)).resolves.toMatchObject({
+      reason: 'credentialListFailed',
+      status: 'partial',
+    });
+
+    expect(proxy.deactivate).not.toHaveBeenCalled();
+    expect(providerStore.providers[0]).toMatchObject({ enabled: true });
+  });
+
+  it('suspends a managed provider when reconciliation fails after closing its proxy', async () => {
+    const vault = new MemoryVault();
+    const providerStore = new MemoryProviderStore();
+    const proxy: PersonalModelProxy = {
+      deactivate: vi.fn().mockResolvedValue(undefined),
+      register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
+    };
+    const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, proxy);
+    const user = { id: 'user-1', username: 'zhangsan', realname: '张三' };
+    await service.sync(user, createAuthClient());
+    const unavailableAuth = createAuthClient('ENABLED');
+    unavailableAuth.listPersonalModels.mockRejectedValueOnce(new Error('model discovery unavailable'));
+
+    await expect(service.sync(user, unavailableAuth)).resolves.toMatchObject({
+      reason: 'modelDiscoveryFailed',
+      status: 'partial',
+    });
+
+    expect(providerStore.providers[0]).toMatchObject({
+      enabled: false,
+      model_health: {
+        'deepseek-v4-flash': {
+          error: 'GEA_PERSONAL_LOGIN_REQUIRED',
+          status: 'unhealthy',
+        },
+      },
+    });
+  });
+
   it('isolates vault records and managed providers for the same user across GEA environments', async () => {
     const vault = new MemoryVault();
     const providerStore = new MemoryProviderStore();

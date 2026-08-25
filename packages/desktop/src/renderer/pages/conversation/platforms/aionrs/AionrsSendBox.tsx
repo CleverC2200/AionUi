@@ -806,7 +806,7 @@ const AionrsSendBox: React.FC<{
       />
       <ThoughtDisplay
         thought={thought}
-        running={teamRuntime?.loading ?? running}
+        running={teamRuntime?.loading ?? (running || runtimeView.isProcessing)}
         statusText={teamRuntime?.statusText}
         externalElapsedSource={Boolean(teamRuntime) || turnStartedAtMs != null}
         startedAtMs={teamRuntime ? (teamRuntime.startedAtMs ?? null) : turnStartedAtMs}

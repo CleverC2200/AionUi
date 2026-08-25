@@ -1064,6 +1064,18 @@ export const useMessageLstCache = (key: string) => {
       }
     });
   }, [key, loadMessages]);
+
+  useEffect(() => {
+    if (!key) {
+      return;
+    }
+
+    return ipcBridge.realtime.reconnected.on(() => {
+      void loadMessages().catch((error) => {
+        console.error('[useMessageLstCache] Failed to reload messages after realtime reconnect:', error);
+      });
+    });
+  }, [key, loadMessages]);
 };
 
 export const beforeUpdateMessageList = (fn: (list: TMessage[]) => TMessage[]) => {

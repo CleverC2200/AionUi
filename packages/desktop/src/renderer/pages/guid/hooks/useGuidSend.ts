@@ -186,10 +186,9 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     // who has not picked a model means. The cron dialog already gates the same
     // value this way (`resolvedBackend !== 'aionrs' → undefined`).
     const assistantOverrideModel =
-      selectedAcpModel ||
-      currentAcpCachedModelInfo?.current_model_id ||
-      (assistantBackend === 'aionrs' ? current_model?.use_model : undefined) ||
-      undefined;
+      assistantBackend === 'aionrs'
+        ? current_model?.use_model
+        : selectedAcpModel || currentAcpCachedModelInfo?.current_model_id || undefined;
     const assistantOverrides = {
       model: assistantOverrideModel,
       permission: selectedMode || undefined,

@@ -136,6 +136,7 @@ const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({
   if (!thought?.subject && (running || statusText)) {
     return (
       <div
+        data-testid='conversation-processing-feedback'
         className='relative z-1 mb--20px pb-30px px-10px py-10px rd-t-20px text-14px lh-20px text-t-primary flex items-center gap-8px'
         style={containerStyle}
       >
@@ -162,6 +163,7 @@ const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({
 
   return (
     <div
+      data-testid='conversation-processing-feedback'
       className='relative z-1 mb--20px pb-30px px-10px py-10px rd-t-20px text-14px lh-20px text-t-primary'
       style={containerStyle}
     >

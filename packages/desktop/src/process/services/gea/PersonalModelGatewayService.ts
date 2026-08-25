@@ -81,18 +81,10 @@ export class PersonalModelGatewayService {
     } catch {
       return;
     }
-    const updates = providers
-      // A process restart may select a different GEA before that environment
-      // can authenticate or finish a credential sync. Suspend every enabled
-      // GEA-managed provider at that boundary so a provider from the previous
-      // environment can never remain usable as a fallback.
-      .filter((provider) => provider.enabled !== false && provider.id.startsWith(GEA_PERSONAL_PROVIDER_PREFIX))
-      .map(suspendManagedProviderForLogin);
-    await Promise.all(updates.map((provider) => this.providerStore.save(provider, true).catch(() => {})));
+    await this.suspendManagedProviders(providers);
   }
 
   private async runSync(user: LarkAuthUser, authClient: PersonalModelAuthClient): Promise<PersonalModelSyncResult> {
-    await this.proxy.deactivate();
     if (!this.vault.isAvailable()) {
       return {
         configured: 0,
@@ -128,7 +120,8 @@ export class PersonalModelGatewayService {
         status: 'partial',
       };
     }
-    providers = await this.suspendForeignEnvironmentProviders(providers);
+    await this.proxy.deactivate();
+    providers = await this.suspendManagedProviders(providers);
 
     const providersById = new Map(providers.map((provider) => [provider.id, provider]));
     let configured = 0;
@@ -205,6 +198,19 @@ export class PersonalModelGatewayService {
     };
   }
 
+  private async suspendManagedProviders(providers: IProvider[]): Promise<IProvider[]> {
+    // A process restart may select a different GEA before that environment
+    // can authenticate or finish a credential sync. Suspend every enabled
+    // GEA-managed provider at that boundary so a provider from the previous
+    // environment can never remain usable as a fallback.
+    const updates = providers
+      .filter((provider) => provider.enabled !== false && provider.id.startsWith(GEA_PERSONAL_PROVIDER_PREFIX))
+      .map(suspendManagedProviderForLogin);
+    await Promise.all(updates.map((provider) => this.providerStore.save(provider, true).catch(() => {})));
+    const updatesById = new Map(updates.map((provider) => [provider.id, provider]));
+    return providers.map((provider) => updatesById.get(provider.id) ?? provider);
+  }
+
   private async resolveSecretRecord(
     userId: string,
     credential: GeaPersonalModelCredential,
@@ -237,21 +243,6 @@ export class PersonalModelGatewayService {
     };
     await this.vault.put(record);
     return record;
-  }
-
-  private async suspendForeignEnvironmentProviders(providers: IProvider[]): Promise<IProvider[]> {
-    const currentScope = createPersonalModelProviderScope(this.environmentId);
-    const updates = providers
-      .filter(
-        (provider) =>
-          provider.enabled !== false &&
-          provider.id.startsWith(GEA_PERSONAL_PROVIDER_PREFIX) &&
-          !provider.id.startsWith(currentScope)
-      )
-      .map(suspendManagedProviderForLogin);
-    await Promise.all(updates.map((provider) => this.providerStore.save(provider, true)));
-    const updatesById = new Map(updates.map((provider) => [provider.id, provider]));
-    return providers.map((provider) => updatesById.get(provider.id) ?? provider);
   }
 
   private async handleRejected(
