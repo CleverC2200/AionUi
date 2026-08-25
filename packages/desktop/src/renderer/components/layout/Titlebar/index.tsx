@@ -1,16 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
-import {
-  ArrowCircleLeft,
-  ArrowLeft,
-  ArrowRight,
-  Browser,
-  FolderOpen,
-  Peoples,
-  Search,
-  SettingTwo,
-} from '@icon-park/react';
-import { Button, Dropdown, Menu } from '@arco-design/web-react';
+import { ArrowCircleLeft, ArrowLeft, ArrowRight, Browser, FolderOpen, Peoples, Search } from '@icon-park/react';
+import { Button } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -20,17 +11,17 @@ import ConversationSearchPopover from '@renderer/pages/conversation/GroupedHisto
 import VoiceConversation from '@/renderer/components/chat/VoiceConversation';
 import MobileConversationBrand from './MobileConversationBrand';
 import WindowControls from '../WindowControls';
-import { WORKSPACE_STATE_EVENT, dispatchWorkspaceToggleEvent } from '@renderer/utils/workspace/workspaceEvents';
+import {
+  WORKSPACE_STATE_EVENT,
+  dispatchWorkspaceToggleEvent,
+  readWorkspaceCollapsedState,
+} from '@renderer/utils/workspace/workspaceEvents';
 import type { WorkspaceStateDetail } from '@renderer/utils/workspace/workspaceEvents';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useNavigationHistory } from '@/renderer/hooks/context/NavigationHistoryContext';
 import { isElectronDesktop, isMacOS } from '@/renderer/utils/platform';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview';
-import {
-  setConversationPanelSide,
-  useConversationPanelSide,
-  type ConversationPanelSide,
-} from './conversationPanelLayout';
+import { setConversationPanelSide, useConversationPanelSide } from './conversationPanelLayout';
 import './titlebar.css';
 
 interface TitlebarProps {
@@ -66,10 +57,40 @@ const SidebarIcon: React.FC<{ size?: number; strokeWidth?: number }> = ({ size =
   </svg>
 );
 
+const ConversationLayoutIcon: React.FC<{
+  conversationSide: 'left' | 'right';
+  size?: number;
+  strokeWidth?: number;
+}> = ({ conversationSide, size = 18, strokeWidth = 3 }) => {
+  const lineStart = conversationSide === 'left' ? 10 : 28;
+  const lineEnd = conversationSide === 'left' ? 20 : 38;
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox='0 0 48 48'
+      fill='none'
+      stroke='currentColor'
+      strokeWidth={strokeWidth}
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      aria-hidden='true'
+      focusable='false'
+    >
+      <rect x='5' y='9' width='38' height='30' rx='5' />
+      <line x1='24' y1='9' x2='24' y2='39' />
+      <line x1={lineStart} y1='17' x2={lineEnd} y2='17' />
+      <line x1={lineStart} y1='23' x2={lineEnd} y2='23' />
+      <line x1={lineStart} y1='29' x2={lineEnd} y2='29' />
+    </svg>
+  );
+};
+
 const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   const { t } = useTranslation();
   const appTitle = useMemo(() => 'GEAUi', []);
-  const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
+  const [workspaceCollapsed, setWorkspaceCollapsed] = useState(readWorkspaceCollapsedState);
   const [mobileCenterTitle, setMobileCenterTitle] = useState(appTitle);
   const [mobileCenterOffset, setMobileCenterOffset] = useState(0);
   const layout = useLayoutContext();
@@ -109,7 +130,11 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
 
   const filesTooltip = t('conversation.workspace.panelLayout.files', { defaultValue: 'Files' });
   const browserTooltip = t('conversation.workspace.panelLayout.browser', { defaultValue: 'Browser' });
-  const panelSettingsTooltip = t('conversation.workspace.panelLayout.settings', { defaultValue: 'Panel layout' });
+  const conversationSide = conversationPanelSide === 'right' ? 'left' : 'right';
+  const panelLayoutTooltip =
+    conversationSide === 'left'
+      ? t('conversation.workspace.panelLayout.conversationLeft', { defaultValue: 'Conversation left' })
+      : t('conversation.workspace.panelLayout.conversationRight', { defaultValue: 'Conversation right' });
   const backToChatTooltip = t('common.back', { defaultValue: 'Back to Chat' });
   const conversationId = location.pathname.match(/^\/conversation\/([^/]+)/)?.[1];
   const isSettingsRoute = location.pathname.startsWith('/settings');
@@ -160,19 +185,9 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
     openBrowserTab();
   };
 
-  const panelSideMenu = (
-    <Menu
-      selectedKeys={[conversationPanelSide]}
-      onClickMenuItem={(key) => setConversationPanelSide(key as ConversationPanelSide)}
-    >
-      <Menu.Item key='right'>
-        {t('conversation.workspace.panelLayout.conversationLeft', { defaultValue: 'Conversation left' })}
-      </Menu.Item>
-      <Menu.Item key='left'>
-        {t('conversation.workspace.panelLayout.conversationRight', { defaultValue: 'Conversation right' })}
-      </Menu.Item>
-    </Menu>
-  );
+  const handlePanelSideToggle = () => {
+    setConversationPanelSide(conversationPanelSide === 'right' ? 'left' : 'right');
+  };
 
   const handleBackToChat = () => {
     const target = lastNonSettingsPathRef.current;
@@ -450,17 +465,21 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
             >
               <Browser theme='outline' size={iconSize} fill='currentColor' />
             </Button>
-            <Dropdown trigger='click' droplist={panelSideMenu}>
-              <Button
-                type='text'
-                className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
-                aria-label={panelSettingsTooltip}
-                title={panelSettingsTooltip}
-                data-testid='workspace-layout-settings'
-              >
-                <SettingTwo theme='outline' size={iconSize} fill='currentColor' />
-              </Button>
-            </Dropdown>
+            <Button
+              type='text'
+              className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
+              onClick={handlePanelSideToggle}
+              aria-label={panelLayoutTooltip}
+              title={panelLayoutTooltip}
+              data-conversation-side={conversationSide}
+              data-testid='workspace-layout-toggle'
+            >
+              <ConversationLayoutIcon
+                conversationSide={conversationSide}
+                size={iconSize}
+                strokeWidth={desktopIconStroke}
+              />
+            </Button>
           </>
         )}
         {showWindowControls && <WindowControls />}
