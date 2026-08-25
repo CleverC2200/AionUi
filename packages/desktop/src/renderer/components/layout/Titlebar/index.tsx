@@ -1,6 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
-import { ArrowCircleLeft, ArrowLeft, ArrowRight, ExpandLeft, ExpandRight, Peoples, Search } from '@icon-park/react';
+import {
+  ArrowCircleLeft,
+  ArrowLeft,
+  ArrowRight,
+  Browser,
+  FolderOpen,
+  Peoples,
+  Search,
+  SettingTwo,
+} from '@icon-park/react';
+import { Button, Dropdown, Menu } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -15,6 +25,12 @@ import type { WorkspaceStateDetail } from '@renderer/utils/workspace/workspaceEv
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useNavigationHistory } from '@/renderer/hooks/context/NavigationHistoryContext';
 import { isElectronDesktop, isMacOS } from '@/renderer/utils/platform';
+import { usePreviewContext } from '@renderer/pages/conversation/Preview';
+import {
+  setConversationPanelSide,
+  useConversationPanelSide,
+  type ConversationPanelSide,
+} from './conversationPanelLayout';
 import './titlebar.css';
 
 interface TitlebarProps {
@@ -58,6 +74,8 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   const [mobileCenterOffset, setMobileCenterOffset] = useState(0);
   const layout = useLayoutContext();
   const navigationHistory = useNavigationHistory();
+  const { activeTab, closePreview, isOpen: isPreviewOpen, openBrowserTab, showPreview, tabs } = usePreviewContext();
+  const conversationPanelSide = useConversationPanelSide();
   const location = useLocation();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -89,9 +107,9 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   // Keep the workspace entry in the titlebar on every platform.
   const showWorkspaceButton = workspaceAvailable;
 
-  const workspaceTooltip = workspaceCollapsed
-    ? t('common.expandMore', { defaultValue: 'Expand workspace' })
-    : t('common.collapse', { defaultValue: 'Collapse workspace' });
+  const filesTooltip = t('conversation.workspace.panelLayout.files', { defaultValue: 'Files' });
+  const browserTooltip = t('conversation.workspace.panelLayout.browser', { defaultValue: 'Browser' });
+  const panelSettingsTooltip = t('conversation.workspace.panelLayout.settings', { defaultValue: 'Panel layout' });
   const backToChatTooltip = t('common.back', { defaultValue: 'Back to Chat' });
   const conversationId = location.pathname.match(/^\/conversation\/([^/]+)/)?.[1];
   const isSettingsRoute = location.pathname.startsWith('/settings');
@@ -127,6 +145,34 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
     }
     dispatchWorkspaceToggleEvent();
   };
+
+  const handleBrowserToggle = () => {
+    if (isPreviewOpen && activeTab?.content_type === 'browser') {
+      closePreview();
+      return;
+    }
+    const browserTab =
+      activeTab?.content_type === 'browser' ? activeTab : tabs.findLast((tab) => tab.content_type === 'browser');
+    if (browserTab) {
+      showPreview(browserTab.id);
+      return;
+    }
+    openBrowserTab();
+  };
+
+  const panelSideMenu = (
+    <Menu
+      selectedKeys={[conversationPanelSide]}
+      onClickMenuItem={(key) => setConversationPanelSide(key as ConversationPanelSide)}
+    >
+      <Menu.Item key='right'>
+        {t('conversation.workspace.panelLayout.conversationLeft', { defaultValue: 'Conversation left' })}
+      </Menu.Item>
+      <Menu.Item key='left'>
+        {t('conversation.workspace.panelLayout.conversationRight', { defaultValue: 'Conversation right' })}
+      </Menu.Item>
+    </Menu>
+  );
 
   const handleBackToChat = () => {
     const target = lastNonSettingsPathRef.current;
@@ -373,20 +419,49 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
           />
         ) : null}
         {showWorkspaceButton && (
-          <button
-            type='button'
-            className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
-            onClick={handleWorkspaceToggle}
-            aria-label={workspaceTooltip}
-            data-testid='workspace-toggle'
-            data-collapsed={workspaceCollapsed ? 'true' : 'false'}
-          >
-            {workspaceCollapsed ? (
-              <ExpandRight theme='outline' size={iconSize} fill='currentColor' />
-            ) : (
-              <ExpandLeft theme='outline' size={iconSize} fill='currentColor' />
-            )}
-          </button>
+          <>
+            <Button
+              type='text'
+              className={classNames(
+                'app-titlebar__button',
+                !workspaceCollapsed && 'app-titlebar__button--selected',
+                layout?.isMobile && 'app-titlebar__button--mobile'
+              )}
+              onClick={handleWorkspaceToggle}
+              aria-label={filesTooltip}
+              title={filesTooltip}
+              aria-pressed={!workspaceCollapsed}
+              data-testid='workspace-files-toggle'
+            >
+              <FolderOpen theme='outline' size={iconSize} fill='currentColor' />
+            </Button>
+            <Button
+              type='text'
+              className={classNames(
+                'app-titlebar__button',
+                isPreviewOpen && activeTab?.content_type === 'browser' && 'app-titlebar__button--selected',
+                layout?.isMobile && 'app-titlebar__button--mobile'
+              )}
+              onClick={handleBrowserToggle}
+              aria-label={browserTooltip}
+              title={browserTooltip}
+              aria-pressed={isPreviewOpen && activeTab?.content_type === 'browser'}
+              data-testid='workspace-browser-toggle'
+            >
+              <Browser theme='outline' size={iconSize} fill='currentColor' />
+            </Button>
+            <Dropdown trigger='click' droplist={panelSideMenu}>
+              <Button
+                type='text'
+                className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
+                aria-label={panelSettingsTooltip}
+                title={panelSettingsTooltip}
+                data-testid='workspace-layout-settings'
+              >
+                <SettingTwo theme='outline' size={iconSize} fill='currentColor' />
+              </Button>
+            </Dropdown>
+          </>
         )}
         {showWindowControls && <WindowControls />}
       </div>

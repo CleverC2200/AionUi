@@ -40,6 +40,7 @@ import { useConversationShortcuts } from '@renderer/hooks/ui/useConversationShor
 import { isElectronDesktop } from '@renderer/utils/platform';
 import siderBrandIcon from '@renderer/assets/logos/brand/sider-brand.png';
 import '@renderer/styles/layout.css';
+import { useConversationPanelSide } from './Titlebar/conversationPanelLayout';
 
 const SidebarIcon: React.FC<{ size?: number; strokeWidth?: number }> = ({ size = 18, strokeWidth = 4 }) => (
   <svg
@@ -172,7 +173,14 @@ const Layout: React.FC<{
   // Use closePreview directly — closePreviewIfScopeChanged skips the call
   // when lastScopeRef is already null (e.g. on team routes where it was
   // never updated), which would leave the panel open.
-  const { closePreview: closePreviewOnRouteChange, isOpen: isPreviewOpen } = usePreviewContext();
+  const {
+    activeTab,
+    closePreview: closePreviewOnRouteChange,
+    isBrowserFocused,
+    isOpen: isPreviewOpen,
+  } = usePreviewContext();
+  const conversationPanelSide = useConversationPanelSide();
+  const browserFocusActive = isPreviewOpen && isBrowserFocused && activeTab?.content_type === 'browser';
   // Layout-level explorer column width engine (stage3 FULL / P2): measure the
   // [content | explorer] row, clamp the explorer width so chat (+ preview) keep
   // their reserve. Active only when a project is bound and on desktop.
@@ -464,18 +472,24 @@ const Layout: React.FC<{
                 explorer clamp (independent of the split → non-circular). The
                 explorer column is a sibling of the route content, above the
                 per-conversation subtree → persists across same-project switches. */}
-            <div ref={mainRowRef} className='flex flex-1 min-h-0 overflow-hidden'>
+            <div
+              ref={mainRowRef}
+              className='flex flex-1 min-h-0 overflow-hidden'
+              style={{ flexDirection: conversationPanelSide === 'left' ? 'row-reverse' : 'row' }}
+            >
               <ArcoLayout.Content
                 className={'bg-1 layout-content flex flex-col min-h-0 flex-1'}
                 onClick={() => {
                   if (isMobile && !collapsed) setCollapsed(true);
                 }}
                 style={
-                  isMobile
-                    ? {
-                        width: '100%',
-                      }
-                    : undefined
+                  browserFocusActive
+                    ? { display: 'none' }
+                    : isMobile
+                      ? {
+                          width: '100%',
+                        }
+                      : undefined
                 }
               >
                 <Outlet />
@@ -490,27 +504,34 @@ const Layout: React.FC<{
                   data-project-preview-region
                   className='preview-panel flex flex-col relative overflow-visible'
                   style={{
-                    width: `${Math.round(previewWidthPx)}px`,
-                    flexGrow: 0,
-                    flexShrink: 0,
+                    width: browserFocusActive ? '100%' : `${Math.round(previewWidthPx)}px`,
+                    flexGrow: browserFocusActive ? 1 : 0,
+                    flexShrink: browserFocusActive ? 1 : 0,
                     // 只保留左边框作为与会话区的分界；上/右/下不留边距，
                     // 否则窗口底色会从缝隙里透出来（深色模式下尤其突兀）。
                     // Left border only, as the divider from the chat area. No outer
                     // margins: any gap would expose the window's own background,
                     // which is jarring in dark mode.
-                    borderLeft: '1px solid var(--bg-3)',
-                    minWidth: `${MIN_PREVIEW_PANEL_PX}px`,
+                    borderLeft:
+                      browserFocusActive || conversationPanelSide === 'left' ? 'none' : '1px solid var(--bg-3)',
+                    borderRight:
+                      browserFocusActive || conversationPanelSide === 'right' ? 'none' : '1px solid var(--bg-3)',
+                    minWidth: browserFocusActive ? 0 : `${MIN_PREVIEW_PANEL_PX}px`,
                     boxSizing: 'border-box',
                   }}
                 >
-                  {createPreviewRegionDragHandle({
-                    className: 'absolute top-0 bottom-0 z-30',
-                    style: { width: '20px', left: '-20px' },
-                    reverse: true,
-                    linePlacement: 'end',
-                    lineClassName: 'opacity-30 group-hover:opacity-100 group-active:opacity-100',
-                    lineStyle: { width: '2px' },
-                  })}
+                  {!browserFocusActive &&
+                    createPreviewRegionDragHandle({
+                      className: 'absolute top-0 bottom-0 z-30',
+                      style:
+                        conversationPanelSide === 'right'
+                          ? { width: '20px', left: '-20px' }
+                          : { width: '20px', right: '-20px' },
+                      reverse: conversationPanelSide === 'right',
+                      linePlacement: conversationPanelSide === 'right' ? 'end' : 'start',
+                      lineClassName: 'opacity-30 group-hover:opacity-100 group-active:opacity-100',
+                      lineStyle: { width: '2px' },
+                    })}
                   <div className='h-full w-full overflow-hidden'>
                     <PreviewPanel />
                   </div>
@@ -519,10 +540,14 @@ const Layout: React.FC<{
               {!isMobile && (
                 <ProjectPanelHost
                   widthPx={explorerWidthPx}
-                  collapsed={explorerCollapsed}
+                  collapsed={explorerCollapsed || browserFocusActive}
+                  side={conversationPanelSide}
                   dragHandle={createExplorerDragHandle({
-                    className: 'absolute start-0 top-0 bottom-0 z-20',
-                    reverse: true,
+                    className: classNames(
+                      'absolute top-0 bottom-0 z-20',
+                      conversationPanelSide === 'right' ? 'start-0' : 'end-0'
+                    ),
+                    reverse: conversationPanelSide === 'right',
                   })}
                 />
               )}

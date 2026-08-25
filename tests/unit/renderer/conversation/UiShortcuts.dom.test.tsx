@@ -57,7 +57,7 @@ import ConversationSearchPopover from '@/renderer/pages/conversation/GroupedHist
 import { useMinimapPanel } from '@/renderer/pages/conversation/components/ConversationTitleMinimap/useMinimapPanel';
 import { useWorkspaceCollapse } from '@/renderer/pages/conversation/hooks/useWorkspaceCollapse';
 import { isShortcutBlockedByTarget } from '@/renderer/utils/ui/keyboardShortcuts';
-import { dispatchWorkspaceToggleEvent } from '@/renderer/utils/workspace/workspaceEvents';
+import { dispatchWorkspaceToggleEvent, WORKSPACE_STATE_EVENT } from '@/renderer/utils/workspace/workspaceEvents';
 
 const dispatchShortcut = (target: EventTarget, init: KeyboardEventInit): KeyboardEvent => {
   const event = new KeyboardEvent('keydown', {
@@ -202,6 +202,22 @@ describe('common desktop UI shortcuts', () => {
 
     expect(result.current.rightSiderCollapsed).toBe(true);
     expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('does not overwrite the project host state when the legacy workspace is disabled', () => {
+    const listener = vi.fn();
+    window.addEventListener(WORKSPACE_STATE_EVENT, listener);
+    const { unmount } = renderHook(() =>
+      useWorkspaceCollapse({
+        workspaceEnabled: false,
+        isMobile: false,
+        conversation_id: 'project-conversation',
+      })
+    );
+
+    expect(listener).not.toHaveBeenCalled();
+    unmount();
+    window.removeEventListener(WORKSPACE_STATE_EVENT, listener);
   });
 
   it('toggles a temporary workspace while its composer textarea is focused', () => {

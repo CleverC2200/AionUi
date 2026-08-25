@@ -1,8 +1,16 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const platform = vi.hoisted(() => ({ desktop: true, mac: false }));
+const preview = vi.hoisted(() => ({
+  activeTab: null as null | { id: string; content_type: string },
+  closePreview: vi.fn(),
+  isOpen: false,
+  openBrowserTab: vi.fn(),
+  showPreview: vi.fn(),
+  tabs: [] as Array<{ id: string; content_type: string }>,
+}));
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -30,6 +38,9 @@ vi.mock('@/renderer/utils/platform', () => ({
   isElectronDesktop: () => platform.desktop,
   isMacOS: () => platform.mac,
 }));
+vi.mock('@/renderer/pages/conversation/Preview', () => ({
+  usePreviewContext: () => preview,
+}));
 
 import Titlebar from '@/renderer/components/layout/Titlebar';
 import { WORKSPACE_STATE_EVENT } from '@/renderer/utils/workspace/workspaceEvents';
@@ -38,15 +49,22 @@ describe('Titlebar workspace toggle', () => {
   beforeEach(() => {
     platform.desktop = true;
     platform.mac = false;
+    preview.activeTab = null;
+    preview.isOpen = false;
+    preview.tabs = [];
+    vi.clearAllMocks();
   });
 
   it('omits feedback and places Windows controls after the workspace toggle', () => {
     render(<Titlebar workspaceAvailable />);
 
-    const workspace = screen.getByRole('button', { name: 'common.expandMore' });
+    const files = screen.getByRole('button', { name: 'conversation.workspace.panelLayout.files' });
 
     expect(screen.queryByRole('button', { name: 'conversation.welcome.quickActionFeedback' })).not.toBeInTheDocument();
-    expect(workspace.nextElementSibling).toBe(screen.getByTestId('window-controls'));
+    expect(files).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'conversation.workspace.panelLayout.browser' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'conversation.workspace.panelLayout.settings' })).toBeInTheDocument();
+    expect(screen.getByTestId('window-controls')).toBeInTheDocument();
   });
 
   it.each([
@@ -57,7 +75,7 @@ describe('Titlebar workspace toggle', () => {
     platform.mac = mac;
     render(<Titlebar workspaceAvailable />);
 
-    const workspace = screen.getByRole('button', { name: 'common.expandMore' });
+    const workspace = screen.getByRole('button', { name: 'conversation.workspace.panelLayout.files' });
 
     expect(screen.queryByRole('button', { name: 'conversation.welcome.quickActionFeedback' })).not.toBeInTheDocument();
     expect(workspace).toBeInTheDocument();
@@ -71,13 +89,34 @@ describe('Titlebar workspace toggle', () => {
       window.dispatchEvent(new CustomEvent(WORKSPACE_STATE_EVENT, { detail: { collapsed: false } }));
     });
 
-    expect(screen.getByRole('button', { name: 'common.collapse' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'conversation.workspace.panelLayout.files' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
   });
 
   it('omits the workspace toggle when no workspace is available', () => {
     render(<Titlebar workspaceAvailable={false} />);
 
-    expect(screen.queryByRole('button', { name: 'common.expandMore' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'common.collapse' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'conversation.workspace.panelLayout.files' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'conversation.workspace.panelLayout.browser' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'conversation.workspace.panelLayout.settings' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens a browser tab and closes the visible browser from the titlebar', () => {
+    const { rerender } = render(<Titlebar workspaceAvailable />);
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.panelLayout.browser' }));
+    expect(preview.openBrowserTab).toHaveBeenCalledOnce();
+
+    preview.activeTab = { id: 'browser-1', content_type: 'browser' };
+    preview.isOpen = true;
+    preview.tabs = [preview.activeTab];
+    rerender(<Titlebar workspaceAvailable />);
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.panelLayout.browser' }));
+    expect(preview.closePreview).toHaveBeenCalledOnce();
   });
 });

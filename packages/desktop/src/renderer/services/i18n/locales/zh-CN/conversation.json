@@ -626,6 +626,15 @@
       "terminal": "终端",
       "explorer": "文件资源管理器",
       "browser": "浏览器"
+    },
+    "panelLayout": {
+      "files": "文件",
+      "browser": "浏览器",
+      "settings": "面板布局",
+      "conversationLeft": "对话在左",
+      "conversationRight": "对话在右",
+      "focusBrowser": "放大浏览器",
+      "exitBrowserFocus": "退出浏览器放大"
     }
   },
   "minimap": {

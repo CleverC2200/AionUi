@@ -25,6 +25,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './chat-layout.css';
 import { conversationResourcesSlotId } from '../ConversationResources/model';
+import { useConversationPanelSide } from '@/renderer/components/layout/Titlebar/conversationPanelLayout';
 
 // headerExtra allows injecting custom actions (e.g., model picker) into the header's right area
 const ChatLayout: React.FC<{
@@ -72,7 +73,8 @@ const ChatLayout: React.FC<{
   const isMobile = Boolean(layout?.isMobile);
 
   // Preview panel state
-  const { isOpen: isPreviewOpenRaw } = usePreviewContext();
+  const { activeTab, isBrowserFocused, isOpen: isPreviewOpenRaw } = usePreviewContext();
+  const conversationPanelSide = useConversationPanelSide();
   // Only hoist to the Layout host on desktop. On mobile (narrow width < 768) the
   // host is not rendered (`previewRegionActive` in Layout.tsx is gated on
   // `!isMobile`), so hoisting there would leave the preview with no renderer at
@@ -84,6 +86,7 @@ const ChatLayout: React.FC<{
   // ChatLayout must behave as if there is no preview: chat fills, no split, no
   // preview panel. Everywhere below uses `isPreviewOpen` for that local decision.
   const isPreviewOpen = isPreviewOpenRaw && !previewHosted;
+  const browserFocusActive = isPreviewOpen && isBrowserFocused && activeTab?.content_type === 'browser';
 
   // --- Hook A: workspace collapse ---
   const { rightSiderCollapsed, setRightSiderCollapsed } = useWorkspaceCollapse({
@@ -246,7 +249,11 @@ const ChatLayout: React.FC<{
         // fontFamily: `cursive,"anthropicSans","anthropicSans Fallback",system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif`,
       }}
     >
-      <div ref={containerRef} className='flex flex-1 relative w-full overflow-hidden'>
+      <div
+        ref={containerRef}
+        className='flex flex-1 relative w-full overflow-hidden'
+        style={{ flexDirection: conversationPanelSide === 'left' ? 'row-reverse' : 'row' }}
+      >
         {/* Unified layout: single DOM structure prevents children unmount/remount on preview toggle */}
         <div
           className='flex flex-col min-w-0'
@@ -256,16 +263,22 @@ const ChatLayout: React.FC<{
             flexBasis: 0,
           }}
         >
-          <div className='shrink-0 !bg-1'>{headerBlock}</div>
-          <div className='flex flex-1 min-h-0 relative'>
+          <div className='shrink-0 !bg-1' style={browserFocusActive ? { display: 'none' } : undefined}>
+            {headerBlock}
+          </div>
+          <div
+            className='flex flex-1 min-h-0 relative'
+            style={{ flexDirection: conversationPanelSide === 'left' ? 'row-reverse' : 'row' }}
+          >
             {/* Chat area - always mounted, never unmounted on preview toggle */}
             <div
+              data-conversation-chat-region
               className='flex flex-col relative'
               style={{
                 flexGrow: isPreviewOpen && isDesktop ? 0 : 1,
                 flexShrink: 0,
                 flexBasis: isPreviewOpen && isDesktop ? `${chatFlex}%` : 0,
-                display: isPreviewOpen && isMobile ? 'none' : 'flex',
+                display: browserFocusActive || (isPreviewOpen && isMobile) ? 'none' : 'flex',
                 minWidth: '240px',
               }}
               onClick={() => {
@@ -279,6 +292,8 @@ const ChatLayout: React.FC<{
             {/* Preview panel - conditionally rendered */}
             {isPreviewOpen && (
               <div
+                data-conversation-preview-region
+                data-browser-focused={browserFocusActive ? 'true' : 'false'}
                 className={classNames(
                   'preview-panel flex flex-col relative overflow-visible',
                   // 移动端预览是覆盖层，保留内缩和圆角；桌面端不留边距，
@@ -294,18 +309,29 @@ const ChatLayout: React.FC<{
                   flexBasis: 0,
                   // 桌面端只用左边框分界；移动端覆盖层保留完整描边
                   // Desktop: left divider only. Mobile overlay keeps a full border.
-                  ...(isDesktop ? { borderLeft: '1px solid var(--bg-3)' } : { border: '1px solid var(--bg-3)' }),
-                  minWidth: isDesktop ? '260px' : 0,
+                  ...(isDesktop
+                    ? browserFocusActive
+                      ? { border: 'none' }
+                      : conversationPanelSide === 'right'
+                        ? { borderLeft: '1px solid var(--bg-3)' }
+                        : { borderRight: '1px solid var(--bg-3)' }
+                    : { border: '1px solid var(--bg-3)' }),
+                  minWidth: isDesktop && !browserFocusActive ? '260px' : 0,
                   maxWidth: isMobile ? 'calc(100% - 16px)' : undefined,
                   width: isMobile ? 'calc(100% - 16px)' : undefined,
                   boxSizing: 'border-box',
                 }}
               >
                 {isDesktop &&
+                  !browserFocusActive &&
                   createPreviewDragHandle({
                     className: 'absolute top-0 bottom-0 z-30',
-                    style: { width: '20px', left: '-20px' },
-                    linePlacement: 'end',
+                    style:
+                      conversationPanelSide === 'right'
+                        ? { width: '20px', left: '-20px' }
+                        : { width: '20px', right: '-20px' },
+                    reverse: conversationPanelSide === 'right',
+                    linePlacement: conversationPanelSide === 'right' ? 'end' : 'start',
                     lineClassName: 'opacity-30 group-hover:opacity-100 group-active:opacity-100',
                     lineStyle: { width: '2px' },
                   })}
@@ -316,7 +342,7 @@ const ChatLayout: React.FC<{
             )}
           </div>
         </div>
-        {workspaceEnabled && !layout?.isMobile && (
+        {workspaceEnabled && !layout?.isMobile && !browserFocusActive && (
           <div
             className={classNames('!bg-1 relative chat-layout-right-sider layout-sider')}
             style={{
@@ -326,16 +352,24 @@ const ChatLayout: React.FC<{
               width: rightSiderCollapsed ? '0px' : `${Math.round(workspaceWidthPx)}px`,
               minWidth: rightSiderCollapsed ? '0px' : `${MIN_WORKSPACE_PANEL_PX}px`,
               overflow: 'hidden',
-              borderLeft: rightSiderCollapsed ? 'none' : '1px solid var(--bg-3)',
+              borderLeft: rightSiderCollapsed || conversationPanelSide === 'left' ? 'none' : '1px solid var(--bg-3)',
+              borderRight: rightSiderCollapsed || conversationPanelSide === 'right' ? 'none' : '1px solid var(--bg-3)',
             }}
           >
             {isDesktop &&
               !rightSiderCollapsed &&
-              createWorkspaceDragHandle({ className: 'absolute start-0 top-0 bottom-0', style: {}, reverse: true })}
+              createWorkspaceDragHandle({
+                className: classNames(
+                  'absolute top-0 bottom-0',
+                  conversationPanelSide === 'right' ? 'start-0' : 'end-0'
+                ),
+                style: {},
+                reverse: conversationPanelSide === 'right',
+              })}
             <WorkspacePanelHeader
               collapsed={rightSiderCollapsed}
               onToggle={() => dispatchWorkspaceToggleEvent()}
-              togglePlacement={layout?.isMobile ? 'left' : 'right'}
+              togglePlacement={conversationPanelSide}
               workspacePath={workspacePath}
               isTemporaryWorkspace={isTemporaryWorkspace}
             >
