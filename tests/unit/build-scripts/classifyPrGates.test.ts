@@ -50,6 +50,15 @@ describe('classifyPrGates', () => {
       release_scripts: true,
     });
   });
+
+  it('fails open to the full gate when a changed path is not classified', () => {
+    expect(classifyPrGates(['unknown/new-build-input.cfg'])).toEqual({
+      docs_only: false,
+      cross_platform_tests: true,
+      installer_smoke: true,
+      release_scripts: true,
+    });
+  });
 });
 
 describe('PR gate workflow', () => {

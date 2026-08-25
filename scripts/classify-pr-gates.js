@@ -51,6 +51,35 @@ function classifyPrGates(paths) {
       /^\.github\/workflows\/(build-and-release|release-distribute)\.yml$/,
     ])
   );
+  const allPathsClassified = normalizedPaths.every((path) =>
+    matches(path, [
+      /\.md$/i,
+      /^docs\//,
+      /^\.vscode\//,
+      /^\.github\/ISSUE_TEMPLATE\//,
+      /^package\.json$/,
+      /^bun\.lock$/,
+      /^packages\/desktop\/(electron\.vite\.config\.ts|src\/)/,
+      /^packages\/(shared-scripts|web-cli|web-host)\//,
+      /^mobile\//,
+      /^public\//,
+      /^examples\//,
+      /^resources\//,
+      /^scripts\//,
+      /^tests\/(e2e|integration|unit)\//,
+      /^\.github\/(actions|workflows)\//,
+      /^electron-builder.*\.(json|ya?ml)$/,
+    ])
+  );
+
+  if (!allPathsClassified) {
+    return {
+      docs_only: false,
+      cross_platform_tests: true,
+      installer_smoke: true,
+      release_scripts: true,
+    };
+  }
 
   return {
     docs_only: docsOnly,
