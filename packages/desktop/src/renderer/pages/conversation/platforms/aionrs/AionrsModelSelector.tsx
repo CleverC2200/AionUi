@@ -60,7 +60,9 @@ const AionrsModelSelector: React.FC<{
         <Button className={selectorClassName} shape='round' size='small' style={{ cursor: 'default' }}>
           <span className='flex items-center gap-6px min-w-0'>
             {renderLogo()}
-            <span className={compact ? 'block truncate' : undefined}>{t('conversation.welcome.useCliModel')}</span>
+            <span className='block truncate' title={t('conversation.welcome.useCliModel')}>
+              {t('conversation.welcome.useCliModel')}
+            </span>
           </span>
         </Button>
       </Tooltip>
@@ -162,7 +164,9 @@ const AionrsModelSelector: React.FC<{
       <Button data-testid='aionrs-model-selector' className={selectorClassName} shape='round' size='small'>
         <span className='flex items-center gap-6px min-w-0'>
           {renderLogo()}
-          <span className={compact ? 'block truncate' : undefined}>{combinedLabel}</span>
+          <span className='block truncate' title={combinedLabel}>
+            {combinedLabel}
+          </span>
           <Down theme='outline' size={12} fill={iconColors.secondary} className='shrink-0' />
         </span>
       </Button>
