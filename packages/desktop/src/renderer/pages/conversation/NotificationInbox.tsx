@@ -280,7 +280,7 @@ export const NotificationInbox: React.FC<NotificationInboxProps> = ({
         ref={triggerRef}
         long
         type='text'
-        className='!h-34px !px-10px !text-t-primary hover:!bg-fill-2'
+        className='!h-34px !flex !items-center !justify-start !gap-8px !px-10px !text-t-primary hover:!bg-fill-2'
         icon={<Inbox theme='outline' size='17' />}
         onClick={() => setVisible(true)}
         aria-label={t('conversation.notifications.open', { count: unreadCount })}

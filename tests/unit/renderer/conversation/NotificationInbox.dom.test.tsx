@@ -75,10 +75,9 @@ describe('NotificationInbox', () => {
   it('renders unread count, details, action receipt command and typed navigation', async () => {
     renderInbox();
     await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
-    expect(screen.getByTestId('notification-inbox-trigger')).toHaveAttribute(
-      'aria-label',
-      'conversation.notifications.open:1'
-    );
+    const trigger = screen.getByTestId('notification-inbox-trigger');
+    expect(trigger).toHaveAttribute('aria-label', 'conversation.notifications.open:1');
+    expect(trigger).toHaveClass('!flex', '!items-center', '!justify-start', '!gap-8px');
 
     fireEvent.click(screen.getByTestId('notification-inbox-trigger'));
     fireEvent.click(await screen.findByText(notification.title));
