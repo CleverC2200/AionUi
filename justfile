@@ -325,9 +325,15 @@ i18n-check:
 # Run all checks (lint + format + typecheck + i18n) — mirrors CI code-quality job
 check: lint fmt-check typecheck i18n-check
 
-# Pre-push gate: lint + format check + typecheck + i18n + test, then push
-# Uses --quiet to suppress warnings (exit code is still non-zero on errors)
-push *ARGS: lint-strict fmt-check typecheck i18n-check test
+# Fast local gate for iteration. Run this before the targeted tests for a change.
+# Uses --quiet to suppress warnings (exit code is still non-zero on errors).
+quick-check: lint-strict fmt-check typecheck i18n-check
+
+# Final local gate. Run once on the final commit before pushing.
+gate: quick-check test
+
+# Validate the final commit, then push it.
+push *ARGS: gate
     git push {{ ARGS }}
 
 # Lint with only errors reported (for CI/push gates)
