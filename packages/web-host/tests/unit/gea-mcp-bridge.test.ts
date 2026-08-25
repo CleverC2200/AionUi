@@ -61,6 +61,18 @@ describe('startGeaMcpBridge', () => {
     expect(Date.parse(options.operation.deadlineAt)).toBeGreaterThanOrEqual(startedAt);
     expect(Date.parse(options.operation.deadlineAt)).toBeLessThanOrEqual(startedAt + 60_500);
 
+    await client.callTool({
+      name: 'search_records',
+      arguments: { query: '客户B' },
+      _meta: { attempt: 0, deadlineAt: 'invalid', operationId: 'invalid', parentRequestId: 'invalid parent' },
+    });
+    const fallbackOperation = callTool.mock.calls[1]?.[2].operation;
+    expect(fallbackOperation).toMatchObject({ attempt: 1, deadlineAt: expect.any(String) });
+    expect(fallbackOperation.operationId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
+    expect(fallbackOperation).not.toHaveProperty('parentRequestId');
+
     await client.close();
   });
 
