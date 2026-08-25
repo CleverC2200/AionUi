@@ -20,11 +20,10 @@
  */
 
 const { execSync, execFileSync, spawnSync } = require('child_process');
-const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { verifyBundledAioncoreResources } = require('./verify-bundled-aioncore-resources');
+const { sha256Directory, sha256File, verifyBundledAioncoreResources } = require('./verify-bundled-aioncore-resources');
 
 const DEFAULT_RELEASE_REPOSITORY = 'iOfficeAI/AionCore';
 const DEFAULT_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
@@ -193,10 +192,6 @@ function getExpectedActionsHeadSha({ required = false } = {}) {
     throw new Error('AIONUI_BACKEND_EXPECTED_HEAD_SHA must be exactly 40 lowercase hexadecimal characters');
   }
   return expectedHeadSha;
-}
-
-function sha256File(filePath) {
-  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
 
 function verifyFileSha256(filePath, expectedSha256, label) {
@@ -728,12 +723,19 @@ function prepareAioncore(options) {
       const manifest = {
         platform,
         arch,
-        version: tag || `actions-run-${actionsRunId}` || 'local-bundle',
+        version: tag || (actionsRunId ? `actions-run-${actionsRunId}` : 'local-bundle'),
         generatedAt: new Date().toISOString(),
         sourcePolicy,
         sourceType: 'local-bundle',
         source: { path: resolvedLocalBundleDir },
         files: [binaryName, 'managed-resources/'],
+        content: {
+          binary: { path: binaryName, sha256: sha256File(targetBinaryPath) },
+          managedResources: {
+            path: 'managed-resources',
+            sha256: sha256Directory(path.join(targetDir, 'managed-resources')),
+          },
+        },
       };
       writeJson(path.join(targetDir, 'manifest.json'), manifest);
       verifyPreparedAioncoreBundle(projectRoot, platform, arch);
@@ -820,6 +822,13 @@ function prepareAioncore(options) {
       sourceType,
       source: sourceDetail,
       files: [binaryName, 'managed-resources/'],
+      content: {
+        binary: { path: binaryName, sha256: sha256File(targetBinaryPath) },
+        managedResources: {
+          path: 'managed-resources',
+          sha256: sha256Directory(path.join(targetDir, 'managed-resources')),
+        },
+      },
     };
 
     writeJson(path.join(targetDir, 'manifest.json'), manifest);

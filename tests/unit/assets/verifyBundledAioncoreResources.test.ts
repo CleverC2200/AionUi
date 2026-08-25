@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 const {
+  sha256Directory,
+  sha256File,
   verifyBundledAioncoreResources,
 } = require('../../../packages/shared-scripts/src/verify-bundled-aioncore-resources');
 
@@ -133,13 +135,37 @@ function seedRuntimeKey(
 ) {
   const managedResourcesDir = join(resourcesDir, 'bundled-aioncore', runtimeKey, 'managed-resources');
   mkdirSync(join(resourcesDir, 'bundled-aioncore', runtimeKey), { recursive: true });
-  writeFile(join(resourcesDir, 'bundled-aioncore', runtimeKey, platform === 'win32' ? 'aioncore.exe' : 'aioncore'));
-  writeJson(join(resourcesDir, 'bundled-aioncore', runtimeKey, 'manifest.json'), { platform, arch });
+  const binaryName = platform === 'win32' ? 'aioncore.exe' : 'aioncore';
+  const binaryPath = join(resourcesDir, 'bundled-aioncore', runtimeKey, binaryName);
+  writeFile(binaryPath);
   writeFile(join(managedResourcesDir, ...nodeRoot.split('/'), ...nodeExecutable.split('/')));
   createManagedCliFixture({ managedResourcesDir, name: 'claude', version: CLAUDE_VERSION, runtimeKey });
   createManagedCliFixture({ managedResourcesDir, name: 'codex', version: CODEX_VERSION, runtimeKey });
   writeManagedResourcesContract(managedResourcesDir, { runtimeKey, nodeRoot, nodeExecutable });
+  writeJson(join(resourcesDir, 'bundled-aioncore', runtimeKey, 'manifest.json'), {
+    platform,
+    arch,
+    content: {
+      binary: { path: binaryName, sha256: sha256File(binaryPath) },
+      managedResources: { path: 'managed-resources', sha256: sha256Directory(managedResourcesDir) },
+    },
+  });
   return managedResourcesDir;
+}
+
+function refreshBundleContentIdentity(resourcesDir: string, runtimeKey: string, platform: string) {
+  const bundleDir = join(resourcesDir, 'bundled-aioncore', runtimeKey);
+  const manifestPath = join(bundleDir, 'manifest.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const binaryName = platform === 'win32' ? 'aioncore.exe' : 'aioncore';
+  manifest.content = {
+    binary: { path: binaryName, sha256: sha256File(join(bundleDir, binaryName)) },
+    managedResources: {
+      path: 'managed-resources',
+      sha256: sha256Directory(join(bundleDir, 'managed-resources')),
+    },
+  };
+  writeJson(manifestPath, manifest);
 }
 
 describe('verifyBundledAioncoreResources', () => {
@@ -173,6 +199,34 @@ describe('verifyBundledAioncoreResources', () => {
     expect(result.runtimeKey).toBe('win32-x64');
     expect(result.missing).toEqual([]);
     expect(result.failures).toEqual([]);
+  });
+
+  it('fails when the bundled binary no longer matches its content identity', () => {
+    writeFileSync(join(resourcesDir, 'bundled-aioncore', 'win32-x64', 'aioncore.exe'), 'changed');
+
+    const result = verifyBundledAioncoreResources({
+      resourcesDir,
+      electronPlatformName: 'win32',
+      targetArch: 'x64',
+    });
+
+    expect(result.failures).toContainEqual(
+      expect.objectContaining({ component: 'aioncore', reason: 'content_hash_mismatch' })
+    );
+  });
+
+  it('fails when managed resources no longer match their content identity', () => {
+    writeFileSync(join(managedResourcesDir, 'unexpected.txt'), 'changed');
+
+    const result = verifyBundledAioncoreResources({
+      resourcesDir,
+      electronPlatformName: 'win32',
+      targetArch: 'x64',
+    });
+
+    expect(result.failures).toContainEqual(
+      expect.objectContaining({ component: 'managed-resources', reason: 'content_hash_mismatch' })
+    );
   });
 
   it('fails when managed resources contract is missing', () => {
@@ -350,6 +404,7 @@ describe('verifyBundledAioncoreResources', () => {
     manifest.extraDiagnostic = { ignored: true };
     manifest.clis.push({ ...manifest.clis[0] });
     writeJson(manifestPath, manifest);
+    refreshBundleContentIdentity(resourcesDir, 'win32-x64', 'win32');
 
     const result = verifyBundledAioncoreResources({
       resourcesDir,
@@ -374,6 +429,7 @@ describe('verifyBundledAioncoreResources', () => {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     manifest.clis = [];
     writeJson(manifestPath, manifest);
+    refreshBundleContentIdentity(resourcesDir, 'win32-x64', 'win32');
 
     const result = verifyBundledAioncoreResources({
       resourcesDir,
@@ -391,6 +447,7 @@ describe('verifyBundledAioncoreResources', () => {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     manifest.clis = manifest.clis.map((cli: { name: string }) => (cli.name === 'codex' ? { ...cli, name: '' } : cli));
     writeJson(manifestPath, manifest);
+    refreshBundleContentIdentity(resourcesDir, 'win32-x64', 'win32');
 
     const result = verifyBundledAioncoreResources({
       resourcesDir,
@@ -403,6 +460,7 @@ describe('verifyBundledAioncoreResources', () => {
 
   it('fails when the contract is invalid JSON', () => {
     writeFileSync(join(managedResourcesDir, 'manifest.json'), '{');
+    refreshBundleContentIdentity(resourcesDir, 'win32-x64', 'win32');
 
     const result = verifyBundledAioncoreResources({
       resourcesDir,
@@ -418,6 +476,7 @@ describe('verifyBundledAioncoreResources', () => {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     manifest.schemaVersion = 1;
     writeJson(manifestPath, manifest);
+    refreshBundleContentIdentity(resourcesDir, 'win32-x64', 'win32');
 
     const result = verifyBundledAioncoreResources({
       resourcesDir,
@@ -433,6 +492,7 @@ describe('verifyBundledAioncoreResources', () => {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     manifest.node.root = 42;
     writeJson(manifestPath, manifest);
+    refreshBundleContentIdentity(resourcesDir, 'win32-x64', 'win32');
 
     const result = verifyBundledAioncoreResources({
       resourcesDir,
@@ -448,6 +508,7 @@ describe('verifyBundledAioncoreResources', () => {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     manifest.clis[0].platformDirectory = 'linux-x64';
     writeJson(manifestPath, manifest);
+    refreshBundleContentIdentity(resourcesDir, 'win32-x64', 'win32');
 
     const result = verifyBundledAioncoreResources({
       resourcesDir,
