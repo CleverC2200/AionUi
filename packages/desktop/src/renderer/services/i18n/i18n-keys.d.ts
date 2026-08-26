@@ -528,6 +528,8 @@ export type I18nKey =
   | 'conversation.attention.approval.detail.createdAt'
   | 'conversation.attention.approval.detail.deadline'
   | 'conversation.attention.approval.detail.empty'
+  | 'conversation.attention.approval.detail.externalNotice'
+  | 'conversation.attention.approval.detail.externalSummary'
   | 'conversation.attention.approval.detail.loadFailed'
   | 'conversation.attention.approval.detail.number'
   | 'conversation.attention.approval.detail.unknownUser'

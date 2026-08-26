@@ -97,6 +97,8 @@
         "createdAt": "发起时间：{{time}}",
         "unknownUser": "未知发起人",
         "loadFailed": "审批实例详情加载失败",
+        "externalNotice": "这是三方审批，详情和操作由外部审批系统提供。",
+        "externalSummary": "审批摘要",
         "empty": "请选择一条审批事项查看详情"
       },
       "form": {

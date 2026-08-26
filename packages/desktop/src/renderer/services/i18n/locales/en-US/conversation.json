@@ -97,6 +97,8 @@
         "createdAt": "Started: {{time}}",
         "unknownUser": "Unknown initiator",
         "loadFailed": "Approval instance details could not be loaded",
+        "externalNotice": "This is a third-party approval. Its details and actions are provided by the external approval system.",
+        "externalSummary": "Approval summary",
         "empty": "Select an approval item to view details"
       },
       "form": {

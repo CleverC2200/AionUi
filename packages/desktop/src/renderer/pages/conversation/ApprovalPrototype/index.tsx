@@ -54,6 +54,10 @@ const cardSummaryText = (item: ApprovalTask): string => {
 const cardCreatedAt = (item: ApprovalTask): string | undefined =>
   item.summaries.find((summary) => summary.key.includes('创建日期') && summary.value.trim())?.value;
 
+export const shouldLoadApprovalInstance = (
+  item: Pick<ApprovalTask, 'instanceCode' | 'instanceExternalId' | 'taskExternalId'>
+): boolean => Boolean(item.instanceCode) && !item.instanceExternalId && !item.taskExternalId;
+
 const formatTimestamp = (value?: string): string => {
   if (!value || value === '0') return '—';
   const numeric = Number(value);
@@ -204,12 +208,13 @@ const ApprovalDetail: React.FC<{
   const [selectedContact, setSelectedContact] = useState<ApprovalContact>();
   const detailContentRef = useRef<HTMLDivElement>(null);
   const feishuApprovalUrl = safeFeishuApprovalUrl(item.link);
+  const loadNativeDetail = shouldLoadApprovalInstance(item);
   const {
     data: detail,
     error,
     isLoading,
     mutate,
-  } = useSWR<ApprovalInstance>(item.instanceCode ? `approval-instance:${item.instanceCode}` : null, () =>
+  } = useSWR<ApprovalInstance>(loadNativeDetail ? `approval-instance:${item.instanceCode}` : null, () =>
     ipcBridge.feishuApproval.get.invoke({ instanceCode: item.instanceCode })
   );
   const { data: contacts, isLoading: contactsLoading } = useSWR(
@@ -228,6 +233,69 @@ const ApprovalDetail: React.FC<{
   useEffect(() => {
     if (detail) detailContentRef.current?.scrollTo?.({ top: 0 });
   }, [detail, item.taskId, topic]);
+
+  if (!loadNativeDetail) {
+    const initiator = item.initiatorName || item.initiatorId || t('conversation.attention.approval.detail.unknownUser');
+    return (
+      <div className={styles.detail} data-testid={`approval-detail-${item.taskId}`}>
+        <header className={styles.detailHeader}>
+          <div className={styles.detailTitleRow}>
+            <div>
+              <Typography.Title heading={5} className={styles.detailTitle}>
+                {item.definitionName}
+              </Typography.Title>
+              <div className={styles.detailIdentity}>
+                <Avatar size={30} className={`${styles.avatar} ${styles.purple}`}>
+                  {Array.from(initiator)[0] || '?'}
+                </Avatar>
+                <span>{initiator}</span>
+              </div>
+            </div>
+            <Tag color={statusColor(topic)}>{t(`conversation.attention.approval.status.${topic}`)}</Tag>
+          </div>
+        </header>
+
+        <div className={styles.detailContent}>
+          <Alert
+            type='info'
+            showIcon
+            content={t('conversation.attention.approval.detail.externalNotice')}
+            data-testid='approval-external-notice'
+          />
+          <section className={styles.section}>
+            <Typography.Title heading={6} className={styles.sectionTitle}>
+              {t('conversation.attention.approval.detail.externalSummary')}
+            </Typography.Title>
+            <div className={styles.metricGrid}>
+              {item.summaries.map((summary, index) => (
+                <div
+                  key={`${summary.key}:${index}`}
+                  className={`${styles.formField} ${styles.formFieldFull}`}
+                  data-form-span='full'
+                >
+                  <span>{summary.key}</span>
+                  <strong>{summary.value || '—'}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <footer className={styles.actionBar}>
+          <div className={styles.actionGroup}>
+            <Button icon={<MessageOne theme='outline' />} onClick={onStartHandling}>
+              {t('conversation.attention.approval.actions.handle')}
+            </Button>
+            {feishuApprovalUrl ? (
+              <Button type='primary' onClick={() => void openExternalUrl(feishuApprovalUrl)}>
+                {t('conversation.attention.approval.actions.openInFeishu')}
+              </Button>
+            ) : null}
+          </div>
+        </footer>
+      </div>
+    );
+  }
 
   const confirmAction = async (): Promise<void> => {
     if (!action || submitting) return;
