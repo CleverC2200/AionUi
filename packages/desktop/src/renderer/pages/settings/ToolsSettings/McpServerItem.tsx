@@ -41,35 +41,42 @@ const McpServerItem: React.FC<McpServerItemProps> = ({
   onToggleEnabled,
 }) => {
   return (
-    <Collapse
-      key={server.id}
-      activeKey={isCollapsed ? ['1'] : []}
-      onChange={onToggleCollapse}
-      className='mb-4 [&_div.arco-collapse-item-header-title]:flex-1'
+    <div
+      data-testid={`mcp-server-${server.id}`}
+      data-server-name={server.name}
+      data-readonly={isReadOnly ? 'true' : 'false'}
+      data-configuration-readonly={isConfigurationReadOnly ? 'true' : 'false'}
     >
-      <Collapse.Item
-        header={
-          <McpServerHeader
-            server={server}
-            isTestingConnection={isTestingConnection}
-            oauthStatus={oauthStatus}
-            isLoggingIn={isLoggingIn}
-            isReadOnly={isReadOnly}
-            isConfigurationReadOnly={isConfigurationReadOnly}
-            isTogglingEnabled={isTogglingEnabled}
-            onTestConnection={onTestConnection}
-            onEditServer={onEditServer}
-            onDeleteServer={onDeleteServer}
-            onOAuthLogin={onOAuthLogin}
-            onToggleEnabled={onToggleEnabled}
-          />
-        }
-        name='1'
-        className={'[&_div.arco-collapse-item-content-box]:py-3'}
+      <Collapse
+        key={server.id}
+        activeKey={isCollapsed ? ['1'] : []}
+        onChange={onToggleCollapse}
+        className='mb-4 [&_div.arco-collapse-item-header-title]:flex-1'
       >
-        <McpServerToolsList server={server} />
-      </Collapse.Item>
-    </Collapse>
+        <Collapse.Item
+          header={
+            <McpServerHeader
+              server={server}
+              isTestingConnection={isTestingConnection}
+              oauthStatus={oauthStatus}
+              isLoggingIn={isLoggingIn}
+              isReadOnly={isReadOnly}
+              isConfigurationReadOnly={isConfigurationReadOnly}
+              isTogglingEnabled={isTogglingEnabled}
+              onTestConnection={onTestConnection}
+              onEditServer={onEditServer}
+              onDeleteServer={onDeleteServer}
+              onOAuthLogin={onOAuthLogin}
+              onToggleEnabled={onToggleEnabled}
+            />
+          }
+          name='1'
+          className={'[&_div.arco-collapse-item-content-box]:py-3'}
+        >
+          <McpServerToolsList server={server} />
+        </Collapse.Item>
+      </Collapse>
+    </div>
   );
 };
 
