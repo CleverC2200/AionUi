@@ -337,6 +337,38 @@ describe('AttentionInbox real Feishu approval integration', () => {
     expect(screen.getByText('conversation.attention.approval.actions.approve').closest('button')).toBeDisabled();
   });
 
+  it('renders third-party approval summaries without calling the native instance detail API', async () => {
+    approvalApi.list.mockImplementation(({ topic }: { topic: string }) =>
+      Promise.resolve({
+        count: 1,
+        hasMore: false,
+        tasks:
+          topic === 'pending'
+            ? [
+                {
+                  ...pendingTask,
+                  instanceExternalId: 'external-instance-1',
+                  taskExternalId: 'external-task-1',
+                  supportApiOperate: false,
+                  link: 'https://applink.feishu.cn/client/approval/detail',
+                },
+              ]
+            : [doneTask],
+      })
+    );
+
+    renderInbox();
+    fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
+
+    const detail = await screen.findByTestId('approval-detail-task-pending');
+    expect(within(detail).getByTestId('approval-external-notice')).toBeVisible();
+    expect(detail).toHaveTextContent('conversation.attention.approval.detail.externalSummary');
+    expect(detail).toHaveTextContent('计划提报与审批卡片原型');
+    expect(detail).not.toHaveTextContent('conversation.attention.approval.detail.loadFailed');
+    expect(approvalApi.get).not.toHaveBeenCalled();
+    expect(screen.getByText('conversation.attention.approval.actions.openInFeishu')).toBeVisible();
+  });
+
   it('keeps a trusted Feishu fallback available when third-party approval detail cannot load', async () => {
     approvalApi.list.mockImplementation(({ topic }: { topic: string }) =>
       Promise.resolve({

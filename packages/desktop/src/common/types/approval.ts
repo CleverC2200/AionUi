@@ -8,6 +8,8 @@ export type ApprovalSummary = {
 export type ApprovalTask = {
   taskId: string;
   instanceCode: string;
+  instanceExternalId?: string;
+  taskExternalId?: string;
   definitionCode: string;
   definitionName: string;
   title: string;
