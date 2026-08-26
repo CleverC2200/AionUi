@@ -93,15 +93,16 @@ test.describe('GEA notification inbox mock contract', () => {
     try {
       await page.reload();
       await goToGuid(page);
-      const trigger = page.getByTestId('notification-inbox-trigger');
+      const trigger = page.getByTestId('attention-inbox-trigger');
       await expect(trigger).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByTestId('notification-unread-count')).toHaveText('1');
-
       await trigger.click();
+      const notificationTab = page.getByRole('tab', { name: /^(?:通知|Notifications) 1$/ });
+      await expect(notificationTab).toBeVisible();
+      await notificationTab.click();
       await page.getByText(notification.title).click();
       await expect(page.getByText(notification.body)).toBeVisible();
       await page.getByRole('button', { name: /标记已读|Mark as read/ }).click();
-      await expect(page.getByTestId('notification-unread-count')).toHaveCount(0);
+      await expect(page.getByRole('tab', { name: /^(?:通知|Notifications) 0$/ })).toBeVisible();
 
       await page.getByRole('button', { name: /忽略|Dismiss/ }).click();
       await expect(page.getByText(/暂无有效通知|No active notifications/)).toBeVisible();
