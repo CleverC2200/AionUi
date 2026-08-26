@@ -229,7 +229,7 @@ function buildBuiltinLarkCliServer(): McpImportServer {
   };
 }
 
-function buildDefaultMcpServers(): McpImportServer[] {
+function buildBuiltinGeaMcpServer(): McpImportServer {
   const geaConfig = {
     command: resolveBinaryPath(),
     args: ['mcp-gea-stdio'],
@@ -237,24 +237,40 @@ function buildDefaultMcpServers(): McpImportServer[] {
       AIONUI_GEA_AGENT_CODE: process.env.GEA_AGENT_CODE?.trim() || 'sales_forecast',
     },
   };
+
+  return {
+    name: BUILTIN_GEA_MCP_NAME,
+    enabled: true,
+    builtin: true,
+    transport: {
+      type: 'stdio',
+      command: geaConfig.command,
+      args: geaConfig.args,
+      env: geaConfig.env,
+    },
+    original_json: JSON.stringify({ mcpServers: { [BUILTIN_GEA_MCP_NAME]: geaConfig } }, null, 2),
+  };
+}
+
+/**
+ * Materialize the global GEA gateway before the renderer reads the MCP catalog.
+ * The remaining migrations stay deferred because they depend on renderer-backed storage.
+ */
+export async function ensureBuiltinGeaMcpServerAvailable(): Promise<void> {
+  const existing = await mcpService.listServers.invoke();
+  if (existing.some((server) => server.name === BUILTIN_GEA_MCP_NAME)) return;
+
+  await mcpService.batchImportServers.invoke({ servers: [buildBuiltinGeaMcpServer()] });
+}
+
+function buildDefaultMcpServers(): McpImportServer[] {
   const chromeConfig = {
     command: 'npx',
     args: ['-y', 'chrome-devtools-mcp@latest'],
   };
 
   return [
-    {
-      name: BUILTIN_GEA_MCP_NAME,
-      enabled: true,
-      builtin: true,
-      transport: {
-        type: 'stdio',
-        command: geaConfig.command,
-        args: geaConfig.args,
-        env: geaConfig.env,
-      },
-      original_json: JSON.stringify({ mcpServers: { [BUILTIN_GEA_MCP_NAME]: geaConfig } }, null, 2),
-    },
+    buildBuiltinGeaMcpServer(),
     {
       name: BUILTIN_CHROME_DEVTOOLS_NAME,
       description: 'Default MCP server: chrome-devtools',
