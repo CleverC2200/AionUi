@@ -135,60 +135,61 @@ async function startMockGea(label: 'a' | 'b'): Promise<MockGea> {
       });
       return;
     }
-    if (url.pathname === '/ai/gateway/notifications') {
+    if (url.pathname === '/api/v1/notifications') {
       writeJson(res, {
         success: true,
         result: {
-          revision: `notification-${label}`,
           items: [
             {
-              notificationId: `notification-read-${label}`,
-              version: 'v1',
-              status: 'unread',
-              kind: 'event',
+              id: `notification-read-${label}`,
+              version: 1,
+              state: 'unread',
+              kind: 'notice',
               severity: 'info',
               title: `${label.toUpperCase()} notification`,
               dismissible: true,
-              source: 'gea.environment.test',
-              target: { type: 'notification' },
-              createdAt: '2026-08-24T00:00:00Z',
+              source: { type: 'business_system', ref: `environment-${label}`, label: 'gea.environment.test' },
+              target: { type: 'aggregate', value: `environment-${label}` },
+              created_at: '2026-08-24T00:00:00Z',
             },
             {
-              notificationId: `notification-dismiss-${label}`,
-              version: 'v1',
-              status: 'unread',
-              kind: 'event',
+              id: `notification-dismiss-${label}`,
+              version: 1,
+              state: 'unread',
+              kind: 'notice',
               severity: 'info',
               title: `${label.toUpperCase()} dismiss notification`,
               dismissible: true,
-              source: 'gea.environment.test',
-              target: { type: 'notification' },
-              createdAt: '2026-08-24T00:00:00Z',
+              source: { type: 'business_system', ref: `environment-${label}`, label: 'gea.environment.test' },
+              target: { type: 'aggregate', value: `environment-${label}` },
+              created_at: '2026-08-24T00:00:00Z',
             },
           ],
+          unread_count: 2,
+          total: 2,
         },
       });
       return;
     }
-    if (url.pathname === `/ai/gateway/notifications/notification-read-${label}/read`) {
+    if (url.pathname === `/api/v1/notifications/notification-read-${label}/read`) {
       writeJson(res, {
         success: true,
         result: {
-          receiptId: `receipt-read-${label}`,
-          notificationId: `notification-read-${label}`,
-          version: 'v2',
+          receipt_id: `receipt-read-${label}`,
+          notification_id: `notification-read-${label}`,
+          version: 2,
           status: 'read',
         },
       });
       return;
     }
-    if (url.pathname === `/ai/gateway/notifications/notification-dismiss-${label}/dismiss`) {
+    if (url.pathname === `/api/v1/notifications/notification-dismiss-${label}/dismiss`) {
       writeJson(res, {
         success: true,
         result: {
-          receiptId: `receipt-dismiss-${label}`,
-          notificationId: `notification-dismiss-${label}`,
-          version: 'v2',
+          receipt_id: `receipt-dismiss-${label}`,
+          notification_id: `notification-dismiss-${label}`,
+          version: 2,
           status: 'dismissed',
         },
       });
@@ -429,7 +430,7 @@ describe('packaged AionCore GEA environment product path', () => {
           );
           if (run === 1) {
             const read = await coreJson(core.url, `/api/notifications/notification-read-${mock.label}/read`, 'POST', {
-              expected_version: 'v1',
+              expected_version: '1',
               idempotency_key: `read-${mock.label}-${run}`,
             });
             expect(read.status, await read.clone().text()).toBe(200);
@@ -437,7 +438,7 @@ describe('packaged AionCore GEA environment product path', () => {
               core.url,
               `/api/notifications/notification-dismiss-${mock.label}/dismiss`,
               'POST',
-              { expected_version: 'v1', idempotency_key: `dismiss-${mock.label}-${run}` }
+              { expected_version: '1', idempotency_key: `dismiss-${mock.label}-${run}` }
             );
             expect(dismiss.status, await dismiss.clone().text()).toBe(200);
           }
@@ -495,7 +496,7 @@ describe('packaged AionCore GEA environment product path', () => {
           expect(
             mock.requests.some((request) => request.pathname === '/aidata/client-resource-catalog/skill-artifact')
           ).toBe(true);
-          expect(mock.requests.some((request) => request.pathname === '/ai/gateway/notifications')).toBe(true);
+          expect(mock.requests.some((request) => request.pathname === '/api/v1/notifications')).toBe(true);
           expect(mock.requests.some((request) => request.pathname === '/ai/gateway/interaction-requests')).toBe(true);
           expect(mock.requests.some((request) => request.pathname === '/ai/gateway/session')).toBe(true);
           expect(mock.requests.some((request) => request.pathname === '/ai/gateway/mcp/proxy/list')).toBe(true);
