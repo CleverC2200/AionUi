@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { IMAGE_GEN_ENV_KEYS } from '@/common/config/imageGenerationMcpEnv';
 import { BUILTIN_IMAGE_GEN_NAME, type IMcpServer, type IProvider } from '@/common/config/storage';
-import { resolveImageGenerationMigrationConfig, runBackendMigrations } from '@/process/utils/runBackendMigrations';
+import {
+  ensureBuiltinGeaMcpServerAvailable,
+  resolveImageGenerationMigrationConfig,
+  runBackendMigrations,
+} from '@/process/utils/runBackendMigrations';
 
 const {
   batchImportServersMock,
@@ -165,6 +169,44 @@ describe('resolveImageGenerationMigrationConfig', () => {
     expect(resolveImageGenerationMigrationConfig({ 'tools.imageGenerationModel': backendConfig }, undefined)).toEqual(
       backendConfig
     );
+  });
+});
+
+describe('ensureBuiltinGeaMcpServerAvailable', () => {
+  it('imports the global GEA gateway before renderer-backed migrations run', async () => {
+    listServersMock.mockResolvedValue([]);
+
+    await ensureBuiltinGeaMcpServerAvailable();
+
+    expect(batchImportServersMock).toHaveBeenCalledWith({
+      servers: [
+        expect.objectContaining({
+          name: 'gea-gateway',
+          enabled: true,
+          builtin: true,
+          transport: {
+            type: 'stdio',
+            command: '/mock/aioncore',
+            args: ['mcp-gea-stdio'],
+            env: { AIONUI_GEA_AGENT_CODE: 'sales_forecast' },
+          },
+        }),
+      ],
+    });
+  });
+
+  it('does not duplicate an existing global GEA gateway', async () => {
+    listServersMock.mockResolvedValue([
+      {
+        id: 'gea-gateway',
+        name: 'gea-gateway',
+        builtin: true,
+      },
+    ]);
+
+    await ensureBuiltinGeaMcpServerAvailable();
+
+    expect(batchImportServersMock).not.toHaveBeenCalled();
   });
 });
 

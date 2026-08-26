@@ -16,8 +16,10 @@ import {
 import {
   GeaMcpGatewayError,
   type GeaLarkAuthService,
+  type GeaMcpErrorEnvelope,
   type GeaMcpGatewaySession,
   type GeaMcpGatewayTool,
+  type GeaMcpOperationContext,
 } from './gea-lark-auth.js';
 
 type BridgeSession = {
@@ -48,8 +50,25 @@ function isLoopbackHost(hostHeader: string | undefined): boolean {
   return hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '::1';
 }
 
-function errorCode(error: unknown): string {
-  return error instanceof GeaMcpGatewayError ? error.code : 'GEA_MCP_BRIDGE_ERROR';
+function errorEnvelope(error: unknown, operationId?: string): GeaMcpErrorEnvelope {
+  if (error instanceof GeaMcpGatewayError) {
+    return error.envelope.operationId || !operationId ? error.envelope : { ...error.envelope, operationId };
+  }
+  return { code: 'GEA_MCP_BRIDGE_ERROR', retryable: false, ...(operationId ? { operationId } : {}) };
+}
+
+function errorResult(envelope: GeaMcpErrorEnvelope) {
+  const meta = Object.fromEntries(
+    (['auditId', 'operationId', 'requestId', 'traceId'] as const)
+      .filter((key) => envelope[key])
+      .map((key) => [key, envelope[key]])
+  );
+  return {
+    isError: true as const,
+    content: [{ type: 'text' as const, text: envelope.code }],
+    structuredContent: { error: envelope },
+    ...(Object.keys(meta).length ? { _meta: meta } : {}),
+  };
 }
 
 function resultText(value: unknown): string {
@@ -100,6 +119,29 @@ function safeToolContent(content: ContentBlock): ContentBlock {
 
 const MAX_TOOL_NAME_LENGTH = 64;
 const BUSINESS_DATA_TOOL_NAME = 'query_business_data';
+const DEFAULT_GEA_MCP_CALL_TIMEOUT_MS = 60_000;
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function operationContext(meta: Record<string, unknown> | undefined): GeaMcpOperationContext {
+  const now = Date.now();
+  const defaultDeadline = now + DEFAULT_GEA_MCP_CALL_TIMEOUT_MS;
+  const requestedDeadline = typeof meta?.deadlineAt === 'string' ? Date.parse(meta.deadlineAt) : Number.NaN;
+  const deadline = Number.isFinite(requestedDeadline) ? Math.min(requestedDeadline, defaultDeadline) : defaultDeadline;
+  const operationId =
+    typeof meta?.operationId === 'string' && UUID_V4_PATTERN.test(meta.operationId) ? meta.operationId : randomUUID();
+  const attempt =
+    typeof meta?.attempt === 'number' && Number.isInteger(meta.attempt) && meta.attempt >= 1 ? meta.attempt : 1;
+  const parentRequestId =
+    typeof meta?.parentRequestId === 'string' && /^[A-Za-z0-9._:-]{1,128}$/.test(meta.parentRequestId)
+      ? meta.parentRequestId
+      : undefined;
+  return {
+    operationId,
+    attempt,
+    deadlineAt: new Date(deadline).toISOString(),
+    ...(parentRequestId ? { parentRequestId } : {}),
+  };
+}
 
 const LEGACY_BUSINESS_DATA_INPUT_SCHEMA: Record<string, unknown> = {
   type: 'object',
@@ -226,18 +268,27 @@ function createMcpServer(authService: GeaLarkAuthService, agentCode: string): Se
     };
   });
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+    const operation = operationContext(request.params._meta);
     try {
       if (!gatewaySession || !toolsByName.has(request.params.name)) {
         await loadTools();
       }
       const tool = toolsByName.get(request.params.name);
       if (!tool || !gatewaySession) {
-        return { isError: true, content: [{ type: 'text', text: 'GEA_MCP_TOOL_NOT_FOUND' }] };
+        return errorResult({ code: 'GEA_MCP_TOOL_NOT_FOUND', retryable: false, operationId: operation.operationId });
       }
       const argumentsValue =
         request.params.arguments && typeof request.params.arguments === 'object' ? request.params.arguments : {};
-      const result = await gatewaySession.callTool(tool, gatewayArguments(tool, argumentsValue));
+      const result = await gatewaySession.callTool(tool, gatewayArguments(tool, argumentsValue), {
+        operation,
+        signal: extra.signal,
+      });
+      if (result.isError) {
+        return errorResult(
+          result.error ?? { code: 'GEA_MCP_TOOL_FAILED', retryable: false, operationId: operation.operationId }
+        );
+      }
       const content = result.content?.map(safeToolContent) ?? [
         { type: 'text' as const, text: resultText(result.result) },
       ];
@@ -245,9 +296,10 @@ function createMcpServer(authService: GeaLarkAuthService, agentCode: string): Se
         content,
         ...(result.isError !== undefined ? { isError: result.isError } : {}),
         ...(result.result && typeof result.result === 'object' ? { structuredContent: result.result } : {}),
+        ...(result.meta ? { _meta: result.meta } : {}),
       };
     } catch (error) {
-      return { isError: true, content: [{ type: 'text', text: errorCode(error) }] };
+      return errorResult(errorEnvelope(error, operation.operationId));
     }
   });
 

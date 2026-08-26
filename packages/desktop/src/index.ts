@@ -983,6 +983,12 @@ const handleAppReady = async (): Promise<void> => {
     const bootBackendPort = (globalThis as typeof globalThis & { __backendPort?: number }).__backendPort;
     if (backendStartedOk && bootBackendPort) {
       await ensureAdminUserOnce(bootBackendPort);
+      try {
+        const { ensureBuiltinGeaMcpServerAvailable } = await import('./process/utils/runBackendMigrations');
+        await ensureBuiltinGeaMcpServerAvailable();
+      } catch (error) {
+        console.warn('[AionUi] Failed to bootstrap the built-in GEA MCP server:', error);
+      }
       await syncSharedGeaSessionToBackend().catch((error) => {
         console.warn('[AionUi] Failed to restore GEA session in AionCore:', error);
       });
