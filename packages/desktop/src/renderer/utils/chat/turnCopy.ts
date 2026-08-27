@@ -22,6 +22,7 @@ export interface TurnCopyItem {
   type?: string;
   position?: string;
   content?: unknown;
+  items?: TurnCopyItem[];
 }
 
 export interface AiCopyRows {
@@ -56,7 +57,8 @@ export function collectAiCopyRows(items: TurnCopyItem[], isProcessing: boolean):
     turnTexts = [];
   };
 
-  for (const item of items) {
+  const expandedItems = items.flatMap((item) => (item.type === 'process_summary' ? (item.items ?? []) : [item]));
+  for (const item of expandedItems) {
     if (item.type && PSEUDO_TYPES.has(item.type)) {
       continue;
     }

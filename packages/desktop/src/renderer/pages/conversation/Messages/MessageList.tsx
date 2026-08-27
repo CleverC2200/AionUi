@@ -6,6 +6,7 @@
 
 import type { IConversationArtifact } from '@/common/adapter/ipcBridge';
 import type { IMessageAcpToolCall, IMessageToolCall, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
+import { normalizeToolMessages } from '@/common/chat/normalizeToolCall';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { useConversationRuntimeView } from '@/renderer/pages/conversation/runtime/useConversationRuntimeView';
 import { getChatSurfaceWidthClass } from '@/renderer/pages/conversation/utils/chatSurfaceWidth';
@@ -18,7 +19,7 @@ import {
 } from '@/renderer/utils/chat/chatMinimapEvents';
 import { collectAiCopyRows, type TurnCopyItem } from '@/renderer/utils/chat/turnCopy';
 import { Button, Image } from '@arco-design/web-react';
-import { Down } from '@icon-park/react';
+import { Down, Right } from '@icon-park/react';
 import MessageAcpPermission from '@renderer/pages/conversation/Messages/acp/MessageAcpPermission';
 import MessageQuestion from './MessageQuestion';
 import { focusMessageTarget } from './focusMessageTarget';
@@ -56,16 +57,31 @@ import type { WriteFileResult } from './types';
 import { useAutoScroll } from './useAutoScroll';
 import SelectionReplyButton from './components/SelectionReplyButton';
 
-type IMessageVO =
-  | TMessage
-  | { type: 'file_summary'; id: string; diffs: FileChangeInfo[]; sourceMessageIds: string[]; created_at: number }
-  | {
-      type: 'tool_summary';
-      id: string;
-      messages: Array<IMessageToolGroup | IMessageAcpToolCall | IMessageToolCall>;
-      sourceMessageIds: string[];
-      created_at: number;
-    };
+type IFileSummaryVO = {
+  type: 'file_summary';
+  id: string;
+  diffs: FileChangeInfo[];
+  sourceMessageIds: string[];
+  created_at: number;
+};
+type IToolSummaryVO = {
+  type: 'tool_summary';
+  id: string;
+  messages: Array<IMessageToolGroup | IMessageAcpToolCall | IMessageToolCall>;
+  sourceMessageIds: string[];
+  created_at: number;
+};
+type IProcessSummaryChild = TMessage | IToolSummaryVO;
+type IProcessSummaryVO = {
+  type: 'process_summary';
+  id: string;
+  items: IProcessSummaryChild[];
+  sourceMessageIds: string[];
+  created_at: number;
+  durationMs: number;
+  stepCount: number;
+};
+type IMessageVO = TMessage | IFileSummaryVO | IToolSummaryVO | IProcessSummaryVO;
 type IArtifactVO = { type: 'artifact'; id: string; artifact: IConversationArtifact; created_at: number };
 type IProcessedItem = IMessageVO | IArtifactVO;
 
@@ -120,7 +136,7 @@ const getProcessedItemSourceMessageIds = (item: IProcessedItem): string[] => {
   if ('type' in item && item.type === 'artifact') {
     return [item.id];
   }
-  if ('type' in item && item.type === 'tool_summary') {
+  if ('type' in item && (item.type === 'tool_summary' || item.type === 'process_summary')) {
     return item.sourceMessageIds;
   }
   if ('type' in item && item.type === 'file_summary') {
@@ -142,7 +158,7 @@ const getProcessedItemAnchorId = (item: IProcessedItem): string => {
 };
 
 const getProcessedItemCreatedAt = (item: IProcessedItem): number => {
-  if ('type' in item && ['file_summary', 'tool_summary', 'artifact'].includes(item.type)) {
+  if ('type' in item && ['file_summary', 'tool_summary', 'process_summary', 'artifact'].includes(item.type)) {
     return item.created_at;
   }
   return item.created_at ?? 0;
@@ -155,6 +171,107 @@ const highlightStyle: React.CSSProperties = {
 };
 
 const getUnhandledMessageType = (_message: never): string => 'unknown';
+
+const isProcessSummaryChild = (item: IMessageVO): item is IProcessSummaryChild =>
+  item.type === 'tool_summary' || item.type === 'thinking' || (item.type === 'text' && item.position === 'left');
+
+const isCompletedProcessSummaryChild = (item: IProcessSummaryChild): boolean => {
+  if (item.type === 'thinking') return item.content.status === 'done';
+  if (item.type === 'tool_summary') {
+    const tools = normalizeToolMessages(item.messages);
+    return tools.length > 0 && tools.every((tool) => tool.status === 'completed');
+  }
+  return true;
+};
+
+const collapseProcessRuns = (items: IMessageVO[], hasKnownTurnStart: boolean): IMessageVO[] => {
+  let finalTextIndex = -1;
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (item.type === 'text' && item.position === 'left') {
+      finalTextIndex = index;
+      break;
+    }
+  }
+
+  const result: IMessageVO[] = [];
+  let run: IProcessSummaryChild[] = [];
+  const flushRun = () => {
+    const canCollapse =
+      run.length >= 2 &&
+      run.some((item) => item.type !== 'text') &&
+      (finalTextIndex >= 0 || run.every(isCompletedProcessSummaryChild));
+    if (!canCollapse) {
+      result.push(...run);
+      run = [];
+      return;
+    }
+
+    const sourceMessageIds = run.flatMap((item) => (item.type === 'tool_summary' ? item.sourceMessageIds : [item.id]));
+    const startedAt = Math.min(...run.map((item) => item.created_at ?? 0).filter((value) => value > 0));
+    const finalTextCreatedAt = finalTextIndex >= 0 ? (items[finalTextIndex].created_at ?? 0) : 0;
+    const endedAt = Math.max(
+      finalTextCreatedAt,
+      ...run.map((item) => {
+        const createdAt = item.created_at ?? 0;
+        return item.type === 'thinking' ? createdAt + (item.content.duration ?? 0) : createdAt;
+      })
+    );
+    const stepCount = run.reduce(
+      (count, item) => count + (item.type === 'tool_summary' ? normalizeToolMessages(item.messages).length : 1),
+      0
+    );
+    result.push({
+      type: 'process_summary',
+      id: `process-summary-${sourceMessageIds[0]}`,
+      items: run,
+      sourceMessageIds,
+      created_at: Number.isFinite(startedAt) ? startedAt : 0,
+      durationMs: hasKnownTurnStart && Number.isFinite(startedAt) ? Math.max(0, endedAt - startedAt) : 0,
+      stepCount,
+    });
+    run = [];
+  };
+
+  items.forEach((item, index) => {
+    if (index !== finalTextIndex && isProcessSummaryChild(item)) {
+      run.push(item);
+      return;
+    }
+    flushRun();
+    result.push(item);
+  });
+  flushRun();
+  return result;
+};
+
+const collapseCompletedProcesses = (items: IMessageVO[], isProcessing: boolean): IMessageVO[] => {
+  const result: IMessageVO[] = [];
+  let turn: IMessageVO[] = [];
+  let hasKnownTurnStart = false;
+  const flushTurn = (completed: boolean) => {
+    result.push(...(completed ? collapseProcessRuns(turn, hasKnownTurnStart) : turn));
+    turn = [];
+    hasKnownTurnStart = false;
+  };
+
+  items.forEach((item) => {
+    if (
+      item.type !== 'file_summary' &&
+      item.type !== 'tool_summary' &&
+      item.type !== 'process_summary' &&
+      item.position === 'right'
+    ) {
+      flushTurn(true);
+      result.push(item);
+      hasKnownTurnStart = true;
+      return;
+    }
+    turn.push(item);
+  });
+  flushTurn(!isProcessing);
+  return result;
+};
 
 // Image preview context
 export const ImagePreviewContext = createContext<{ inPreviewGroup: boolean }>({ inPreviewGroup: false });
@@ -221,6 +338,55 @@ const MessageListSkeleton: React.FC<{ rowWidthClass: string }> = ({ rowWidthClas
           100% { background-position: -200% 0; }
         }
       `}</style>
+    </div>
+  );
+};
+
+const MessageProcessSummary: React.FC<{
+  durationMs: number;
+  stepCount: number;
+  children: React.ReactNode;
+}> = ({ durationMs, stepCount, children }) => {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const duration = [
+    minutes > 0 ? `${minutes}${t('common.unit.minute_short', { defaultValue: 'm' })}` : '',
+    `${seconds}${t('common.unit.second_short', { defaultValue: 's' })}`,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const label =
+    durationMs > 0
+      ? t('conversation.processSummary.duration', { duration, count: stepCount })
+      : t('conversation.processSummary.steps', { count: stepCount });
+
+  return (
+    <div className='w-full' data-testid='message-process-summary'>
+      <Button
+        type='text'
+        size='small'
+        className='!h-28px !px-0 !text-t-secondary hover:!text-t-primary'
+        aria-expanded={expanded}
+        onClick={() => setExpanded((value) => !value)}
+        data-testid='message-process-summary-toggle'
+      >
+        <span>{label}</span>
+        <span className={`inline-flex m-l-6px transition-transform ${expanded ? 'rotate-90' : ''}`} aria-hidden='true'>
+          <Right theme='outline' size='12' />
+        </span>
+      </Button>
+      {expanded ? (
+        <div
+          className='m-t-4px m-l-8px p-l-12px flex flex-col gap-2px'
+          style={{ borderInlineStart: '1px solid var(--color-border-2)' }}
+          data-testid='message-process-summary-content'
+        >
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -464,10 +630,10 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
         created_at: artifact.created_at,
       }));
 
-    return [...result, ...visibleArtifacts].toSorted(
+    return [...collapseCompletedProcesses(result, isProcessing), ...visibleArtifacts].toSorted(
       (a, b) => getProcessedItemCreatedAt(a) - getProcessedItemCreatedAt(b)
     );
-  }, [artifacts, list]);
+  }, [artifacts, isProcessing, list]);
 
   // An AI reply can be split into several messages (thinking / multiple text /
   // tool blocks). The hover copy + timestamp row should appear once per turn,
@@ -491,7 +657,10 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
       const item = processedList[i];
       if (
         'type' in item &&
-        (item.type === 'file_summary' || item.type === 'tool_summary' || item.type === 'artifact')
+        (item.type === 'file_summary' ||
+          item.type === 'tool_summary' ||
+          item.type === 'process_summary' ||
+          item.type === 'artifact')
       ) {
         continue;
       }
@@ -510,7 +679,10 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
     for (const item of processedList) {
       if (
         'type' in item &&
-        (item.type === 'file_summary' || item.type === 'tool_summary' || item.type === 'artifact')
+        (item.type === 'file_summary' ||
+          item.type === 'tool_summary' ||
+          item.type === 'process_summary' ||
+          item.type === 'artifact')
       ) {
         continue;
       }
@@ -628,6 +800,7 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
         if (
           (item as { type?: string }).type === 'file_summary' ||
           (item as { type?: string }).type === 'tool_summary' ||
+          (item as { type?: string }).type === 'process_summary' ||
           (item as { type?: string }).type === 'artifact'
         ) {
           return false;
@@ -718,7 +891,7 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
         </div>
       );
     }
-    if ('type' in item && ['file_summary', 'tool_summary'].includes(item.type)) {
+    if ('type' in item && ['file_summary', 'tool_summary', 'process_summary'].includes(item.type)) {
       return (
         <div
           key={item.id}
@@ -728,6 +901,17 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
         >
           {item.type === 'file_summary' && <MessageFileChanges diffsChanges={item.diffs} />}
           {item.type === 'tool_summary' && <MessageToolGroupSummary messages={item.messages}></MessageToolGroupSummary>}
+          {item.type === 'process_summary' ? (
+            <MessageProcessSummary durationMs={item.durationMs} stepCount={item.stepCount}>
+              {item.items.map((processItem) =>
+                processItem.type === 'tool_summary' ? (
+                  <MessageToolGroupSummary key={processItem.id} messages={processItem.messages} />
+                ) : (
+                  <MessageItem key={processItem.id} message={processItem} rowWidthClass='w-full' showCopyRow={false} />
+                )
+              )}
+            </MessageProcessSummary>
+          ) : null}
         </div>
       );
     }
