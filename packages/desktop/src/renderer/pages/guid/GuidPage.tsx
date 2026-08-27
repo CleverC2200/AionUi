@@ -53,6 +53,8 @@ type GuidNavigationState = {
   prefillFiles?: string[];
   preservePrefillDraft?: boolean;
   focusPrefill?: boolean;
+  autoSendPrefill?: boolean;
+  requiredSkillId?: string;
   workspace?: string;
   [key: string]: unknown;
 };
@@ -599,6 +601,34 @@ const GuidPage: React.FC = () => {
     });
   }, [location.hash, location.pathname, location.search, location.state, navigate]);
 
+  const autoSentPrefillKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prefillState = location.state as GuidNavigationState | null;
+    if (!prefillState?.autoSendPrefill || !prefillState.prefillPrompt) return;
+    if (autoSentPrefillKeyRef.current === location.key || send.isButtonDisabled) return;
+    if (prefillState.selectedAssistantId && agentSelection.selectedAssistantId !== prefillState.selectedAssistantId) {
+      return;
+    }
+    if (prefillState.requiredSkillId && !resolvedAssistantDefaults.skillIds.includes(prefillState.requiredSkillId)) {
+      return;
+    }
+
+    autoSentPrefillKeyRef.current = location.key;
+    send.sendMessageHandler();
+    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
+  }, [
+    agentSelection.selectedAssistantId,
+    location.hash,
+    location.key,
+    location.pathname,
+    location.search,
+    location.state,
+    navigate,
+    resolvedAssistantDefaults.skillIds,
+    send.isButtonDisabled,
+    send.sendMessageHandler,
+  ]);
+
   // Clear resetAssistant from location.state after the hook has consumed it,
   // so that re-renders don't re-trigger the reset logic.
   //
@@ -608,9 +638,17 @@ const GuidPage: React.FC = () => {
   // next hard reload, the browser would then request '/guid' directly from
   // the dev server (which has no SPA fallback) and 404.
   useEffect(() => {
-    if (!resetAssistantRequested && !preselectAssistantId) return;
+    if ((!resetAssistantRequested && !preselectAssistantId) || navState?.autoSendPrefill) return;
     navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
-  }, [resetAssistantRequested, preselectAssistantId, location.pathname, location.search, location.hash, navigate]);
+  }, [
+    resetAssistantRequested,
+    preselectAssistantId,
+    navState?.autoSendPrefill,
+    location.pathname,
+    location.search,
+    location.hash,
+    navigate,
+  ]);
 
   // Agents that use configured model providers instead of ACP probe-based models.
   // Only aionrs now — Gemini runs as a regular ACP backend with ACP-cached models.
