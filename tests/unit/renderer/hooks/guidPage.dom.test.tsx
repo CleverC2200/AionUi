@@ -400,6 +400,34 @@ describe('GuidPage', () => {
     ]);
   });
 
+  it('automatically sends a required-skill prefill exactly once', async () => {
+    locationMock.state = {
+      selectedAssistantId: 'bare-aionrs',
+      prefillPrompt: 'Use sales-forecast-submit for request sales-request-1',
+      autoSendPrefill: true,
+      requiredSkillId: 'sales-forecast-submit',
+    };
+    resolveGuidAssistantDefaultsMock.mockReturnValue({
+      disabledBuiltinSkillIds: [],
+      skillIds: ['sales-forecast-submit'],
+      mcpIds: [],
+    });
+    sendMock.sendMessageHandler.mockClear();
+
+    const { rerender, unmount } = render(<GuidPage />);
+
+    await waitFor(() => expect(sendMock.sendMessageHandler).toHaveBeenCalledTimes(1));
+    expect(navigateMock).toHaveBeenCalledWith('/guid', { replace: true, state: null });
+    rerender(<GuidPage />);
+    expect(sendMock.sendMessageHandler).toHaveBeenCalledTimes(1);
+
+    unmount();
+    locationMock.state = null;
+    locationMock.key = 'guid-location-consumed';
+    render(<GuidPage />);
+    expect(sendMock.sendMessageHandler).toHaveBeenCalledTimes(1);
+  });
+
   it('appends a draft-preserving prefill without clearing attachments or workspace', () => {
     locationMock.state = {
       prefillPrompt: 'Create with /cron in AionUi',

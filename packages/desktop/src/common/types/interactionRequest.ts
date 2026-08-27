@@ -3,6 +3,28 @@ import { z } from 'zod';
 
 const identifier = z.string().trim().min(1).max(240);
 
+const InteractionRequestPresentationSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('question'),
+    questions: z.array(
+      z.object({
+        header: z.string().optional(),
+        question: z.string(),
+        multiSelect: z.boolean().default(false),
+        options: z.array(z.object({ label: z.string(), description: z.string().optional() })),
+      })
+    ),
+  }),
+  z.object({
+    type: z.literal('permission'),
+    title: z.string().default(''),
+    description: z.string().default(''),
+    operation: z.string().default(''),
+    detail: z.string().optional(),
+    options: z.array(z.object({ label: z.string(), value: z.string() })).default([]),
+  }),
+]);
+
 export const InteractionRequestSchema = z.object({
   id: identifier,
   version: identifier,
@@ -14,6 +36,8 @@ export const InteractionRequestSchema = z.object({
     type: z.enum(['agent', 'team_agent', 'aioncore', 'business_system']),
     label: z.string().optional(),
   }),
+  // Older AionCore builds did not project the original decision payload.
+  presentation: InteractionRequestPresentationSchema.optional(),
   conversation_id: identifier,
   team_id: identifier.optional(),
   slot_id: identifier.optional(),

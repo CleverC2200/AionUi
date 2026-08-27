@@ -42,6 +42,26 @@
     "notification": "Pending requests needing attention: {{count}}",
     "interactionEmpty": "No assistant or team interaction requests",
     "interactionLoadFailed": "Assistant requests could not be loaded. Your work has not been changed.",
+    "interactionCard": {
+      "open": "Open task: {{title}}",
+      "pending": "Pending",
+      "listTitle": "Pending items",
+      "listCount": "{{count}} items",
+      "detailEmpty": "Select an item to view its details",
+      "questionTitle": "Decision needed",
+      "process": "Handle",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "question": "Open and answer",
+      "permission": "Open and confirm",
+      "startForecast": "Start sales forecast in a new conversation",
+      "actionFailed": "Submission failed. Refresh and try again."
+    },
+    "salesForecast": {
+      "assistantUnavailable": "No assistant with the sales forecast skill is available. Configure the assistant first.",
+      "startFailed": "The sales forecast conversation could not be started. Try again.",
+      "startPrompt": "Use the {{skillId}} skill to handle this sales forecast request.\nRequest ID: {{requestId}}\nTitle: {{title}}\nSummary: {{summary}}\nSource: {{source}}"
+    },
     "demo": {
       "label": "Demo data",
       "description": "There are no live assistant requests. These 3 items are display-only and do not count as pending work or trigger business actions.",
