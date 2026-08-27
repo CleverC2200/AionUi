@@ -5,7 +5,7 @@ import { SWRConfig } from 'swr';
 import { AttentionInbox } from '@/renderer/pages/conversation/AttentionInbox';
 import zhCNConversation from '@/renderer/services/i18n/locales/zh-CN/conversation.json';
 
-const { approvalApi, interactionApi, notificationApi, navigate, talkToButler } = vi.hoisted(() => ({
+const { approvalApi, assistantsApi, interactionApi, notificationApi, navigate, talkToButler } = vi.hoisted(() => ({
   approvalApi: {
     list: vi.fn(),
     get: vi.fn(),
@@ -16,7 +16,12 @@ const { approvalApi, interactionApi, notificationApi, navigate, talkToButler } =
   },
   interactionApi: {
     list: vi.fn(),
+    act: vi.fn(),
     reconnectedOn: vi.fn(() => vi.fn()),
+  },
+  assistantsApi: {
+    list: vi.fn(),
+    setState: vi.fn(),
   },
   notificationApi: {
     list: vi.fn(),
@@ -50,6 +55,11 @@ vi.mock('@/common', () => ({
     },
     interactionRequest: {
       list: { invoke: interactionApi.list },
+      act: { invoke: interactionApi.act },
+    },
+    assistants: {
+      list: { invoke: assistantsApi.list },
+      setState: { invoke: assistantsApi.setState },
     },
     realtime: { reconnected: { on: interactionApi.reconnectedOn } },
   },
@@ -207,13 +217,23 @@ describe('AttentionInbox real Feishu approval integration', () => {
       items: [
         {
           id: 'interaction-1',
-          version: 1,
+          version: 'v1',
+          kind: 'question',
+          status: 'pending',
           conversation_id: 'conversation-1',
           message_id: 'message-1',
           title: '工具执行确认',
           source: { type: 'agent', label: 'Agent' },
+          allowed_actions: ['answer'],
+          stale: false,
         },
       ],
+    });
+    interactionApi.act.mockResolvedValue({
+      receipt_id: 'interaction-receipt-1',
+      request_id: 'interaction-permission-1',
+      version: 'v1',
+      status: 'accepted',
     });
     notificationApi.list.mockResolvedValue({
       revision: 'notifications-r1',
@@ -221,6 +241,16 @@ describe('AttentionInbox real Feishu approval integration', () => {
       failure_codes: [],
       items: [{ id: 'notification-1', status: 'unread' }],
     });
+    assistantsApi.list.mockResolvedValue([
+      {
+        id: 'sales-forecast-assistant',
+        name: '需求预测与计划提报助手',
+        enabled: true,
+        enabled_skills: ['sales-forecast-submit'],
+        custom_skill_names: null,
+      },
+    ]);
+    assistantsApi.setState.mockResolvedValue(undefined);
   });
 
   it('loads real pending and done lists, then renders the real instance form and workflow', async () => {
@@ -478,6 +508,9 @@ describe('AttentionInbox real Feishu approval integration', () => {
     const request = screen.getByTestId('attention-request-interaction-1');
     expect(request).toHaveTextContent('工具执行确认');
     fireEvent.click(request);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId('interaction-detail-interaction-1')).toBeVisible();
+    fireEvent.click(screen.getByTestId('interaction-open-interaction-1'));
     expect(navigate).toHaveBeenCalledWith(
       '/conversation/conversation-1',
       expect.objectContaining({ state: expect.objectContaining({ targetMessageId: 'message-1' }) })
@@ -512,11 +545,278 @@ describe('AttentionInbox real Feishu approval integration', () => {
     fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
     fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:1'));
     fireEvent.click(await screen.findByTestId('attention-request-team-request-1'));
+    expect(navigate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('interaction-open-team-request-1'));
 
     expect(navigate).toHaveBeenCalledWith(
       '/team/team-1',
       expect.objectContaining({ state: expect.objectContaining({ targetSlotId: 'worker-slot' }) })
     );
+  });
+
+  it('starts a new sales-forecast conversation for requests from 销售预测 Web', async () => {
+    interactionApi.list.mockResolvedValueOnce({
+      revision: 'attention-sales-r1',
+      sync_state: 'complete',
+      failed_session_count: 0,
+      failure_codes: [],
+      items: [
+        {
+          id: 'sales-request-1',
+          version: 'v1',
+          kind: 'question',
+          status: 'pending',
+          title: '请确认销售预测范围',
+          summary: '豫南经销省区 · 2026 年 8 月',
+          source: { type: 'business_system', label: '销售预测 Web' },
+          presentation: {
+            type: 'question',
+            questions: [
+              {
+                question: '确认使用豫南经销省区 2026 年 8 月数据进行销售预测？',
+                multiSelect: false,
+                options: [
+                  { label: '确认', description: '继续测试' },
+                  { label: '取消', description: '停止测试' },
+                ],
+              },
+            ],
+          },
+          conversation_id: 'polling-conversation',
+          allowed_actions: ['answer', 'decline'],
+          updated_at: '2026-08-26T00:00:00.000Z',
+        },
+      ],
+    });
+    renderInbox();
+    fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
+    fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:1'));
+    expect(await screen.findByText('确认使用豫南经销省区 2026 年 8 月数据进行销售预测？')).toBeVisible();
+    expect(screen.getByText('确认：继续测试')).toBeVisible();
+    expect(screen.getByText('取消：停止测试')).toBeVisible();
+    expect(screen.getByTestId('interaction-action-sales-request-1-answer')).toHaveTextContent('确认');
+    expect(screen.getByTestId('interaction-action-sales-request-1-decline')).toHaveTextContent('取消');
+    fireEvent.click(await screen.findByTestId('attention-request-sales-request-1'));
+    expect(navigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId('interaction-open-sales-request-1')).toHaveTextContent(
+      'conversation.attention.interactionCard.process'
+    );
+    fireEvent.click(screen.getByTestId('interaction-open-sales-request-1'));
+
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith('/guid', {
+        state: expect.objectContaining({
+          selectedAssistantId: 'sales-forecast-assistant',
+          prefillPrompt: expect.stringContaining('sales-forecast-submit'),
+          autoSendPrefill: true,
+          requiredSkillId: 'sales-forecast-submit',
+        }),
+      })
+    );
+    expect(navigate).not.toHaveBeenCalledWith('/conversation/polling-conversation', expect.anything());
+  });
+
+  it('keeps answer and decline available when the active projection omits presentation', async () => {
+    interactionApi.list.mockResolvedValue({
+      revision: 'projection:de8ae55d',
+      sync_state: 'complete',
+      failed_session_count: 0,
+      failure_codes: [],
+      items: [
+        {
+          id: 'sales-request-without-presentation',
+          version: 'v1',
+          kind: 'question',
+          status: 'pending',
+          title: '请确认销售预测范围',
+          summary: '豫南经销省区 · 2026 年 8 月',
+          source: { type: 'business_system', label: '销售预测 Web' },
+          conversation_id: 'polling-conversation',
+          allowed_actions: ['answer', 'decline'],
+          stale: false,
+        },
+      ],
+    });
+
+    renderInbox();
+    fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
+    fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:1'));
+
+    expect(await screen.findByTestId('interaction-action-sales-request-without-presentation-answer')).toHaveTextContent(
+      'conversation.attention.interactionCard.confirm'
+    );
+    expect(screen.getByTestId('interaction-action-sales-request-without-presentation-decline')).toHaveTextContent(
+      'conversation.attention.interactionCard.cancel'
+    );
+    fireEvent.click(screen.getByTestId('interaction-action-sales-request-without-presentation-answer'));
+
+    await waitFor(() =>
+      expect(interactionApi.act).toHaveBeenCalledWith(
+        expect.objectContaining({
+          request_id: 'sales-request-without-presentation',
+          expected_version: 'v1',
+          action_id: 'answer',
+        })
+      )
+    );
+  });
+
+  it('submits a permission option from the detail pane without opening a conversation', async () => {
+    interactionApi.list.mockResolvedValue({
+      revision: 'attention-permission-r1',
+      sync_state: 'complete',
+      failed_session_count: 0,
+      failure_codes: [],
+      items: [
+        {
+          id: 'interaction-permission-1',
+          version: 'v1',
+          kind: 'permission',
+          status: 'pending',
+          title: '确认预测范围',
+          summary: '提交后继续执行工作流',
+          source: { type: 'business_system', label: 'GEA 管理端' },
+          presentation: {
+            type: 'permission',
+            title: '确认预测范围',
+            description: '是否使用当前范围继续预测？',
+            operation: 'confirm',
+            options: [
+              { label: '确认', value: 'proceed_once' },
+              { label: '取消', value: 'cancel' },
+            ],
+          },
+          conversation_id: 'permission-conversation',
+          allowed_actions: ['proceed_once', 'cancel'],
+          stale: false,
+        },
+      ],
+    });
+    renderInbox();
+    fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
+    fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:1'));
+    fireEvent.click(await screen.findByTestId('attention-request-interaction-permission-1'));
+    fireEvent.click(screen.getByTestId('interaction-action-interaction-permission-1-proceed_once'));
+
+    await waitFor(() =>
+      expect(interactionApi.act).toHaveBeenCalledWith(
+        expect.objectContaining({
+          request_id: 'interaction-permission-1',
+          expected_version: 'v1',
+          action_id: 'proceed_once',
+        })
+      )
+    );
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('submits a single-choice answer with its mapped answer payload', async () => {
+    interactionApi.list.mockResolvedValue({
+      revision: 'attention-question-r1',
+      sync_state: 'complete',
+      failed_session_count: 0,
+      failure_codes: [],
+      items: [
+        {
+          id: 'interaction-question-1',
+          version: 'v1',
+          kind: 'question',
+          status: 'pending',
+          title: '请确认销售预测范围',
+          source: { type: 'business_system', label: '销售预测 Web' },
+          presentation: {
+            type: 'question',
+            questions: [
+              {
+                question: '确认使用豫南经销省区数据进行销售预测？',
+                multiSelect: false,
+                options: [{ label: '同意' }, { label: '取消' }],
+              },
+            ],
+          },
+          conversation_id: 'question-conversation',
+          allowed_actions: ['answer', 'decline'],
+          stale: false,
+        },
+      ],
+    });
+    interactionApi.act.mockResolvedValueOnce({
+      receipt_id: 'question-receipt-1',
+      request_id: 'interaction-question-1',
+      version: 'v2',
+      status: 'accepted',
+    });
+    renderInbox();
+    fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
+    fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:1'));
+    fireEvent.click(await screen.findByTestId('interaction-action-interaction-question-1-answer'));
+
+    await waitFor(() =>
+      expect(interactionApi.act).toHaveBeenCalledWith(
+        expect.objectContaining({
+          request_id: 'interaction-question-1',
+          expected_version: 'v1',
+          action_id: 'answer',
+          payload: {
+            answers: [{ question: '确认使用豫南经销省区数据进行销售预测？', labels: ['同意'] }],
+          },
+        })
+      )
+    );
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('submits decline when cancelling a two-option question', async () => {
+    interactionApi.list.mockResolvedValue({
+      revision: 'attention-decline-r1',
+      sync_state: 'complete',
+      failed_session_count: 0,
+      failure_codes: [],
+      items: [
+        {
+          id: 'interaction-decline-1',
+          version: 'v1',
+          kind: 'question',
+          status: 'pending',
+          title: '请确认是否继续',
+          source: { type: 'business_system', label: '销售预测 Web' },
+          presentation: {
+            type: 'question',
+            questions: [
+              {
+                question: '是否继续？',
+                multiSelect: false,
+                options: [{ label: '同意' }, { label: '取消' }],
+              },
+            ],
+          },
+          conversation_id: 'decline-conversation',
+          allowed_actions: ['answer', 'decline'],
+          stale: false,
+        },
+      ],
+    });
+    interactionApi.act.mockResolvedValueOnce({
+      receipt_id: 'decline-receipt-1',
+      request_id: 'interaction-decline-1',
+      version: 'v2',
+      status: 'accepted',
+    });
+    renderInbox();
+    fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
+    fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:1'));
+    fireEvent.click(await screen.findByTestId('interaction-action-interaction-decline-1-decline'));
+
+    await waitFor(() =>
+      expect(interactionApi.act).toHaveBeenCalledWith(
+        expect.objectContaining({
+          request_id: 'interaction-decline-1',
+          expected_version: 'v1',
+          action_id: 'decline',
+        })
+      )
+    );
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it('preserves InteractionRequest failure and manual retry behavior', async () => {
@@ -555,7 +855,9 @@ describe('AttentionInbox real Feishu approval integration', () => {
     );
     const demoRequests = within(screen.getByTestId('interaction-request-list')).getAllByRole('button');
     expect(demoRequests).toHaveLength(3);
-    demoRequests.forEach((request) => expect(request).toBeDisabled());
+    fireEvent.click(demoRequests[1]);
+    expect(screen.getByTestId('interaction-detail-demo-customer-review')).toBeVisible();
+    expect(screen.getByTestId('interaction-action-demo-customer-review-approve')).toBeDisabled();
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -692,13 +994,17 @@ describe('AttentionInbox real Feishu approval integration', () => {
       items: [
         {
           id: 'interaction-team',
-          version: 1,
+          version: 'v1',
+          kind: 'question',
+          status: 'pending',
           conversation_id: 'conversation-1',
           team_id: 'team-1',
           slot_id: 'slot-1',
           message_id: 'message-1',
           title: '团队确认',
           source: { type: 'team_agent', label: 'Team' },
+          allowed_actions: ['answer'],
+          stale: false,
         },
       ],
     });
@@ -711,6 +1017,7 @@ describe('AttentionInbox real Feishu approval integration', () => {
     fireEvent.click(screen.getByTestId('attention-inbox-trigger'));
     fireEvent.click(await screen.findByText('conversation.attention.sourceTabs.interaction:1'));
     fireEvent.click(screen.getByTestId('attention-request-interaction-team'));
+    fireEvent.click(screen.getByTestId('interaction-open-interaction-team'));
     expect(navigate).toHaveBeenCalledWith(
       '/team/team-1',
       expect.objectContaining({

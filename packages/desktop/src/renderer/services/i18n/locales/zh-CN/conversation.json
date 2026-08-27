@@ -42,6 +42,26 @@
     "notification": "有 {{count}} 个待处理请求需要处理",
     "interactionEmpty": "暂无助手或团队交互请求",
     "interactionLoadFailed": "助手请求加载失败，当前工作没有被修改。",
+    "interactionCard": {
+      "open": "打开待办：{{title}}",
+      "pending": "待处理",
+      "listTitle": "待处理事项",
+      "listCount": "{{count}} 项",
+      "detailEmpty": "选择一项待办查看详情",
+      "questionTitle": "需要确认",
+      "process": "处理",
+      "confirm": "确认",
+      "cancel": "取消",
+      "question": "打开并回答",
+      "permission": "打开并确认",
+      "startForecast": "新建对话并启动销售预测",
+      "actionFailed": "提交失败，请刷新后重试。"
+    },
+    "salesForecast": {
+      "assistantUnavailable": "未找到已接入销售预测技能的助手，请先完成助手配置。",
+      "startFailed": "销售预测对话启动失败，请重试。",
+      "startPrompt": "请使用 {{skillId}} 技能处理销售预测待办。\n待办 ID：{{requestId}}\n标题：{{title}}\n摘要：{{summary}}\n来源：{{source}}"
+    },
     "demo": {
       "label": "演示数据",
       "description": "当前没有真实助手请求，以下 3 条仅用于展示，不计入待办，也不会触发业务操作。",
