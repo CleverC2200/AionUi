@@ -61,6 +61,23 @@ describe('collectAiCopyRows', () => {
     expect(turnTextsById.get('a2')).toEqual(['part A', 'part B']);
   });
 
+  it('keeps text segments that are visually folded into a process summary', () => {
+    const { turnTextsById } = collectAiCopyRows(
+      [
+        user('u1'),
+        {
+          id: 'process-1',
+          type: 'process_summary',
+          items: [aiText('a1', 'part A'), tool('t1'), thinking('th1')],
+        },
+        aiText('a2', 'part B'),
+      ],
+      false
+    );
+
+    expect(turnTextsById.get('a2')).toEqual(['part A', 'part B']);
+  });
+
   it('skips empty text segments', () => {
     const { turnTextsById } = collectAiCopyRows([user('u1'), aiText('a1', '  '), aiText('a2', 'real')], false);
     expect(turnTextsById.get('a2')).toEqual(['real']);

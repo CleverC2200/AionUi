@@ -984,6 +984,8 @@ export type I18nKey =
   | 'conversation.notifications.sync.stale'
   | 'conversation.notifications.sync.syncing'
   | 'conversation.notifications.title'
+  | 'conversation.processSummary.duration'
+  | 'conversation.processSummary.steps'
   | 'conversation.resources.deliverables'
   | 'conversation.resources.emptyOutputs'
   | 'conversation.resources.emptySources'

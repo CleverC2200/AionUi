@@ -36,6 +36,11 @@ vi.mock('react-router-dom', () => ({
 }));
 
 vi.mock('@arco-design/web-react', () => ({
+  Button: ({ children, onClick, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type='button' onClick={onClick} {...props}>
+      {children}
+    </button>
+  ),
   Image: {
     PreviewGroup: ({ children }: PropsWithChildren) => <>{children}</>,
   },
@@ -158,6 +163,7 @@ vi.mock('@/renderer/pages/conversation/Messages/components/SelectionReplyButton'
 
 vi.mock('@icon-park/react', () => ({
   Down: () => <span>down</span>,
+  Right: () => <span>right</span>,
 }));
 
 function createTextMessage(): IMessageText {
@@ -332,6 +338,7 @@ describe('MessageList', () => {
       wrapper: ({ children }) => <Wrapper messages={messages}>{children}</Wrapper>,
     });
 
+    fireEvent.click(screen.getByTestId('message-process-summary-toggle'));
     // Intermediate AI text (followed by a tool then another text) hides the row.
     expect(screen.getByTestId('msgtext-text-a').getAttribute('data-copy-row')).toBe('false');
     // Last AI text of turn 1 (after the tool block) keeps the row — fallback strategy.
@@ -359,6 +366,81 @@ describe('MessageList', () => {
     expect(screen.getByTestId('msgtext-text-a').getAttribute('data-copy-row')).toBe('true');
     // The in-progress final turn withholds its row until streaming ends.
     expect(screen.getByTestId('msgtext-text-b').getAttribute('data-copy-row')).toBe('false');
+  });
+
+  it('collapses a completed process into one summary while keeping the final answer visible', () => {
+    const messages = [
+      { id: 'user-1', type: 'text', position: 'right', content: { content: '开始' }, created_at: 1_000 },
+      {
+        id: 'progress-1',
+        type: 'text',
+        position: 'left',
+        content: { content: '正在读取技能文档' },
+        created_at: 2_000,
+      },
+      {
+        id: 'thinking-1',
+        type: 'thinking',
+        position: 'left',
+        content: { content: '分析查询方式', status: 'done', duration: 1_000 },
+        created_at: 3_000,
+      },
+      createAcpToolCall({ id: 'acp-read-1', status: 'failed' }),
+      {
+        id: 'final-1',
+        type: 'text',
+        position: 'left',
+        content: { content: '处理完成' },
+        created_at: 6_000,
+      },
+    ] as unknown as TMessage[];
+
+    render(<MessageList />, {
+      wrapper: ({ children }) => <Wrapper messages={messages}>{children}</Wrapper>,
+    });
+
+    expect(screen.getByTestId('message-process-summary-toggle')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('处理完成')).toBeVisible();
+    expect(screen.queryByText('正在读取技能文档')).not.toBeInTheDocument();
+    expect(screen.queryByText('thinking')).not.toBeInTheDocument();
+    expect(screen.queryByText('acp-read-1')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('message-process-summary-toggle'));
+
+    expect(screen.getByTestId('message-process-summary-toggle')).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('正在读取技能文档')).toBeVisible();
+    expect(screen.getByText('thinking')).toBeVisible();
+    expect(screen.getByTestId('tool-summary')).toHaveTextContent('acp-read-1');
+  });
+
+  it('keeps the current process expanded while the conversation is running', () => {
+    mockIsProcessing = true;
+    const messages = [
+      {
+        id: 'progress-1',
+        type: 'text',
+        position: 'left',
+        content: { content: '正在读取技能文档' },
+        created_at: 1_000,
+      },
+      {
+        id: 'thinking-1',
+        type: 'thinking',
+        position: 'left',
+        content: { content: '分析查询方式', status: 'thinking' },
+        created_at: 2_000,
+      },
+      createAcpToolCall({ id: 'acp-read-1', status: 'in_progress' }),
+    ] as unknown as TMessage[];
+
+    render(<MessageList />, {
+      wrapper: ({ children }) => <Wrapper messages={messages}>{children}</Wrapper>,
+    });
+
+    expect(screen.queryByTestId('message-process-summary')).not.toBeInTheDocument();
+    expect(screen.getByText('正在读取技能文档')).toBeVisible();
+    expect(screen.getByText('thinking')).toBeVisible();
+    expect(screen.getByTestId('tool-summary')).toHaveTextContent('acp-read-1');
   });
 
   it('renders the empty slot when there are no messages', () => {

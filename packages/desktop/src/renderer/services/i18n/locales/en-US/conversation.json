@@ -832,6 +832,10 @@
     "complete": "Thought complete",
     "label": "Thinking..."
   },
+  "processSummary": {
+    "duration": "Took {{duration}} · {{count}} steps",
+    "steps": "Process · {{count}} steps"
+  },
   "skills": {
     "loaded": "Loaded Skills",
     "slashHint": "Skill"
