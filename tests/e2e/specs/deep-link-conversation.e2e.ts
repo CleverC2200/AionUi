@@ -7,6 +7,11 @@ const navigationReference = 'nav_e2e_0123456789abcdef';
 const conversationId = 'deep-link-e2e-conversation';
 const assistantId = 'deep-link-e2e-assistant';
 const assistantName = 'Deep Link Fixture Assistant';
+const messageReference = 'nav_e2e_message_0123456789';
+const interactionReference = 'nav_e2e_request_0123456789';
+const messageId = 'deep-link-e2e-message';
+const interactionMessageId = 'deep-link-e2e-interaction-message';
+const interactionRequestId = 'deep-link-e2e-interaction-request';
 const execFileAsync = promisify(execFile);
 const fixtureNavigationTest = process.env.E2E_PACKAGED === '1' ? test.skip : test;
 const packagedProtocolTest =
@@ -151,6 +156,163 @@ test.describe('Conversation deep link', () => {
         expect(forbiddenRequests).toEqual([]);
       } finally {
         page.off('request', observeRequest);
+        await page.unroute('**/api/deep-links/resolve');
+        await page.unroute(`**/api/conversations/${conversationId}**`);
+      }
+    }
+  );
+
+  fixtureNavigationTest(
+    'focuses typed Message and Interaction Request targets without business writes',
+    async ({ page, electronApp }) => {
+      const forbiddenRequests: string[] = [];
+      page.on('request', (request) => {
+        const url = new URL(request.url());
+        if (
+          request.method() !== 'GET' &&
+          (url.pathname === '/api/conversations' ||
+            url.pathname.endsWith('/messages') ||
+            url.pathname.endsWith('/read') ||
+            url.pathname.endsWith('/dismiss') ||
+            url.pathname.includes('/interaction-requests/'))
+        ) {
+          forbiddenRequests.push(`${request.method()} ${url.pathname}`);
+        }
+      });
+
+      await page.route('**/api/deep-links/resolve', async (route) => {
+        const request = route.request().postDataJSON() as { navigation_reference: string; schema_version: number };
+        const target =
+          request.navigation_reference === messageReference
+            ? {
+                type: 'message',
+                conversation_id: conversationId,
+                assistant_id: assistantId,
+                message_id: messageId,
+              }
+            : {
+                type: 'interaction_request',
+                conversation_id: conversationId,
+                assistant_id: assistantId,
+                interaction_request_id: interactionRequestId,
+                message_id: interactionMessageId,
+              };
+        expect([messageReference, interactionReference]).toContain(request.navigation_reference);
+        expect(request.schema_version).toBe(1);
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true, data: { schema_version: 1, target, trace_id: 'trace-location-e2e' } }),
+        });
+      });
+
+      await page.route(`**/api/conversations/${conversationId}**`, async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (request.method() === 'GET' && url.pathname === `/api/conversations/${conversationId}`) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              success: true,
+              data: {
+                id: conversationId,
+                created_at: 1,
+                modified_at: 1,
+                name: 'Deep Link Location Fixture',
+                type: 'acp',
+                extra: { backend: 'codex' },
+                assistant: {
+                  id: assistantId,
+                  source: 'managed',
+                  name: assistantName,
+                  avatar: '🤖',
+                  backend: 'codex',
+                },
+              },
+            }),
+          });
+          return;
+        }
+        if (request.method() === 'GET' && url.pathname.endsWith('/messages')) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              success: true,
+              data: {
+                items: [
+                  {
+                    id: messageId,
+                    msg_id: messageId,
+                    conversation_id: conversationId,
+                    type: 'text',
+                    position: 'left',
+                    status: 'finish',
+                    created_at: 1,
+                    content: { content: 'Message target fixture' },
+                  },
+                  {
+                    id: interactionMessageId,
+                    msg_id: interactionMessageId,
+                    conversation_id: conversationId,
+                    type: 'ask',
+                    position: 'left',
+                    status: 'finish',
+                    created_at: 2,
+                    content: {
+                      session_id: 'session-fixture',
+                      request_id: interactionRequestId,
+                      title: 'Interaction target fixture',
+                      questions: [
+                        {
+                          question: 'Continue?',
+                          header: 'Decision',
+                          options: [{ label: 'Continue', description: 'Continue the fixture' }],
+                        },
+                      ],
+                      interaction_request: {
+                        id: interactionRequestId,
+                        version: '1',
+                        status: 'pending',
+                        allowed_actions: ['answer', 'decline'],
+                      },
+                    },
+                  },
+                ],
+                oldest_cursor: null,
+                newest_cursor: null,
+                has_more_before: false,
+                has_more_after: false,
+              },
+            }),
+          });
+          return;
+        }
+        await route.fallback();
+      });
+
+      const openTarget = async (reference: string, expectedMessageId: string) => {
+        await goToGuid(page);
+        await electronApp.evaluate(({ app }, url) => {
+          app.emit('open-url', { preventDefault() {} } as never, url);
+        }, `aionui://open-conversation?ref=${reference}&v=1`);
+        await expect(page).toHaveURL(new RegExp(`/conversation/${conversationId}$`), { timeout: 10_000 });
+        const row = page.locator(`#message-${expectedMessageId}`);
+        await expect(row).toBeVisible({ timeout: 10_000 });
+        await expect
+          .poll(() =>
+            row.evaluate((element) => element === document.activeElement || element.contains(document.activeElement))
+          )
+          .toBe(true);
+        await expect.poll(() => invokeBridge(page, 'deep-link.claim-pending')).toBeNull();
+      };
+
+      try {
+        await openTarget(messageReference, messageId);
+        await openTarget(interactionReference, interactionMessageId);
+        expect(forbiddenRequests).toEqual([]);
+      } finally {
         await page.unroute('**/api/deep-links/resolve');
         await page.unroute(`**/api/conversations/${conversationId}**`);
       }

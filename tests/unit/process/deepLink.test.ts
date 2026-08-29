@@ -8,6 +8,7 @@ const bridge = vi.hoisted(() => ({
 }));
 
 const environment = vi.hoisted(() => ({
+  available: true,
   environmentId: 'gea.test',
 }));
 
@@ -32,13 +33,17 @@ vi.mock('electron', () => ({
 }));
 
 vi.mock('@/process/services/gea/GeaEnvironmentService', () => ({
-  getGeaEnvironment: () => ({ environmentId: environment.environmentId }),
+  getGeaEnvironment: () => {
+    if (!environment.available) throw new Error('GEA_ENVIRONMENT_NOT_INITIALIZED');
+    return { environmentId: environment.environmentId };
+  },
 }));
 
 import {
   acknowledgeOpenConversation,
   claimPendingOpenConversation,
   findInitialDeepLink,
+  getPendingDeepLinkUrl,
   handleDeepLinkUrl,
   parseDeepLinkUrl,
   registerDefaultProtocolClient,
@@ -52,6 +57,7 @@ const REFERENCE = 'nav_0123456789abcdef';
 describe('deepLink', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    environment.available = true;
     environment.environmentId = 'gea.test';
     acknowledgeOpenConversation(REFERENCE);
     setDeepLinkMainWindow({
@@ -158,11 +164,32 @@ describe('deepLink', () => {
       action: 'open-conversation',
       params: { ref: REFERENCE, v: '1' },
     });
-    expect(claimPendingOpenConversation()).toBeNull();
+    expect(claimPendingOpenConversation()?.params.ref).toBe(REFERENCE);
     expect(acknowledgeOpenConversation('nav_other_0123456789')).toBe(false);
     expect(claimPendingOpenConversation()).toBeNull();
     expect(acknowledgeOpenConversation(REFERENCE)).toBe(true);
     expect(claimPendingOpenConversation()).toBeNull();
+  });
+
+  it('keeps a broadcast intent claimable until an authenticated renderer confirms receipt', () => {
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1`);
+
+    expect(bridge.emit).toHaveBeenCalledOnce();
+    expect(claimPendingOpenConversation()?.params.ref).toBe(REFERENCE);
+    expect(claimPendingOpenConversation()).toBeNull();
+    expect(acknowledgeOpenConversation(REFERENCE)).toBe(true);
+  });
+
+  it('holds a profiled intent until the configured GEA environment is available', () => {
+    environment.available = false;
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1&profile=gea.test`);
+
+    expect(bridge.emit).not.toHaveBeenCalled();
+    expect(claimPendingOpenConversation()).toBeNull();
+
+    environment.available = true;
+    expect(claimPendingOpenConversation()?.params.ref).toBe(REFERENCE);
+    expect(acknowledgeOpenConversation(REFERENCE)).toBe(true);
   });
 
   it('finishes the active intent before broadcasting the next distinct intent', () => {
@@ -206,12 +233,13 @@ describe('deepLink', () => {
     handleDeepLinkUrl(`aionui://open-conversation?ref=${middleReference}&v=1`);
 
     expect(reportOpenConversationFailure(REFERENCE, 'DEEP_LINK_RESOLVE_FAILED')).toBe(true);
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1`);
     handleDeepLinkUrl(`aionui://open-conversation?ref=${newestReference}&v=1`);
 
-    expect(bridge.emit).toHaveBeenCalledTimes(1);
+    expect(bridge.emit).toHaveBeenCalledTimes(2);
     expect(claimPendingOpenConversation()?.params.ref).toBe(REFERENCE);
     expect(acknowledgeOpenConversation(REFERENCE)).toBe(true);
-    expect(bridge.emit).toHaveBeenCalledTimes(2);
+    expect(bridge.emit).toHaveBeenCalledTimes(3);
     expect(bridge.emit).toHaveBeenLastCalledWith(
       expect.objectContaining({ params: expect.objectContaining({ ref: newestReference }) })
     );
@@ -228,7 +256,12 @@ describe('deepLink', () => {
     handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1`);
 
     expect(bridge.emit).not.toHaveBeenCalled();
+    setDeepLinkMainWindow({
+      isDestroyed: () => false,
+      webContents: { isDestroyed: () => false, isLoadingMainFrame: () => false },
+    } as never);
     expect(claimPendingOpenConversation()?.params.ref).toBe(REFERENCE);
+    expect(getPendingDeepLinkUrl()).toBeNull();
     expect(claimPendingOpenConversation()).toBeNull();
   });
 

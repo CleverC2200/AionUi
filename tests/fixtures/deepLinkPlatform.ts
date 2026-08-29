@@ -38,7 +38,7 @@ const identityKey = (identity: SimulatedExternalIdentity): string =>
  * content and makes resolve read-only/replayable until expiry or revocation.
  */
 export class SimulatedDeepLinkPlatform {
-  private readonly idempotency = new Map<string, SimulatedNavigationIntent>();
+  private readonly idempotency = new Map<string, { fingerprint: string; result: SimulatedNavigationIntent }>();
   private readonly intents = new Map<string, StoredIntent>();
 
   constructor(private readonly now: () => number = Date.now) {}
@@ -50,12 +50,27 @@ export class SimulatedDeepLinkPlatform {
     target: DeepLinkTarget;
     ttlSeconds?: number;
   }): SimulatedNavigationIntent {
+    const ttlSeconds = params.ttlSeconds ?? 900;
+    if (
+      !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(params.profile) ||
+      !Number.isInteger(ttlSeconds) ||
+      ttlSeconds < 60 ||
+      ttlSeconds > 86_400
+    ) {
+      throw new SimulatedNavigationError('NAVIGATION_INTENT_INVALID');
+    }
     const idempotencyKey = `${identityKey(params.identity)}\u001f${params.idempotencyKey}`;
+    const fingerprint = JSON.stringify([params.profile, params.target, ttlSeconds]);
     const existing = this.idempotency.get(idempotencyKey);
-    if (existing) return existing;
+    if (existing) {
+      if (existing.fingerprint !== fingerprint) {
+        throw new SimulatedNavigationError('NAVIGATION_IDEMPOTENCY_CONFLICT');
+      }
+      return existing.result;
+    }
 
     const navigationReference = `nav_${randomUUID().replaceAll('-', '')}`;
-    const expiresAt = this.now() + (params.ttlSeconds ?? 900) * 1000;
+    const expiresAt = this.now() + ttlSeconds * 1000;
     const result = {
       expiresAt: new Date(expiresAt).toISOString(),
       link: `aionui://open-conversation?ref=${navigationReference}&v=1&profile=${encodeURIComponent(params.profile)}`,
@@ -68,7 +83,7 @@ export class SimulatedDeepLinkPlatform {
       revoked: false,
       target: params.target,
     });
-    this.idempotency.set(idempotencyKey, result);
+    this.idempotency.set(idempotencyKey, { fingerprint, result });
     return result;
   }
 

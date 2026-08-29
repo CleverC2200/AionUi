@@ -44,7 +44,8 @@ AionCore，由 AionCore 结合当前 Core Session 和外部身份映射完成校
 
 - 仅服务身份可调用，并要求 `Idempotency-Key`。
 - 同一收件人和幂等键返回同一签发结果；同键不同请求应返回冲突，不得悄悄改写目标。
-- 请求包含 `recipient`、`environmentKey`、业务 `target` 和 `expiresInSeconds`。
+- 请求包含 `recipient`、`environmentKey`、业务 `target` 和 `expiresInSeconds`；环境键只允许字母、数字、`.`、`_`、`-`，
+  长度为 1 至 64 个字符。
 - 响应包含 `navigationReference`、`clientUrl`、`landingUrl`、`expiresAt`。
 - 推荐默认 TTL 15 分钟，允许范围 60 秒至 24 小时。
 
@@ -77,30 +78,32 @@ AionCore，由 AionCore 结合当前 Core Session 和外部身份映射完成校
 
 成功响应只允许以下闭合类型：
 
-| `target.type`         | 必填本地字段                                                                                 | 客户端到达条件                 |
-| --------------------- | -------------------------------------------------------------------------------------------- | ------------------------------ |
-| `conversation`        | `conversation_id`, `assistant_id`                                                            | 会话加载且 Assistant 一致      |
-| `message`             | 上述字段及 `message_id`                                                                      | 消息锚点加载、滚动并聚焦       |
-| `interaction_request` | 上述字段及 `interaction_request_id`；可带 `message_id`；团队位置须成对带 `team_id`/`slot_id` | 原始交互卡加载并聚焦           |
-| `team`                | `team_id`                                                                                    | 团队加载                       |
-| `slot`                | `team_id`, `slot_id`, `conversation_id`, `assistant_id`                                      | 团队成员身份和 Slot 一致并切换 |
+| `target.type`         | 必填本地字段                                                                            | 客户端到达条件                   |
+| --------------------- | --------------------------------------------------------------------------------------- | -------------------------------- |
+| `conversation`        | `conversation_id`, `assistant_id`                                                       | 会话加载且 Assistant 一致        |
+| `message`             | 上述字段及 `message_id`                                                                 | 消息锚点加载、滚动并聚焦         |
+| `interaction_request` | 上述字段及 `interaction_request_id`、`message_id`；团队位置须成对带 `team_id`/`slot_id` | 通过消息锚点加载原始交互卡并聚焦 |
+| `team`                | `team_id`                                                                               | 团队加载                         |
+| `slot`                | `team_id`, `slot_id`, `conversation_id`, `assistant_id`                                 | 团队成员身份和 Slot 一致并切换   |
 
 响应不得出现 `route`、`url`、`token` 或自由导航参数。AionUi 使用 snake_case 契约；GEA 管理端使用 camelCase 契约，转换边界属于
 AionCore。
 
 ## 稳定错误码
 
-| 错误码                           | HTTP 建议 | 是否终止当前引用 | 说明                                           |
-| -------------------------------- | --------- | ---------------- | ---------------------------------------------- |
-| `NAVIGATION_REFERENCE_EXPIRED`   | 410       | 是               | 已过期                                         |
-| `NAVIGATION_REFERENCE_REVOKED`   | 410       | 是               | 已撤销                                         |
-| `NAVIGATION_REFERENCE_FORBIDDEN` | 403       | 是               | 当前身份或租户无权访问                         |
-| `NAVIGATION_REFERENCE_NOT_FOUND` | 404       | 是               | 不存在；不得泄漏更多信息                       |
-| `NAVIGATION_SCHEMA_UNSUPPORTED`  | 400       | 是               | 版本不支持                                     |
-| `DEEP_LINK_PROFILE_MISMATCH`     | 409       | 是               | 环境不匹配                                     |
-| `DEEP_LINK_ASSISTANT_MISMATCH`   | 409       | 是               | 本地会话与 Assistant 不一致                    |
-| `DEEP_LINK_TARGET_NOT_FOUND`     | 404       | 是               | 授权后仍无法映射本地目标                       |
-| `DEEP_LINK_RESOLVE_FAILED`       | 503       | 否               | 短暂技术失败，可在新的登录态或页面生命周期重试 |
+| 错误码                            | HTTP 建议 | 是否终止当前引用 | 说明                                           |
+| --------------------------------- | --------- | ---------------- | ---------------------------------------------- |
+| `NAVIGATION_REFERENCE_EXPIRED`    | 410       | 是               | 已过期                                         |
+| `NAVIGATION_REFERENCE_REVOKED`    | 410       | 是               | 已撤销                                         |
+| `NAVIGATION_REFERENCE_FORBIDDEN`  | 403       | 是               | 当前身份或租户无权访问                         |
+| `NAVIGATION_REFERENCE_NOT_FOUND`  | 404       | 是               | 不存在；不得泄漏更多信息                       |
+| `NAVIGATION_SCHEMA_UNSUPPORTED`   | 400       | 是               | 版本不支持                                     |
+| `NAVIGATION_IDEMPOTENCY_CONFLICT` | 409       | 是               | 同一签发幂等键被用于不同意图                   |
+| `NAVIGATION_INTENT_INVALID`       | 400       | 是               | 签发请求的环境键、TTL 或目标字段不合法         |
+| `DEEP_LINK_PROFILE_MISMATCH`      | 409       | 是               | 环境不匹配                                     |
+| `DEEP_LINK_ASSISTANT_MISMATCH`    | 409       | 是               | 本地会话与 Assistant 不一致                    |
+| `DEEP_LINK_TARGET_NOT_FOUND`      | 404       | 是               | 授权后仍无法映射本地目标                       |
+| `DEEP_LINK_RESOLVE_FAILED`        | 503       | 否               | 短暂技术失败，可在新的登录态或页面生命周期重试 |
 
 日志只记录 `ref` 的 SHA-256、阶段、平台、客户端版本、schema 版本、稳定结果码和双方 `trace_id`；不得记录原始引用、完整链接、
 用户身份或目标内容。
@@ -110,7 +113,7 @@ AionCore。
 ### 模拟平台门禁
 
 - 签发结果只在 URL 暴露不透明 `ref`、版本和环境键。
-- 幂等签发、重复解析、过期、撤销、未知引用、错误身份、错误环境和错误 schema 均有自动化用例。
+- 幂等签发、幂等冲突、重复解析、过期、撤销、未知引用、错误用户、错误租户、错误环境和错误 schema 均有自动化用例。
 - `DeepLinkResolveResponse` 通过客户端 Zod schema；任意 route 或多余字段被拒绝。
 - Conversation、Message、Interaction Request、Team、Slot 五种目标均有客户端导航契约测试。
 - 多条热启动只执行当前一条并保留最新待执行引用；登录身份变化后旧响应不得导航。

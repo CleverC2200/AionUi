@@ -83,6 +83,16 @@ describe('deep-link resolver contract', () => {
         conversation_id: 'conversation-1',
         assistant_id: 'assistant-1',
         interaction_request_id: 'request-1',
+      },
+    },
+    {
+      schema_version: 1,
+      target: {
+        type: 'interaction_request',
+        conversation_id: 'conversation-1',
+        assistant_id: 'assistant-1',
+        interaction_request_id: 'request-1',
+        message_id: 'message-1',
         team_id: 'team-1',
       },
     },

@@ -104,6 +104,12 @@
     },
     "schemas": {
       "Identifier": { "type": "string", "minLength": 1, "maxLength": 240 },
+      "ProfileKey": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+      },
       "NavigationReference": {
         "type": "string",
         "minLength": 16,
@@ -156,7 +162,11 @@
       "InteractionRequestSelector": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["type", "assignmentId", "sessionId", "interactionRequestId"],
+        "required": ["type", "assignmentId", "sessionId", "interactionRequestId", "messageId"],
+        "dependentRequired": {
+          "slotId": ["teamId"],
+          "teamId": ["slotId"]
+        },
         "properties": {
           "type": { "const": "interaction_request" },
           "assignmentId": { "$ref": "#/components/schemas/Identifier" },
@@ -195,7 +205,7 @@
         "properties": {
           "schemaVersion": { "const": 1 },
           "recipient": { "$ref": "#/components/schemas/ExternalIdentity" },
-          "environmentKey": { "$ref": "#/components/schemas/Identifier" },
+          "environmentKey": { "$ref": "#/components/schemas/ProfileKey" },
           "target": { "$ref": "#/components/schemas/IntentTarget" },
           "expiresInSeconds": { "type": "integer", "minimum": 60, "maximum": 86400 }
         }
@@ -227,7 +237,7 @@
         "required": ["schemaVersion", "environmentKey", "target", "expiresAt"],
         "properties": {
           "schemaVersion": { "const": 1 },
-          "environmentKey": { "$ref": "#/components/schemas/Identifier" },
+          "environmentKey": { "$ref": "#/components/schemas/ProfileKey" },
           "target": { "$ref": "#/components/schemas/IntentTarget" },
           "expiresAt": { "type": "string", "format": "date-time" },
           "traceId": { "$ref": "#/components/schemas/Identifier" }
@@ -278,7 +288,11 @@
           {
             "type": "object",
             "additionalProperties": false,
-            "required": ["type", "conversation_id", "assistant_id", "interaction_request_id"],
+            "required": ["type", "conversation_id", "assistant_id", "interaction_request_id", "message_id"],
+            "dependentRequired": {
+              "slot_id": ["team_id"],
+              "team_id": ["slot_id"]
+            },
             "properties": {
               "type": { "const": "interaction_request" },
               "conversation_id": { "$ref": "#/components/schemas/Identifier" },
@@ -326,6 +340,8 @@
               "NAVIGATION_REFERENCE_FORBIDDEN",
               "NAVIGATION_REFERENCE_NOT_FOUND",
               "NAVIGATION_SCHEMA_UNSUPPORTED",
+              "NAVIGATION_IDEMPOTENCY_CONFLICT",
+              "NAVIGATION_INTENT_INVALID",
               "DEEP_LINK_PROFILE_MISMATCH",
               "DEEP_LINK_ASSISTANT_MISMATCH",
               "DEEP_LINK_TARGET_NOT_FOUND"

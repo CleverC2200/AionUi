@@ -801,13 +801,15 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
 
     requestAnimationFrame(() => {
       const targetElement = document.getElementById(`message-${getProcessedItemAnchorId(processedList[targetIndex])}`);
+      if (!targetElement) return;
       scrollElementIntoView(targetElement, {
         behavior: 'smooth',
         block: 'center',
       });
-      focusMessageTarget(targetElement);
+      if (!focusMessageTarget(targetElement)) return;
       if (conversationContext?.conversation_id) {
         void acknowledgeResolvedMessageDeepLink({
+          assistantId: conversationContext.assistantId,
           conversationId: conversationContext.conversation_id,
           interactionRequestId,
           messageId: resolvedMessageId,

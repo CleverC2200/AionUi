@@ -8,7 +8,7 @@ describe('focusMessageTarget', () => {
     target.append(button);
     document.body.append(target);
 
-    focusMessageTarget(target);
+    expect(focusMessageTarget(target)).toBe(true);
 
     expect(document.activeElement).toBe(button);
     target.remove();
@@ -18,10 +18,20 @@ describe('focusMessageTarget', () => {
     const target = document.createElement('div');
     document.body.append(target);
 
-    focusMessageTarget(target);
+    expect(focusMessageTarget(target)).toBe(true);
 
     expect(target).toHaveAttribute('tabindex', '-1');
     expect(document.activeElement).toBe(target);
+    target.remove();
+  });
+
+  it('reports when the browser did not move focus into the target', () => {
+    const target = document.createElement('div');
+    target.focus = () => {};
+    document.body.append(target);
+
+    expect(focusMessageTarget(target)).toBe(false);
+
     target.remove();
   });
 });

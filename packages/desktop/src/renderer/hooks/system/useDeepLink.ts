@@ -85,11 +85,16 @@ export const resolveDeepLinkNavigation = (target: DeepLinkTarget): DeepLinkNavig
 
 const acknowledgePendingTarget = async (pending: PendingResolvedTarget): Promise<boolean> => {
   if (getAuthSessionEpochSnapshot() !== pending.authSessionEpoch) return false;
-  const acknowledged = await ipcBridge.deepLink.acknowledge.invoke({
-    navigation_reference: pending.navigationReference,
-  });
-  if (acknowledged && pendingResolvedTarget === pending) pendingResolvedTarget = null;
-  return acknowledged;
+  try {
+    const acknowledged = await ipcBridge.deepLink.acknowledge.invoke({
+      navigation_reference: pending.navigationReference,
+    });
+    if (acknowledged && pendingResolvedTarget === pending) pendingResolvedTarget = null;
+    return acknowledged;
+  } catch {
+    // WebUI and older desktop builds do not expose native deep-link acknowledgement.
+    return false;
+  }
 };
 
 export const acknowledgeResolvedConversationDeepLink = async (conversation: {
@@ -101,11 +106,16 @@ export const acknowledgeResolvedConversationDeepLink = async (conversation: {
     return false;
   }
   if (conversation.assistant?.id !== pending.target.assistant_id) {
-    await ipcBridge.deepLink.reportFailure.invoke({
-      navigation_reference: pending.navigationReference,
-      result_code: 'DEEP_LINK_ASSISTANT_MISMATCH',
-    });
-    if (pendingResolvedTarget === pending) pendingResolvedTarget = null;
+    try {
+      await ipcBridge.deepLink.reportFailure.invoke({
+        navigation_reference: pending.navigationReference,
+        result_code: 'DEEP_LINK_ASSISTANT_MISMATCH',
+      });
+    } catch {
+      // WebUI and older desktop builds do not expose sanitized deep-link result reporting.
+    } finally {
+      if (pendingResolvedTarget === pending) pendingResolvedTarget = null;
+    }
     return false;
   }
 
@@ -113,12 +123,18 @@ export const acknowledgeResolvedConversationDeepLink = async (conversation: {
 };
 
 export const acknowledgeResolvedMessageDeepLink = async (target: {
+  assistantId?: string;
   conversationId: string;
   interactionRequestId?: string;
   messageId: string;
 }): Promise<boolean> => {
   const pending = pendingResolvedTarget;
-  if (!pending || !('conversation_id' in pending.target) || pending.target.conversation_id !== target.conversationId) {
+  if (
+    !pending ||
+    !('conversation_id' in pending.target) ||
+    pending.target.conversation_id !== target.conversationId ||
+    pending.target.assistant_id !== target.assistantId
+  ) {
     return false;
   }
   if (pending.target.type === 'message' && pending.target.message_id === target.messageId) {
@@ -136,7 +152,8 @@ export const acknowledgeResolvedMessageDeepLink = async (target: {
 
 export const acknowledgeResolvedTeamDeepLink = async (
   teamId: string,
-  assistants: Array<{ assistant_id?: string; conversation_id: string; slot_id: string }>
+  assistants: Array<{ assistant_id?: string; conversation_id: string; slot_id: string }>,
+  activeSlotId?: string
 ): Promise<boolean> => {
   const pending = pendingResolvedTarget;
   if (!pending) return false;
@@ -145,6 +162,7 @@ export const acknowledgeResolvedTeamDeepLink = async (
   }
   if (pending.target.type !== 'slot' || pending.target.team_id !== teamId) return false;
   const target = pending.target;
+  if (activeSlotId !== target.slot_id) return false;
   const assistant = assistants.find((item) => item.slot_id === target.slot_id);
   if (
     !assistant ||
@@ -279,7 +297,21 @@ export const useDeepLink = () => {
   );
 
   useEffect(() => {
-    const unsubscribe = ipcBridge.deepLink.received.on(handler);
+    const receive = (payload: DeepLinkPayload): void => {
+      if (!isOpenConversationDeepLinkPayload(payload)) {
+        handler(payload);
+        return;
+      }
+      void ipcBridge.deepLink.claimPending
+        .invoke()
+        .then((claimed) => {
+          if (claimed) handler(claimed);
+        })
+        .catch(() => {
+          // WebUI and older desktop builds do not have a native pending queue.
+        });
+    };
+    const unsubscribe = ipcBridge.deepLink.received.on(receive);
     const activate = async () => {
       const staleReferences = new Set<string>();
       if (pendingResolvedTarget && pendingResolvedTarget.authSessionEpoch !== authSessionEpoch) {

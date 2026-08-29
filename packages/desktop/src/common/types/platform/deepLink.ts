@@ -35,7 +35,7 @@ export const DeepLinkInteractionRequestTargetSchema = z
     type: z.literal('interaction_request'),
     ...localConversationIdentity,
     interaction_request_id: identifier,
-    message_id: identifier.optional(),
+    message_id: identifier,
     team_id: identifier.optional(),
     slot_id: identifier.optional(),
   })

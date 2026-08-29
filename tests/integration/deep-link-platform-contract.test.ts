@@ -68,6 +68,28 @@ describe('simulated GEA navigation platform contract', () => {
     expect(platform.resolve(request)).toEqual(platform.resolve(request));
   });
 
+  it('rejects reuse of an idempotency key with a different intent', () => {
+    const platform = new SimulatedDeepLinkPlatform();
+    issueFixture(platform);
+
+    expect(() =>
+      issueFixture(platform, {
+        target: { type: 'team', team_id: 'team-other' },
+      })
+    ).toThrowError(expect.objectContaining({ code: 'NAVIGATION_IDEMPOTENCY_CONFLICT' }));
+  });
+
+  it.each([
+    { profile: 'https://gea.example.com', ttlSeconds: 900 },
+    { profile: 'gea.test', ttlSeconds: 59 },
+    { profile: 'gea.test', ttlSeconds: 86_401 },
+  ])('rejects an invalid issuance boundary: $profile / $ttlSeconds', (overrides) => {
+    const platform = new SimulatedDeepLinkPlatform();
+    expect(() => issueFixture(platform, overrides)).toThrowError(
+      expect.objectContaining({ code: 'NAVIGATION_INTENT_INVALID' })
+    );
+  });
+
   it.each([
     [
       'NAVIGATION_SCHEMA_UNSUPPORTED',
@@ -79,6 +101,16 @@ describe('simulated GEA navigation platform contract', () => {
       (platform: SimulatedDeepLinkPlatform, reference: string) =>
         platform.resolve({
           identity: { ...identity, subject: 'user-other' },
+          navigationReference: reference,
+          profile: 'gea.test',
+          schemaVersion: 1,
+        }),
+    ],
+    [
+      'NAVIGATION_REFERENCE_FORBIDDEN',
+      (platform: SimulatedDeepLinkPlatform, reference: string) =>
+        platform.resolve({
+          identity: { ...identity, tenantId: 'tenant-other' },
           navigationReference: reference,
           profile: 'gea.test',
           schemaVersion: 1,
@@ -100,10 +132,10 @@ describe('simulated GEA navigation platform contract', () => {
   it('fails closed for expired, revoked, and unknown references', () => {
     let now = Date.parse('2026-08-29T00:00:00.000Z');
     const platform = new SimulatedDeepLinkPlatform(() => now);
-    const expired = issueFixture(platform, { idempotencyKey: 'expired', ttlSeconds: 1 });
+    const expired = issueFixture(platform, { idempotencyKey: 'expired', ttlSeconds: 60 });
     const revoked = issueFixture(platform, { idempotencyKey: 'revoked' });
     platform.revoke(revoked.navigationReference);
-    now += 2_000;
+    now += 61_000;
 
     expect(() =>
       platform.resolve({
@@ -145,6 +177,12 @@ describe('simulated GEA navigation platform contract', () => {
       new URL('../../docs/specs/gea-client-navigation-v1.openapi.json', import.meta.url)
     );
     const contract = JSON.parse(readFileSync(contractPath, 'utf8')) as {
+      components: {
+        schemas: {
+          InteractionRequestSelector: { dependentRequired?: Record<string, string[]> };
+          LocalNavigationTarget: { oneOf: Array<{ properties?: { type?: { const?: string } }; required?: string[] }> };
+        };
+      };
       openapi: string;
       paths: Record<string, unknown>;
     };
@@ -156,5 +194,13 @@ describe('simulated GEA navigation platform contract', () => {
         '/api/deep-links/resolve',
       ])
     );
+    expect(contract.components.schemas.InteractionRequestSelector.dependentRequired).toEqual({
+      slotId: ['teamId'],
+      teamId: ['slotId'],
+    });
+    const localInteractionRequest = contract.components.schemas.LocalNavigationTarget.oneOf.find(
+      (schema) => schema.properties?.type?.const === 'interaction_request'
+    );
+    expect(localInteractionRequest?.required).toEqual(expect.arrayContaining(['message_id']));
   });
 });
