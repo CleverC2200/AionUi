@@ -42,6 +42,7 @@ import {
   handleDeepLinkUrl,
   parseDeepLinkUrl,
   registerDefaultProtocolClient,
+  reportOpenConversationFailure,
   setDeepLinkMainWindow,
 } from '@/process/utils/deepLink';
 import { initDeepLinkBridge } from '@/process/bridge/deepLinkBridge';
@@ -157,21 +158,65 @@ describe('deepLink', () => {
       action: 'open-conversation',
       params: { ref: REFERENCE, v: '1' },
     });
-    expect(claimPendingOpenConversation()?.params.ref).toBe(REFERENCE);
+    expect(claimPendingOpenConversation()).toBeNull();
     expect(acknowledgeOpenConversation('nav_other_0123456789')).toBe(false);
-    expect(claimPendingOpenConversation()?.params.ref).toBe(REFERENCE);
+    expect(claimPendingOpenConversation()).toBeNull();
     expect(acknowledgeOpenConversation(REFERENCE)).toBe(true);
     expect(claimPendingOpenConversation()).toBeNull();
   });
 
-  it('does not let an older acknowledgement clear a newer intent', () => {
+  it('finishes the active intent before broadcasting the next distinct intent', () => {
     const newerReference = 'nav_fedcba9876543210';
     handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1`);
     handleDeepLinkUrl(`aionui://open-conversation?ref=${newerReference}&v=1`);
 
-    expect(acknowledgeOpenConversation(REFERENCE)).toBe(false);
-    expect(claimPendingOpenConversation()?.params.ref).toBe(newerReference);
+    expect(bridge.emit).toHaveBeenCalledTimes(1);
+    expect(bridge.emit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ ref: REFERENCE }) })
+    );
+    expect(acknowledgeOpenConversation(REFERENCE)).toBe(true);
+    expect(bridge.emit).toHaveBeenCalledTimes(2);
+    expect(bridge.emit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ ref: newerReference }) })
+    );
     expect(acknowledgeOpenConversation(newerReference)).toBe(true);
+  });
+
+  it('keeps only the newest queued intent while the active intent is claimed', () => {
+    const middleReference = 'nav_1111111111111111';
+    const newestReference = 'nav_2222222222222222';
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1`);
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${middleReference}&v=1`);
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${newestReference}&v=1`);
+
+    expect(bridge.emit).toHaveBeenCalledTimes(1);
+    expect(acknowledgeOpenConversation(REFERENCE)).toBe(true);
+    expect(bridge.emit).toHaveBeenCalledTimes(2);
+    expect(bridge.emit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ ref: newestReference }) })
+    );
+    expect(acknowledgeOpenConversation(middleReference)).toBe(false);
+    expect(acknowledgeOpenConversation(newestReference)).toBe(true);
+  });
+
+  it('keeps a transiently failed active intent ahead of the newest queued intent', () => {
+    const middleReference = 'nav_3333333333333333';
+    const newestReference = 'nav_4444444444444444';
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1`);
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${middleReference}&v=1`);
+
+    expect(reportOpenConversationFailure(REFERENCE, 'DEEP_LINK_RESOLVE_FAILED')).toBe(true);
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${newestReference}&v=1`);
+
+    expect(bridge.emit).toHaveBeenCalledTimes(1);
+    expect(claimPendingOpenConversation()?.params.ref).toBe(REFERENCE);
+    expect(acknowledgeOpenConversation(REFERENCE)).toBe(true);
+    expect(bridge.emit).toHaveBeenCalledTimes(2);
+    expect(bridge.emit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ ref: newestReference }) })
+    );
+    expect(acknowledgeOpenConversation(middleReference)).toBe(false);
+    expect(acknowledgeOpenConversation(newestReference)).toBe(true);
   });
 
   it('retains an intent without broadcasting to a renderer that is reloading', () => {
@@ -184,6 +229,7 @@ describe('deepLink', () => {
 
     expect(bridge.emit).not.toHaveBeenCalled();
     expect(claimPendingOpenConversation()?.params.ref).toBe(REFERENCE);
+    expect(claimPendingOpenConversation()).toBeNull();
   });
 
   it('registers native claim and acknowledgement providers', async () => {
@@ -192,6 +238,10 @@ describe('deepLink', () => {
     expect(bridge.acknowledgeProvider).toHaveBeenCalledOnce();
     expect(bridge.reportFailureProvider).toHaveBeenCalledOnce();
 
+    setDeepLinkMainWindow({
+      isDestroyed: () => false,
+      webContents: { isDestroyed: () => false, isLoadingMainFrame: () => true },
+    } as never);
     handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1`);
     const claim = bridge.claimProvider.mock.calls[0][0] as () => Promise<unknown>;
     const acknowledge = bridge.acknowledgeProvider.mock.calls[0][0] as (params: {

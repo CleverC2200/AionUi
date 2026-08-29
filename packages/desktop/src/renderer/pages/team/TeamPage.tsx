@@ -49,6 +49,7 @@ import { useTeamWorkSnapshot } from './control-board/useTeamWorkSnapshot';
 import { summarizeTeamMembers } from './memberWorkSummary';
 import { useLocation } from 'react-router-dom';
 import { isBackendHttpError } from '@/common/adapter/httpBridge';
+import { acknowledgeResolvedTeamDeepLink } from '@/renderer/hooks/system/useDeepLink';
 
 type Props = {
   team: TTeam;
@@ -576,6 +577,10 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
     switchTab(targetSlotId);
     setViewMode('single');
   }, [assistants, location.key, location.state, setViewMode, switchTab]);
+
+  useEffect(() => {
+    void acknowledgeResolvedTeamDeepLink(team.id, assistants);
+  }, [assistants, team.id]);
 
   // 进团队 warmup：以团队会话整体就绪为闸门（ensureSession resolve = 全员成功）。遮罩覆盖对话区。
   // runtimeStatus 是各成员逐个的真实唤醒信号，用于遮罩头像的「唤醒中→点亮」及失败态定位。

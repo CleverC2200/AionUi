@@ -30,7 +30,13 @@ vi.mock('@/common', () => ({
   },
 }));
 
-import { acknowledgeResolvedConversationDeepLink, useDeepLink } from '@/renderer/hooks/system/useDeepLink';
+import {
+  acknowledgeResolvedConversationDeepLink,
+  acknowledgeResolvedMessageDeepLink,
+  acknowledgeResolvedTeamDeepLink,
+  useDeepLink,
+} from '@/renderer/hooks/system/useDeepLink';
+import { notifyAuthSessionChanged, resetAuthSessionEpochForTests } from '@/renderer/hooks/context/AuthContext';
 
 const payload: OpenConversationDeepLinkPayload = {
   action: 'open-conversation',
@@ -40,6 +46,7 @@ const payload: OpenConversationDeepLinkPayload = {
 describe('useDeepLink', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetAuthSessionEpochForTests();
     state.received = undefined;
     state.claimPending.mockResolvedValue(null);
     state.resolve.mockResolvedValue({
@@ -107,6 +114,162 @@ describe('useDeepLink', () => {
       navigation_reference: payload.params.ref,
       result_code: 'DEEP_LINK_RESOLVE_FAILED',
     });
+  });
+
+  it('preserves the backend stable error code in the failure report', async () => {
+    state.resolve.mockRejectedValue({
+      name: 'BackendHttpError',
+      status: 403,
+      code: 'NAVIGATION_REFERENCE_FORBIDDEN',
+    });
+    renderHook(() => useDeepLink());
+    act(() => state.received?.(payload));
+
+    await waitFor(() =>
+      expect(state.reportFailure).toHaveBeenCalledWith({
+        navigation_reference: payload.params.ref,
+        result_code: 'NAVIGATION_REFERENCE_FORBIDDEN',
+      })
+    );
+  });
+
+  it('does not navigate with a resolver response from an older authenticated session', async () => {
+    let completeResolve: ((value: unknown) => void) | undefined;
+    state.resolve.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          completeResolve = resolve;
+        })
+    );
+    renderHook(() => useDeepLink());
+    act(() => state.received?.(payload));
+    await waitFor(() => expect(state.resolve).toHaveBeenCalledOnce());
+
+    act(() => notifyAuthSessionChanged());
+    await waitFor(() =>
+      expect(state.reportFailure).toHaveBeenCalledWith({
+        navigation_reference: payload.params.ref,
+        result_code: 'DEEP_LINK_AUTH_SESSION_CHANGED',
+      })
+    );
+    act(() =>
+      completeResolve?.({
+        schema_version: 1,
+        target: { type: 'conversation', conversation_id: 'conversation/1', assistant_id: 'assistant-1' },
+      })
+    );
+
+    await waitFor(() => expect(state.navigate).not.toHaveBeenCalled());
+  });
+
+  it('releases an already resolved target when the authenticated session changes before acknowledgement', async () => {
+    renderHook(() => useDeepLink());
+    act(() => state.received?.(payload));
+    await waitFor(() => expect(state.navigate).toHaveBeenCalledOnce());
+
+    act(() => notifyAuthSessionChanged());
+
+    await waitFor(() =>
+      expect(state.reportFailure).toHaveBeenCalledWith({
+        navigation_reference: payload.params.ref,
+        result_code: 'DEEP_LINK_AUTH_SESSION_CHANGED',
+      })
+    );
+    await expect(
+      acknowledgeResolvedConversationDeepLink({ id: 'conversation/1', assistant: { id: 'assistant-1' } })
+    ).resolves.toBe(false);
+  });
+
+  it.each([
+    [
+      { type: 'message', conversation_id: 'conversation/1', assistant_id: 'assistant-1', message_id: 'message-1' },
+      '/conversation/conversation%2F1',
+      { targetMessageId: 'message-1' },
+    ],
+    [{ type: 'team', team_id: 'team/1' }, '/team/team%2F1', undefined],
+    [
+      {
+        type: 'slot',
+        team_id: 'team/1',
+        slot_id: 'slot-1',
+        conversation_id: 'conversation/1',
+        assistant_id: 'assistant-1',
+      },
+      '/team/team%2F1',
+      { targetSlotId: 'slot-1' },
+    ],
+    [
+      {
+        type: 'interaction_request',
+        conversation_id: 'conversation/1',
+        assistant_id: 'assistant-1',
+        interaction_request_id: 'request-1',
+        message_id: 'message-1',
+      },
+      '/conversation/conversation%2F1',
+      { interactionRequestId: 'request-1', targetMessageId: 'message-1' },
+    ],
+  ] as const)('navigates to a typed %s target', async (target, pathname, navigationState) => {
+    state.resolve.mockResolvedValue({ schema_version: 1, target });
+    renderHook(() => useDeepLink());
+    act(() => state.received?.(payload));
+
+    await waitFor(() => {
+      if (navigationState) {
+        expect(state.navigate).toHaveBeenCalledWith(pathname, { state: navigationState });
+      } else {
+        expect(state.navigate).toHaveBeenCalledWith(pathname);
+      }
+    });
+  });
+
+  it('acknowledges a Message target only after the exact message is reached', async () => {
+    state.resolve.mockResolvedValue({
+      schema_version: 1,
+      target: {
+        type: 'message',
+        conversation_id: 'conversation/1',
+        assistant_id: 'assistant-1',
+        message_id: 'message-1',
+      },
+    });
+    renderHook(() => useDeepLink());
+    act(() => state.received?.(payload));
+    await waitFor(() => expect(state.navigate).toHaveBeenCalledOnce());
+
+    await expect(
+      acknowledgeResolvedMessageDeepLink({ conversationId: 'conversation/1', messageId: 'message-other' })
+    ).resolves.toBe(false);
+    await expect(
+      acknowledgeResolvedMessageDeepLink({ conversationId: 'conversation/1', messageId: 'message-1' })
+    ).resolves.toBe(true);
+  });
+
+  it('acknowledges a Slot target only after the exact local slot identity is reached', async () => {
+    state.resolve.mockResolvedValue({
+      schema_version: 1,
+      target: {
+        type: 'slot',
+        team_id: 'team-1',
+        slot_id: 'slot-1',
+        conversation_id: 'conversation-1',
+        assistant_id: 'assistant-1',
+      },
+    });
+    renderHook(() => useDeepLink());
+    act(() => state.received?.(payload));
+    await waitFor(() => expect(state.navigate).toHaveBeenCalledOnce());
+
+    await expect(
+      acknowledgeResolvedTeamDeepLink('team-1', [
+        { slot_id: 'slot-1', conversation_id: 'conversation-1', assistant_id: 'assistant-other' },
+      ])
+    ).resolves.toBe(false);
+    await expect(
+      acknowledgeResolvedTeamDeepLink('team-1', [
+        { slot_id: 'slot-1', conversation_id: 'conversation-1', assistant_id: 'assistant-1' },
+      ])
+    ).resolves.toBe(true);
   });
 
   it('fails closed when the loaded Conversation belongs to another Assistant', async () => {

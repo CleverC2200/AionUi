@@ -66,6 +66,14 @@ _避免使用_：Lark External Identity、共享 Core 用户、系统默认用�
 AionCore 为一个 Core User 签发并验证的认证会话；外部凭据不直接充当 Core Session。
 _避免使用_：Conversation、GEA Credential、Lark access token
 
+**Navigation Reference（导航引用）**：
+由 GEA 管理端签发的短期、不透明、可撤销引用；外部链接只携带该引用和协议版本，客户端登录后由 AionCore 在当前身份、租户与环境下解析，引用本身不包含本地路由、会话标识、消息内容或凭据。
+_避免使用_：Conversation ID、路由参数、登录令牌、一次性消费令牌
+
+**Client Navigation Target（客户端导航目标）**：
+AionCore 在完成 Navigation Reference 的身份、租户、环境与授权校验后，映射出的有类型本地 Interaction Location；当前类型为 Conversation、Message、Interaction Request、Team 或 Slot，客户端只按该类型执行受限导航。
+_避免使用_：Navigation Reference、任意 URL、管理端业务对象
+
 **GEA Credential（GEA 凭据）**：
 由 GEA 或 Lark 签发、用于验证外部身份或访问平台能力的敏感凭据，包括 Lark access token；它不是 Core JWT 或 Core Session，也不得交付浏览器。
 _避免使用_：Core JWT、Core Session、浏览器会话令牌

@@ -10,19 +10,66 @@ export const OPEN_CONVERSATION_ACTION = 'open-conversation';
 export const OPEN_CONVERSATION_SCHEMA_VERSION = 1 as const;
 
 const identifier = z.string().trim().min(1).max(240);
+const localConversationIdentity = {
+  conversation_id: identifier,
+  assistant_id: identifier,
+};
 
 export const DeepLinkConversationTargetSchema = z
   .object({
     type: z.literal('conversation'),
-    conversation_id: identifier,
-    assistant_id: identifier,
+    ...localConversationIdentity,
   })
   .strict();
+
+export const DeepLinkMessageTargetSchema = z
+  .object({
+    type: z.literal('message'),
+    ...localConversationIdentity,
+    message_id: identifier,
+  })
+  .strict();
+
+export const DeepLinkInteractionRequestTargetSchema = z
+  .object({
+    type: z.literal('interaction_request'),
+    ...localConversationIdentity,
+    interaction_request_id: identifier,
+    message_id: identifier.optional(),
+    team_id: identifier.optional(),
+    slot_id: identifier.optional(),
+  })
+  .strict();
+
+export const DeepLinkTeamTargetSchema = z.object({ type: z.literal('team'), team_id: identifier }).strict();
+
+export const DeepLinkSlotTargetSchema = z
+  .object({
+    type: z.literal('slot'),
+    team_id: identifier,
+    slot_id: identifier,
+    ...localConversationIdentity,
+  })
+  .strict();
+
+export const DeepLinkTargetSchema = z
+  .discriminatedUnion('type', [
+    DeepLinkConversationTargetSchema,
+    DeepLinkMessageTargetSchema,
+    DeepLinkInteractionRequestTargetSchema,
+    DeepLinkTeamTargetSchema,
+    DeepLinkSlotTargetSchema,
+  ])
+  .superRefine((target, context) => {
+    if (target.type === 'interaction_request' && Boolean(target.team_id) !== Boolean(target.slot_id)) {
+      context.addIssue({ code: 'custom', message: 'team_id and slot_id must be provided together' });
+    }
+  });
 
 export const DeepLinkResolveResponseSchema = z
   .object({
     schema_version: z.literal(OPEN_CONVERSATION_SCHEMA_VERSION),
-    target: DeepLinkConversationTargetSchema,
+    target: DeepLinkTargetSchema,
     trace_id: identifier.optional(),
   })
   .strict();
@@ -52,6 +99,7 @@ export type DeepLinkFailureReport = {
 };
 
 export type DeepLinkResolveResponse = z.infer<typeof DeepLinkResolveResponseSchema>;
+export type DeepLinkTarget = z.infer<typeof DeepLinkTargetSchema>;
 
 export const isOpenConversationDeepLinkPayload = (
   payload: DeepLinkPayload

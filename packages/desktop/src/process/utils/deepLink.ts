@@ -24,6 +24,22 @@ const PROFILE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const NAVIGATION_REFERENCE_PATTERN = /^[A-Za-z0-9._~-]{16,1024}$/;
 const RESULT_CODE_PATTERN = /^[A-Z][A-Z0-9_]{2,80}$/;
 const LEGACY_ACTIONS = new Set(['add-provider', 'provider/add', 'navigate']);
+const TERMINAL_RESOLVE_RESULTS = new Set([
+  'NAVIGATION_REFERENCE_EXPIRED',
+  'NAVIGATION_REFERENCE_REVOKED',
+  'NAVIGATION_REFERENCE_FORBIDDEN',
+  'NAVIGATION_REFERENCE_NOT_FOUND',
+  'NAVIGATION_SCHEMA_UNSUPPORTED',
+  'DEEP_LINK_ASSISTANT_MISMATCH',
+  'DEEP_LINK_RESOLVE_INVALID',
+  'DEEP_LINK_TARGET_NOT_FOUND',
+  'DEEP_LINK_PROFILE_MISMATCH',
+]);
+
+type PendingOpenConversation = {
+  claimed: boolean;
+  payload: OpenConversationDeepLinkPayload;
+};
 
 const hasInvalidPercentEncoding = (value: string): boolean => /%(?![0-9A-Fa-f]{2})/.test(value);
 
@@ -141,7 +157,10 @@ export const findInitialDeepLink = (
 const initialDeepLink = findInitialDeepLink(process.argv);
 let mainWindowRef: BrowserWindow | null = null;
 let pendingDeepLinkUrl: string | null = initialDeepLink.url;
-let pendingOpenConversation: OpenConversationDeepLinkPayload | null = initialDeepLink.payload;
+let pendingOpenConversation: PendingOpenConversation | null = initialDeepLink.payload
+  ? { claimed: false, payload: initialDeepLink.payload }
+  : null;
+let queuedOpenConversation: OpenConversationDeepLinkPayload | null = null;
 
 const getConfiguredProfileKey = (): string | null => {
   try {
@@ -182,25 +201,54 @@ export const clearPendingDeepLinkUrl = (): void => {
   pendingDeepLinkUrl = null;
 };
 
+const canBroadcastToRenderer = (): boolean =>
+  Boolean(
+    mainWindowRef &&
+    !mainWindowRef.isDestroyed() &&
+    !mainWindowRef.webContents.isDestroyed() &&
+    !mainWindowRef.webContents.isLoadingMainFrame()
+  );
+
+const broadcastPendingOpenConversation = (): boolean => {
+  if (!pendingOpenConversation || pendingOpenConversation.claimed || !canBroadcastToRenderer()) return false;
+  pendingOpenConversation.claimed = true;
+  ipcBridge.deepLink.received.emit(pendingOpenConversation.payload);
+  logOpenConversation(pendingOpenConversation.payload, 'ingress', 'accepted');
+  return true;
+};
+
+const promoteQueuedOpenConversation = (): void => {
+  pendingOpenConversation = queuedOpenConversation ? { claimed: false, payload: queuedOpenConversation } : null;
+  queuedOpenConversation = null;
+  broadcastPendingOpenConversation();
+};
+
 export const claimPendingOpenConversation = (): OpenConversationDeepLinkPayload | null => {
-  if (pendingOpenConversation && isConfiguredProfile(pendingOpenConversation) === false) {
-    logOpenConversation(pendingOpenConversation, 'ingress', 'profile_mismatch');
-    pendingOpenConversation = null;
+  if (pendingOpenConversation && isConfiguredProfile(pendingOpenConversation.payload) === false) {
+    logOpenConversation(pendingOpenConversation.payload, 'ingress', 'profile_mismatch');
+    promoteQueuedOpenConversation();
   }
-  return pendingOpenConversation;
+  if (!pendingOpenConversation || pendingOpenConversation.claimed) return null;
+  pendingOpenConversation.claimed = true;
+  return pendingOpenConversation.payload;
 };
 
 export const acknowledgeOpenConversation = (navigationReference: string): boolean => {
-  if (pendingOpenConversation?.params.ref !== navigationReference) return false;
-  logOpenConversation(pendingOpenConversation, 'navigation', 'completed');
-  pendingOpenConversation = null;
+  if (pendingOpenConversation?.payload.params.ref !== navigationReference) return false;
+  logOpenConversation(pendingOpenConversation.payload, 'navigation', 'completed');
+  promoteQueuedOpenConversation();
   return true;
 };
 
 export const reportOpenConversationFailure = (navigationReference: string, resultCode: string): boolean => {
-  if (pendingOpenConversation?.params.ref !== navigationReference) return false;
+  if (pendingOpenConversation?.payload.params.ref !== navigationReference) return false;
   const result = RESULT_CODE_PATTERN.test(resultCode) ? resultCode : 'DEEP_LINK_RESOLVE_FAILED';
-  logOpenConversation(pendingOpenConversation, 'resolve', result);
+  logOpenConversation(pendingOpenConversation.payload, 'resolve', result);
+  if (TERMINAL_RESOLVE_RESULTS.has(result)) {
+    promoteQueuedOpenConversation();
+  } else {
+    pendingOpenConversation.claimed = false;
+  }
   return true;
 };
 
@@ -214,24 +262,31 @@ export const handleDeepLinkUrl = (url: string): void => {
 
   if (isOpenConversationDeepLinkPayload(parsed)) {
     if (isConfiguredProfile(parsed) === false) {
-      if (pendingOpenConversation?.params.ref === parsed.params.ref) pendingOpenConversation = null;
+      if (pendingOpenConversation?.payload.params.ref === parsed.params.ref) promoteQueuedOpenConversation();
       logOpenConversation(parsed, 'ingress', 'profile_mismatch');
       return;
     }
-    pendingOpenConversation = parsed;
+    if (pendingOpenConversation?.payload.params.ref === parsed.params.ref) {
+      broadcastPendingOpenConversation();
+      return;
+    }
+    if (pendingOpenConversation && (pendingOpenConversation.claimed || queuedOpenConversation)) {
+      queuedOpenConversation = parsed;
+      logOpenConversation(parsed, 'ingress', 'queued');
+      return;
+    }
+    pendingOpenConversation = { claimed: false, payload: parsed };
   }
 
-  if (
-    !mainWindowRef ||
-    mainWindowRef.isDestroyed() ||
-    mainWindowRef.webContents.isDestroyed() ||
-    mainWindowRef.webContents.isLoadingMainFrame()
-  ) {
+  if (!canBroadcastToRenderer()) {
     pendingDeepLinkUrl = url;
     if (isOpenConversationDeepLinkPayload(parsed)) logOpenConversation(parsed, 'ingress', 'queued');
     return;
   }
 
-  ipcBridge.deepLink.received.emit(parsed);
-  if (isOpenConversationDeepLinkPayload(parsed)) logOpenConversation(parsed, 'ingress', 'accepted');
+  if (isOpenConversationDeepLinkPayload(parsed)) {
+    broadcastPendingOpenConversation();
+  } else {
+    ipcBridge.deepLink.received.emit(parsed);
+  }
 };
