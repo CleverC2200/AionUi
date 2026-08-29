@@ -230,6 +230,30 @@ describe('httpBridge', () => {
       expect(logLine).toContain('[REDACTED]');
       expect(fetchSpy.mock.calls[0][1]?.body).toBe(JSON.stringify(credentials));
     });
+
+    it('can suppress an opaque request and echoed failure body without changing the wire payload', async () => {
+      const navigationReference = 'nav_sensitive_0123456789';
+      const fetchSpy = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ code: 'DEEP_LINK_EXPIRED', navigation_reference: navigationReference }), {
+          status: 410,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+      vi.stubGlobal('fetch', fetchSpy);
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await expect(
+        httpPost('/api/deep-links/resolve', undefined, { redactBodyFromLogs: true }).invoke({
+          navigation_reference: navigationReference,
+          schema_version: 1,
+        })
+      ).rejects.toBeInstanceOf(BackendHttpError);
+
+      expect(fetchSpy.mock.calls[0][1]?.body).toContain(navigationReference);
+      expect(JSON.stringify(debugSpy.mock.calls)).not.toContain(navigationReference);
+      expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(navigationReference);
+    });
   });
 
   describe('path as function', () => {

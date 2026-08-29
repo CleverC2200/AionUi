@@ -166,8 +166,10 @@ function resolvePackagedApp(): { executablePath: string; cwd: string } | null {
       if (!fs.existsSync(macDir)) continue;
       const appBundle = fs.readdirSync(macDir).find((f) => f.endsWith('.app'));
       if (appBundle) {
-        const exe = path.join(macDir, appBundle, 'Contents', 'MacOS', 'AionUi');
-        if (fs.existsSync(exe)) return { executablePath: exe, cwd: macDir };
+        for (const executableName of ['GEAUi', 'AionUi']) {
+          const exe = path.join(macDir, appBundle, 'Contents', 'MacOS', executableName);
+          if (fs.existsSync(exe)) return { executablePath: exe, cwd: macDir };
+        }
       }
     }
   } else {
@@ -196,6 +198,7 @@ function shouldUsePackagedMode(): boolean {
 async function launchApp(): Promise<ElectronApplication> {
   const projectRoot = path.resolve(__dirname, '../..');
   const usePackaged = shouldUsePackagedMode();
+  const initialDeepLink = process.env.E2E_INITIAL_DEEP_LINK?.trim();
 
   const commonEnv = {
     ...process.env,
@@ -244,7 +247,7 @@ async function launchApp(): Promise<ElectronApplication> {
 
     console.log(`[E2E] Launching PACKAGED app: ${packaged.executablePath}`);
 
-    const launchArgs: string[] = [];
+    const launchArgs: string[] = initialDeepLink ? [initialDeepLink] : [];
     if (process.platform === 'linux' && process.env.CI) {
       launchArgs.push('--no-sandbox');
     }
@@ -267,7 +270,7 @@ async function launchApp(): Promise<ElectronApplication> {
   // Dev mode: launch via electron .
   console.log(`[E2E] Launching DEV app from: ${projectRoot}`);
 
-  const launchArgs = ['.'];
+  const launchArgs = ['.', ...(initialDeepLink ? [initialDeepLink] : [])];
   if (process.platform === 'linux' && process.env.CI) {
     launchArgs.push('--no-sandbox');
   }
