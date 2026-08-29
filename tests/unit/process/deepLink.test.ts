@@ -11,6 +11,11 @@ const environment = vi.hoisted(() => ({
   environmentId: 'gea.test',
 }));
 
+const electronApp = vi.hoisted(() => ({
+  getVersion: vi.fn(() => '1.7.2-test'),
+  setAsDefaultProtocolClient: vi.fn(() => true),
+}));
+
 vi.mock('@/common', () => ({
   ipcBridge: {
     deepLink: {
@@ -23,7 +28,7 @@ vi.mock('@/common', () => ({
 }));
 
 vi.mock('electron', () => ({
-  app: { getVersion: () => '1.7.2-test' },
+  app: electronApp,
 }));
 
 vi.mock('@/process/services/gea/GeaEnvironmentService', () => ({
@@ -36,6 +41,7 @@ import {
   findInitialDeepLink,
   handleDeepLinkUrl,
   parseDeepLinkUrl,
+  registerDefaultProtocolClient,
   setDeepLinkMainWindow,
 } from '@/process/utils/deepLink';
 import { initDeepLinkBridge } from '@/process/bridge/deepLinkBridge';
@@ -51,6 +57,31 @@ describe('deepLink', () => {
       isDestroyed: () => false,
       webContents: { isDestroyed: () => false, isLoadingMainFrame: () => false },
     } as never);
+  });
+
+  it('does not register the bare Electron bundle as the protocol client during macOS development', () => {
+    registerDefaultProtocolClient(
+      true,
+      'darwin',
+      '/Applications/Electron.app/Contents/MacOS/Electron',
+      '/repo/out/main'
+    );
+
+    expect(electronApp.setAsDefaultProtocolClient).not.toHaveBeenCalled();
+  });
+
+  it.each(['win32', 'linux'] as const)('keeps explicit protocol registration for %s development', (platform) => {
+    registerDefaultProtocolClient(true, platform, '/runtime/electron', '/repo/out/main');
+
+    expect(electronApp.setAsDefaultProtocolClient).toHaveBeenCalledWith('aionui', '/runtime/electron', [
+      '/repo/out/main',
+    ]);
+  });
+
+  it('registers the packaged macOS application as the protocol client', () => {
+    registerDefaultProtocolClient(false, 'darwin', '/Applications/GEAUi.app/Contents/MacOS/GEAUi', '/unused');
+
+    expect(electronApp.setAsDefaultProtocolClient).toHaveBeenCalledWith('aionui');
   });
 
   it('parses the versioned open-conversation action without accepting a route', () => {

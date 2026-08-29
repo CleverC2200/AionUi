@@ -54,6 +54,7 @@ import {
   getPendingDeepLinkUrl,
   handleDeepLinkUrl,
   PROTOCOL_SCHEME,
+  registerDefaultProtocolClient,
 } from './process/utils/deepLink';
 import {
   bindMainWindowReferences,
@@ -1177,12 +1178,7 @@ const handleAppReady = async (): Promise<void> => {
 
 // ============ Protocol Registration ============
 // Register aionui:// as the default protocol client
-if (process.defaultApp) {
-  // Dev mode: need to pass execPath explicitly
-  app.setAsDefaultProtocolClient(PROTOCOL_SCHEME, process.execPath, [path.resolve(process.argv[1])]);
-} else {
-  app.setAsDefaultProtocolClient(PROTOCOL_SCHEME);
-}
+registerDefaultProtocolClient();
 
 // macOS: handle aionui:// URLs via the open-url event
 app.on('open-url', (event, url) => {

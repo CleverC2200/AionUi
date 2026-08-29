@@ -5,6 +5,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import path from 'node:path';
 import { app, type BrowserWindow } from 'electron';
 import { ipcBridge } from '@/common';
 import { getGeaEnvironment } from '@/process/services/gea/GeaEnvironmentService';
@@ -25,6 +26,20 @@ const RESULT_CODE_PATTERN = /^[A-Z][A-Z0-9_]{2,80}$/;
 const LEGACY_ACTIONS = new Set(['add-provider', 'provider/add', 'navigate']);
 
 const hasInvalidPercentEncoding = (value: string): boolean => /%(?![0-9A-Fa-f]{2})/.test(value);
+
+export const registerDefaultProtocolClient = (
+  isDefaultApp = Boolean(process.defaultApp),
+  platform = process.platform,
+  execPath = process.execPath,
+  appEntryPath = process.argv[1]
+): boolean => {
+  if (isDefaultApp) {
+    // macOS registers the Electron bundle without retaining the development app entry argument.
+    if (platform === 'darwin') return false;
+    return app.setAsDefaultProtocolClient(PROTOCOL_SCHEME, execPath, [path.resolve(appEntryPath)]);
+  }
+  return app.setAsDefaultProtocolClient(PROTOCOL_SCHEME);
+};
 
 const parseOpenConversationDeepLink = (parsed: URL, rawUrl: string): OpenConversationDeepLinkPayload | null => {
   if (
