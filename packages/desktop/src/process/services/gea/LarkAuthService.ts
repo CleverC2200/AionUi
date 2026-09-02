@@ -7,7 +7,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { app, safeStorage } from 'electron';
+import { app, net, safeStorage } from 'electron';
 import { httpRequest } from '@/common/adapter/httpBridge';
 import {
   GeaLarkAuthService,
@@ -239,6 +239,9 @@ export function getSharedLarkAuthService(): GeaLarkAuthService {
     // Preserve loopback HTTP only for the validated development/E2E profile.
     allowLoopbackHttp: true,
     baseUrl: getGeaEnvironment().baseUrl,
+    // Keep desktop traffic on Chromium's network stack so Windows system
+    // proxy and trust-store settings are honored.
+    fetchImpl: (input, init) => net.fetch(input instanceof URL ? input.toString() : input, init),
   });
   return sharedLarkAuthService;
 }

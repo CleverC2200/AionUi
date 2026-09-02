@@ -158,6 +158,14 @@ import type {
 } from '@/common/types/voice';
 import type { ProtocolDetectionRequest, ProtocolDetectionResponse } from '../utils/protocolDetector';
 import {
+  parseDeepLinkResolveResponse,
+  type DeepLinkAcknowledgeRequest,
+  type DeepLinkFailureReport,
+  type DeepLinkPayload,
+  type DeepLinkResolveRequest,
+  type OpenConversationDeepLinkPayload,
+} from '../types/platform/deepLink';
+import {
   buildCreateConversationBody,
   fromApiConversation,
   fromApiPaginatedConversations,
@@ -1702,10 +1710,17 @@ export const excelPreview = {
 // ---------------------------------------------------------------------------
 
 export const deepLink = {
-  received: bridge.buildEmitter<{
-    action: string;
-    params: Record<string, string>;
-  }>('deep-link.received'),
+  received: bridge.buildEmitter<DeepLinkPayload>('deep-link.received'),
+  claimPending: bridge.buildProvider<OpenConversationDeepLinkPayload | null, void>('deep-link.claim-pending'),
+  acknowledge: bridge.buildProvider<boolean, { navigation_reference: string }>('deep-link.acknowledge'),
+  reportFailure: bridge.buildProvider<boolean, DeepLinkFailureReport>('deep-link.report-failure'),
+  resolve: withResponseMap(
+    httpPost<unknown, DeepLinkResolveRequest>('/api/deep-links/resolve', undefined, { redactBodyFromLogs: true }),
+    parseDeepLinkResolveResponse
+  ),
+  acknowledgeTarget: httpPost<void, DeepLinkAcknowledgeRequest>('/api/deep-links/ack', undefined, {
+    redactBodyFromLogs: true,
+  }),
 };
 
 // ---------------------------------------------------------------------------

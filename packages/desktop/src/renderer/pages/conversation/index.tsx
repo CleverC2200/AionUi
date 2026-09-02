@@ -12,6 +12,7 @@ import { setCurrentConversation } from '@/renderer/pages/conversation/explorer/c
 import { useAutoTitle } from '@/renderer/hooks/chat/useAutoTitle';
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
 import { getSnapshotConversationProjectId } from '@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync';
+import { acknowledgeResolvedConversationDeepLink } from '@/renderer/hooks/system/useDeepLink';
 
 const ChatConversationIndex: React.FC = () => {
   const { id } = useParams();
@@ -58,6 +59,10 @@ const ChatConversationIndex: React.FC = () => {
   // right value this is a no-op.
   useEffect(() => {
     if (data) setCurrentProject(data.project_id ?? null);
+  }, [data]);
+
+  useEffect(() => {
+    if (data) void acknowledgeResolvedConversationDeepLink(data);
   }, [data]);
 
   // Publish the active conversation id so the Layout-level Explorer's "add to

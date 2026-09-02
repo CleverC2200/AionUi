@@ -767,10 +767,17 @@ try {
   const { prepareAioncore } = require('../packages/shared-scripts/src/prepare-aioncore.js');
   const { resolveAioncoreVersion } = require('./resolveAioncoreVersion.js');
   const projectRoot = path.resolve(__dirname, '..');
+  const targetPlatform = builderArgs.includes('--win')
+    ? 'win32'
+    : builderArgs.includes('--mac')
+      ? 'darwin'
+      : builderArgs.includes('--linux')
+        ? 'linux'
+        : process.platform;
   writeGeneratedSentryDsnInclude(projectRoot);
   prepareAioncore({
     projectRoot,
-    platform: process.platform,
+    platform: targetPlatform,
     arch: targetArch,
     version: resolveAioncoreVersion(projectRoot),
   });

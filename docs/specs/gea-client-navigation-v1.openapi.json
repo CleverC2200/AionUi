@@ -1,0 +1,267 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GEAUi Client Navigation V1 Integration API",
+    "version": "1.5.0",
+    "description": "The production GEA V1 wire contract and the local AionCore boundary consumed by GEAUi. V1 opens an authorized Agent as a local conversation; V2 is intentionally excluded."
+  },
+  "paths": {
+    "/api/v1/public/client-launch/capabilities": {
+      "get": {
+        "summary": "Discover the public client-launch capability",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Current launch capability",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CapabilitiesResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/ai/gateway/client-navigation-intents/resolve": {
+      "post": {
+        "summary": "Resolve a reference under the authenticated GEA identity",
+        "description": "Called by AionCore. Identity and tenant come from the authenticated session; the request cannot override them.",
+        "security": [{ "GeaUserSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/GeaResolveRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized V1 Agent target",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/GeaResolveEnvelope" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "410": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/ai/gateway/client-navigation-intents/{intentId}/ack": {
+      "post": {
+        "summary": "Acknowledge that the V1 Agent target is visible",
+        "security": [{ "GeaUserSession": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "intentId",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/Identifier" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/GeaAcknowledgeRequest" } }
+          }
+        },
+        "responses": {
+          "200": { "description": "Acknowledged" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "409": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/deep-links/resolve": {
+      "post": {
+        "summary": "Resolve a reference to an authorized local conversation",
+        "description": "Local AionCore endpoint called by GEAUi. AionCore resolves the GEA Agent and prepares or restores its local conversation.",
+        "security": [{ "CoreSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/LocalResolveRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Closed V1 local target",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/LocalResolveResponse" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "410": { "$ref": "#/components/responses/Error" },
+          "422": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/deep-links/ack": {
+      "post": {
+        "summary": "Forward a target-visible acknowledgement through AionCore",
+        "security": [{ "CoreSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/LocalAcknowledgeRequest" } }
+          }
+        },
+        "responses": {
+          "200": { "description": "Acknowledged" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "409": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GeaUserSession": { "type": "apiKey", "in": "header", "name": "X-Access-Token" },
+      "CoreSession": { "type": "apiKey", "in": "cookie", "name": "core_session" }
+    },
+    "responses": {
+      "Error": {
+        "description": "Stable failure envelope without target details",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      }
+    },
+    "schemas": {
+      "Identifier": { "type": "string", "minLength": 1, "maxLength": 240 },
+      "NavigationReference": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512,
+        "pattern": "^[A-Za-z0-9._-]+$",
+        "description": "Opaque. Never log or interpret the raw value in GEAUi."
+      },
+      "CapabilitiesResponse": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "desktopLaunchEnabled",
+          "webFallbackEnabled",
+          "schemeAction",
+          "schemaVersion",
+          "currentSchemaVersion",
+          "supportedSchemaVersions",
+          "environmentProfile"
+        ],
+        "properties": {
+          "desktopLaunchEnabled": { "type": "boolean" },
+          "webFallbackEnabled": { "type": "boolean" },
+          "schemeAction": { "const": "open-conversation" },
+          "schemaVersion": { "const": 1 },
+          "currentSchemaVersion": { "const": 1 },
+          "supportedSchemaVersions": {
+            "type": "array",
+            "prefixItems": [{ "const": 1 }],
+            "items": false
+          },
+          "environmentProfile": { "type": "string", "minLength": 1 },
+          "installHelpUrl": { "type": "string", "format": "uri" }
+        }
+      },
+      "GeaResolveRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schemaVersion", "navigationReference"],
+        "properties": {
+          "schemaVersion": { "const": 1 },
+          "navigationReference": { "$ref": "#/components/schemas/NavigationReference" }
+        }
+      },
+      "GeaAgentTarget": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "agentCode"],
+        "properties": {
+          "type": { "const": "AGENT" },
+          "agentCode": { "$ref": "#/components/schemas/Identifier" }
+        }
+      },
+      "GeaResolveResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["navigationIntentId", "schemaVersion", "target", "expiresAt", "traceId"],
+        "properties": {
+          "navigationIntentId": { "$ref": "#/components/schemas/Identifier" },
+          "schemaVersion": { "const": 1 },
+          "target": { "$ref": "#/components/schemas/GeaAgentTarget" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "traceId": { "$ref": "#/components/schemas/Identifier" }
+        }
+      },
+      "GeaResolveEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "const": true },
+          "result": { "$ref": "#/components/schemas/GeaResolveResult" }
+        }
+      },
+      "GeaAcknowledgeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stage", "result", "idempotencyKey"],
+        "properties": {
+          "stage": { "const": "TARGET_VISIBLE" },
+          "result": { "const": "SUCCESS" },
+          "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
+      },
+      "LocalResolveRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["navigation_reference", "schema_version"],
+        "properties": {
+          "navigation_reference": { "$ref": "#/components/schemas/NavigationReference" },
+          "schema_version": { "const": 1 }
+        }
+      },
+      "LocalConversationTarget": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "conversation_id"],
+        "properties": {
+          "type": { "const": "conversation" },
+          "conversation_id": { "$ref": "#/components/schemas/Identifier" }
+        }
+      },
+      "LocalResolveResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["navigation_intent_id", "schema_version", "target", "expires_at", "trace_id"],
+        "properties": {
+          "navigation_intent_id": { "$ref": "#/components/schemas/Identifier" },
+          "schema_version": { "const": 1 },
+          "target": { "$ref": "#/components/schemas/LocalConversationTarget" },
+          "expires_at": { "type": "string", "format": "date-time" },
+          "trace_id": { "$ref": "#/components/schemas/Identifier" }
+        }
+      },
+      "LocalAcknowledgeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["navigation_intent_id", "idempotency_key"],
+        "properties": {
+          "navigation_intent_id": { "$ref": "#/components/schemas/Identifier" },
+          "idempotency_key": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["code"],
+        "properties": {
+          "success": { "const": false },
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,80}$" },
+          "error": { "type": "string" },
+          "trace_id": { "$ref": "#/components/schemas/Identifier" }
+        }
+      }
+    }
+  }
+}

@@ -163,6 +163,8 @@ export type HttpRequestOptions = {
   silentStatuses?: number[];
   /** Extra request headers merged on top of the default `Content-Type`. */
   headers?: Record<string, string>;
+  /** Keep opaque or otherwise sensitive request and response bodies out of diagnostic logs. */
+  redactBodyFromLogs?: boolean;
 };
 
 const SENSITIVE_LOG_KEY_PATTERN =
@@ -203,7 +205,11 @@ export async function httpRequest<T>(
 
   console.debug(
     `[httpBridge] ${method} ${path}`,
-    body !== undefined ? JSON.stringify(redactForLog(body)).slice(0, 500) : '(no body)'
+    body === undefined
+      ? '(no body)'
+      : options?.redactBodyFromLogs
+        ? '[REDACTED]'
+        : JSON.stringify(redactForLog(body)).slice(0, 500)
   );
 
   const response = await fetch(url, {
@@ -221,10 +227,11 @@ export async function httpRequest<T>(
     } catch {
       errorBody = rawText;
     }
+    const errorBodyForLog = options?.redactBodyFromLogs ? '[REDACTED]' : redactForLog(errorBody);
     if (options?.silentStatuses?.includes(response.status)) {
-      console.debug(`[httpBridge] ${method} ${path} → ${response.status} (silenced)`, errorBody);
+      console.debug(`[httpBridge] ${method} ${path} → ${response.status} (silenced)`, errorBodyForLog);
     } else {
-      console.error(`[httpBridge] ${method} ${path} → ${response.status}`, errorBody);
+      console.error(`[httpBridge] ${method} ${path} → ${response.status}`, errorBodyForLog);
     }
     throw new BackendHttpError({ method, path, status: response.status, body: errorBody });
   }
@@ -281,14 +288,15 @@ export function httpGet<Data, Params = undefined>(
 
 export function httpPost<Data, Params = undefined>(
   path: string | ((params: Params) => string),
-  mapBody?: (params: Params) => unknown
+  mapBody?: (params: Params) => unknown,
+  options?: HttpRequestOptions
 ): ProviderLike<Data, Params> {
   return {
     provider: () => {},
     invoke: (async (params?: Params) => {
       const resolvedPath = typeof path === 'function' ? path(params!) : path;
       const body = mapBody ? mapBody(params!) : params;
-      return httpRequest<Data>('POST', resolvedPath, body);
+      return httpRequest<Data>('POST', resolvedPath, body, options);
     }) as ProviderLike<Data, Params>['invoke'],
   };
 }
