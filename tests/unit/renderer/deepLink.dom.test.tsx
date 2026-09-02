@@ -32,10 +32,7 @@ vi.mock('@/common', () => ({
   },
 }));
 
-import {
-  acknowledgeResolvedConversationDeepLink,
-  useDeepLink,
-} from '@/renderer/hooks/system/useDeepLink';
+import { acknowledgeResolvedConversationDeepLink, useDeepLink } from '@/renderer/hooks/system/useDeepLink';
 import { notifyAuthSessionChanged, resetAuthSessionEpochForTests } from '@/renderer/hooks/context/AuthContext';
 
 const payload: OpenConversationDeepLinkPayload = {

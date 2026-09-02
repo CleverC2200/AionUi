@@ -116,11 +116,11 @@ Reference。打开进程、resolve 成功或仅改变路由均不算目标可见
 
 ## 职责边界
 
-| 责任方 | 负责 | 不负责 |
-| --- | --- | --- |
-| GEA / gea-web | 签发、Landing、当前身份 resolve、权限/过期/撤销、ACK 审计、能力与灰度开关 | 不向 Scheme 下发业务 ID 或凭据 |
-| AionCore | 当前登录身份调用 GEA；校验 V1 AGENT；准备本地 Conversation；转发 ACK | 不接受客户端身份/租户覆盖，不返回任意导航 URL |
-| AionUi | Scheme 注册、单实例转发、有界 FIFO、严格本地 schema、打开 Conversation、目标可见 ACK | 不解析 Reference，不把进程唤醒当成业务成功 |
+| 责任方        | 负责                                                                                 | 不负责                                        |
+| ------------- | ------------------------------------------------------------------------------------ | --------------------------------------------- |
+| GEA / gea-web | 签发、Landing、当前身份 resolve、权限/过期/撤销、ACK 审计、能力与灰度开关            | 不向 Scheme 下发业务 ID 或凭据                |
+| AionCore      | 当前登录身份调用 GEA；校验 V1 AGENT；准备本地 Conversation；转发 ACK                 | 不接受客户端身份/租户覆盖，不返回任意导航 URL |
+| AionUi        | Scheme 注册、单实例转发、有界 FIFO、严格本地 schema、打开 Conversation、目标可见 ACK | 不解析 Reference，不把进程唤醒当成业务成功    |
 
 ## 验证
 
