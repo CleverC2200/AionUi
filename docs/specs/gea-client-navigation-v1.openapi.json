@@ -1,19 +1,58 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "GEA Client Navigation Reference API",
-    "version": "1.0.0",
-    "description": "GEA management-plane intent issuance and resolution, plus the local AionCore resolver consumed by AionUi. This checked-in contract is validated against a simulator; production adoption is still pending."
+    "title": "GEAUi Client Navigation V1 Integration API",
+    "version": "1.5.0",
+    "description": "The production GEA V1 wire contract and the local AionCore boundary consumed by GEAUi. V1 opens an authorized Agent as a local conversation; V2 is intentionally excluded."
   },
   "paths": {
-    "/api/v1/internal/client-navigation-intents": {
+    "/api/v1/public/client-launch/capabilities": {
+      "get": {
+        "summary": "Discover the public client-launch capability",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Current launch capability",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CapabilitiesResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/ai/gateway/client-navigation-intents/resolve": {
       "post": {
-        "summary": "Issue an opaque client-navigation intent",
-        "security": [{ "ServiceAuth": [] }],
+        "summary": "Resolve a reference under the authenticated GEA identity",
+        "description": "Called by AionCore. Identity and tenant come from the authenticated session; the request cannot override them.",
+        "security": [{ "GeaUserSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/GeaResolveRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized V1 Agent target",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/GeaResolveEnvelope" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "410": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/ai/gateway/client-navigation-intents/{intentId}/ack": {
+      "post": {
+        "summary": "Acknowledge that the V1 Agent target is visible",
+        "security": [{ "GeaUserSession": [] }],
         "parameters": [
           {
-            "in": "header",
-            "name": "Idempotency-Key",
+            "in": "path",
+            "name": "intentId",
             "required": true,
             "schema": { "$ref": "#/components/schemas/Identifier" }
           }
@@ -21,52 +60,20 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/IssueIntentRequest" } }
+            "application/json": { "schema": { "$ref": "#/components/schemas/GeaAcknowledgeRequest" } }
           }
         },
         "responses": {
-          "201": {
-            "description": "Created or replayed idempotent result",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/IssueIntentResponse" } }
-            }
-          },
+          "200": { "description": "Acknowledged" },
           "400": { "$ref": "#/components/responses/Error" },
-          "401": { "$ref": "#/components/responses/Error" },
-          "403": { "$ref": "#/components/responses/Error" }
-        }
-      }
-    },
-    "/ai/gateway/client-navigation-intents/resolve": {
-      "post": {
-        "summary": "Resolve an intent under the current authenticated GEA identity",
-        "description": "Read-only and replayable until expiry or revocation. The request must not supply identity or tenant overrides.",
-        "security": [{ "GeaUserSession": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/ManagementResolveRequest" } }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Authorized semantic target",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ManagementResolveResponse" } }
-            }
-          },
-          "400": { "$ref": "#/components/responses/Error" },
-          "401": { "$ref": "#/components/responses/Error" },
-          "403": { "$ref": "#/components/responses/Error" },
-          "404": { "$ref": "#/components/responses/Error" },
-          "410": { "$ref": "#/components/responses/Error" }
+          "409": { "$ref": "#/components/responses/Error" }
         }
       }
     },
     "/api/deep-links/resolve": {
       "post": {
-        "summary": "Map a Navigation Reference to an authorized local Client Navigation Target",
-        "description": "AionCore endpoint called by AionUi with the current Core Session. AionCore validates the linked external identity and performs the GEA-to-local mapping.",
+        "summary": "Resolve a reference to an authorized local conversation",
+        "description": "Local AionCore endpoint called by GEAUi. AionCore resolves the GEA Agent and prepares or restores its local conversation.",
         "security": [{ "CoreSession": [] }],
         "requestBody": {
           "required": true,
@@ -76,7 +83,7 @@
         },
         "responses": {
           "200": {
-            "description": "Closed typed local target",
+            "description": "Closed V1 local target",
             "content": {
               "application/json": { "schema": { "$ref": "#/components/schemas/LocalResolveResponse" } }
             }
@@ -85,144 +92,78 @@
           "401": { "$ref": "#/components/responses/Error" },
           "403": { "$ref": "#/components/responses/Error" },
           "404": { "$ref": "#/components/responses/Error" },
-          "410": { "$ref": "#/components/responses/Error" }
+          "410": { "$ref": "#/components/responses/Error" },
+          "422": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/deep-links/ack": {
+      "post": {
+        "summary": "Forward a target-visible acknowledgement through AionCore",
+        "security": [{ "CoreSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/LocalAcknowledgeRequest" } }
+          }
+        },
+        "responses": {
+          "200": { "description": "Acknowledged" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "409": { "$ref": "#/components/responses/Error" }
         }
       }
     }
   },
   "components": {
     "securitySchemes": {
-      "ServiceAuth": { "type": "http", "scheme": "bearer" },
-      "GeaUserSession": { "type": "apiKey", "in": "cookie", "name": "gea_session" },
+      "GeaUserSession": { "type": "apiKey", "in": "header", "name": "X-Access-Token" },
       "CoreSession": { "type": "apiKey", "in": "cookie", "name": "core_session" }
     },
     "responses": {
       "Error": {
-        "description": "Stable failure envelope",
+        "description": "Stable failure envelope without target details",
         "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
       }
     },
     "schemas": {
       "Identifier": { "type": "string", "minLength": 1, "maxLength": 240 },
-      "ProfileKey": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 64,
-        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-      },
       "NavigationReference": {
         "type": "string",
-        "minLength": 16,
-        "maxLength": 1024,
-        "pattern": "^[A-Za-z0-9._~-]+$",
-        "description": "Opaque; never log or interpret this value in the client."
+        "minLength": 1,
+        "maxLength": 512,
+        "pattern": "^[A-Za-z0-9._-]+$",
+        "description": "Opaque. Never log or interpret the raw value in GEAUi."
       },
-      "ExternalIdentity": {
+      "CapabilitiesResponse": {
         "type": "object",
-        "additionalProperties": false,
-        "required": ["provider", "issuer", "tenantId", "subject"],
-        "properties": {
-          "provider": { "const": "lark" },
-          "issuer": { "$ref": "#/components/schemas/Identifier" },
-          "tenantId": { "$ref": "#/components/schemas/Identifier" },
-          "subject": { "$ref": "#/components/schemas/Identifier" }
-        }
-      },
-      "IntentTarget": {
-        "oneOf": [
-          { "$ref": "#/components/schemas/ConversationSelector" },
-          { "$ref": "#/components/schemas/MessageSelector" },
-          { "$ref": "#/components/schemas/InteractionRequestSelector" },
-          { "$ref": "#/components/schemas/TeamSelector" },
-          { "$ref": "#/components/schemas/SlotSelector" }
+        "additionalProperties": true,
+        "required": [
+          "desktopLaunchEnabled",
+          "webFallbackEnabled",
+          "schemeAction",
+          "schemaVersion",
+          "currentSchemaVersion",
+          "supportedSchemaVersions",
+          "environmentProfile"
         ],
-        "discriminator": { "propertyName": "type" }
-      },
-      "ConversationSelector": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["type", "assignmentId", "sessionId"],
         "properties": {
-          "type": { "const": "conversation" },
-          "assignmentId": { "$ref": "#/components/schemas/Identifier" },
-          "sessionId": { "$ref": "#/components/schemas/Identifier" }
-        }
-      },
-      "MessageSelector": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["type", "assignmentId", "sessionId", "messageId"],
-        "properties": {
-          "type": { "const": "message" },
-          "assignmentId": { "$ref": "#/components/schemas/Identifier" },
-          "sessionId": { "$ref": "#/components/schemas/Identifier" },
-          "messageId": { "$ref": "#/components/schemas/Identifier" }
-        }
-      },
-      "InteractionRequestSelector": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["type", "assignmentId", "sessionId", "interactionRequestId", "messageId"],
-        "dependentRequired": {
-          "slotId": ["teamId"],
-          "teamId": ["slotId"]
-        },
-        "properties": {
-          "type": { "const": "interaction_request" },
-          "assignmentId": { "$ref": "#/components/schemas/Identifier" },
-          "sessionId": { "$ref": "#/components/schemas/Identifier" },
-          "interactionRequestId": { "$ref": "#/components/schemas/Identifier" },
-          "messageId": { "$ref": "#/components/schemas/Identifier" },
-          "teamId": { "$ref": "#/components/schemas/Identifier" },
-          "slotId": { "$ref": "#/components/schemas/Identifier" }
-        }
-      },
-      "TeamSelector": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["type", "teamId"],
-        "properties": {
-          "type": { "const": "team" },
-          "teamId": { "$ref": "#/components/schemas/Identifier" }
-        }
-      },
-      "SlotSelector": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["type", "teamId", "slotId", "assignmentId", "sessionId"],
-        "properties": {
-          "type": { "const": "slot" },
-          "teamId": { "$ref": "#/components/schemas/Identifier" },
-          "slotId": { "$ref": "#/components/schemas/Identifier" },
-          "assignmentId": { "$ref": "#/components/schemas/Identifier" },
-          "sessionId": { "$ref": "#/components/schemas/Identifier" }
-        }
-      },
-      "IssueIntentRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["schemaVersion", "recipient", "environmentKey", "target", "expiresInSeconds"],
-        "properties": {
+          "desktopLaunchEnabled": { "type": "boolean" },
+          "webFallbackEnabled": { "type": "boolean" },
+          "schemeAction": { "const": "open-conversation" },
           "schemaVersion": { "const": 1 },
-          "recipient": { "$ref": "#/components/schemas/ExternalIdentity" },
-          "environmentKey": { "$ref": "#/components/schemas/ProfileKey" },
-          "target": { "$ref": "#/components/schemas/IntentTarget" },
-          "expiresInSeconds": { "type": "integer", "minimum": 60, "maximum": 86400 }
+          "currentSchemaVersion": { "const": 1 },
+          "supportedSchemaVersions": {
+            "type": "array",
+            "prefixItems": [{ "const": 1 }],
+            "items": false
+          },
+          "environmentProfile": { "type": "string", "minLength": 1 },
+          "installHelpUrl": { "type": "string", "format": "uri" }
         }
       },
-      "IssueIntentResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["schemaVersion", "navigationReference", "clientUrl", "landingUrl", "expiresAt"],
-        "properties": {
-          "schemaVersion": { "const": 1 },
-          "navigationReference": { "$ref": "#/components/schemas/NavigationReference" },
-          "clientUrl": { "type": "string", "pattern": "^aionui://open-conversation\\?ref=" },
-          "landingUrl": { "type": "string", "format": "uri" },
-          "expiresAt": { "type": "string", "format": "date-time" }
-        }
-      },
-      "ManagementResolveRequest": {
+      "GeaResolveRequest": {
         "type": "object",
         "additionalProperties": false,
         "required": ["schemaVersion", "navigationReference"],
@@ -231,16 +172,44 @@
           "navigationReference": { "$ref": "#/components/schemas/NavigationReference" }
         }
       },
-      "ManagementResolveResponse": {
+      "GeaAgentTarget": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schemaVersion", "environmentKey", "target", "expiresAt"],
+        "required": ["type", "agentCode"],
         "properties": {
+          "type": { "const": "AGENT" },
+          "agentCode": { "$ref": "#/components/schemas/Identifier" }
+        }
+      },
+      "GeaResolveResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["navigationIntentId", "schemaVersion", "target", "expiresAt", "traceId"],
+        "properties": {
+          "navigationIntentId": { "$ref": "#/components/schemas/Identifier" },
           "schemaVersion": { "const": 1 },
-          "environmentKey": { "$ref": "#/components/schemas/ProfileKey" },
-          "target": { "$ref": "#/components/schemas/IntentTarget" },
+          "target": { "$ref": "#/components/schemas/GeaAgentTarget" },
           "expiresAt": { "type": "string", "format": "date-time" },
           "traceId": { "$ref": "#/components/schemas/Identifier" }
+        }
+      },
+      "GeaResolveEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "const": true },
+          "result": { "$ref": "#/components/schemas/GeaResolveResult" }
+        }
+      },
+      "GeaAcknowledgeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stage", "result", "idempotencyKey"],
+        "properties": {
+          "stage": { "const": "TARGET_VISIBLE" },
+          "result": { "const": "SUCCESS" },
+          "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 256 }
         }
       },
       "LocalResolveRequest": {
@@ -252,101 +221,43 @@
           "schema_version": { "const": 1 }
         }
       },
+      "LocalConversationTarget": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "conversation_id"],
+        "properties": {
+          "type": { "const": "conversation" },
+          "conversation_id": { "$ref": "#/components/schemas/Identifier" }
+        }
+      },
       "LocalResolveResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema_version", "target"],
+        "required": ["navigation_intent_id", "schema_version", "target", "expires_at", "trace_id"],
         "properties": {
+          "navigation_intent_id": { "$ref": "#/components/schemas/Identifier" },
           "schema_version": { "const": 1 },
-          "target": { "$ref": "#/components/schemas/LocalNavigationTarget" },
+          "target": { "$ref": "#/components/schemas/LocalConversationTarget" },
+          "expires_at": { "type": "string", "format": "date-time" },
           "trace_id": { "$ref": "#/components/schemas/Identifier" }
         }
       },
-      "LocalNavigationTarget": {
-        "oneOf": [
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["type", "conversation_id", "assistant_id"],
-            "properties": {
-              "type": { "const": "conversation" },
-              "conversation_id": { "$ref": "#/components/schemas/Identifier" },
-              "assistant_id": { "$ref": "#/components/schemas/Identifier" }
-            }
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["type", "conversation_id", "assistant_id", "message_id"],
-            "properties": {
-              "type": { "const": "message" },
-              "conversation_id": { "$ref": "#/components/schemas/Identifier" },
-              "assistant_id": { "$ref": "#/components/schemas/Identifier" },
-              "message_id": { "$ref": "#/components/schemas/Identifier" }
-            }
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["type", "conversation_id", "assistant_id", "interaction_request_id", "message_id"],
-            "dependentRequired": {
-              "slot_id": ["team_id"],
-              "team_id": ["slot_id"]
-            },
-            "properties": {
-              "type": { "const": "interaction_request" },
-              "conversation_id": { "$ref": "#/components/schemas/Identifier" },
-              "assistant_id": { "$ref": "#/components/schemas/Identifier" },
-              "interaction_request_id": { "$ref": "#/components/schemas/Identifier" },
-              "message_id": { "$ref": "#/components/schemas/Identifier" },
-              "team_id": { "$ref": "#/components/schemas/Identifier" },
-              "slot_id": { "$ref": "#/components/schemas/Identifier" }
-            }
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["type", "team_id"],
-            "properties": {
-              "type": { "const": "team" },
-              "team_id": { "$ref": "#/components/schemas/Identifier" }
-            }
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["type", "team_id", "slot_id", "conversation_id", "assistant_id"],
-            "properties": {
-              "type": { "const": "slot" },
-              "team_id": { "$ref": "#/components/schemas/Identifier" },
-              "slot_id": { "$ref": "#/components/schemas/Identifier" },
-              "conversation_id": { "$ref": "#/components/schemas/Identifier" },
-              "assistant_id": { "$ref": "#/components/schemas/Identifier" }
-            }
-          }
-        ],
-        "discriminator": { "propertyName": "type" }
+      "LocalAcknowledgeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["navigation_intent_id", "idempotency_key"],
+        "properties": {
+          "navigation_intent_id": { "$ref": "#/components/schemas/Identifier" },
+          "idempotency_key": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
       },
       "ErrorResponse": {
         "type": "object",
-        "additionalProperties": false,
-        "required": ["success", "code", "error"],
+        "additionalProperties": true,
+        "required": ["code"],
         "properties": {
           "success": { "const": false },
-          "code": {
-            "enum": [
-              "NAVIGATION_REFERENCE_EXPIRED",
-              "NAVIGATION_REFERENCE_REVOKED",
-              "NAVIGATION_REFERENCE_FORBIDDEN",
-              "NAVIGATION_REFERENCE_NOT_FOUND",
-              "NAVIGATION_SCHEMA_UNSUPPORTED",
-              "NAVIGATION_IDEMPOTENCY_CONFLICT",
-              "NAVIGATION_INTENT_INVALID",
-              "DEEP_LINK_PROFILE_MISMATCH",
-              "DEEP_LINK_ASSISTANT_MISMATCH",
-              "DEEP_LINK_TARGET_NOT_FOUND"
-            ]
-          },
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,80}$" },
           "error": { "type": "string" },
           "trace_id": { "$ref": "#/components/schemas/Identifier" }
         }

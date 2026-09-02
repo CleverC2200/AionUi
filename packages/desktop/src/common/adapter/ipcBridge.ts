@@ -159,6 +159,7 @@ import type {
 import type { ProtocolDetectionRequest, ProtocolDetectionResponse } from '../utils/protocolDetector';
 import {
   parseDeepLinkResolveResponse,
+  type DeepLinkAcknowledgeRequest,
   type DeepLinkFailureReport,
   type DeepLinkPayload,
   type DeepLinkResolveRequest,
@@ -1717,6 +1718,9 @@ export const deepLink = {
     httpPost<unknown, DeepLinkResolveRequest>('/api/deep-links/resolve', undefined, { redactBodyFromLogs: true }),
     parseDeepLinkResolveResponse
   ),
+  acknowledgeTarget: httpPost<void, DeepLinkAcknowledgeRequest>('/api/deep-links/ack', undefined, {
+    redactBodyFromLogs: true,
+  }),
 };
 
 // ---------------------------------------------------------------------------

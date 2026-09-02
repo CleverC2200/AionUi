@@ -27,7 +27,6 @@ const LegacyReadOnlyConversation: React.FC<{
   return (
     <ConversationProvider
       value={{
-        assistantId: conversation.assistant?.id,
         conversation_id: conversation.id,
         workspace: conversation.extra?.workspace,
         type: 'acp',

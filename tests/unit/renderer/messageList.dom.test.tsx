@@ -5,7 +5,7 @@
  */
 
 import React, { type PropsWithChildren } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpToolCall, IMessageText, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
 import type { MessageFileChangesProps } from '@/renderer/pages/conversation/Messages/MessageFileChanges';
@@ -17,14 +17,10 @@ import {
 } from '@/renderer/pages/conversation/Messages/hooks';
 import MessageList from '@/renderer/pages/conversation/Messages/MessageList';
 
-const { acknowledgeDeepLinkMock, focusMessageTargetMock, locationState, parseDiffMock, useTeamPermissionMock } =
-  vi.hoisted(() => ({
-    acknowledgeDeepLinkMock: vi.fn(),
-    focusMessageTargetMock: vi.fn(),
-    locationState: {} as { interactionRequestId?: string; targetMessageId?: string },
-    parseDiffMock: vi.fn(),
-    useTeamPermissionMock: vi.fn(),
-  }));
+const { parseDiffMock, useTeamPermissionMock } = vi.hoisted(() => ({
+  parseDiffMock: vi.fn(),
+  useTeamPermissionMock: vi.fn(),
+}));
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -35,16 +31,8 @@ vi.mock('react-i18next', () => ({
 vi.mock('react-router-dom', () => ({
   useLocation: () => ({
     key: 'location-key',
-    state: locationState,
+    state: {},
   }),
-}));
-
-vi.mock('@/renderer/hooks/system/useDeepLink', () => ({
-  acknowledgeResolvedMessageDeepLink: acknowledgeDeepLinkMock,
-}));
-
-vi.mock('@/renderer/pages/conversation/Messages/focusMessageTarget', () => ({
-  focusMessageTarget: focusMessageTargetMock,
 }));
 
 vi.mock('@arco-design/web-react', () => ({
@@ -59,11 +47,7 @@ vi.mock('@arco-design/web-react', () => ({
 }));
 
 vi.mock('@/renderer/hooks/context/ConversationContext', () => ({
-  useConversationContextSafe: () => ({
-    assistantId: 'assistant-1',
-    conversation_id: 'conversation-1',
-    type: 'aionrs',
-  }),
+  useConversationContextSafe: () => ({ conversation_id: 'conversation-1', type: 'aionrs' }),
 }));
 
 vi.mock('@/renderer/pages/team/hooks/TeamPermissionContext', () => ({
@@ -274,10 +258,6 @@ function ReplaceMessagesButton({ messages }: { messages: TMessage[] }): JSX.Elem
 
 describe('MessageList', () => {
   beforeEach(() => {
-    acknowledgeDeepLinkMock.mockReset();
-    focusMessageTargetMock.mockReset().mockReturnValue(true);
-    delete locationState.interactionRequestId;
-    delete locationState.targetMessageId;
     mockIsProcessing = false;
     parseDiffMock.mockReset();
     parseDiffMock.mockReturnValue({
@@ -288,31 +268,6 @@ describe('MessageList', () => {
       diff: 'diff',
     });
     useTeamPermissionMock.mockReturnValue(null);
-  });
-
-  it('does not acknowledge a target row that is not mounted in the visible DOM', async () => {
-    locationState.targetMessageId = 'message-1';
-    const getElementById = vi.spyOn(document, 'getElementById').mockReturnValue(null);
-
-    render(<MessageList />, {
-      wrapper: ({ children }) => <Wrapper>{children}</Wrapper>,
-    });
-
-    await waitFor(() => expect(getElementById).toHaveBeenCalledWith('message-message-1'));
-    expect(acknowledgeDeepLinkMock).not.toHaveBeenCalled();
-    getElementById.mockRestore();
-  });
-
-  it('does not acknowledge a target when keyboard focus did not move into its row', async () => {
-    locationState.targetMessageId = 'message-1';
-    focusMessageTargetMock.mockReturnValue(false);
-
-    render(<MessageList />, {
-      wrapper: ({ children }) => <Wrapper>{children}</Wrapper>,
-    });
-
-    await waitFor(() => expect(focusMessageTargetMock).toHaveBeenCalled());
-    expect(acknowledgeDeepLinkMock).not.toHaveBeenCalled();
   });
 
   it('renders message rows with external margin spacing in the plain scroll list', () => {

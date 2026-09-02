@@ -103,7 +103,8 @@ describe('deepLink', () => {
   it.each([
     `aionui://open-conversation?ref=${REFERENCE}&ref=nav_abcdef0123456789&v=1`,
     `aionui://open-conversation?ref=${REFERENCE}&v=2`,
-    `aionui://open-conversation?ref=short&v=1`,
+    `aionui://open-conversation?ref=unsafe~reference&v=1`,
+    `aionui://open-conversation?ref=${'a'.repeat(513)}&v=1`,
     `aionui://open-conversation/path?ref=${REFERENCE}&v=1`,
     `aionui://open-conversation?ref=${REFERENCE}%ZZ&v=1`,
     `aionui://user@open-conversation?ref=${REFERENCE}&v=1`,
@@ -209,7 +210,7 @@ describe('deepLink', () => {
     expect(acknowledgeOpenConversation(newerReference)).toBe(true);
   });
 
-  it('keeps only the newest queued intent while the active intent is claimed', () => {
+  it('keeps distinct queued intents in bounded FIFO order', () => {
     const middleReference = 'nav_1111111111111111';
     const newestReference = 'nav_2222222222222222';
     handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1`);
@@ -220,10 +221,58 @@ describe('deepLink', () => {
     expect(acknowledgeOpenConversation(REFERENCE)).toBe(true);
     expect(bridge.emit).toHaveBeenCalledTimes(2);
     expect(bridge.emit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ ref: middleReference }) })
+    );
+    expect(acknowledgeOpenConversation(middleReference)).toBe(true);
+    expect(bridge.emit).toHaveBeenCalledTimes(3);
+    expect(bridge.emit).toHaveBeenLastCalledWith(
       expect.objectContaining({ params: expect.objectContaining({ ref: newestReference }) })
     );
-    expect(acknowledgeOpenConversation(middleReference)).toBe(false);
     expect(acknowledgeOpenConversation(newestReference)).toBe(true);
+  });
+
+  it('deduplicates active and queued navigation references', () => {
+    const queuedReference = 'nav_deduplicated_0001';
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1`);
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1`);
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${queuedReference}&v=1`);
+    handleDeepLinkUrl(`aionui://open-conversation?ref=${queuedReference}&v=1`);
+
+    expect(bridge.emit).toHaveBeenCalledTimes(1);
+    expect(acknowledgeOpenConversation(REFERENCE)).toBe(true);
+    expect(bridge.emit).toHaveBeenCalledTimes(2);
+    expect(acknowledgeOpenConversation(queuedReference)).toBe(true);
+    expect(claimPendingOpenConversation()).toBeNull();
+  });
+
+  it('caps the active plus queued navigation intents at sixteen', () => {
+    const references = Array.from({ length: 17 }, (_, index) => `nav_queue_${index.toString().padStart(2, '0')}`);
+    for (const reference of references) {
+      handleDeepLinkUrl(`aionui://open-conversation?ref=${reference}&v=1`);
+    }
+
+    for (const reference of references.slice(0, 16)) {
+      expect(acknowledgeOpenConversation(reference)).toBe(true);
+    }
+    expect(acknowledgeOpenConversation(references[16])).toBe(false);
+    expect(claimPendingOpenConversation()).toBeNull();
+  });
+
+  it('expires stale active intents before promoting the next FIFO item', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-09-01T00:00:00Z'));
+      const nextReference = 'nav_after_expiry_0001';
+      handleDeepLinkUrl(`aionui://open-conversation?ref=${REFERENCE}&v=1`);
+      vi.setSystemTime(new Date('2026-09-01T00:01:00Z'));
+      handleDeepLinkUrl(`aionui://open-conversation?ref=${nextReference}&v=1`);
+
+      vi.setSystemTime(new Date('2026-09-01T00:10:00Z'));
+      expect(claimPendingOpenConversation()?.params.ref).toBe(nextReference);
+      expect(acknowledgeOpenConversation(nextReference)).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('keeps a transiently failed active intent ahead of the newest queued intent', () => {
@@ -241,9 +290,13 @@ describe('deepLink', () => {
     expect(acknowledgeOpenConversation(REFERENCE)).toBe(true);
     expect(bridge.emit).toHaveBeenCalledTimes(3);
     expect(bridge.emit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ ref: middleReference }) })
+    );
+    expect(acknowledgeOpenConversation(middleReference)).toBe(true);
+    expect(bridge.emit).toHaveBeenCalledTimes(4);
+    expect(bridge.emit).toHaveBeenLastCalledWith(
       expect.objectContaining({ params: expect.objectContaining({ ref: newestReference }) })
     );
-    expect(acknowledgeOpenConversation(middleReference)).toBe(false);
     expect(acknowledgeOpenConversation(newestReference)).toBe(true);
   });
 

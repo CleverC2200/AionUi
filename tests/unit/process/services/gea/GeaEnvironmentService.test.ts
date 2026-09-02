@@ -29,6 +29,14 @@ beforeEach(() => {
 });
 
 describe('resolveGeaEnvironment', () => {
+  it('uses the production HTTPS endpoint without a non-standard port by default', () => {
+    expect(resolveGeaEnvironment({ env: {}, isPackaged: true })).toMatchObject({
+      baseUrl: 'https://gea.synear.cn/gea-boot',
+      editable: true,
+      source: 'default',
+    });
+  });
+
   it('uses the explicit environment before the persisted profile and legacy alias', () => {
     const environment = resolveGeaEnvironment({
       env: {

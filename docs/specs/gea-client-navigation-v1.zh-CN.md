@@ -1,124 +1,130 @@
-# GEA 客户端导航引用协议 v1
+# GEAUi Client Navigation V1 接入规范
 
-状态：客户端已实现、模拟平台已验证；GEA 管理端和真实 AionCore 尚未联调。机器可读契约见
-[`gea-client-navigation-v1.openapi.json`](./gea-client-navigation-v1.openapi.json)。
+状态：AionUi 客户端已实现并通过模拟契约、单元测试、构建及 macOS 安装包 Scheme 唤醒验证；真实飞书新消息到指定 Agent
+会话的完整生产链路，以及 Windows 新安装包，仍需联合验收。机器可读契约见
+[`gea-client-navigation-v1.openapi.json`](./gea-client-navigation-v1.openapi.json)。GEA 服务端字段和能力开关以《Client Navigation 与
+GEAUi 唤醒接入规范》v1.5 或更新版本为权威，本文件只冻结 AionUi 与 AionCore 的客户端边界。
 
-## 目标与边界
+## 当前范围
 
-飞书消息或待办只发送 HTTPS 落地页。落地页经用户动作打开：
-
-```text
-aionui://open-conversation?ref=<opaque>&v=1&profile=<environment-key>
-```
-
-客户端只信任协议形状，不信任链接内容。`ref` 是短期、不透明、可撤销且可重复解析的 Navigation Reference；链接不得包含路由、
-`conversation_id`、`assistant_id`、消息内容、外部身份、token、Cookie 或其他凭据。用户登录后，AionUi 把 `ref` 交给本地
-AionCore，由 AionCore 结合当前 Core Session 和外部身份映射完成校验及本地目标映射。
+- V1：打开当前用户有权访问的指定 Agent，并在本地显示其 Conversation。
+- V2：定位 Interaction Request，当前生产必须保持关闭；AionUi V1 resolve schema 会拒绝 V2 响应。
+- 飞书只发送 HTTPS Landing。Landing 的 Fragment 保存 Reference；只有用户点击按钮后才构造 Scheme。
+- AionUi 不解析 Reference、不接收身份或租户覆盖、不执行服务端提供的任意 URL/route。
 
 ```text
-飞书卡片 -> HTTPS 落地页 -> aionui://...ref... -> AionUi
-                                                |
-                                                v
-                                   POST /api/deep-links/resolve
-                                                |
-                                当前 Core Session / Lark 外部身份
-                                                |
-                                                v
-                         GEA resolve -> 业务目标 -> AionCore 本地目标映射
+飞书卡片
+  -> https://<gea-host>/aiportal/client-launch#ref=<opaque>&v=1&profile=production
+  -> 用户点击“打开 GEAUi”
+  -> aionui://open-conversation?ref=<opaque>&v=1
+  -> GEAUi / AionCore resolve
+  -> GEA V1 AGENT target
+  -> AionCore 创建或恢复本地 Conversation
+  -> GEAUi 显示 Conversation
+  -> AionCore 转发 TARGET_VISIBLE / SUCCESS ACK
 ```
 
-## 职责拆分
+## Scheme 契约
 
-| 责任方     | 必须负责                                                                                                | 明确不负责                                                         |
-| ---------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| GEA 管理端 | 签发、幂等、过期、撤销、收件人/租户绑定；HTTPS 落地页；飞书卡片                                         | 不生成本地路由，不下发 Core ID，不在 GET/HEAD 预览时解析或消费引用 |
-| AionCore   | 使用当前 Core Session 调 GEA resolve；校验外部身份、租户、环境、授权；将业务标识映射成本地 typed target | 不接受客户端传入的身份/租户覆盖，不返回任意 route/URL              |
-| AionUi     | 注册协议；排队和去重；登录后解析；只执行闭合 typed target；到达精确目标后 ACK                           | 不解析 `ref`，不缓存凭据，不把打开页面等同于业务处理完成           |
-| 联调负责人 | 固定环境、测试身份与测试数据；汇总 trace；分别记录 Mock 与真实验收                                      | 不以单测、构建或模拟平台通过代替真实 GEA/飞书验收                  |
+正式 Scheme：
 
-## 管理端接口
+```text
+aionui://open-conversation?ref=<opaque>&v=1
+```
 
-### 1. 签发引用
+约束：
 
-`POST /api/v1/internal/client-navigation-intents`
+- `ref` 长度 1 至 512，只允许 `[A-Za-z0-9._-]`；原值不得写入日志。
+- `v` 必须为 `1`；未知 action、重复参数、未知参数、非法百分号编码、userinfo、port、path、fragment 均拒绝。
+- 当前客户端为兼容早期联调链接仍允许可选 `profile`，但正式 gea-web 不应将 Landing 的 `profile` 透传进 Scheme。
+- 链接不得包含 Agent、Conversation、Interaction Request、用户、租户、Token、Cookie 或任意路由。
 
-- 仅服务身份可调用，并要求 `Idempotency-Key`。
-- 同一收件人和幂等键返回同一签发结果；同键不同请求应返回冲突，不得悄悄改写目标。
-- 请求包含 `recipient`、`environmentKey`、业务 `target` 和 `expiresInSeconds`；环境键只允许字母、数字、`.`、`_`、`-`，
-  长度为 1 至 64 个字符。
-- 响应包含 `navigationReference`、`clientUrl`、`landingUrl`、`expiresAt`。
-- 推荐默认 TTL 15 分钟，允许范围 60 秒至 24 小时。
+## AionCore 本地 resolve
 
-### 2. 当前用户解析
+GEAUi 调用：
 
-`POST /ai/gateway/client-navigation-intents/resolve`
-
-- 只接收 `navigationReference` 和 `schemaVersion`；身份、租户从当前 GEA 用户会话取得。
-- 解析是只读且可重放的，直到过期或撤销；页面预览不能消费引用。
-- 响应返回受授权的业务 target 和 `environmentKey`，AionCore 再映射本地标识。
-- 无权访问统一返回稳定错误，不返回目标是否存在、标题、正文或其他用户信息。
-
-### 3. HTTPS 落地页
-
-落地页的 GET/HEAD 只返回通用标题、说明和“打开 GEA 客户端”按钮。爬虫预览、浏览器预取或刷新不得调用 resolve、不得改变
-引用状态。按钮必须由用户动作触发自定义协议，同时提供“未安装客户端”说明。
-
-## AionCore 本地接口
-
-`POST /api/deep-links/resolve`
-
-请求：
+```http
+POST /api/deep-links/resolve
+```
 
 ```json
 {
-  "navigation_reference": "nav_opaque",
+  "navigation_reference": "reference.safe_123456",
   "schema_version": 1
 }
 ```
 
-成功响应只允许以下闭合类型：
+AionCore 使用当前登录用户调用 GEA Gateway resolve，严格校验 V1 `AGENT` target，创建或恢复对应 Agent 的 Gateway Session，然后只向
+GEAUi 返回本地闭合目标：
 
-| `target.type`         | 必填本地字段                                                                            | 客户端到达条件                   |
-| --------------------- | --------------------------------------------------------------------------------------- | -------------------------------- |
-| `conversation`        | `conversation_id`, `assistant_id`                                                       | 会话加载且 Assistant 一致        |
-| `message`             | 上述字段及 `message_id`                                                                 | 消息锚点加载、滚动并聚焦         |
-| `interaction_request` | 上述字段及 `interaction_request_id`、`message_id`；团队位置须成对带 `team_id`/`slot_id` | 通过消息锚点加载原始交互卡并聚焦 |
-| `team`                | `team_id`                                                                               | 团队加载                         |
-| `slot`                | `team_id`, `slot_id`, `conversation_id`, `assistant_id`                                 | 团队成员身份和 Slot 一致并切换   |
+```json
+{
+  "navigation_intent_id": "intent-1",
+  "schema_version": 1,
+  "target": {
+    "type": "conversation",
+    "conversation_id": "local-conversation-1"
+  },
+  "expires_at": "2099-09-01T12:00:00Z",
+  "trace_id": "trace-1"
+}
+```
 
-响应不得出现 `route`、`url`、`token` 或自由导航参数。AionUi 使用 snake_case 契约；GEA 管理端使用 camelCase 契约，转换边界属于
-AionCore。
+所有字段必填，未知字段拒绝。V1 的 `target` 只能包含 `type` 和 `conversation_id`；不得返回 `assistant_id`、`agentCode`、URL、route、
+Reference 或凭据。GEAUi 只按 `conversation_id` 打开现有 Conversation 路由。
 
-## 稳定错误码
+## 目标可见 ACK
 
-| 错误码                            | HTTP 建议 | 是否终止当前引用 | 说明                                           |
-| --------------------------------- | --------- | ---------------- | ---------------------------------------------- |
-| `NAVIGATION_REFERENCE_EXPIRED`    | 410       | 是               | 已过期                                         |
-| `NAVIGATION_REFERENCE_REVOKED`    | 410       | 是               | 已撤销                                         |
-| `NAVIGATION_REFERENCE_FORBIDDEN`  | 403       | 是               | 当前身份或租户无权访问                         |
-| `NAVIGATION_REFERENCE_NOT_FOUND`  | 404       | 是               | 不存在；不得泄漏更多信息                       |
-| `NAVIGATION_SCHEMA_UNSUPPORTED`   | 400       | 是               | 版本不支持                                     |
-| `NAVIGATION_IDEMPOTENCY_CONFLICT` | 409       | 是               | 同一签发幂等键被用于不同意图                   |
-| `NAVIGATION_INTENT_INVALID`       | 400       | 是               | 签发请求的环境键、TTL 或目标字段不合法         |
-| `DEEP_LINK_PROFILE_MISMATCH`      | 409       | 是               | 环境不匹配                                     |
-| `DEEP_LINK_ASSISTANT_MISMATCH`    | 409       | 是               | 本地会话与 Assistant 不一致                    |
-| `DEEP_LINK_TARGET_NOT_FOUND`      | 404       | 是               | 授权后仍无法映射本地目标                       |
-| `DEEP_LINK_RESOLVE_FAILED`        | 503       | 否               | 短暂技术失败，可在新的登录态或页面生命周期重试 |
+Conversation 已加载且页面确认目标可见后，GEAUi 调用：
 
-日志只记录 `ref` 的 SHA-256、阶段、平台、客户端版本、schema 版本、稳定结果码和双方 `trace_id`；不得记录原始引用、完整链接、
-用户身份或目标内容。
+```http
+POST /api/deep-links/ack
+```
 
-## 联调验收
+```json
+{
+  "navigation_intent_id": "intent-1",
+  "idempotency_key": "gea-ui-<stable-random-key>"
+}
+```
 
-### 模拟平台门禁
+AionCore 将其转换为 GEA 请求：
 
-- 签发结果只在 URL 暴露不透明 `ref`、版本和环境键。
-- 幂等签发、幂等冲突、重复解析、过期、撤销、未知引用、错误用户、错误租户、错误环境和错误 schema 均有自动化用例。
-- `DeepLinkResolveResponse` 通过客户端 Zod schema；任意 route 或多余字段被拒绝。
-- Conversation、Message、Interaction Request、Team、Slot 五种目标均有客户端导航契约测试。
-- 多条热启动只执行当前一条并保留最新待执行引用；登录身份变化后旧响应不得导航。
+```http
+POST /ai/gateway/client-navigation-intents/{intentId}/ack
+```
 
-运行：
+```json
+{
+  "stage": "TARGET_VISIBLE",
+  "result": "SUCCESS",
+  "idempotencyKey": "gea-ui-<stable-random-key>"
+}
+```
+
+一次导航生命周期内重试必须复用同一幂等键。客户端只对网络错误、`429` 和 `5xx` 做有限重试；ACK 成功后才从客户端 FIFO 移除当前
+Reference。打开进程、resolve 成功或仅改变路由均不算目标可见。
+
+## 客户端状态机
+
+- 冷启动参数、macOS `open-url`、Windows 二次启动参数统一进入同一严格解析器。
+- 同一 Reference 去重；不同 Reference 按 FIFO 执行；当前项加等待项总数最多 16。
+- 内存任务 10 分钟过期，不持久化原始 Reference。
+- 未登录或 AionCore 未就绪时保留任务；登录态变化会终止旧任务并以稳定错误码上报。
+- terminal 错误移除当前任务并推进队列；短暂技术错误保留当前任务，等待新的登录态或页面生命周期重试。
+- 日志只记录 Reference 的 SHA-256、阶段、平台、客户端版本、schema 版本和稳定结果码。
+
+## 职责边界
+
+| 责任方 | 负责 | 不负责 |
+| --- | --- | --- |
+| GEA / gea-web | 签发、Landing、当前身份 resolve、权限/过期/撤销、ACK 审计、能力与灰度开关 | 不向 Scheme 下发业务 ID 或凭据 |
+| AionCore | 当前登录身份调用 GEA；校验 V1 AGENT；准备本地 Conversation；转发 ACK | 不接受客户端身份/租户覆盖，不返回任意导航 URL |
+| AionUi | Scheme 注册、单实例转发、有界 FIFO、严格本地 schema、打开 Conversation、目标可见 ACK | 不解析 Reference，不把进程唤醒当成业务成功 |
+
+## 验证
+
+客户端定向门禁：
 
 ```bash
 bun run test tests/integration/deep-link-platform-contract.test.ts \
@@ -127,20 +133,13 @@ bun run test tests/integration/deep-link-platform-contract.test.ts \
   tests/unit/renderer/deepLink.dom.test.tsx
 ```
 
-### 真实联调门禁
+真实联合验收必须另外记录同一条链路的脱敏 GEA trace、AionCore trace 与客户端 Reference hash：
 
-以下各项必须保存 GEA/AionCore/AionUi 同一条测试链路的脱敏 trace，且不得用模拟结果替代：
+1. 新飞书消息的 HTTPS Landing 只在 Fragment 携带 `ref/v/profile`，点击后 Scheme 只含 `ref/v`。
+2. macOS 与 Windows 安装包分别验证冷启动、热启动、最小化唤醒及单实例转发。
+3. 已登录进入正确 Agent Conversation；未登录续跳、换用户、过期、撤销、越权、错误版本均 fail closed。
+4. 重复点击去重，多条链接 FIFO，队列上限和 10 分钟过期行为正确。
+5. 只有目标可见后发送 ACK，失败重试复用同一幂等键。
+6. 抓包与日志确认 Reference、用户信息、业务目标和凭据均未泄露。
 
-1. GEA 签发 -> 飞书真实卡片 -> HTTPS 落地页 -> 已安装 macOS 客户端冷/热启动。
-2. 未登录时保留引用，登录后才解析；切换用户、租户和环境均 fail closed。
-3. 五种目标各完成一次真实映射和精确到达；目标不存在和 Assistant 不匹配返回稳定错误。
-4. 引用过期、撤销、重复点击、并发点击及客户端重启行为与本规范一致。
-5. Windows 协议注册、冷启动和单实例转发单独验收。
-6. 抓包和日志检查确认 URL、落地页、客户端日志中没有凭据、内容或本地目标标识。
-
-## 联调交接材料
-
-- GEA：OpenAPI 实现版本、签发调用方、落地页地址、TTL/撤销策略、测试身份与 trace 查询方式。
-- AionCore：GEA client 配置、External Identity Mapping 证据、业务目标到本地 target 的映射表、错误码映射。
-- AionUi：客户端版本/SHA、安装包、协议注册检查结果、五类目标截图或录像、客户端 trace hash。
-- 联调负责人：一张按用例记录“管理端 trace / Core trace / 客户端 hash / 结果 / 剩余问题”的验收表。
+本地 Mock、静态检查、构建或仅验证 Scheme 唤醒，均不能替代以上生产验收。

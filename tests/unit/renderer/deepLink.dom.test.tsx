@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   unsubscribe: vi.fn(),
   claimPending: vi.fn<() => Promise<OpenConversationDeepLinkPayload | null>>(),
   resolve: vi.fn(),
+  acknowledgeTarget: vi.fn(),
   acknowledge: vi.fn(),
   reportFailure: vi.fn(),
 }));
@@ -24,6 +25,7 @@ vi.mock('@/common', () => ({
       },
       claimPending: { invoke: state.claimPending },
       resolve: { invoke: state.resolve },
+      acknowledgeTarget: { invoke: state.acknowledgeTarget },
       acknowledge: { invoke: state.acknowledge },
       reportFailure: { invoke: state.reportFailure },
     },
@@ -32,8 +34,6 @@ vi.mock('@/common', () => ({
 
 import {
   acknowledgeResolvedConversationDeepLink,
-  acknowledgeResolvedMessageDeepLink,
-  acknowledgeResolvedTeamDeepLink,
   useDeepLink,
 } from '@/renderer/hooks/system/useDeepLink';
 import { notifyAuthSessionChanged, resetAuthSessionEpochForTests } from '@/renderer/hooks/context/AuthContext';
@@ -56,9 +56,13 @@ describe('useDeepLink', () => {
     state.received = undefined;
     state.claimPending.mockResolvedValue(null);
     state.resolve.mockResolvedValue({
+      navigation_intent_id: 'intent-1',
       schema_version: 1,
-      target: { type: 'conversation', conversation_id: 'conversation/1', assistant_id: 'assistant-1' },
+      target: { type: 'conversation', conversation_id: 'conversation/1' },
+      expires_at: '2099-09-01T12:00:00Z',
+      trace_id: 'trace-1',
     });
+    state.acknowledgeTarget.mockResolvedValue(undefined);
     state.acknowledge.mockResolvedValue(true);
     state.reportFailure.mockResolvedValue(true);
   });
@@ -76,9 +80,11 @@ describe('useDeepLink', () => {
     });
     expect(state.acknowledge).not.toHaveBeenCalled();
 
-    await expect(
-      acknowledgeResolvedConversationDeepLink({ id: 'conversation/1', assistant: { id: 'assistant-1' } })
-    ).resolves.toBe(true);
+    await expect(acknowledgeResolvedConversationDeepLink({ id: 'conversation/1' })).resolves.toBe(true);
+    expect(state.acknowledgeTarget).toHaveBeenCalledWith({
+      navigation_intent_id: 'intent-1',
+      idempotency_key: expect.stringMatching(/^gea-ui-/),
+    });
     expect(state.acknowledge).toHaveBeenCalledWith({ navigation_reference: payload.params.ref });
   });
 
@@ -112,7 +118,7 @@ describe('useDeepLink', () => {
 
   it('rejects a malformed open-conversation payload at the renderer boundary', () => {
     renderHook(() => useDeepLink());
-    act(() => state.received?.({ action: 'open-conversation', params: { ref: 'short', v: '1' } }));
+    act(() => state.received?.({ action: 'open-conversation', params: { ref: 'unsafe~reference', v: '1' } }));
 
     expect(state.resolve).not.toHaveBeenCalled();
     expect(state.navigate).not.toHaveBeenCalled();
@@ -170,8 +176,11 @@ describe('useDeepLink', () => {
     );
     act(() =>
       completeResolve?.({
+        navigation_intent_id: 'intent-1',
         schema_version: 1,
-        target: { type: 'conversation', conversation_id: 'conversation/1', assistant_id: 'assistant-1' },
+        target: { type: 'conversation', conversation_id: 'conversation/1' },
+        expires_at: '2099-09-01T12:00:00Z',
+        trace_id: 'trace-1',
       })
     );
 
@@ -191,145 +200,64 @@ describe('useDeepLink', () => {
         result_code: 'DEEP_LINK_AUTH_SESSION_CHANGED',
       })
     );
-    await expect(
-      acknowledgeResolvedConversationDeepLink({ id: 'conversation/1', assistant: { id: 'assistant-1' } })
-    ).resolves.toBe(false);
+    await expect(acknowledgeResolvedConversationDeepLink({ id: 'conversation/1' })).resolves.toBe(false);
   });
 
-  it.each([
-    [
-      { type: 'message', conversation_id: 'conversation/1', assistant_id: 'assistant-1', message_id: 'message-1' },
-      '/conversation/conversation%2F1',
-      { targetMessageId: 'message-1' },
-    ],
-    [{ type: 'team', team_id: 'team/1' }, '/team/team%2F1', undefined],
-    [
-      {
-        type: 'slot',
-        team_id: 'team/1',
-        slot_id: 'slot-1',
-        conversation_id: 'conversation/1',
-        assistant_id: 'assistant-1',
-      },
-      '/team/team%2F1',
-      { targetSlotId: 'slot-1' },
-    ],
-    [
-      {
-        type: 'interaction_request',
-        conversation_id: 'conversation/1',
-        assistant_id: 'assistant-1',
-        interaction_request_id: 'request-1',
-        message_id: 'message-1',
-      },
-      '/conversation/conversation%2F1',
-      { interactionRequestId: 'request-1', targetMessageId: 'message-1' },
-    ],
-  ] as const)('navigates to a typed %s target', async (target, pathname, navigationState) => {
-    state.resolve.mockResolvedValue({ schema_version: 1, target });
-    renderHook(() => useDeepLink());
-    await emitClaimable(payload);
-
-    await waitFor(() => {
-      if (navigationState) {
-        expect(state.navigate).toHaveBeenCalledWith(pathname, { state: navigationState });
-      } else {
-        expect(state.navigate).toHaveBeenCalledWith(pathname);
-      }
-    });
-  });
-
-  it('acknowledges a Message target only after the exact message is reached', async () => {
-    state.resolve.mockResolvedValue({
-      schema_version: 1,
-      target: {
-        type: 'message',
-        conversation_id: 'conversation/1',
-        assistant_id: 'assistant-1',
-        message_id: 'message-1',
-      },
-    });
-    renderHook(() => useDeepLink());
-    await emitClaimable(payload);
-    await waitFor(() => expect(state.navigate).toHaveBeenCalledOnce());
-
-    await expect(
-      acknowledgeResolvedMessageDeepLink({
-        assistantId: 'assistant-1',
-        conversationId: 'conversation/1',
-        messageId: 'message-other',
-      })
-    ).resolves.toBe(false);
-    await expect(
-      acknowledgeResolvedMessageDeepLink({
-        assistantId: 'assistant-other',
-        conversationId: 'conversation/1',
-        messageId: 'message-1',
-      })
-    ).resolves.toBe(false);
-    await expect(
-      acknowledgeResolvedMessageDeepLink({
-        assistantId: 'assistant-1',
-        conversationId: 'conversation/1',
-        messageId: 'message-1',
-      })
-    ).resolves.toBe(true);
-  });
-
-  it('acknowledges a Slot target only after the exact local slot identity is reached', async () => {
-    state.resolve.mockResolvedValue({
-      schema_version: 1,
-      target: {
-        type: 'slot',
-        team_id: 'team-1',
-        slot_id: 'slot-1',
-        conversation_id: 'conversation-1',
-        assistant_id: 'assistant-1',
-      },
-    });
-    renderHook(() => useDeepLink());
-    await emitClaimable(payload);
-    await waitFor(() => expect(state.navigate).toHaveBeenCalledOnce());
-
-    await expect(
-      acknowledgeResolvedTeamDeepLink(
-        'team-1',
-        [{ slot_id: 'slot-1', conversation_id: 'conversation-1', assistant_id: 'assistant-other' }],
-        'slot-1'
-      )
-    ).resolves.toBe(false);
-    await expect(
-      acknowledgeResolvedTeamDeepLink(
-        'team-1',
-        [{ slot_id: 'slot-1', conversation_id: 'conversation-1', assistant_id: 'assistant-1' }],
-        'slot-other'
-      )
-    ).resolves.toBe(false);
-    await expect(
-      acknowledgeResolvedTeamDeepLink(
-        'team-1',
-        [{ slot_id: 'slot-1', conversation_id: 'conversation-1', assistant_id: 'assistant-1' }],
-        'slot-1'
-      )
-    ).resolves.toBe(true);
-  });
-
-  it('fails closed when the loaded Conversation belongs to another Assistant', async () => {
+  it('uses the AionCore-bound Conversation as the V1 visibility authority', async () => {
     renderHook(() => useDeepLink());
     await emitClaimable(payload);
     await waitFor(() => expect(state.navigate).toHaveBeenCalledOnce());
 
     await expect(
       acknowledgeResolvedConversationDeepLink({ id: 'conversation/1', assistant: { id: 'assistant-other' } })
-    ).resolves.toBe(false);
-    expect(state.acknowledge).not.toHaveBeenCalled();
-    expect(state.reportFailure).toHaveBeenCalledWith({
-      navigation_reference: payload.params.ref,
-      result_code: 'DEEP_LINK_ASSISTANT_MISMATCH',
-    });
+    ).resolves.toBe(true);
+    expect(state.acknowledgeTarget).toHaveBeenCalledOnce();
+    expect(state.acknowledge).toHaveBeenCalledOnce();
   });
 
-  it('fails closed when the native acknowledge bridge is unavailable', async () => {
+  it('does not clear the native queue when the Gateway visibility ACK fails', async () => {
+    state.acknowledgeTarget.mockRejectedValue(new Error('gateway unavailable'));
+    renderHook(() => useDeepLink());
+    await emitClaimable(payload);
+    await waitFor(() => expect(state.navigate).toHaveBeenCalledOnce());
+
+    await expect(
+      acknowledgeResolvedConversationDeepLink({ id: 'conversation/1', assistant: { id: 'assistant/1' } })
+    ).resolves.toBe(false);
+    expect(state.acknowledgeTarget).toHaveBeenCalledTimes(3);
+    expect(state.acknowledge).not.toHaveBeenCalled();
+  });
+
+  it('retries a transient Gateway visibility ACK with the same idempotency key', async () => {
+    state.acknowledgeTarget.mockRejectedValueOnce(new Error('gateway unavailable')).mockResolvedValueOnce(undefined);
+    renderHook(() => useDeepLink());
+    await emitClaimable(payload);
+    await waitFor(() => expect(state.navigate).toHaveBeenCalledOnce());
+
+    await expect(acknowledgeResolvedConversationDeepLink({ id: 'conversation/1' })).resolves.toBe(true);
+    expect(state.acknowledgeTarget).toHaveBeenCalledTimes(2);
+    expect(state.acknowledgeTarget.mock.calls[0][0].idempotency_key).toBe(
+      state.acknowledgeTarget.mock.calls[1][0].idempotency_key
+    );
+    expect(state.acknowledge).toHaveBeenCalledOnce();
+  });
+
+  it('does not blindly retry a Gateway visibility ACK conflict', async () => {
+    state.acknowledgeTarget.mockRejectedValue({
+      name: 'BackendHttpError',
+      status: 409,
+      code: 'NAVIGATION_STATE_CONFLICT',
+    });
+    renderHook(() => useDeepLink());
+    await emitClaimable(payload);
+    await waitFor(() => expect(state.navigate).toHaveBeenCalledOnce());
+
+    await expect(acknowledgeResolvedConversationDeepLink({ id: 'conversation/1' })).resolves.toBe(false);
+    expect(state.acknowledgeTarget).toHaveBeenCalledOnce();
+    expect(state.acknowledge).not.toHaveBeenCalled();
+  });
+
+  it('keeps the resolved target retryable when the native queue acknowledgement is unavailable', async () => {
     state.acknowledge.mockRejectedValueOnce(new Error('bridge unavailable'));
     renderHook(() => useDeepLink());
     await emitClaimable(payload);
@@ -338,20 +266,9 @@ describe('useDeepLink', () => {
     await expect(
       acknowledgeResolvedConversationDeepLink({ id: 'conversation/1', assistant: { id: 'assistant/1' } })
     ).resolves.toBe(false);
-  });
-
-  it('clears an Assistant mismatch when the native failure bridge is unavailable', async () => {
-    state.reportFailure.mockRejectedValueOnce(new Error('bridge unavailable'));
-    renderHook(() => useDeepLink());
-    await emitClaimable(payload);
-    await waitFor(() => expect(state.navigate).toHaveBeenCalledOnce());
-
-    await expect(
-      acknowledgeResolvedConversationDeepLink({ id: 'conversation/1', assistant: { id: 'assistant-other' } })
-    ).resolves.toBe(false);
     await expect(
       acknowledgeResolvedConversationDeepLink({ id: 'conversation/1', assistant: { id: 'assistant/1' } })
-    ).resolves.toBe(false);
-    expect(state.acknowledge).not.toHaveBeenCalled();
+    ).resolves.toBe(true);
+    expect(state.acknowledgeTarget).toHaveBeenCalledTimes(2);
   });
 });

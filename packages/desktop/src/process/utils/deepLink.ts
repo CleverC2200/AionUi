@@ -19,17 +19,26 @@ import {
 
 export const PROTOCOL_SCHEME = 'aionui';
 const MAX_DEEP_LINK_LENGTH = 2048;
-const MAX_NAVIGATION_REFERENCE_LENGTH = 1024;
+const MAX_NAVIGATION_REFERENCE_LENGTH = 512;
+const MAX_OPEN_CONVERSATION_QUEUE_SIZE = 16;
+const OPEN_CONVERSATION_QUEUE_TTL_MS = 10 * 60 * 1000;
 const PROFILE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const NAVIGATION_REFERENCE_PATTERN = /^[A-Za-z0-9._~-]{16,1024}$/;
+const NAVIGATION_REFERENCE_PATTERN = /^[A-Za-z0-9._-]{1,512}$/;
 const RESULT_CODE_PATTERN = /^[A-Z][A-Z0-9_]{2,80}$/;
 const LEGACY_ACTIONS = new Set(['add-provider', 'provider/add', 'navigate']);
 const TERMINAL_RESOLVE_RESULTS = new Set([
+  'NAVIGATION_REFERENCE_DISABLED',
+  'NAVIGATION_CONFIGURATION_INVALID',
   'NAVIGATION_REFERENCE_EXPIRED',
   'NAVIGATION_REFERENCE_REVOKED',
   'NAVIGATION_REFERENCE_FORBIDDEN',
   'NAVIGATION_REFERENCE_NOT_FOUND',
   'NAVIGATION_SCHEMA_UNSUPPORTED',
+  'NAVIGATION_SOURCE_MISMATCH',
+  'NAVIGATION_TARGET_UNAVAILABLE',
+  'NAVIGATION_REQUEST_INVALID',
+  'NAVIGATION_REQUEST_UNKNOWN_FIELD',
+  'DEEP_LINK_AUTH_SESSION_CHANGED',
   'DEEP_LINK_ASSISTANT_MISMATCH',
   'DEEP_LINK_RESOLVE_INVALID',
   'DEEP_LINK_TARGET_NOT_FOUND',
@@ -40,6 +49,7 @@ type PendingOpenConversation = {
   claimed: boolean;
   dispatched: boolean;
   payload: OpenConversationDeepLinkPayload;
+  receivedAt: number;
 };
 
 const hasInvalidPercentEncoding = (value: string): boolean => /%(?![0-9A-Fa-f]{2})/.test(value);
@@ -159,9 +169,9 @@ const initialDeepLink = findInitialDeepLink(process.argv);
 let mainWindowRef: BrowserWindow | null = null;
 let pendingDeepLinkUrl: string | null = initialDeepLink.url;
 let pendingOpenConversation: PendingOpenConversation | null = initialDeepLink.payload
-  ? { claimed: false, dispatched: false, payload: initialDeepLink.payload }
+  ? { claimed: false, dispatched: false, payload: initialDeepLink.payload, receivedAt: Date.now() }
   : null;
-let queuedOpenConversation: OpenConversationDeepLinkPayload | null = null;
+let queuedOpenConversations: PendingOpenConversation[] = [];
 
 const getConfiguredProfileKey = (): string | null => {
   try {
@@ -218,7 +228,23 @@ const canBroadcastToRenderer = (): boolean =>
     !mainWindowRef.webContents.isLoadingMainFrame()
   );
 
+const isExpired = (pending: PendingOpenConversation): boolean =>
+  Date.now() - pending.receivedAt >= OPEN_CONVERSATION_QUEUE_TTL_MS;
+
+const pruneQueuedOpenConversations = (): void => {
+  queuedOpenConversations = queuedOpenConversations.filter((pending) => {
+    if (!isExpired(pending)) return true;
+    logOpenConversation(pending.payload, 'ingress', 'expired');
+    return false;
+  });
+};
+
 const broadcastPendingOpenConversation = (): boolean => {
+  if (pendingOpenConversation && isExpired(pendingOpenConversation)) {
+    logOpenConversation(pendingOpenConversation.payload, 'ingress', 'expired');
+    clearPendingUrlForReference(pendingOpenConversation.payload.params.ref);
+    promoteQueuedOpenConversation();
+  }
   if (
     !pendingOpenConversation ||
     pendingOpenConversation.dispatched ||
@@ -234,14 +260,17 @@ const broadcastPendingOpenConversation = (): boolean => {
 };
 
 const promoteQueuedOpenConversation = (): void => {
-  pendingOpenConversation = queuedOpenConversation
-    ? { claimed: false, dispatched: false, payload: queuedOpenConversation }
-    : null;
-  queuedOpenConversation = null;
+  pruneQueuedOpenConversations();
+  pendingOpenConversation = queuedOpenConversations.shift() ?? null;
   broadcastPendingOpenConversation();
 };
 
 export const claimPendingOpenConversation = (): OpenConversationDeepLinkPayload | null => {
+  if (pendingOpenConversation && isExpired(pendingOpenConversation)) {
+    logOpenConversation(pendingOpenConversation.payload, 'ingress', 'expired');
+    clearPendingUrlForReference(pendingOpenConversation.payload.params.ref);
+    promoteQueuedOpenConversation();
+  }
   const profileStatus = pendingOpenConversation ? isConfiguredProfile(pendingOpenConversation.payload) : true;
   if (pendingOpenConversation && profileStatus === false) {
     clearPendingUrlForReference(pendingOpenConversation.payload.params.ref);
@@ -285,6 +314,7 @@ export const handleDeepLinkUrl = (url: string): void => {
   if (!parsed) return;
 
   if (isOpenConversationDeepLinkPayload(parsed)) {
+    pruneQueuedOpenConversations();
     const profileStatus = isConfiguredProfile(parsed);
     if (profileStatus === false) {
       clearPendingUrlForReference(parsed.params.ref);
@@ -296,15 +326,19 @@ export const handleDeepLinkUrl = (url: string): void => {
       broadcastPendingOpenConversation();
       return;
     }
-    if (
-      pendingOpenConversation &&
-      (pendingOpenConversation.claimed || pendingOpenConversation.dispatched || queuedOpenConversation)
-    ) {
-      queuedOpenConversation = parsed;
+    if (queuedOpenConversations.some((pending) => pending.payload.params.ref === parsed.params.ref)) {
+      return;
+    }
+    if (pendingOpenConversation) {
+      if (queuedOpenConversations.length + 1 >= MAX_OPEN_CONVERSATION_QUEUE_SIZE) {
+        logOpenConversation(parsed, 'ingress', 'queue_full');
+        return;
+      }
+      queuedOpenConversations.push({ claimed: false, dispatched: false, payload: parsed, receivedAt: Date.now() });
       logOpenConversation(parsed, 'ingress', 'queued');
       return;
     }
-    pendingOpenConversation = { claimed: false, dispatched: false, payload: parsed };
+    pendingOpenConversation = { claimed: false, dispatched: false, payload: parsed, receivedAt: Date.now() };
     if (profileStatus === null) {
       pendingDeepLinkUrl = url;
       logOpenConversation(parsed, 'ingress', 'queued');

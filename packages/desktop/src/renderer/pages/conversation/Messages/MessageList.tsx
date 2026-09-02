@@ -56,7 +56,6 @@ import MessageThinking from './components/MessageThinking';
 import type { WriteFileResult } from './types';
 import { useAutoScroll } from './useAutoScroll';
 import SelectionReplyButton from './components/SelectionReplyButton';
-import { acknowledgeResolvedMessageDeepLink } from '@/renderer/hooks/system/useDeepLink';
 
 type IFileSummaryVO = {
   type: 'file_summary';
@@ -129,26 +128,8 @@ const isWriteFileResult = (value: unknown): value is WriteFileResult =>
   typeof value.file_name === 'string';
 
 type ConversationLocationState = {
-  interactionRequestId?: string;
   targetMessageId?: string;
   fromConversationSearch?: boolean;
-};
-
-const containsInteractionRequestId = (value: unknown, requestId: string, depth = 0): boolean => {
-  if (!value || depth > 5) return false;
-  if (Array.isArray(value)) {
-    return value.some((item) => containsInteractionRequestId(item, requestId, depth + 1));
-  }
-  if (typeof value !== 'object') return false;
-  const record = value as Record<string, unknown>;
-  if (
-    record.interaction_request &&
-    typeof record.interaction_request === 'object' &&
-    (record.interaction_request as { id?: unknown }).id === requestId
-  ) {
-    return true;
-  }
-  return Object.values(record).some((item) => containsInteractionRequestId(item, requestId, depth + 1));
 };
 
 const getProcessedItemSourceMessageIds = (item: IProcessedItem): string[] => {
@@ -545,7 +526,6 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
   const location = useLocation();
   const locationState = (location.state || {}) as ConversationLocationState;
   const targetMessageId = locationState.targetMessageId;
-  const interactionRequestId = locationState.interactionRequestId;
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | undefined>();
   const handledTargetKeyRef = useRef<string>('');
   const loadingTargetKeyRef = useRef<string>('');
@@ -766,22 +746,18 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
   );
 
   useEffect(() => {
-    if ((!targetMessageId && !interactionRequestId) || processedList.length === 0) {
+    if (!targetMessageId || processedList.length === 0) {
       return;
     }
 
-    const targetKey = `${location.key}:${targetMessageId ?? `request:${interactionRequestId}`}`;
+    const targetKey = `${location.key}:${targetMessageId}`;
     if (handledTargetKeyRef.current === targetKey) {
       return;
     }
 
-    const targetIndex = processedList.findIndex(
-      (item) =>
-        (!targetMessageId || matchesTargetMessage(item, targetMessageId)) &&
-        (!interactionRequestId || containsInteractionRequestId(item, interactionRequestId))
-    );
+    const targetIndex = processedList.findIndex((item) => matchesTargetMessage(item, targetMessageId));
     if (targetIndex === -1) {
-      if (targetMessageId && loadingTargetKeyRef.current !== targetKey) {
+      if (loadingTargetKeyRef.current !== targetKey) {
         loadingTargetKeyRef.current = targetKey;
         void loadAnchorMessageWindow(targetMessageId).then((loaded) => {
           if (!loaded) {
@@ -794,44 +770,24 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
 
     handledTargetKeyRef.current = targetKey;
     loadingTargetKeyRef.current = '';
-    const resolvedMessageId = targetMessageId ?? getProcessedItemSourceMessageIds(processedList[targetIndex])[0];
-    if (!resolvedMessageId) return;
-    setHighlightedMessageId(resolvedMessageId);
+    setHighlightedMessageId(targetMessageId);
     hideScrollButton();
 
     requestAnimationFrame(() => {
       const targetElement = document.getElementById(`message-${getProcessedItemAnchorId(processedList[targetIndex])}`);
-      if (!targetElement) return;
       scrollElementIntoView(targetElement, {
         behavior: 'smooth',
         block: 'center',
       });
-      if (!focusMessageTarget(targetElement)) return;
-      if (conversationContext?.conversation_id) {
-        void acknowledgeResolvedMessageDeepLink({
-          assistantId: conversationContext.assistantId,
-          conversationId: conversationContext.conversation_id,
-          interactionRequestId,
-          messageId: resolvedMessageId,
-        });
-      }
+      focusMessageTarget(targetElement);
     });
 
     const timer = window.setTimeout(() => {
-      setHighlightedMessageId((current) => (current === resolvedMessageId ? undefined : current));
+      setHighlightedMessageId((current) => (current === targetMessageId ? undefined : current));
     }, 2400);
 
     return () => window.clearTimeout(timer);
-  }, [
-    conversationContext?.conversation_id,
-    hideScrollButton,
-    interactionRequestId,
-    loadAnchorMessageWindow,
-    location.key,
-    processedList,
-    scrollElementIntoView,
-    targetMessageId,
-  ]);
+  }, [hideScrollButton, loadAnchorMessageWindow, location.key, processedList, scrollElementIntoView, targetMessageId]);
 
   useEffect(() => {
     const handleMessageJump = (event: Event) => {

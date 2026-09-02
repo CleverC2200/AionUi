@@ -450,7 +450,7 @@ describe('LarkAuthService', () => {
     await expect(service.pollQrSession('QRCODELOGIN:1')).resolves.toMatchObject({
       status: 'authenticated',
       user: {
-        avatar: 'https://gea.synear.cn:4443/gea-boot/sys/common/static/avatar.png',
+        avatar: 'https://gea.synear.cn/gea-boot/sys/common/static/avatar.png',
         id: '10086',
         realname: '张三',
         username: 'zhangsan',
@@ -459,7 +459,7 @@ describe('LarkAuthService', () => {
     expect(service.getStatus()).toMatchObject({ authenticated: true, user: { realname: '张三' } });
 
     const userInfoRequest = fetchImpl.mock.calls[1];
-    expect(userInfoRequest[0]).toBe('https://gea.synear.cn:4443/gea-boot/sys/user/getUserInfo');
+    expect(userInfoRequest[0]).toBe('https://gea.synear.cn/gea-boot/sys/user/getUserInfo');
     expect(userInfoRequest[1]?.headers).toMatchObject({ 'X-Access-Token': 'sensitive-token' });
 
     await service.logout();
@@ -505,7 +505,7 @@ describe('LarkAuthService', () => {
       user: { id: '10086', realname: '张三' },
     });
     expect(restoreFetch).toHaveBeenCalledWith(
-      'https://gea.synear.cn:4443/gea-boot/sys/user/getUserInfo',
+      'https://gea.synear.cn/gea-boot/sys/user/getUserInfo',
       expect.objectContaining({ headers: expect.objectContaining({ 'X-Access-Token': 'persisted-token' }) })
     );
 

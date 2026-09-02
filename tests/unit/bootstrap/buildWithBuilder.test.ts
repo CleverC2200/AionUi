@@ -263,21 +263,25 @@ childProcess.execSync = function mockedExecSync(command) {
     {
       args: ['arm64', '--win', '--arm64'],
       expectedArch: 'arm64',
+      expectedPlatform: 'win32',
     },
     {
       args: ['auto', '--mac', '--x64'],
       expectedArch: 'x64',
+      expectedPlatform: 'darwin',
     },
-  ])('prepares bundled AionCore for $expectedArch with args $args', ({ args, expectedArch }) => {
-    const tempDir = mkdtempSync(join(tmpdir(), 'aionui-build-test-'));
-    const hookPath = join(tempDir, 'hook.cjs');
-    const callsPath = join(tempDir, 'prepare-calls.json');
-    const outDir = resolve(repoRoot, 'out');
-    const backupOutDir = resolve(repoRoot, `.tmp-out-backup-${process.pid}-${Date.now()}-${expectedArch}`);
+  ])(
+    'prepares bundled AionCore for $expectedPlatform-$expectedArch with args $args',
+    ({ args, expectedArch, expectedPlatform }) => {
+      const tempDir = mkdtempSync(join(tmpdir(), 'aionui-build-test-'));
+      const hookPath = join(tempDir, 'hook.cjs');
+      const callsPath = join(tempDir, 'prepare-calls.json');
+      const outDir = resolve(repoRoot, 'out');
+      const backupOutDir = resolve(repoRoot, `.tmp-out-backup-${process.pid}-${Date.now()}-${expectedArch}`);
 
-    writeFileSync(
-      hookPath,
-      `
+      writeFileSync(
+        hookPath,
+        `
 const childProcess = require('node:child_process');
 const fs = require('node:fs');
 const Module = require('node:module');
@@ -335,46 +339,50 @@ childProcess.execSync = function mockedExecSync(command) {
   return Buffer.from('');
 };
 `,
-      'utf8'
-    );
-
-    let movedExistingOut = false;
-    try {
-      if (existsSync(outDir)) {
-        renameSync(outDir, backupOutDir);
-        movedExistingOut = true;
-      }
-
-      const result = spawnSync(process.execPath, ['scripts/build-with-builder.js', ...args], {
-        cwd: repoRoot,
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          AIONUI_PREPARE_CALLS_FILE: callsPath,
-          NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require=${hookPath}`].filter(Boolean).join(' '),
-        },
-      });
-
-      expect(result.status, result.stderr || result.stdout).toBe(0);
-      expect(readFileSync(resolve(repoRoot, 'resources/windows/support/_sentry-dsn.generated.nsh'), 'utf8')).toBe(
-        '!define AIONUI_SENTRY_DSN ""\n'
+        'utf8'
       );
 
-      if (args.includes('--win')) {
-        const installUtil = readFileSync(resolveAppBuilderInstallUtil(), 'utf8');
-        expect(installUtil).toContain('AionUi-bundled-uninstaller override source');
-        expect(installUtil).toContain('$PLUGINSDIR\\AionUi-fixed-uninstaller.exe');
-        expect(installUtil.match(/AionUi-bundled-uninstaller override source/g)).toHaveLength(1);
-      }
+      let movedExistingOut = false;
+      try {
+        if (existsSync(outDir)) {
+          renameSync(outDir, backupOutDir);
+          movedExistingOut = true;
+        }
 
-      const calls = JSON.parse(readFileSync(callsPath, 'utf8')) as Array<{ arch?: string } | null>;
-      expect(calls).toContainEqual(expect.objectContaining({ arch: expectedArch }));
-    } finally {
-      rmSync(outDir, { recursive: true, force: true });
-      if (movedExistingOut) {
-        renameSync(backupOutDir, outDir);
+        const result = spawnSync(process.execPath, ['scripts/build-with-builder.js', ...args], {
+          cwd: repoRoot,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            AIONUI_PREPARE_CALLS_FILE: callsPath,
+            NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require=${hookPath}`].filter(Boolean).join(' '),
+          },
+        });
+
+        expect(result.status, result.stderr || result.stdout).toBe(0);
+        expect(readFileSync(resolve(repoRoot, 'resources/windows/support/_sentry-dsn.generated.nsh'), 'utf8')).toBe(
+          '!define AIONUI_SENTRY_DSN ""\n'
+        );
+
+        if (args.includes('--win')) {
+          const installUtil = readFileSync(resolveAppBuilderInstallUtil(), 'utf8');
+          expect(installUtil).toContain('AionUi-bundled-uninstaller override source');
+          expect(installUtil).toContain('$PLUGINSDIR\\AionUi-fixed-uninstaller.exe');
+          expect(installUtil.match(/AionUi-bundled-uninstaller override source/g)).toHaveLength(1);
+        }
+
+        const calls = JSON.parse(readFileSync(callsPath, 'utf8')) as Array<{
+          arch?: string;
+          platform?: string;
+        } | null>;
+        expect(calls).toContainEqual(expect.objectContaining({ arch: expectedArch, platform: expectedPlatform }));
+      } finally {
+        rmSync(outDir, { recursive: true, force: true });
+        if (movedExistingOut) {
+          renameSync(backupOutDir, outDir);
+        }
+        rmSync(tempDir, { recursive: true, force: true });
       }
-      rmSync(tempDir, { recursive: true, force: true });
     }
-  });
+  );
 });

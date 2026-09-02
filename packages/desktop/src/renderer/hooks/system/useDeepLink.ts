@@ -33,7 +33,9 @@ export type DeepLinkAddProviderDetail = {
 let pendingDeepLinkData: DeepLinkAddProviderDetail | null = null;
 
 type PendingResolvedTarget = {
+  acknowledgementIdempotencyKey: string;
   authSessionEpoch: number;
+  navigationIntentId: string;
   navigationReference: string;
   target: DeepLinkTarget;
 };
@@ -46,45 +48,35 @@ type DeepLinkNavigation = {
 };
 
 const pathSegment = (value: string): string => encodeURIComponent(value);
+const createNavigationAckKey = (): string =>
+  `gea-ui-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
+const NAVIGATION_ACK_RETRY_DELAYS_MS = [0, 250] as const;
+
+const shouldRetryNavigationAck = (error: unknown): boolean =>
+  !isBackendHttpError(error) || error.status === 429 || error.status >= 500;
+
+const acknowledgeTargetVisible = async (pending: PendingResolvedTarget, attempt = 0): Promise<boolean> => {
+  if (getAuthSessionEpochSnapshot() !== pending.authSessionEpoch) return false;
+  try {
+    await ipcBridge.deepLink.acknowledgeTarget.invoke({
+      navigation_intent_id: pending.navigationIntentId,
+      idempotency_key: pending.acknowledgementIdempotencyKey,
+    });
+    return true;
+  } catch (error) {
+    if (attempt >= NAVIGATION_ACK_RETRY_DELAYS_MS.length || !shouldRetryNavigationAck(error)) return false;
+    await new Promise((resolve) => setTimeout(resolve, NAVIGATION_ACK_RETRY_DELAYS_MS[attempt]));
+    return acknowledgeTargetVisible(pending, attempt + 1);
+  }
+};
 
 export const resolveDeepLinkNavigation = (target: DeepLinkTarget): DeepLinkNavigation => {
-  switch (target.type) {
-    case 'conversation':
-      return { pathname: `/conversation/${pathSegment(target.conversation_id)}` };
-    case 'message':
-      return {
-        pathname: `/conversation/${pathSegment(target.conversation_id)}`,
-        state: { targetMessageId: target.message_id },
-      };
-    case 'interaction_request':
-      return target.team_id && target.slot_id
-        ? {
-            pathname: `/team/${pathSegment(target.team_id)}`,
-            state: {
-              targetSlotId: target.slot_id,
-              interactionRequestId: target.interaction_request_id,
-              ...(target.message_id ? { targetMessageId: target.message_id } : {}),
-            },
-          }
-        : {
-            pathname: `/conversation/${pathSegment(target.conversation_id)}`,
-            state: {
-              interactionRequestId: target.interaction_request_id,
-              ...(target.message_id ? { targetMessageId: target.message_id } : {}),
-            },
-          };
-    case 'team':
-      return { pathname: `/team/${pathSegment(target.team_id)}` };
-    case 'slot':
-      return {
-        pathname: `/team/${pathSegment(target.team_id)}`,
-        state: { targetSlotId: target.slot_id },
-      };
-  }
+  return { pathname: `/conversation/${pathSegment(target.conversation_id)}` };
 };
 
 const acknowledgePendingTarget = async (pending: PendingResolvedTarget): Promise<boolean> => {
   if (getAuthSessionEpochSnapshot() !== pending.authSessionEpoch) return false;
+  if (!(await acknowledgeTargetVisible(pending))) return false;
   try {
     const acknowledged = await ipcBridge.deepLink.acknowledge.invoke({
       navigation_reference: pending.navigationReference,
@@ -102,73 +94,7 @@ export const acknowledgeResolvedConversationDeepLink = async (conversation: {
   id: string;
 }): Promise<boolean> => {
   const pending = pendingResolvedTarget;
-  if (!pending || !('conversation_id' in pending.target) || pending.target.conversation_id !== conversation.id) {
-    return false;
-  }
-  if (conversation.assistant?.id !== pending.target.assistant_id) {
-    try {
-      await ipcBridge.deepLink.reportFailure.invoke({
-        navigation_reference: pending.navigationReference,
-        result_code: 'DEEP_LINK_ASSISTANT_MISMATCH',
-      });
-    } catch {
-      // WebUI and older desktop builds do not expose sanitized deep-link result reporting.
-    } finally {
-      if (pendingResolvedTarget === pending) pendingResolvedTarget = null;
-    }
-    return false;
-  }
-
-  return pending.target.type === 'conversation' ? acknowledgePendingTarget(pending) : false;
-};
-
-export const acknowledgeResolvedMessageDeepLink = async (target: {
-  assistantId?: string;
-  conversationId: string;
-  interactionRequestId?: string;
-  messageId: string;
-}): Promise<boolean> => {
-  const pending = pendingResolvedTarget;
-  if (
-    !pending ||
-    !('conversation_id' in pending.target) ||
-    pending.target.conversation_id !== target.conversationId ||
-    pending.target.assistant_id !== target.assistantId
-  ) {
-    return false;
-  }
-  if (pending.target.type === 'message' && pending.target.message_id === target.messageId) {
-    return acknowledgePendingTarget(pending);
-  }
-  if (
-    pending.target.type === 'interaction_request' &&
-    pending.target.interaction_request_id === target.interactionRequestId &&
-    (!pending.target.message_id || pending.target.message_id === target.messageId)
-  ) {
-    return acknowledgePendingTarget(pending);
-  }
-  return false;
-};
-
-export const acknowledgeResolvedTeamDeepLink = async (
-  teamId: string,
-  assistants: Array<{ assistant_id?: string; conversation_id: string; slot_id: string }>,
-  activeSlotId?: string
-): Promise<boolean> => {
-  const pending = pendingResolvedTarget;
-  if (!pending) return false;
-  if (pending.target.type === 'team' && pending.target.team_id === teamId) {
-    return acknowledgePendingTarget(pending);
-  }
-  if (pending.target.type !== 'slot' || pending.target.team_id !== teamId) return false;
-  const target = pending.target;
-  if (activeSlotId !== target.slot_id) return false;
-  const assistant = assistants.find((item) => item.slot_id === target.slot_id);
-  if (
-    !assistant ||
-    assistant.conversation_id !== target.conversation_id ||
-    assistant.assistant_id !== target.assistant_id
-  ) {
+  if (!pending || pending.target.type !== 'conversation' || pending.target.conversation_id !== conversation.id) {
     return false;
   }
   return acknowledgePendingTarget(pending);
@@ -220,7 +146,9 @@ export const useDeepLink = () => {
         });
         if (getAuthSessionEpochSnapshot() !== authSessionEpoch) return;
         pendingResolvedTarget = {
+          acknowledgementIdempotencyKey: createNavigationAckKey(),
           authSessionEpoch,
+          navigationIntentId: resolved.navigation_intent_id,
           navigationReference,
           target: resolved.target,
         };

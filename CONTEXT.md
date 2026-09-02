@@ -71,7 +71,7 @@ _避免使用_：Conversation、GEA Credential、Lark access token
 _避免使用_：Conversation ID、路由参数、登录令牌、一次性消费令牌
 
 **Client Navigation Target（客户端导航目标）**：
-AionCore 在完成 Navigation Reference 的身份、租户、环境与授权校验后，映射出的有类型本地 Interaction Location；当前类型为 Conversation、Message、Interaction Request、Team 或 Slot，客户端只按该类型执行受限导航。
+AionCore 在完成 Navigation Reference 的身份、租户、环境与授权校验后，映射出的闭合本地目标；当前 V1 只允许 Conversation，后续版本必须另行冻结类型与可见性条件，客户端不得按任意 URL 或 route 猜测导航。
 _避免使用_：Navigation Reference、任意 URL、管理端业务对象
 
 **GEA Credential（GEA 凭据）**：

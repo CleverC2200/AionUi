@@ -18,7 +18,6 @@ const identity: SimulatedExternalIdentity = {
 const conversationTarget: DeepLinkTarget = {
   type: 'conversation',
   conversation_id: 'conversation-1',
-  assistant_id: 'assistant-1',
 };
 
 const issueFixture = (
@@ -38,9 +37,8 @@ describe('simulated GEA navigation platform contract', () => {
     const platform = new SimulatedDeepLinkPlatform(() => Date.parse('2026-08-29T00:00:00.000Z'));
     const issued = issueFixture(platform);
 
-    expect(issued.link).toMatch(/^aionui:\/\/open-conversation\?ref=nav_[a-f0-9]{32}&v=1&profile=gea\.test$/);
+    expect(issued.link).toMatch(/^aionui:\/\/open-conversation\?ref=nav_[a-f0-9]{32}&v=1$/);
     expect(issued.link).not.toContain('conversation-1');
-    expect(issued.link).not.toContain('assistant-1');
     expect(
       parseDeepLinkResolveResponse(
         platform.resolve({
@@ -50,7 +48,12 @@ describe('simulated GEA navigation platform contract', () => {
           schemaVersion: 1,
         })
       )
-    ).toMatchObject({ schema_version: 1, target: conversationTarget });
+    ).toMatchObject({
+      navigation_intent_id: expect.stringMatching(/^intent-/),
+      schema_version: 1,
+      target: conversationTarget,
+      expires_at: '2026-08-29T00:15:00.000Z',
+    });
   });
 
   it('is idempotent at issue time and read-only/replayable at resolve time', () => {
@@ -74,7 +77,7 @@ describe('simulated GEA navigation platform contract', () => {
 
     expect(() =>
       issueFixture(platform, {
-        target: { type: 'team', team_id: 'team-other' },
+        target: { type: 'conversation', conversation_id: 'conversation-other' },
       })
     ).toThrowError(expect.objectContaining({ code: 'NAVIGATION_IDEMPOTENCY_CONFLICT' }));
   });
@@ -179,8 +182,9 @@ describe('simulated GEA navigation platform contract', () => {
     const contract = JSON.parse(readFileSync(contractPath, 'utf8')) as {
       components: {
         schemas: {
-          InteractionRequestSelector: { dependentRequired?: Record<string, string[]> };
-          LocalNavigationTarget: { oneOf: Array<{ properties?: { type?: { const?: string } }; required?: string[] }> };
+          GeaAgentTarget: { additionalProperties?: boolean; required?: string[] };
+          LocalConversationTarget: { additionalProperties?: boolean; required?: string[] };
+          LocalResolveResponse: { required?: string[] };
         };
       };
       openapi: string;
@@ -189,18 +193,23 @@ describe('simulated GEA navigation platform contract', () => {
     expect(contract.openapi).toBe('3.1.0');
     expect(Object.keys(contract.paths)).toEqual(
       expect.arrayContaining([
-        '/api/v1/internal/client-navigation-intents',
+        '/api/v1/public/client-launch/capabilities',
         '/ai/gateway/client-navigation-intents/resolve',
+        '/ai/gateway/client-navigation-intents/{intentId}/ack',
         '/api/deep-links/resolve',
+        '/api/deep-links/ack',
       ])
     );
-    expect(contract.components.schemas.InteractionRequestSelector.dependentRequired).toEqual({
-      slotId: ['teamId'],
-      teamId: ['slotId'],
+    expect(contract.components.schemas.GeaAgentTarget).toMatchObject({
+      additionalProperties: false,
+      required: ['type', 'agentCode'],
     });
-    const localInteractionRequest = contract.components.schemas.LocalNavigationTarget.oneOf.find(
-      (schema) => schema.properties?.type?.const === 'interaction_request'
+    expect(contract.components.schemas.LocalConversationTarget).toMatchObject({
+      additionalProperties: false,
+      required: ['type', 'conversation_id'],
+    });
+    expect(contract.components.schemas.LocalResolveResponse.required).toEqual(
+      expect.arrayContaining(['navigation_intent_id', 'expires_at', 'trace_id'])
     );
-    expect(localInteractionRequest?.required).toEqual(expect.arrayContaining(['message_id']));
   });
 });
