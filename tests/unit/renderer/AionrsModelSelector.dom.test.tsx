@@ -187,6 +187,16 @@ describe('AionrsModelSelector runtime options', () => {
     expect(screen.getByTestId('aionrs-model-selector')).toHaveClass('composer-model-selector');
   });
 
+  it('collapses the embedded composer model control to an accessible icon trigger', () => {
+    render(<AionrsModelSelector selection={makeSelection()} placement='composer' iconOnly />);
+
+    const trigger = screen.getByTestId('aionrs-model-selector');
+    expect(trigger).toHaveClass('composer-icon-selector');
+    expect(trigger).toHaveAttribute('aria-label', 'Model · gpt-5.2');
+    expect(trigger).toHaveTextContent('brain');
+    expect(trigger).not.toHaveTextContent('gpt-5.2');
+  });
+
   it('shows the model submenu before the thought level submenu, each with its current value', () => {
     render(
       <AionrsModelSelector

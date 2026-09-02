@@ -46,4 +46,16 @@ describe('SendBox action button styles', () => {
     expect(tsx).toContain("type='text'");
     expect(tsx).not.toContain('<ArrowUp');
   });
+
+  it('centers compact composer icons inside their fixed circular trigger', () => {
+    const triggerBody = getRuleBodyContainingSelector('.sendbox-tools .composer-icon-selector');
+    const contentBody = getRuleBodyContainingSelector('.composer-icon-selector .arco-btn-content');
+
+    expect(triggerBody).toContain('width: 32px');
+    expect(triggerBody).toContain('min-height: 32px');
+    expect(triggerBody).toContain('flex: 0 0 32px');
+    expect(triggerBody).toContain('align-items: center');
+    expect(contentBody).toContain('width: 100%');
+    expect(contentBody).toContain('justify-content: center');
+  });
 });

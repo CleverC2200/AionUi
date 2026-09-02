@@ -10,6 +10,10 @@ import React from 'react';
 import { BackendHttpError } from '@/common/adapter/httpBridge';
 import AcpSendBox from '@/renderer/pages/conversation/platforms/acp/AcpSendBox';
 import type { UseAcpMessageReturn } from '@/renderer/pages/conversation/platforms/acp/useAcpMessage';
+import {
+  parseSurfaceContextBlock,
+  type SurfaceContextSnapshot,
+} from '@/renderer/pages/assistantSurface/surfaceContext';
 import type { TeamSendBoxRuntime } from '@/renderer/pages/team/components/teamSendRuntime';
 
 const {
@@ -34,6 +38,7 @@ const {
   draftContentRef,
   messageWarningMock,
   stopInvokeMock,
+  conversationContextRef,
 } = vi.hoisted(() => ({
   sendMessageInvokeMock: vi.fn(),
   addOrUpdateMessageMock: vi.fn(),
@@ -76,6 +81,7 @@ const {
   draftContentRef: { current: '' },
   messageWarningMock: vi.fn(),
   stopInvokeMock: vi.fn().mockResolvedValue(undefined),
+  conversationContextRef: { current: null as null | { surfaceContext?: SurfaceContextSnapshot } },
 }));
 
 vi.mock('@/common', () => ({
@@ -257,7 +263,7 @@ vi.mock('@/renderer/hooks/chat/useAutoTitle', () => ({
   }),
 }));
 vi.mock('@/renderer/hooks/context/ConversationContext', () => ({
-  useConversationContextSafe: () => null,
+  useConversationContextSafe: () => conversationContextRef.current,
 }));
 vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
   useLayoutContext: () => ({ isMobile: isMobileMock.current }),
@@ -359,6 +365,8 @@ const makeMessageState = (): UseAcpMessageReturn => ({
 describe('AcpSendBox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sendMessageInvokeMock.mockReset();
+    conversationContextRef.current = null;
     isMobileMock.current = false;
     mobileActionSheetEntries.current = [];
     runtimeViewMock.hydrated = true;
@@ -409,6 +417,103 @@ describe('AcpSendBox', () => {
 
     await waitFor(() => {
       expect(resetStateMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  const surfaceContext: SurfaceContextSnapshot = {
+    schemaVersion: 1,
+    surfaceId: 'forecast',
+    revision: 3,
+    capturedAt: '2026-09-01T08:00:00.000Z',
+    label: '需求预测看板',
+    summary: '华东区域计划',
+    payload: { stage: 'area' },
+  };
+
+  const contextReceiptEvents = () =>
+    emitterEmitMock.mock.calls.filter(([eventName]) => eventName === 'assistant-surface.context-sent');
+
+  it('freezes the pending business snapshot into the accepted Turn before writing its receipt', async () => {
+    conversationContextRef.current = { surfaceContext };
+    sendMessageInvokeMock.mockResolvedValue({ turn_id: 'turn-1', runtime: null, msg_id: 'msg-1' });
+
+    render(
+      <AcpSendBox
+        conversation_id='conv-1'
+        backend='codex'
+        workspacePath='/tmp/workspace'
+        messageState={makeMessageState()}
+      />
+    );
+    await act(async () => screen.getByRole('button', { name: 'send' }).click());
+
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledTimes(1));
+    const sentInput = sendMessageInvokeMock.mock.calls[0]?.[0]?.input as string;
+    const parsed = parseSurfaceContextBlock(sentInput);
+    expect(parsed).toMatchObject({
+      text: 'Hello',
+      snapshot: {
+        schemaVersion: 1,
+        surfaceId: 'forecast',
+        revision: 3,
+        label: '需求预测看板',
+        summary: '华东区域计划',
+        payload: { stage: 'area' },
+      },
+    });
+    expect(parsed.snapshot?.capturedAt).toEqual(expect.any(String));
+    expect(contextReceiptEvents()).toEqual([
+      ['assistant-surface.context-sent', { conversationId: 'conv-1', surfaceId: 'forecast', revision: 3 }],
+    ]);
+  });
+
+  it('does not write a receipt for a cancelled send', async () => {
+    conversationContextRef.current = { surfaceContext };
+    sendMessageInvokeMock.mockRejectedValue(new DOMException('cancelled', 'AbortError'));
+
+    render(
+      <AcpSendBox
+        conversation_id='conv-1'
+        backend='codex'
+        workspacePath='/tmp/workspace'
+        messageState={makeMessageState()}
+      />
+    );
+    await act(async () => screen.getByRole('button', { name: 'send' }).click());
+
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledTimes(1));
+    expect(contextReceiptEvents()).toHaveLength(0);
+  });
+
+  it('keeps one frozen revision through failure and retry, and writes its receipt only after success', async () => {
+    conversationContextRef.current = { surfaceContext };
+    sendMessageInvokeMock.mockRejectedValueOnce(new Error('fixture send failed'));
+
+    render(
+      <AcpSendBox
+        conversation_id='conv-1'
+        backend='codex'
+        workspacePath='/tmp/workspace'
+        messageState={makeMessageState()}
+      />
+    );
+    await act(async () => screen.getByRole('button', { name: 'send' }).click());
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledTimes(1));
+    expect(contextReceiptEvents()).toHaveLength(0);
+
+    sendMessageInvokeMock.mockResolvedValueOnce({ turn_id: 'turn-2', runtime: null, msg_id: 'msg-2' });
+    await act(async () => screen.getByRole('button', { name: 'send' }).click());
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledTimes(2));
+
+    const attempts = sendMessageInvokeMock.mock.calls.map(([request]) =>
+      parseSurfaceContextBlock(request.input as string)
+    );
+    expect(attempts.map(({ snapshot }) => snapshot?.revision)).toEqual([3, 3]);
+    expect(contextReceiptEvents()).toHaveLength(1);
+    expect(contextReceiptEvents()[0]?.[1]).toEqual({
+      conversationId: 'conv-1',
+      surfaceId: 'forecast',
+      revision: 3,
     });
   });
 

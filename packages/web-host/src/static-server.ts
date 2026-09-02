@@ -35,6 +35,8 @@ export type StaticServerHandle = {
 
 const DEFAULT_PORT = 25808;
 const MAX_BACKEND_AUTH_ERROR_BYTES = 64 * 1024;
+const SALES_PLAN_SUBMIT_PATH = '/api/gea/sales-plan/submissions';
+const CORE_BOOTSTRAP_HEADER = 'x-aioncore-bootstrap-secret';
 
 // Ranges that are non-internal IPv4 yet never a reachable LAN address, so we
 // must never advertise them as the WebUI access URL even when they are the only
@@ -83,7 +85,8 @@ async function forwardToBackend(
   req: IncomingMessage,
   res: ServerResponse,
   backendPort: number,
-  gateway?: LarkAuthGateway
+  gateway?: LarkAuthGateway,
+  coreSessionBootstrapSecret?: string
 ): Promise<void> {
   const candidateHeaders = gateway ? await gateway.getBackendHeaders(req.headers) : req.headers;
   if (!candidateHeaders) {
@@ -95,7 +98,17 @@ async function forwardToBackend(
     res.end(JSON.stringify({ success: false, error: 'UNAUTHENTICATED' }));
     return;
   }
-  const { 'x-aioncore-bootstrap-secret': _bootstrapSecret, ...publicHeaders } = candidateHeaders;
+  const { [CORE_BOOTSTRAP_HEADER]: _bootstrapSecret, ...publicHeaders } = candidateHeaders;
+  // Only the gateway can prove that browser identity and CSRF were mapped to a
+  // private Core session. Plain WebUI stays unsupported/fail-closed. Core owns
+  // capability validation, so an external backend secret mismatch remains 403
+  // and is never retried without the capability.
+  const isTrustedSalesPlanSubmit =
+    gateway !== undefined &&
+    coreSessionBootstrapSecret !== undefined &&
+    coreSessionBootstrapSecret !== '' &&
+    req.method === 'POST' &&
+    req.url === SALES_PLAN_SUBMIT_PATH;
   const options: http.RequestOptions = {
     hostname: '127.0.0.1',
     port: backendPort,
@@ -103,6 +116,7 @@ async function forwardToBackend(
     method: req.method,
     headers: {
       ...publicHeaders,
+      ...(isTrustedSalesPlanSubmit ? { [CORE_BOOTSTRAP_HEADER]: coreSessionBootstrapSecret } : {}),
       host: `127.0.0.1:${backendPort}`,
     },
   };
@@ -270,7 +284,7 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
 
       // /api/* — reverse proxy to backend (includes /api/auth/*).
       if (req.url.startsWith('/api/') || req.url.startsWith('/api?') || req.url === '/login' || req.url === '/logout') {
-        await forwardToBackend(req, res, opts.backendPort, authGateway);
+        await forwardToBackend(req, res, opts.backendPort, authGateway, opts.coreSessionBootstrapSecret);
         return;
       }
 

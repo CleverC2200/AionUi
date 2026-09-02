@@ -192,6 +192,17 @@ describe('AcpModelSelector runtime options', () => {
     expect(screen.getByTestId('acp-model-selector')).toHaveTextContent('GPT-5.2 · High');
   });
 
+  it('collapses the embedded composer model control to an accessible icon trigger', () => {
+    render(<AcpModelSelector conversation_id='conversation-1' backend='codex' placement='composer' iconOnly />);
+
+    const trigger = screen.getByTestId('acp-model-selector');
+    expect(trigger).toHaveClass('composer-icon-selector');
+    expect(trigger).toHaveAttribute('aria-label', 'Model · GPT-5.2 · High');
+    expect(trigger).toHaveTextContent('brain');
+    expect(trigger).not.toHaveTextContent('GPT-5.2 · High');
+    expect(trigger.closest('[data-tooltip-content]')).toHaveAttribute('data-tooltip-content', 'Model · GPT-5.2 · High');
+  });
+
   it('reports runtime readiness changes to its parent', () => {
     const onRuntimeReadyChange = vi.fn();
     useAcpModelInfoMock.mockReturnValue(makeResult({ isRuntimeReady: false }));

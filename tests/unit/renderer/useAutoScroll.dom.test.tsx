@@ -120,6 +120,7 @@ describe('useAutoScroll', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-26T12:00:00.000Z'));
     resizeObserverCallback = null;
+    window.sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -385,5 +386,49 @@ describe('useAutoScroll', () => {
       block: 'center',
       inline: 'nearest',
     });
+  });
+
+  it('restores the exact user scroll position only for the matching scoped Conversation', () => {
+    const firstScroller = createScroller({ scrollTop: 600 });
+    const first = renderHook(() =>
+      useAutoScroll({
+        messages: [createLeftMessage('hello')],
+        itemCount: 1,
+        persistenceKey: 'user-a:forecast:conversation-1',
+      })
+    );
+    attachElements(first.result, firstScroller, createContent());
+    act(() => vi.runAllTimers());
+    fireScroll(first.result.current.handleScroll, firstScroller, 260);
+    first.unmount();
+
+    const restoredScroller = createScroller({ scrollTop: 0 });
+    const restored = renderHook(() =>
+      useAutoScroll({
+        messages: [createLeftMessage('hello')],
+        itemCount: 1,
+        persistenceKey: 'user-a:forecast:conversation-1',
+      })
+    );
+    attachElements(restored.result, restoredScroller, createContent());
+    act(() => {
+      vi.runAllTimers();
+      resizeObserverCallback?.([], {} as ResizeObserver);
+      vi.runAllTimers();
+    });
+    expect(restoredScroller.scrollTo).toHaveBeenCalledWith({ top: 260, behavior: 'auto' });
+    expect(restoredScroller.scrollTop).toBe(260);
+
+    const isolatedScroller = createScroller({ scrollTop: 0 });
+    const isolated = renderHook(() =>
+      useAutoScroll({
+        messages: [createLeftMessage('hello')],
+        itemCount: 1,
+        persistenceKey: 'user-a:contract:conversation-1',
+      })
+    );
+    attachElements(isolated.result, isolatedScroller, createContent());
+    act(() => vi.runAllTimers());
+    expect(isolatedScroller.scrollTo).toHaveBeenCalledWith({ top: 600, behavior: 'auto' });
   });
 });

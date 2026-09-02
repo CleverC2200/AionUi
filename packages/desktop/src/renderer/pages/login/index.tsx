@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/renderer/services/i18n';
 import { useNavigate } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
+import { DEFAULT_BUSINESS_ASSISTANT_SURFACE } from '@renderer/pages/assistantSurface/registry';
 import { Select } from '@arco-design/web-react';
 import { useAuth } from '../../hooks/context/AuthContext';
 import LarkQrLogin from './LarkQrLogin';
@@ -25,7 +26,7 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      void navigate('/guid', { replace: true });
+      void navigate(DEFAULT_BUSINESS_ASSISTANT_SURFACE.route, { replace: true });
     }
   }, [navigate, status]);
 

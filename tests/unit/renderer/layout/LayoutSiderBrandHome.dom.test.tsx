@@ -163,22 +163,22 @@ describe('Layout sider brand Home button', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('renders the wordmark as a non-actionable element in a non-settings route', () => {
+  it('renders the Assistant Surface switcher instead of the settings back action on a non-settings route', () => {
     currentPathname = '/guid';
     renderLayout();
 
-    // No actionable role/label in chat routes.
     expect(screen.queryByLabelText(BACK_KEY)).toBeNull();
-    const wordmark = screen.getByText('GEAUi');
-    fireEvent.click(wordmark);
+    const switcher = screen.getByTestId('assistant-surface-switcher');
+    expect(switcher).toBeVisible();
+    fireEvent.click(switcher);
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('does not navigate when the wordmark is clicked in a non-settings route', () => {
+  it('does not navigate when the Assistant Surface switcher is clicked in a conversation route', () => {
     currentPathname = '/conversation/xyz';
     renderLayout();
 
-    fireEvent.click(screen.getByText('GEAUi'));
+    fireEvent.click(screen.getByTestId('assistant-surface-switcher'));
     expect(navigate).not.toHaveBeenCalled();
   });
 

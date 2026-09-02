@@ -97,17 +97,29 @@ describe('static-server', () => {
     expect(json.path).toBe('/api/anything');
   });
 
-  it('blocks trusted Core routes and strips only the bootstrap header without Lark auth', async () => {
+  it('blocks trusted Core routes and keeps service submit fail-closed without Lark auth', async () => {
     let trustedRequests = 0;
     let publicHeaders: http.IncomingHttpHeaders | undefined;
+    let submitHeaders: http.IncomingHttpHeaders | undefined;
     const backend = await startMockBackend((req, res) => {
       if (req.url?.startsWith('/api/auth/internal/')) trustedRequests += 1;
       if (req.url === '/api/anything') publicHeaders = req.headers;
+      if (req.url === '/api/gea/sales-plan/submissions') {
+        submitHeaders = req.headers;
+        res.writeHead(403, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ success: false, code: 'GEA_SALES_PLAN_SUBMIT_CAPABILITY_REQUIRED' }));
+        return;
+      }
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
     });
     stopBackend = backend.close;
-    handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+    handle = await startStaticServer({
+      staticDir,
+      backendPort: backend.port,
+      port: 0,
+      coreSessionBootstrapSecret: 'host-held-secret',
+    });
 
     const trustedResponse = await fetch(`${handle.localUrl}/api/auth/internal/external-sessions`, {
       method: 'POST',
@@ -127,6 +139,13 @@ describe('static-server', () => {
     expect(publicHeaders?.['x-aioncore-bootstrap-secret']).toBeUndefined();
     expect(publicHeaders?.authorization).toBe('Bearer public-api-token');
     expect(publicHeaders?.['x-access-token']).toBe('public-upstream-token');
+
+    const submitResponse = await fetch(`${handle.localUrl}/api/gea/sales-plan/submissions`, {
+      method: 'POST',
+      headers: { 'x-aioncore-bootstrap-secret': 'browser-injected' },
+    });
+    expect(submitResponse.status).toBe(403);
+    expect(submitHeaders?.['x-aioncore-bootstrap-secret']).toBeUndefined();
   });
 
   it('/login reverse-proxies to backend (no local handler)', async () => {
@@ -199,6 +218,9 @@ describe('static-server', () => {
     const revokeCookies: string[] = [];
     const trustedBootstrapHeaders: string[] = [];
     const forwardedHeaders: http.IncomingHttpHeaders[] = [];
+    const salesPlanSubmitHeaders: http.IncomingHttpHeaders[] = [];
+    const salesPlanSubmitUrls: string[] = [];
+    let expectedSalesPlanCapability = 'bootstrap-secret';
     const upgradeHeaders: http.IncomingHttpHeaders[] = [];
     let trustedBrowserRequests = 0;
     const backend = await startMockBackend(async (req, res) => {
@@ -250,6 +272,23 @@ describe('static-server', () => {
       if (req.url?.startsWith('/api/auth/internal/')) {
         trustedBrowserRequests += 1;
         res.writeHead(500).end();
+        return;
+      }
+      if (req.url?.startsWith('/api/gea/sales-plan/submissions')) {
+        salesPlanSubmitHeaders.push(req.headers);
+        salesPlanSubmitUrls.push(req.url);
+        const capability = req.headers['x-aioncore-bootstrap-secret'];
+        if (
+          req.method === 'POST' &&
+          req.url === '/api/gea/sales-plan/submissions' &&
+          capability === expectedSalesPlanCapability
+        ) {
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ success: true, data: { planId: 'plan-1' } }));
+        } else {
+          res.writeHead(403, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ success: false, code: 'GEA_SALES_PLAN_SUBMIT_CAPABILITY_REQUIRED' }));
+        }
         return;
       }
       if (req.url === '/api/anything') {
@@ -331,6 +370,15 @@ describe('static-server', () => {
     });
 
     expect((await fetch(`${handle.localUrl}/api/anything`)).status).toBe(401);
+    expect(
+      (
+        await fetch(`${handle.localUrl}/api/gea/sales-plan/submissions`, {
+          method: 'POST',
+          headers: { 'x-aioncore-bootstrap-secret': 'browser-injected' },
+        })
+      ).status
+    ).toBe(401);
+    expect(salesPlanSubmitHeaders).toHaveLength(0);
     const publicPort = handle.port;
     const unauthenticatedUpgradeStatus = await new Promise<string>((resolve, reject) => {
       const socket = netModule.connect({ host: '127.0.0.1', port: publicPort }, () => {
@@ -384,6 +432,61 @@ describe('static-server', () => {
     };
     const cookieA = await login('qr-a');
     const cookieB = await login('qr-b');
+
+    const submitHeaders = {
+      cookie: cookieA,
+      'content-type': 'application/json',
+      'x-aioncore-bootstrap-secret': 'browser-injected',
+      'x-csrf-token': 'browser-injected',
+    };
+    expect(
+      (
+        await fetch(`${handle.localUrl}/api/gea/sales-plan/submissions`, {
+          method: 'POST',
+          headers: submitHeaders,
+          body: '{}',
+        })
+      ).status
+    ).toBe(200);
+    expect(
+      (
+        await fetch(`${handle.localUrl}/api/gea/sales-plan/submissions`, {
+          method: 'GET',
+          headers: submitHeaders,
+        })
+      ).status
+    ).toBe(403);
+    expect(
+      (
+        await fetch(`${handle.localUrl}/api/gea/sales-plan/submissions?retry=1`, {
+          method: 'POST',
+          headers: submitHeaders,
+          body: '{}',
+        })
+      ).status
+    ).toBe(403);
+    expectedSalesPlanCapability = 'external-backend-secret';
+    expect(
+      (
+        await fetch(`${handle.localUrl}/api/gea/sales-plan/submissions`, {
+          method: 'POST',
+          headers: submitHeaders,
+          body: '{}',
+        })
+      ).status
+    ).toBe(403);
+    expect(salesPlanSubmitUrls).toEqual([
+      '/api/gea/sales-plan/submissions',
+      '/api/gea/sales-plan/submissions',
+      '/api/gea/sales-plan/submissions?retry=1',
+      '/api/gea/sales-plan/submissions',
+    ]);
+    expect(salesPlanSubmitHeaders[0]?.['x-aioncore-bootstrap-secret']).toBe('bootstrap-secret');
+    expect(salesPlanSubmitHeaders[0]?.cookie).toBe('aionui-session=access-user-a; aionui-csrf-token=csrf-user-a');
+    expect(salesPlanSubmitHeaders[0]?.['x-csrf-token']).toBe('csrf-user-a');
+    expect(salesPlanSubmitHeaders[1]?.['x-aioncore-bootstrap-secret']).toBeUndefined();
+    expect(salesPlanSubmitHeaders[2]?.['x-aioncore-bootstrap-secret']).toBeUndefined();
+    expect(salesPlanSubmitHeaders[3]?.['x-aioncore-bootstrap-secret']).toBe('bootstrap-secret');
 
     const expectedIdentityBodies = [{ identity: identities['qr-a'] }, { identity: identities['qr-b'] }];
     expect(provisionBodies).toEqual(expectedIdentityBodies);

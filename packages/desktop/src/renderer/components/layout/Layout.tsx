@@ -36,6 +36,7 @@ import { useDesktopTurnNotification } from '@renderer/hooks/system/notification/
 import { useInteractionRequestSync } from '@renderer/hooks/system/notification/useInteractionRequestSync';
 import { useNotificationInboxSync } from '@renderer/hooks/system/notification/useNotificationInboxSync';
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
+import AssistantSurfaceSwitcher from '@renderer/pages/assistantSurface/shell/AssistantSurfaceSwitcher';
 import { useConversationShortcuts } from '@renderer/hooks/ui/useConversationShortcuts';
 import { isElectronDesktop } from '@renderer/utils/platform';
 import siderBrandIcon from '@renderer/assets/logos/brand/sider-brand.png';
@@ -146,8 +147,8 @@ const Layout: React.FC<{
     return () => setGlobalNavigate(null);
   }, [navigate]);
   const { t } = useTranslation();
-  // The "AionUi" wordmark acts as Home / Back-to-Chat, but only from settings routes.
-  // In non-settings routes the user is already "home", so it is a no-op (and not actionable).
+  // Settings keep their existing Back-to-Chat behavior. Other routes use this
+  // identity slot to select an Assistant Surface without changing the General UI.
   const isSettingsRoute = location.pathname.startsWith('/settings');
   // Only wired to the wordmark in the isSettingsRoute branch below, so the
   // "no-op outside settings" contract is enforced structurally — no internal
@@ -433,7 +434,7 @@ const Layout: React.FC<{
                     </div>
                   </Tooltip>
                 ) : (
-                  <div className='text-16px text-t-primary collapsed-hidden font-semibold'>{t('login.brand')}</div>
+                  <AssistantSurfaceSwitcher />
                 )}
                 {isMobile && !collapsed && (
                   <button

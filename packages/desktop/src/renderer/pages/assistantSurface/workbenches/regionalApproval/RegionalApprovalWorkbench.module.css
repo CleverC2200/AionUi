@@ -1,0 +1,629 @@
+.root {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  container-type: inline-size;
+  background: var(--bg-2);
+  color: var(--text-primary);
+}
+
+.header {
+  display: flex;
+  min-height: 53px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 16px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--bg-3);
+  background: var(--bg-1);
+}
+
+.titleLine {
+  display: flex;
+  width: max-content;
+  min-width: 176px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.titleLine :global(.arco-typography) {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+.titleLine :global(.arco-tag) {
+  flex: 0 0 auto;
+}
+
+.scope {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.scope > span {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.scope small,
+.stageCopy small,
+.stackCell small,
+.queueMetrics small {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.scope strong,
+.stageCopy strong,
+.stackCell strong,
+.queueMetrics strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.scope :global(.arco-select) {
+  width: 108px;
+}
+
+.stageViewport {
+  min-width: 0;
+  flex: 0 0 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--bg-3);
+  background: var(--bg-1);
+}
+
+.stageLane {
+  display: flex;
+  width: 100%;
+  min-width: 650px;
+  height: 52px;
+  box-sizing: border-box;
+  align-items: center;
+  padding: 7px 16px;
+}
+
+.stageButton {
+  display: inline-flex;
+  min-width: 108px;
+  min-height: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+}
+
+.stageButton[data-state='current'] {
+  color: rgb(var(--danger-6));
+}
+
+.stageButton[data-state='completed'] .stageMarker {
+  background: rgb(var(--success-1));
+  color: rgb(var(--success-6));
+}
+
+.stageMarker {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bg-4);
+  border-radius: 50%;
+  background: var(--bg-2);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.stageButton[data-state='current'] .stageMarker {
+  border-color: rgb(var(--danger-6));
+  background: rgb(var(--danger-6));
+  color: var(--color-white);
+}
+
+.stageCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1;
+}
+
+.stageCopy strong {
+  max-width: 76px;
+  overflow: hidden;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stageCopy small {
+  line-height: 13px;
+}
+
+.stageConnector {
+  width: clamp(20px, 4cqw, 72px);
+  min-width: 20px;
+  height: 1px;
+  flex: 1 0 20px;
+  background: var(--bg-4);
+}
+
+.stageConnector[data-state='completed'] {
+  background: rgb(var(--success-6));
+}
+
+.content {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.queryAlert {
+  flex: 0 0 auto;
+}
+
+.querySpin {
+  display: block;
+  height: 100%;
+  min-height: 100%;
+}
+
+.querySpin :global(.arco-spin-children) {
+  height: 100%;
+  min-height: 100%;
+}
+
+.querySpin :global(.arco-empty) {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.queue {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--bg-3);
+  border-radius: 8px;
+  background: var(--bg-1);
+}
+
+.queueHeader {
+  display: flex;
+  min-height: 60px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.queueHeader h2 {
+  margin: 0 0 2px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.controls {
+  min-width: 0;
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--bg-3);
+  background: var(--bg-1);
+}
+
+.controlToolbar,
+.filterRow {
+  min-width: 760px;
+}
+
+.controlToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dimensionTabs {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.dimensionTabs :global(.arco-btn) {
+  min-height: 32px;
+  flex: 0 0 auto;
+  border-radius: 0;
+  color: var(--text-secondary);
+}
+
+.dimensionTabs :global(.arco-btn)[data-active='true'] {
+  box-shadow: inset 0 -2px rgb(var(--danger-6));
+  color: rgb(var(--danger-6));
+  font-weight: 600;
+}
+
+.categorySwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.advancedToggle {
+  min-height: 32px;
+}
+
+.advancedControls {
+  min-width: 760px;
+  padding-top: 5px;
+}
+
+.toolbarActions,
+.filterActions,
+.footerControls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.fieldControl,
+.pageSizeControl {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fieldControl > span,
+.pageSizeControl > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.filterHeading {
+  display: flex;
+  min-width: 760px;
+  align-items: center;
+  gap: 7px;
+  margin: 3px 0 5px;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.filterRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(96px, 0.8fr)) minmax(136px, 1.2fr) repeat(2, minmax(104px, 0.9fr)) auto;
+  align-items: end;
+  gap: 7px;
+}
+
+.filterRow :global(.arco-select) {
+  width: 100%;
+  min-height: 32px;
+}
+
+.filterActions {
+  padding-bottom: 1px;
+}
+
+.filterActions :global(.arco-btn),
+.toolbarActions :global(.arco-btn),
+.footerControls :global(.arco-btn),
+.footerControls :global(.arco-select) {
+  min-height: 32px;
+}
+
+.exportFeedback {
+  min-width: 760px;
+  margin-top: 7px;
+}
+
+.queueMetrics {
+  display: flex;
+  align-items: stretch;
+}
+
+.queueMetrics > span {
+  display: flex;
+  min-width: 92px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 10px;
+  border-left: 1px solid var(--bg-3);
+}
+
+.tableViewport {
+  display: flex;
+  min-width: 0;
+  min-height: 132px;
+  flex: 1 1 132px;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-1);
+}
+
+.tableViewport :global(.arco-table),
+.tableViewport :global(.arco-table > .arco-spin),
+.tableViewport :global(.arco-table > .arco-spin > .arco-spin-children),
+.tableViewport :global(.arco-table-container),
+.tableViewport :global(.arco-table-content-scroll),
+.tableViewport :global(.arco-table-content-inner) {
+  height: 100%;
+  min-height: 100%;
+}
+
+.tableViewport :global(.arco-table-content-scroll) {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.tableViewport :global(.arco-table-content-inner) {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.tableViewport :global(.arco-table-container) {
+  border: 0;
+}
+
+.queueFooter {
+  display: flex;
+  min-height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 5px 10px;
+  overflow-x: auto;
+  border-top: 1px solid var(--bg-3);
+  background: var(--bg-1);
+}
+
+.footerControls > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.footerControls {
+  min-width: 650px;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.pageSizeControl :global(.arco-select) {
+  width: 105px;
+}
+
+.pageSizeControl {
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+}
+
+.progressList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progressModal {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.progressRow {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(180px, 2fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.progressRow > span:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.progressRow small {
+  color: var(--text-secondary);
+}
+
+.organizationCell,
+.stackCell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.organizationCell > strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailTrigger {
+  width: fit-content;
+  min-height: 32px;
+  justify-content: flex-start;
+  padding: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.organizationCell > span,
+.organizationCell > small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.organizationCell > small {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.healthFilterAction {
+  min-height: 28px;
+  padding: 0 2px;
+}
+
+.stackCell span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+@container (max-width: 860px) {
+  .header {
+    min-height: 77px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .scope {
+    width: 100%;
+    max-width: none;
+    flex: 0 0 auto;
+    overflow-x: auto;
+  }
+
+  .controls {
+    overflow-x: hidden;
+  }
+
+  .controlToolbar,
+  .advancedControls,
+  .filterHeading,
+  .filterRow,
+  .exportFeedback,
+  .footerControls {
+    min-width: 0;
+  }
+
+  .controlToolbar,
+  .toolbarActions,
+  .queueFooter,
+  .footerControls {
+    flex-wrap: wrap;
+  }
+
+  .filterRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filterActions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .queueFooter {
+    overflow-x: hidden;
+  }
+
+  .footerControls {
+    flex: 1 1 100%;
+  }
+}
+
+@container (max-width: 620px) {
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .fixtureTag,
+  .scope small,
+  .queueMetrics > span:last-child {
+    display: none;
+  }
+
+  .scope {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .content {
+    padding: 0;
+  }
+
+  .queueMetrics > span {
+    min-width: 74px;
+    padding-inline: 7px;
+  }
+
+  .queueHeader {
+    min-height: 52px;
+  }
+
+  .filterRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filterActions {
+    grid-column: auto;
+    justify-content: flex-start;
+  }
+
+  .toolbarActions,
+  .footerControls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stageButton {
+    transition: none;
+  }
+}

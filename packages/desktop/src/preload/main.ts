@@ -61,6 +61,22 @@ const backendStartupFailure = ipcRenderer.sendSync('get-backend-startup-failure'
 contextBridge.exposeInMainWorld('__backendPort', backendPort > 0 ? backendPort : 0);
 contextBridge.exposeInMainWorld('__initialLanguage', initialLanguage ?? null);
 contextBridge.exposeInMainWorld('__aionuiE2ETest', process.env.AIONUI_E2E_TEST === '1');
+contextBridge.exposeInMainWorld(
+  '__aionuiAssistantSurfaceFixtures',
+  process.env.NODE_ENV !== 'production' && process.env.AIONUI_ASSISTANT_SURFACE_FIXTURES === '1'
+);
+contextBridge.exposeInMainWorld(
+  '__aionuiE2EAuthBypass',
+  process.env.NODE_ENV !== 'production' &&
+    process.env.AIONUI_E2E_TEST === '1' &&
+    process.env.AIONUI_E2E_AUTH_BYPASS === '1'
+);
+contextBridge.exposeInMainWorld(
+  '__aionuiE2ESalesPlanQuery',
+  process.env.NODE_ENV !== 'production' &&
+    process.env.AIONUI_E2E_TEST === '1' &&
+    process.env.AIONUI_E2E_SALES_PLAN_QUERY === '1'
+);
 contextBridge.exposeInMainWorld('__backendStartupFailed', backendStartupFailed === true);
 contextBridge.exposeInMainWorld('__backendStartupFailure', backendStartupFailure ?? null);
 

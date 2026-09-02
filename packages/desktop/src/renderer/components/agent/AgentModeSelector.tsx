@@ -89,6 +89,8 @@ export interface AgentModeSelectorProps {
   compactLabelPrefix?: string;
   /** Hide compact prefix on mobile */
   hideCompactLabelPrefixOnMobile?: boolean;
+  /** Collapse a compact composer control to its icon while keeping details in the tooltip/menu. */
+  compactIconOnly?: boolean;
   /** Callback fired after a successful mode change (for team-mode propagation) */
   onModeChanged?: (mode: string) => void;
   /** Dynamic modes from capabilities (overrides static list when non-empty) */
@@ -125,6 +127,7 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
   modeLabelFormatter,
   compactLabelPrefix,
   hideCompactLabelPrefixOnMobile = false,
+  compactIconOnly = false,
   onModeChanged,
   dynamicModes,
   beforeRuntimeSync,
@@ -333,17 +336,18 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
       <span data-testid='mode-selector' data-current-mode={current_mode} className='inline-flex'>
         <RuntimeSelectorPill
           testId={backend ? `agent-mode-selector-${backend}` : 'agent-mode-selector'}
-          className={`sendbox-model-btn agent-mode-compact-pill agent-mode-compact-pill--permission-${permissionTone} ${canInteract ? '' : 'agent-mode-compact-pill--readonly'}`}
-          label={compactLabel}
+          className={`sendbox-model-btn agent-mode-compact-pill agent-mode-compact-pill--permission-${permissionTone} ${compactIconOnly ? 'composer-icon-selector' : ''} ${canInteract ? '' : 'agent-mode-compact-pill--readonly'}`}
+          label={compactIconOnly ? undefined : compactLabel}
           leading={
             <>
               {compactLeadingIcon && <span className='shrink-0 inline-flex items-center'>{compactLeadingIcon}</span>}
               {showLogoInCompact && <span className='shrink-0 inline-flex items-center'>{renderLogo()}</span>}
             </>
           }
-          trailing={canInteract ? <Down size={12} className='text-t-tertiary shrink-0' /> : null}
+          trailing={canInteract && !compactIconOnly ? <Down size={12} className='text-t-tertiary shrink-0' /> : null}
           loading={isSetting}
           disabled={isSetting}
+          aria-label={compactIconOnly ? compactLabel : undefined}
           onClick={canInteract ? () => !isSetting && setDropdownVisible((visible) => !visible) : undefined}
           style={{
             opacity: isSetting ? 0.6 : 1,
@@ -354,8 +358,16 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
       </span>
     );
 
+    const compactTrigger = compactIconOnly ? (
+      <Tooltip content={compactLabel} position='top'>
+        {compactContent}
+      </Tooltip>
+    ) : (
+      compactContent
+    );
+
     if (!canInteract) {
-      return compactContent;
+      return compactTrigger;
     }
 
     return (
@@ -365,7 +377,7 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
         onVisibleChange={(visible) => !isSetting && setDropdownVisible(visible)}
         droplist={dropdownMenu}
       >
-        {compactContent}
+        {compactTrigger}
       </Dropdown>
     );
   }

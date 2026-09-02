@@ -346,6 +346,27 @@ describe('AgentModeSelector', () => {
     await waitFor(() => expect(screen.getByTestId('agent-mode-selector-claude')).toBeInTheDocument());
     expect(screen.getByTestId('agent-mode-selector-claude')).toHaveClass('agent-mode-compact-pill--permission-default');
   });
+
+  it('collapses the embedded composer permission control to an accessible icon trigger', async () => {
+    render(
+      <AgentModeSelector
+        backend='claude'
+        conversation_id='conv-1'
+        compact
+        compactIconOnly
+        compactLeadingIcon={<span aria-hidden='true'>shield</span>}
+        modeLabelFormatter={(mode) => (mode.value === 'default' ? '默认' : '全自动')}
+        compactLabelPrefix='权限'
+      />
+    );
+
+    const trigger = await screen.findByTestId('agent-mode-selector-claude');
+    expect(trigger).toHaveClass('composer-icon-selector');
+    expect(trigger).toHaveAttribute('aria-label', '权限 · 默认');
+    expect(trigger).toHaveTextContent('shield');
+    expect(trigger).not.toHaveTextContent('权限 · 默认');
+    expect(trigger.closest('[data-tooltip-content]')).toHaveAttribute('data-tooltip-content', '权限 · 默认');
+  });
 });
 
 describe('getPermissionTone', () => {

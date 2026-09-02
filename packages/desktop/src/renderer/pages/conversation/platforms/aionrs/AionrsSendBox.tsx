@@ -58,6 +58,7 @@ import { classifyConversationBusyError } from '../conversationBusyError';
 import AionrsModelSelector from './AionrsModelSelector';
 import { useAionrsMessage } from './useAionrsMessage';
 import type { AionrsModelSelection } from './useAionrsModelSelection';
+import { appendSurfaceContextBlock } from '@/renderer/pages/assistantSurface/surfaceContext';
 
 const configErrorMessageKey = (error: unknown) => {
   const errorKind = classifyConfigSetError(error);
@@ -127,6 +128,7 @@ const AionrsSendBox: React.FC<{
   teamSendMessage?: (payload: { input: string; files: ChatFileRef[] }) => Promise<void>;
   teamRuntime?: TeamSendBoxRuntime;
   hideComposerModelSelector?: boolean;
+  compactComposerControls?: boolean;
 }> = ({
   conversation_id,
   modelSelection,
@@ -135,6 +137,7 @@ const AionrsSendBox: React.FC<{
   teamSendMessage,
   teamRuntime,
   hideComposerModelSelector,
+  compactComposerControls,
 }) => {
   const [dynamicModes, setDynamicModes] = useState<AgentModeOption[]>([]);
   const [currentMode, setCurrentMode] = useState<string | undefined>(session_mode);
@@ -245,6 +248,7 @@ const AionrsSendBox: React.FC<{
   const setContentRef = useLatestRef(setContent);
   const contentRef = useLatestRef(content);
   const atPathRef = useLatestRef(atPath);
+  const surfaceContextRef = useLatestRef(conversationContext?.surfaceContext);
 
   // Register handler for adding text from preview panel to sendbox
   useEffect(() => {
@@ -286,8 +290,17 @@ const AionrsSendBox: React.FC<{
       // the send edge — the front-end no longer builds paths nor the marker.
       try {
         void checkAndUpdateTitle(conversation_id, input);
+        const sentSurfaceContext = surfaceContextRef.current;
+        const inputWithSurfaceContext = appendSurfaceContextBlock(input, sentSurfaceContext);
         if (teamSendMessage) {
-          await teamSendMessage({ input, files });
+          await teamSendMessage({ input: inputWithSurfaceContext, files });
+          if (sentSurfaceContext) {
+            emitter.emit('assistant-surface.context-sent', {
+              conversationId: conversation_id,
+              surfaceId: sentSurfaceContext.surfaceId,
+              revision: sentSurfaceContext.revision,
+            });
+          }
           emitter.emit('chat.history.refresh');
           if (files.length > 0) {
             emitter.emit('aionrs.workspace.refresh');
@@ -298,7 +311,7 @@ const AionrsSendBox: React.FC<{
         markSendStarted();
         setWaitingResponse(true);
         const res = await ipcBridge.conversation.sendMessage.invoke({
-          input,
+          input: inputWithSurfaceContext,
           conversation_id,
           files,
           // `@@` references. Omitting this makes the whole feature silently
@@ -307,6 +320,13 @@ const AionrsSendBox: React.FC<{
         });
         setActiveMsgId(res.msg_id);
         markSendAccepted(res.turn_id, res.runtime, res.msg_id);
+        if (sentSurfaceContext) {
+          emitter.emit('assistant-surface.context-sent', {
+            conversationId: conversation_id,
+            surfaceId: sentSurfaceContext.surfaceId,
+            revision: sentSurfaceContext.revision,
+          });
+        }
         emitter.emit('chat.history.refresh');
         if (files.length > 0) {
           emitter.emit('aionrs.workspace.refresh');
@@ -354,7 +374,6 @@ const AionrsSendBox: React.FC<{
     enqueue,
     remove,
     prioritize,
-    sendNow,
     clear,
     reorder,
     toggleMode,
@@ -771,6 +790,7 @@ const AionrsSendBox: React.FC<{
         modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
         compactLabelPrefix={t('agentMode.permission')}
         hideCompactLabelPrefixOnMobile
+        compactIconOnly={compactComposerControls}
         onModeChanged={propagateMode}
         beforeRuntimeSync={prepareRuntimeConfig}
         beforeRuntimeSet={teamPermission?.warmupSession}
@@ -784,6 +804,7 @@ const AionrsSendBox: React.FC<{
         setStatus={runtimeConfig.setStatus}
         onSetThoughtLevel={handleThoughtLevelSetOption}
         placement='composer'
+        iconOnly={compactComposerControls}
       />
     ),
   });

@@ -14,7 +14,7 @@ import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistan
 import { iconColors } from '@/renderer/styles/colors';
 import { Button, Dropdown, Menu, Message, Tooltip, Typography } from '@arco-design/web-react';
 import { History } from '@icon-park/react';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
@@ -32,6 +32,7 @@ import { resolveConversationBackend } from '../utils/conversationAssistantIdenti
 import LegacyReadOnlyConversation from '../platforms/legacy/LegacyReadOnlyConversation';
 import SingleChatEmptyState from './SingleChatEmptyState';
 import { useActiveLease } from '../hooks/useActiveLease';
+import type { SurfaceContextSnapshot } from '@/renderer/pages/assistantSurface/surfaceContext';
 // import SkillRuleGenerator from './components/SkillRuleGenerator'; // Temporarily hidden
 
 const _AssociatedConversation: React.FC<{ conversation_id: string }> = ({ conversation_id }) => {
@@ -82,6 +83,31 @@ const _AssociatedConversation: React.FC<{ conversation_id: string }> = ({ conver
   );
 };
 
+export const createConversationFromConversation = async (
+  conversation: TChatConversation
+): Promise<TChatConversation> => {
+  const id = uuid();
+  // Fetch the latest record so session mode and workspace metadata match the real Conversation source.
+  const latest = await getConversationOrNull(conversation.id);
+  const source = latest || conversation;
+  const createdConversation = {
+    ...source,
+    id,
+    created_at: Date.now(),
+    modified_at: Date.now(),
+    // A new chat must not inherit an ACP/Antigravity resume anchor from the source Conversation.
+    extra:
+      source.type === 'acp' || source.type === 'antigravity'
+        ? { ...source.extra, acp_session_id: undefined, acp_session_updated_at: undefined }
+        : source.extra,
+  } as TChatConversation;
+  const persistedConversation = await ipcBridge.conversation.createWithConversation.invoke({
+    conversation: createdConversation,
+  });
+  emitter.emit('chat.history.refresh');
+  return persistedConversation;
+};
+
 const _AddNewConversation: React.FC<{ conversation: TChatConversation }> = ({ conversation }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -96,28 +122,8 @@ const _AddNewConversation: React.FC<{ conversation: TChatConversation }> = ({ co
           if (isCreatingRef.current) return;
           isCreatingRef.current = true;
           try {
-            const id = uuid();
-            // Fetch latest conversation from DB to ensure session_mode is current
-            const latest = await getConversationOrNull(conversation.id);
-            const source = latest || conversation;
-            await ipcBridge.conversation.createWithConversation.invoke({
-              conversation: {
-                ...source,
-                id,
-                created_at: Date.now(),
-                modified_at: Date.now(),
-                // Clear ACP session fields to prevent new conversation from inheriting old session context
-                extra:
-                  // Antigravity stores its resume anchor in the same fields, so
-                  // it must be cleared too — otherwise the clone resumes the
-                  // source conversation's agy session instead of starting clean.
-                  source.type === 'acp' || source.type === 'antigravity'
-                    ? { ...source.extra, acp_session_id: undefined, acp_session_updated_at: undefined }
-                    : source.extra,
-              } as TChatConversation,
-            });
-            void navigate(`/conversation/${id}`);
-            emitter.emit('chat.history.refresh');
+            const createdConversation = await createConversationFromConversation(conversation);
+            void navigate(`/conversation/${createdConversation.id}`);
           } catch (error) {
             console.error('Failed to create conversation:', error);
             Message.error(getConversationCreateErrorMessage(error, t));
@@ -132,10 +138,14 @@ const _AddNewConversation: React.FC<{ conversation: TChatConversation }> = ({ co
 
 type AionrsConversation = Extract<TChatConversation, { type: 'aionrs' }>;
 
-const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; sliderTitle: React.ReactNode }> = ({
-  conversation,
-  sliderTitle,
-}) => {
+const AionrsConversationPanel: React.FC<{
+  conversation: AionrsConversation;
+  sliderTitle: React.ReactNode;
+  embedded?: boolean;
+  embeddedHeaderExtra?: React.ReactNode;
+  surfaceContext?: SurfaceContextSnapshot;
+  scrollPersistenceKey?: string;
+}> = ({ conversation, sliderTitle, embedded, embeddedHeaderExtra, surfaceContext, scrollPersistenceKey }) => {
   const runtimeView = useConversationRuntimeView(conversation.id);
   const onSelectModel = useCallback(
     async (_provider: IProvider, modelName: string) => {
@@ -172,10 +182,12 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
     sider: <ChatSlider conversation={conversation} />,
     headerExtra: (
       <div className='flex items-center gap-8px'>
+        {embeddedHeaderExtra}
         <CronJobManager conversation_id={conversation.id} cron_job_id={cronJobId} />
       </div>
     ),
-    workspaceEnabled,
+    workspaceEnabled: embedded ? false : workspaceEnabled,
+    embedded,
     // For project conversations the preview panel is hoisted to the Layout-level
     // project host (structurally persistent across same-project conversation
     // switches — no remount). ChatLayout then renders chat only.
@@ -216,6 +228,10 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
         agent_name={presetAssistantInfo?.name}
         assistantId={aionrsAssistantId}
         forkCapability={conversation.fork_capability}
+        surfaceContext={surfaceContext}
+        scrollPersistenceKey={scrollPersistenceKey}
+        hideConversationResources={embedded}
+        compactComposerControls={embedded}
       />
     </ChatLayout>
   );
@@ -224,7 +240,11 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
 const ChatConversation: React.FC<{
   conversation?: TChatConversation;
   hideSendBox?: boolean;
-}> = ({ conversation, hideSendBox }) => {
+  embedded?: boolean;
+  embeddedHeaderExtra?: React.ReactNode;
+  surfaceContext?: SurfaceContextSnapshot;
+  scrollPersistenceKey?: string;
+}> = ({ conversation, hideSendBox, embedded, embeddedHeaderExtra, surfaceContext, scrollPersistenceKey }) => {
   const { t } = useTranslation();
   useActiveLease({ type: 'conversation', id: conversation?.id });
   const workspaceEnabled = Boolean(conversation?.extra?.workspace) && !conversation?.project_id;
@@ -285,6 +305,10 @@ const ChatConversation: React.FC<{
             assistantId={acpAssistantId}
             forkCapability={conversation.fork_capability}
             promptCapability={conversation.prompt_capability}
+            surfaceContext={surfaceContext}
+            scrollPersistenceKey={scrollPersistenceKey}
+            hideConversationResources={embedded}
+            compactComposerControls={embedded}
           ></AcpChat>
         );
       default:
@@ -299,6 +323,9 @@ const ChatConversation: React.FC<{
     cronJobId,
     resolvedHideSendBox,
     acpAssistantId,
+    embedded,
+    surfaceContext,
+    scrollPersistenceKey,
   ]);
 
   const sliderTitle = useMemo(() => {
@@ -310,7 +337,17 @@ const ChatConversation: React.FC<{
   }, [t]);
 
   if (conversation && conversation.type === 'aionrs') {
-    return <AionrsConversationPanel key={conversation.id} conversation={conversation} sliderTitle={sliderTitle} />;
+    return (
+      <AionrsConversationPanel
+        key={conversation.id}
+        conversation={conversation}
+        sliderTitle={sliderTitle}
+        embedded={embedded}
+        embeddedHeaderExtra={embeddedHeaderExtra}
+        surfaceContext={surfaceContext}
+        scrollPersistenceKey={scrollPersistenceKey}
+      />
+    );
   }
 
   // 如果有预设助手信息，使用预设助手的 logo 和名称；加载中时不进入 fallback；否则使用 backend 的 logo
@@ -328,6 +365,7 @@ const ChatConversation: React.FC<{
 
   const headerExtraNode = (
     <div className='flex items-center gap-8px'>
+      {embeddedHeaderExtra}
       {conversation && (
         <div className='shrink-0'>
           <CronJobManager conversation_id={conversation.id} cron_job_id={cronJobId} />
@@ -351,6 +389,7 @@ const ChatConversation: React.FC<{
         (conversation?.extra as { is_temporary_workspace?: boolean } | undefined)?.is_temporary_workspace
       }
       conversation_id={conversation?.id}
+      embedded={embedded}
     >
       {conversationNode}
     </ChatLayout>

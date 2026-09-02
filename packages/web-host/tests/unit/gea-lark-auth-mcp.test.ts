@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { GeaLarkAuthService } from '../../src/gea-lark-auth.js';
+import { DEFAULT_GEA_BASE_URL, GeaLarkAuthService } from '../../src/gea-lark-auth.js';
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -11,6 +11,10 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 }
 
 describe('GeaLarkAuthService MCP Resources', () => {
+  it('uses the production GEA root without the legacy 4443 port', () => {
+    expect(DEFAULT_GEA_BASE_URL).toBe('https://gea.synear.cn/gea-boot');
+  });
+
   it('uses Streamable HTTP and keeps resource contents behind resources/read', async () => {
     const uri = 'data-artifact://gateway/artifact-1';
     const text = '{"rows":[1]}';
