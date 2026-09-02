@@ -16,6 +16,7 @@ import { FEEDBACK_MODULES } from '@/common/types/feedbackDiagnostics';
 
 describe('resolveFeedbackModule', () => {
   it.each([
+    ['/assistant-surface/forecast', 'assistant-preset'],
     ['/conversation/abc-123', 'conversation-session'],
     ['/team/team-1', 'agent-team'],
     ['/scheduled', 'scheduled-task'],
