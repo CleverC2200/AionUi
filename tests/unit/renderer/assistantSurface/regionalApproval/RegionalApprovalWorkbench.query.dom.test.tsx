@@ -129,7 +129,7 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
 
     expect((await screen.findAllByText('plan-live 基地'))[0]).toBeVisible();
     expect(screen.getByTestId('regional-approval-current-stage')).toHaveTextContent('待服务端确认职责节点');
-    expect(screen.getByText('审批操作已安全关闭')).toBeVisible();
+    expect(screen.queryByText('审批操作已安全关闭')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '通过' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '退回' })).toBeDisabled();
     expect(screen.queryByRole('columnheader', { name: '审批操作' })).not.toBeInTheDocument();

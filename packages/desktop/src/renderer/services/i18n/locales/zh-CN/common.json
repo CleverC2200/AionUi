@@ -251,7 +251,6 @@
         "emptyQueue": "当前账户在本周期没有可见审批数据。",
         "emptyQueueHint": "可能当前暂无待办，或当前账户缺少对应组织或审批节点的可见范围；请刷新或联系管理员核对。",
         "pendingStage": "待服务端确认职责节点",
-        "authorityUnavailableTitle": "审批操作已安全关闭",
         "dealerCode": "经销商 {{code}}",
         "unnamedOrganization": "未命名组织",
         "unnamedOrganizationHint": "服务端未返回可展示的中文组织名称。",
@@ -261,7 +260,6 @@
         "skuCount": "{{count}} 个 SKU",
         "noReturnReason": "无退回原因",
         "actionBoundary": "队列、明细与当前节点审批来自 GEA 用户会话；服务端校验真实角色和权限。AI 建议、组织候选与客户端临时调整为样例数据，不连接生产。",
-        "readOnlyBoundary": "当前列表接口未返回唯一职责节点、流程当前节点、任务 TODO/DONE、actionable 与有效版本新鲜度，客户端不能用状态码推断权限。队列、明细、历史和版本对比可读；提交、退回与批量操作保持禁用。",
         "errors": {
           "permission": "当前账号没有读取该销售计划范围的权限。",
           "expired": "GEA 用户会话已过期，请重新登录后重试。",

@@ -201,7 +201,7 @@ test.describe('Sales-plan approval query', () => {
     await expect(page.getByText(/9,999,999,999,999,999\.90/).first()).toBeVisible();
     await expect(page.getByText(/AI 建议和组织候选/)).toHaveCount(0);
     await expect(page.getByTestId('regional-approval-current-stage')).toHaveText('待服务端确认职责节点');
-    await expect(page.getByText('审批操作已安全关闭')).toBeVisible();
+    await expect(page.getByText('审批操作已安全关闭')).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: '各节点数据状态' })).toBeVisible();
     await expect(page.getByTestId('regional-approval-stage-customer')).toContainText('进度 94%');
     await expect(page.getByTestId('regional-approval-stage-region')).toHaveAttribute('data-state', 'completed');

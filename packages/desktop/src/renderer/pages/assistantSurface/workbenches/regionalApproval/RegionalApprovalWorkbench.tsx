@@ -1402,15 +1402,6 @@ const RegionalApprovalWorkbench: React.FC<{
       </div>
 
       <div className={styles.content}>
-        {liveQuery.enabled ? (
-          <Alert
-            className={styles.queryAlert}
-            type='warning'
-            showIcon
-            title={t('common.assistantSurface.regionalApproval.query.authorityUnavailableTitle')}
-            content={t('common.assistantSurface.regionalApproval.query.readOnlyBoundary')}
-          />
-        ) : null}
         {liveQuery.enabled && liveQuery.periodsState.status === 'error' ? (
           <Alert
             className={styles.queryAlert}

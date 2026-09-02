@@ -251,7 +251,6 @@
         "emptyQueue": "This account has no visible approval data for the current period.",
         "emptyQueueHint": "There may be no pending work, or this account may lack visibility for the relevant organization or approval node. Refresh or ask an administrator to verify the scope.",
         "pendingStage": "Awaiting authoritative responsibility node",
-        "authorityUnavailableTitle": "Approval actions are safely disabled",
         "dealerCode": "Dealer {{code}}",
         "unnamedOrganization": "Unnamed organization",
         "unnamedOrganizationHint": "The server did not return a displayable organization name.",
@@ -261,7 +260,6 @@
         "skuCount": "{{count}} SKUs",
         "noReturnReason": "No return reason",
         "actionBoundary": "The queue, details, and current-node approval use the GEA user session. The server verifies real roles and permissions. AI guidance, organization candidates, and client-side adjustments are sample data and are not connected to production.",
-        "readOnlyBoundary": "The list contract does not expose the unique responsibility node, current workflow node, TODO/DONE task state, actionability, or effective-version freshness. The client will not infer permission from a plan status. Queue, details, history, and version comparison remain readable; approve, reject, and batch actions stay disabled.",
         "errors": {
           "permission": "This account cannot read the requested sales plan scope.",
           "expired": "The GEA user session expired. Sign in again, then retry.",
