@@ -1477,7 +1477,7 @@ const RegionalApprovalWorkbench: React.FC<{
                   ))}
                 </div>
               ) : null}
-              <div className={styles.toolbarActions}>
+              <div className={styles.toolbarActions} data-testid='regional-approval-toolbar-actions'>
                 {!liveQuery.enabled ? (
                   <label className={styles.categorySwitch}>
                     <Switch
@@ -1507,6 +1507,7 @@ const RegionalApprovalWorkbench: React.FC<{
                 <Button size='small' icon={<Download size={14} />} onClick={exportQueue}>
                   {t('common.assistantSurface.regionalApproval.toolbar.export')}
                 </Button>
+                {approvalActionButtons}
               </div>
             </div>
 
@@ -1679,7 +1680,6 @@ const RegionalApprovalWorkbench: React.FC<{
                   <Button size='small' icon={<Refresh size={14} />} onClick={resetFilters}>
                     {t('common.assistantSurface.regionalApproval.filters.reset')}
                   </Button>
-                  {approvalActionButtons}
                 </div>
               </div>
             </div>
