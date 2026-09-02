@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const bridge = vi.hoisted(() => ({
@@ -81,7 +82,7 @@ describe('deepLink', () => {
     registerDefaultProtocolClient(true, platform, '/runtime/electron', '/repo/out/main');
 
     expect(electronApp.setAsDefaultProtocolClient).toHaveBeenCalledWith('aionui', '/runtime/electron', [
-      '/repo/out/main',
+      path.resolve('/repo/out/main'),
     ]);
   });
 
