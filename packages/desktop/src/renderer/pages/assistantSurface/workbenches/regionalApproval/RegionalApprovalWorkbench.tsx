@@ -1507,7 +1507,7 @@ const RegionalApprovalWorkbench: React.FC<{
                 <Button size='small' icon={<Download size={14} />} onClick={exportQueue}>
                   {t('common.assistantSurface.regionalApproval.toolbar.export')}
                 </Button>
-                {approvalActionButtons}
+                <div className={styles.approvalToolbarActions}>{approvalActionButtons}</div>
               </div>
             </div>
 

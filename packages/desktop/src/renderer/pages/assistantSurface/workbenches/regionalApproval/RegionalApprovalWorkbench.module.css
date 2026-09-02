@@ -348,6 +348,17 @@
   gap: 7px;
 }
 
+.toolbarActions {
+  flex: 1 1 auto;
+}
+
+.approvalToolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+}
+
 .fieldControl,
 .pageSizeControl {
   display: flex;
