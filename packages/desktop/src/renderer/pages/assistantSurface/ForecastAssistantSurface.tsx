@@ -13,6 +13,12 @@ import {
   type SurfaceContextSnapshot,
 } from './surfaceContext';
 
+const CURRENT_WORKBENCH_FOCUS = {
+  target: 'current-workbench',
+  priority: ['selectedEntities', 'visibleEntities', 'metrics', 'scope'],
+  constrainToSnapshot: true,
+} as const;
+
 const contextSummary = (context: RegionalApprovalWorkbenchContext, t: TFunction) => {
   const authority = context.authority;
   if (!authority) return '';
@@ -44,12 +50,15 @@ const ForecastAssistantSurface: React.FC<{ stateScope: string; businessView?: st
 
   const handleBoardContextChange = useCallback(
     (context: RegionalApprovalWorkbenchContext, conversationId: string | null) => {
-      const payload = context.authority;
-      if (!payload) {
+      if (!context.authority) {
         setSurfaceContext(undefined);
         setSurfaceContextConversationId(conversationId);
         return;
       }
+      const payload = {
+        focus: CURRENT_WORKBENCH_FOCUS,
+        ...context,
+      };
       const serialized = JSON.stringify(payload);
       const candidateKey = `${getAssistantSurfaceWorkbenchScope(stateScope)}:context-candidate`;
       const previousCandidate = readAssistantSurfaceState<SurfaceContextRevisionState | null>(
@@ -84,7 +93,10 @@ const ForecastAssistantSurface: React.FC<{ stateScope: string; businessView?: st
   })
     ? null
     : undefined;
-  const liveActionsEnabled = queryClient !== null;
+  // The ordinary list contract does not expose responsibility node, workflow
+  // node, task state or actionability. Keep production actions fail-closed
+  // until those authoritative fields are available from GEA.
+  const liveActionsEnabled = false;
 
   return (
     <BusinessSurfaceShell

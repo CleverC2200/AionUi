@@ -117,6 +117,7 @@ const Probe: React.FC<{ client: SalesPlanDetailClient; planId?: string; versionI
       >
         reverse-compare
       </button>
+      <button onClick={() => state.toVersionId && state.selectFromVersion(state.toVersionId)}>same-compare</button>
     </div>
   );
 };
@@ -209,6 +210,17 @@ describe('useSalesPlanDetail', () => {
     await act(async () => compareA.resolve(comparison('plan-a-v1', 'plan-a-v2', '1')));
     expect(screen.getByTestId('compare')).toHaveTextContent('2');
     expect(screen.getByTestId('compare')).not.toHaveTextContent('1');
+  });
+
+  it('does not request a meaningless comparison when both version selectors match', async () => {
+    const compare = vi.fn(async () => [] as GeaSalesPlanSkuDiff[]);
+    const client = clientFrom((planId) => overview(planId, `${planId}-v2`), undefined, compare);
+    render(<Probe client={client} planId='plan-a' versionId='plan-a-v2' />);
+
+    await waitFor(() => expect(compare).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'same-compare' }));
+    await waitFor(() => expect(screen.getByTestId('compare')).toHaveTextContent('idle'));
+    expect(compare).toHaveBeenCalledTimes(1);
   });
 
   it('aborts all in-flight resources when the detail is closed', async () => {

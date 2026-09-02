@@ -20,14 +20,7 @@ import {
 const DETAIL_TIMEOUT_MS = 15_000;
 
 export type SalesPlanDetailError =
-  | 'permission'
-  | 'expired'
-  | 'missing'
-  | 'versionMismatch'
-  | 'timeout'
-  | 'unavailable'
-  | 'cancelled'
-  | 'failed';
+  'permission' | 'expired' | 'missing' | 'versionMismatch' | 'timeout' | 'unavailable' | 'cancelled' | 'failed';
 
 export type SalesPlanDetailState<T> =
   | { status: 'idle'; data?: undefined; error?: undefined }
@@ -137,7 +130,11 @@ export const useSalesPlanDetail = ({
         setOverviewState({ status: 'success', data: { detail, versions, logs } });
         setSelectedVersionId(initialVersionId);
         setToVersionId(initialVersionId);
-        setFromVersionId(versions.find((version) => version.id !== initialVersionId)?.id);
+        const current = versions.find((version) => version.id === initialVersionId);
+        const previous = versions
+          .filter((version) => version.id !== initialVersionId && (!current || version.seq < current.seq))
+          .toSorted((left, right) => right.seq - left.seq)[0];
+        setFromVersionId(previous?.id ?? versions.find((version) => version.id !== initialVersionId)?.id);
       })
       .catch((error: unknown) => {
         if (overviewRequest.current !== requestId) return;

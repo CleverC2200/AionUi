@@ -181,7 +181,31 @@ describe('sales plan action model', () => {
     ).toThrow(SalesPlanActionError);
   });
 
-  it.each([6, 7, 8, 9])('keeps returned status %s outside the approval action contract', (status) => {
+  it.each([
+    [1, 1, 2, 6],
+    [7, 1, 2, 6],
+    [2, 2, 3, 7],
+    [8, 2, 3, 7],
+    [3, 3, 4, 8],
+    [9, 3, 4, 8],
+    [4, 4, 5, 9],
+  ])(
+    'maps returned status %s to current node %s and preserves linear approve/reject targets',
+    (status, node, approveTarget, rejectTarget) => {
+      expect(salesPlanApprovalNodeForStatus(status)).toBe(node);
+      expect(salesPlanActionTargetStatus('APPROVE', status)).toBe(approveTarget);
+      expect(salesPlanActionTargetStatus('REJECT', status)).toBe(rejectTarget);
+      expect(() =>
+        validateSalesPlanActionInput({
+          ...input,
+          request: { action: 'APPROVE', expectedStatus: status },
+        })
+      ).not.toThrow();
+    }
+  );
+
+  it('keeps submitter return status 6 outside the approval action contract', () => {
+    const status = 6;
     expect(salesPlanApprovalNodeForStatus(status)).toBeUndefined();
     expect(salesPlanActionTargetStatus('APPROVE', status)).toBeUndefined();
     expect(salesPlanActionTargetStatus('REJECT', status)).toBeUndefined();
@@ -191,5 +215,31 @@ describe('sales plan action model', () => {
         request: { action: 'APPROVE', expectedStatus: status },
       })
     ).toThrow(SalesPlanActionError);
+  });
+
+  it('treats status 5 as completed and rejects adjustments at the first regional approval node', () => {
+    expect(salesPlanApprovalNodeForStatus(5)).toBeUndefined();
+    expect(salesPlanActionTargetStatus('APPROVE', 5)).toBeUndefined();
+    expect(salesPlanActionTargetStatus('REJECT', 5)).toBeUndefined();
+    expect(() =>
+      validateSalesPlanActionInput({
+        ...input,
+        request: {
+          action: 'APPROVE',
+          expectedStatus: 1,
+          adjustments: [{ skuCode: '42', adjustQty: '1' }],
+        },
+      })
+    ).toThrow(SalesPlanActionError);
+    expect(() =>
+      validateSalesPlanActionInput({
+        ...input,
+        request: {
+          action: 'APPROVE',
+          expectedStatus: 2,
+          adjustments: [{ skuCode: '42', adjustQty: '1' }],
+        },
+      })
+    ).not.toThrow();
   });
 });

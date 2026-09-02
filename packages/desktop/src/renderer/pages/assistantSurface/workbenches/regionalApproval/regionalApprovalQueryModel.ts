@@ -2,18 +2,18 @@ import type { GeaSalesPlanListItem, GeaSalesPlanPageQuery, GeaSalesPlanPeriod } 
 import type { ApprovalStageId } from './regionalApprovalFixture';
 
 export const SALES_PLAN_STATUS_BY_STAGE: Record<ApprovalStageId, number> = {
-  customer: 1,
-  region: 2,
-  province: 3,
-  area: 4,
-  category: 5,
+  customer: 6,
+  region: 1,
+  province: 2,
+  area: 3,
+  category: 4,
 };
 
 const APPROVAL_STAGE_BY_SALES_PLAN_STATUS: Record<number, ApprovalStageId> = {
-  1: 'customer',
-  2: 'region',
-  3: 'province',
-  4: 'area',
+  1: 'region',
+  2: 'province',
+  3: 'area',
+  4: 'category',
   5: 'category',
   6: 'customer',
   7: 'region',
@@ -24,6 +24,30 @@ const APPROVAL_STAGE_BY_SALES_PLAN_STATUS: Record<number, ApprovalStageId> = {
 
 export const approvalStageForSalesPlanStatus = (status: number): ApprovalStageId | undefined =>
   APPROVAL_STAGE_BY_SALES_PLAN_STATUS[status];
+
+export const VISIBLE_SALES_PLAN_STATUSES_BY_STAGE: Record<ApprovalStageId, readonly number[]> = {
+  customer: [6],
+  region: [1, 7],
+  province: [2, 8],
+  area: [3, 9],
+  category: [4],
+};
+
+export const approvalStageProgressForSalesPlanStatusTotals = (
+  total: number,
+  statusTotals: Readonly<Partial<Record<number, number>>>
+): Record<ApprovalStageId, number> => {
+  if (!Number.isSafeInteger(total) || total <= 0) {
+    return { customer: 0, region: 0, province: 0, area: 0, category: 0 };
+  }
+
+  return Object.fromEntries(
+    Object.entries(VISIBLE_SALES_PLAN_STATUSES_BY_STAGE).map(([stage, statuses]) => {
+      const unreachedCount = statuses.reduce((sum, status) => sum + Math.max(0, statusTotals[status] ?? 0), 0);
+      return [stage, Math.max(0, Math.min(100, Math.round((1 - unreachedCount / total) * 100)))];
+    })
+  ) as Record<ApprovalStageId, number>;
+};
 
 export type RegionalApprovalQueryScope = Pick<
   GeaSalesPlanPageQuery,
@@ -48,7 +72,8 @@ export const toRegionalApprovalLiveRow = (row: GeaSalesPlanListItem): RegionalAp
   currentQty: normalizeSalesPlanDecimal(row.currentQty),
   currentAmount: normalizeSalesPlanDecimal(row.currentAmount),
   source: 'gea',
-  approvalState: row.status === 10 ? 'approved' : row.status >= 6 && row.status <= 9 ? 'returned' : 'pending',
+  approvalState:
+    row.status === 5 || row.status === 10 ? 'approved' : row.status >= 6 && row.status <= 9 ? 'returned' : 'pending',
 });
 
 export const chooseInitialSalesPlanPeriod = (periods: readonly GeaSalesPlanPeriod[]): GeaSalesPlanPeriod | undefined =>
@@ -87,6 +112,13 @@ export const addExactDecimals = (values: readonly string[]): string => {
   const integer = scale === 0 ? raw : raw.slice(0, -scale);
   const fraction = scale === 0 ? '' : raw.slice(-scale);
   return `${negative ? '-' : ''}${integer}${fraction ? `.${fraction}` : ''}`;
+};
+
+export const subtractExactDecimals = (left: string | number, right: string | number): string => {
+  const normalizedLeft = typeof left === 'number' ? String(left) : left;
+  const normalizedRight = (typeof right === 'number' ? String(right) : right).trim();
+  const negatedRight = normalizedRight.startsWith('-') ? normalizedRight.slice(1) : `-${normalizedRight}`;
+  return addExactDecimals([normalizedLeft, negatedRight]);
 };
 
 export const formatExactDecimal = (value: string | number): string => {

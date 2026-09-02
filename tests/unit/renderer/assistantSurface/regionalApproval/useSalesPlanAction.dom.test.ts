@@ -73,20 +73,36 @@ describe('useSalesPlanAction', () => {
     });
   });
 
-  it.each([6, 8])(
-    'keeps returned status %s on the new-version resubmit path instead of sending a user approval action',
-    async (expectedStatus) => {
-      const invoke = vi.fn<SalesPlanActionClient['action']['invoke']>();
-      const client: SalesPlanActionClient = { action: { invoke } };
-      const { result } = renderHook(() => useSalesPlanAction({ client }));
+  it('keeps submitter return status 6 outside the user approval action', async () => {
+    const expectedStatus = 6;
+    const invoke = vi.fn<SalesPlanActionClient['action']['invoke']>();
+    const client: SalesPlanActionClient = { action: { invoke } };
+    const { result } = renderHook(() => useSalesPlanAction({ client }));
 
-      await act(async () => {
-        await expect(
-          result.current.execute({ ...input, request: { action: 'APPROVE', expectedStatus } })
-        ).rejects.toMatchObject({ kind: 'validation', retrySameIntent: false });
-      });
+    await act(async () => {
+      await expect(
+        result.current.execute({ ...input, request: { action: 'APPROVE', expectedStatus } })
+      ).rejects.toMatchObject({ kind: 'validation', retrySameIntent: false });
+    });
 
-      expect(invoke).not.toHaveBeenCalled();
-    }
-  );
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it('submits area-returned status 8 from its current province node', async () => {
+    const invoke = vi.fn<SalesPlanActionClient['action']['invoke']>(async (params) => ({
+      ...receipt,
+      fromStatus: 8,
+      toStatus: 3,
+      requestId: params.requestId,
+    }));
+    const { result } = renderHook(() => useSalesPlanAction({ client: { action: { invoke } } }));
+
+    await act(async () => {
+      await expect(
+        result.current.execute({ ...input, request: { action: 'APPROVE', expectedStatus: 8 } })
+      ).resolves.toMatchObject({ fromStatus: 8, toStatus: 3 });
+    });
+
+    expect(invoke).toHaveBeenCalledWith(expect.objectContaining({ request: { action: 'APPROVE', expectedStatus: 8 } }));
+  });
 });

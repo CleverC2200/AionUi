@@ -80,7 +80,7 @@ describe('RegionalApprovalWorkbench', () => {
 
     expect(screen.getByRole('main', { name: '需求预测区域经理审批工作台' })).toBeVisible();
     expect(screen.getByText('样例数据 · 不连接生产')).toBeVisible();
-    expect(within(screen.getByRole('navigation', { name: '审批阶段' })).getAllByRole('button')).toHaveLength(5);
+    expect(within(screen.getByRole('navigation', { name: '各节点数据状态' })).getAllByRole('button')).toHaveLength(5);
     expect(screen.getByTestId('regional-approval-current-stage')).toHaveTextContent('大区审批');
     expect(screen.getByRole('region', { name: '审批核对队列' })).toBeVisible();
     expect(screen.queryByText('当前节点核对建议')).not.toBeInTheDocument();
@@ -185,6 +185,8 @@ describe('RegionalApprovalWorkbench', () => {
     const queueRule = workbenchStyles.match(/\.queue\s*{([^}]*)}/)?.[1] ?? '';
     const queueHeaderRule = workbenchStyles.match(/\.queueHeader\s*{([^}]*)}/)?.[1] ?? '';
     const filterRowRule = workbenchStyles.match(/\.filterRow\s*{\s*display:\s*grid;([^}]*)}/)?.[1] ?? '';
+    const liveFilterRowRule = workbenchStyles.match(/\.liveFilterRow\s*{([^}]*)}/)?.[1] ?? '';
+    const filterActionsRule = workbenchStyles.match(/\.filterActions\s*{([^}]*)}/)?.[1] ?? '';
     const footerRule = workbenchStyles.match(/\.queueFooter\s*{([^}]*)}/)?.[1] ?? '';
     const querySpinRule = workbenchStyles.match(/\.querySpin\s*{([^}]*)}/)?.[1] ?? '';
     const emptyRule = workbenchStyles.match(/\.querySpin :global\(\.arco-empty\)\s*{([^}]*)}/)?.[1] ?? '';
@@ -212,8 +214,12 @@ describe('RegionalApprovalWorkbench', () => {
     expect(contentRule).toContain('padding: 0');
     expect(queueRule).toContain('border-radius: 8px');
     expect(queueHeaderRule).toContain('min-height: 60px');
-    expect(filterRowRule).toMatch(/grid-template-columns:\s*repeat\(3, minmax\(96px, 0\.8fr\)\)/);
-    expect(filterRowRule).toContain('minmax(136px, 1.2fr)');
+    expect(filterRowRule).toContain('grid-template-columns: 120px 120px 130px 180px 140px 130px minmax(0, 1fr) auto');
+    expect(liveFilterRowRule).toContain(
+      'grid-template-columns: 112px 112px 120px minmax(150px, 1fr) 130px minmax(0, 1fr) auto'
+    );
+    expect(filterActionsRule).toContain('grid-column: -2 / -1');
+    expect(filterActionsRule).toContain('justify-content: flex-end');
     expect(footerRule).toContain('min-height: 44px');
     expect(footerRule).toContain('justify-content: flex-end');
     expect(queueRule).toContain('flex: 1 1 auto');
@@ -318,7 +324,7 @@ describe('RegionalApprovalWorkbench', () => {
 
     const queue = screen.getByRole('region', { name: '审批核对队列' });
     for (const heading of [
-      '组织 / 范围',
+      '组织',
       'AI 核对意见',
       '计划数量',
       '计划金额',

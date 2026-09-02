@@ -20,13 +20,7 @@ export type SalesPlanActionInput = {
 };
 
 export type SalesPlanActionErrorKind =
-  | 'validation'
-  | 'authentication'
-  | 'permission'
-  | 'conflict'
-  | 'rateLimited'
-  | 'unavailable'
-  | 'failed';
+  'validation' | 'authentication' | 'permission' | 'conflict' | 'rateLimited' | 'unavailable' | 'failed';
 
 export class SalesPlanActionError extends Error {
   constructor(
@@ -45,8 +39,18 @@ const POSITIVE_LONG_PATTERN = /^[1-9]\d*$/;
 const MAX_SIGNED_LONG = BigInt('9223372036854775807');
 
 export const salesPlanApprovalNodeForStatus = (status: number): number | undefined => {
-  if (Number.isInteger(status) && status >= 1 && status <= 5) return status;
-  return undefined;
+  if (!Number.isInteger(status)) return undefined;
+  return (
+    {
+      1: 1,
+      7: 1,
+      2: 2,
+      8: 2,
+      3: 3,
+      9: 3,
+      4: 4,
+    } as const
+  )[status as 1 | 2 | 3 | 4 | 7 | 8 | 9];
 };
 
 export const salesPlanActionTargetStatus = (
@@ -55,8 +59,7 @@ export const salesPlanActionTargetStatus = (
 ): number | undefined => {
   const nodeOrder = salesPlanApprovalNodeForStatus(status);
   if (nodeOrder === undefined) return undefined;
-  if (action === 'APPROVE') return status === 5 ? 10 : status + 1;
-  return nodeOrder === 5 ? undefined : nodeOrder + 5;
+  return action === 'APPROVE' ? nodeOrder + 1 : nodeOrder + 5;
 };
 
 const isValidAdjustment = (adjustment: GeaSalesPlanSkuAdjustment): boolean => {
@@ -128,7 +131,7 @@ export const salesPlanActionReceiptMatches = (
   receipt.planId === input.planId &&
   receipt.versionId === input.versionId &&
   receipt.fromStatus === input.request.expectedStatus &&
-  Number.isInteger(receipt.toStatus) &&
+  receipt.toStatus === salesPlanActionTargetStatus(input.request.action, input.request.expectedStatus) &&
   receipt.requestId === requestId &&
   receipt.traceId.trim().length > 0 &&
   receipt.auditId.trim().length > 0;

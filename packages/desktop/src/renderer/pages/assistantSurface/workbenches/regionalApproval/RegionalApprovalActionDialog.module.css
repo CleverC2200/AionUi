@@ -2,6 +2,10 @@
   width: min(720px, calc(100vw - 32px));
 }
 
+.liveModal {
+  width: min(920px, calc(100vw - 32px));
+}
+
 .body,
 .form,
 .adjustmentSummary {
@@ -48,7 +52,7 @@
 .adjustmentTableHeader,
 .adjustmentTableRow {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) 110px 150px;
+  grid-template-columns: minmax(170px, 1.15fr) minmax(130px, 0.9fr) minmax(130px, 0.8fr) minmax(170px, 1fr);
   align-items: center;
   gap: 8px;
   min-height: 40px;
@@ -79,6 +83,46 @@
   color: var(--text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.nodeTotals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--bg-3);
+  border-radius: 6px;
+  background: var(--bg-2);
+}
+
+.nodeTotals > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 12px;
+}
+
+.nodeTotals > span + span {
+  border-left: 1px solid var(--bg-3);
+}
+
+.nodeTotals small,
+.nodeValue small,
+.nodeValue em {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.nodeValue {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nodeValue em {
+  color: rgb(var(--primary-6));
 }
 
 .scopeSummary {
@@ -199,6 +243,15 @@
 
   .adjustmentTableHeader,
   .adjustmentTableRow {
-    grid-template-columns: minmax(120px, 1fr) 80px 110px;
+    grid-template-columns: minmax(130px, 1fr) 105px 110px minmax(140px, 1fr);
+  }
+
+  .nodeTotals {
+    grid-template-columns: 1fr;
+  }
+
+  .nodeTotals > span + span {
+    border-top: 1px solid var(--bg-3);
+    border-left: 0;
   }
 }

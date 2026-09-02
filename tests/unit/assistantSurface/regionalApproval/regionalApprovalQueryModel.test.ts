@@ -3,6 +3,7 @@ import {
   SALES_PLAN_STATUS_BY_STAGE,
   addExactDecimals,
   approvalStageForSalesPlanStatus,
+  approvalStageProgressForSalesPlanStatusTotals,
   chooseInitialSalesPlanPeriod,
   formatExactDecimal,
   toRegionalApprovalLiveRow,
@@ -10,12 +11,12 @@ import {
 
 describe('regionalApprovalQueryModel', () => {
   it('maps all five approval stages to the frozen GEA page status semantics', () => {
-    expect(SALES_PLAN_STATUS_BY_STAGE).toEqual({ customer: 1, region: 2, province: 3, area: 4, category: 5 });
+    expect(SALES_PLAN_STATUS_BY_STAGE).toEqual({ customer: 6, region: 1, province: 2, area: 3, category: 4 });
     expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(approvalStageForSalesPlanStatus)).toEqual([
-      'customer',
       'region',
       'province',
       'area',
+      'category',
       'category',
       'customer',
       'region',
@@ -23,6 +24,34 @@ describe('regionalApprovalQueryModel', () => {
       'area',
       'category',
     ]);
+  });
+
+  it('calculates each node arrival ratio from permission-scoped status totals', () => {
+    expect(
+      approvalStageProgressForSalesPlanStatusTotals(10, {
+        6: 1,
+        1: 2,
+        7: 1,
+        2: 2,
+        8: 0,
+        3: 1,
+        9: 0,
+        4: 4,
+      })
+    ).toEqual({
+      customer: 90,
+      region: 70,
+      province: 80,
+      area: 90,
+      category: 60,
+    });
+    expect(approvalStageProgressForSalesPlanStatusTotals(0, {})).toEqual({
+      customer: 0,
+      region: 0,
+      province: 0,
+      area: 0,
+      category: 0,
+    });
   });
 
   it('chooses an open period without coercing its Long identifiers', () => {
@@ -76,5 +105,43 @@ describe('regionalApprovalQueryModel', () => {
       targetAmount: '9999999999999999.99',
       approvalState: 'pending',
     });
+  });
+
+  it('treats status 5 as category approval completed under the latest business mapping', () => {
+    const row = toRegionalApprovalLiveRow({
+      planId: 'plan-1',
+      versionId: 'version-1',
+      seq: 1,
+      periodId: 'period-1',
+      planTypeCode: 'MONTHLY',
+      dealerCode: 'dealer-1',
+      status: 5,
+      targetQty: '1',
+      targetAmount: '1',
+      skuCount: 1,
+      currentQty: '1',
+      currentAmount: '1',
+    });
+
+    expect(row.approvalState).toBe('approved');
+  });
+
+  it('keeps legacy completed status 10 visible and read-only', () => {
+    const row = toRegionalApprovalLiveRow({
+      planId: 'plan-10',
+      versionId: 'version-10',
+      seq: 1,
+      periodId: 'period-1',
+      planTypeCode: 'MONTHLY',
+      dealerCode: 'dealer-1',
+      status: 10,
+      targetQty: '1',
+      targetAmount: '1',
+      skuCount: 1,
+      currentQty: '1',
+      currentAmount: '1',
+    });
+
+    expect(row.approvalState).toBe('approved');
   });
 });

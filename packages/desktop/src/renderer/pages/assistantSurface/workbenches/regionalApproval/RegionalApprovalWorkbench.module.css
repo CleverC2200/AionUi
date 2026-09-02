@@ -83,6 +83,10 @@
   width: 108px;
 }
 
+.headerAction {
+  margin-left: auto;
+}
+
 .stageViewport {
   min-width: 0;
   flex: 0 0 auto;
@@ -119,6 +123,29 @@
   color: rgb(var(--danger-6));
 }
 
+.stageLane[data-live-status='true'] .stageButton {
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+.stageLane[data-live-status='true'] .stageButton[data-selected='true'] {
+  background: rgb(var(--primary-1));
+  color: rgb(var(--primary-6));
+}
+
+.stageLane[data-live-status='true'] .stageButton:focus-visible {
+  outline: 2px solid rgb(var(--primary-6));
+  outline-offset: 1px;
+}
+
+.stageButton[data-state='partial'] {
+  color: var(--text-primary);
+}
+
+.stageButton[data-state='critical'] {
+  color: rgb(var(--danger-6));
+}
+
 .stageButton[data-state='completed'] .stageMarker {
   background: rgb(var(--success-1));
   color: rgb(var(--success-6));
@@ -143,6 +170,18 @@
   border-color: rgb(var(--danger-6));
   background: rgb(var(--danger-6));
   color: var(--color-white);
+}
+
+.stageButton[data-state='partial'] .stageMarker {
+  border-color: rgb(var(--warning-6));
+  background: rgb(var(--warning-1));
+  color: rgb(var(--warning-7));
+}
+
+.stageButton[data-state='critical'] .stageMarker {
+  border-color: rgb(var(--danger-6));
+  background: rgb(var(--danger-1));
+  color: rgb(var(--danger-7));
 }
 
 .stageCopy {
@@ -334,9 +373,13 @@
 
 .filterRow {
   display: grid;
-  grid-template-columns: repeat(3, minmax(96px, 0.8fr)) minmax(136px, 1.2fr) repeat(2, minmax(104px, 0.9fr)) auto;
+  grid-template-columns: 120px 120px 130px 180px 140px 130px minmax(0, 1fr) auto;
   align-items: end;
   gap: 7px;
+}
+
+.liveFilterRow {
+  grid-template-columns: 112px 112px 120px minmax(150px, 1fr) 130px minmax(0, 1fr) auto;
 }
 
 .filterRow :global(.arco-select) {
@@ -345,7 +388,10 @@
 }
 
 .filterActions {
+  grid-column: -2 / -1;
+  justify-content: flex-end;
   padding-bottom: 1px;
+  white-space: nowrap;
 }
 
 .filterActions :global(.arco-btn),
@@ -428,7 +474,7 @@
 }
 
 .footerControls {
-  min-width: 650px;
+  min-width: 360px;
   flex: 0 0 auto;
   justify-content: flex-end;
 }
