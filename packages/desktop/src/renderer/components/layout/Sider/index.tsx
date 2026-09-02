@@ -11,6 +11,8 @@ import { isElectronDesktop } from '@renderer/utils/platform';
 import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
 import { shell, webui } from '@/common/adapter/ipcBridge';
 import { configService } from '@/common/config/configService';
+import AssistantSurfaceNavigation from '@renderer/pages/assistantSurface/shell/AssistantSurfaceNavigation';
+import { getAssistantSurfaceFromPath, isAssistantSurfaceAvailable } from '@renderer/pages/assistantSurface/registry';
 import { SiderToolbar, SiderSearchEntry, SiderScheduledEntry, SiderAssistantEntry } from './SiderNav';
 import SiderFooter from './SiderFooter';
 import TeamSiderSection from './TeamSiderSection';
@@ -58,6 +60,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const { theme, setTheme } = useThemeContext();
   const [isBatchMode, setIsBatchMode] = useState(false);
   const isSettings = pathname.startsWith('/settings');
+  const activeSurface = getAssistantSurfaceFromPath(pathname);
+  const specializedSurfaceId =
+    activeSurface.id !== 'general' && isAssistantSurfaceAvailable(activeSurface) ? activeSurface.id : null;
   const lastNonSettingsPathRef = useRef('/guid');
   const showAccount = status === 'authenticated';
 
@@ -212,6 +217,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           <Suspense fallback={<div className='size-full' />}>
             <SettingsSider collapsed={collapsed} tooltipEnabled={tooltipEnabled} />
           </Suspense>
+        ) : specializedSurfaceId ? (
+          <AssistantSurfaceNavigation surfaceId={specializedSurfaceId} collapsed={collapsed} />
         ) : (
           <div className='size-full flex flex-col gap-2px'>
             <SiderToolbar

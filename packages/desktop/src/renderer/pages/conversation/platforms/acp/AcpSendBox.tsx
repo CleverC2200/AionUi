@@ -57,6 +57,7 @@ import { classifyConversationBusyError } from '../conversationBusyError';
 import { buildSendFailureError } from './buildSendFailureError';
 import { useAcpInitialMessage } from './useAcpInitialMessage';
 import type { UseAcpMessageReturn } from './useAcpMessage';
+import { appendSurfaceContextBlock } from '@/renderer/pages/assistantSurface/surfaceContext';
 
 const configErrorMessageKey = (error: unknown) => {
   const errorKind = classifyConfigSetError(error);
@@ -117,6 +118,7 @@ const AcpSendBox: React.FC<{
   teamSendMessage?: (payload: { input: string; files: ChatFileRef[] }) => Promise<void>;
   teamRuntime?: TeamSendBoxRuntime;
   hideComposerModelSelector?: boolean;
+  compactComposerControls?: boolean;
 }> = ({
   conversation_id,
   backend,
@@ -126,6 +128,7 @@ const AcpSendBox: React.FC<{
   teamSendMessage,
   teamRuntime,
   hideComposerModelSelector,
+  compactComposerControls,
 }) => {
   const {
     aiProcessing,
@@ -237,6 +240,7 @@ const AcpSendBox: React.FC<{
   const setContentRef = useLatestRef(setContent);
   const contentRef = useLatestRef(content);
   const atPathRef = useLatestRef(atPath);
+  const surfaceContextRef = useLatestRef(conversationContext?.surfaceContext);
 
   const addOrUpdateMessage = useAddOrUpdateMessage(); // Move this here so it's available in useEffect
   const addOrUpdateMessageRef = useLatestRef(addOrUpdateMessage);
@@ -298,8 +302,17 @@ const AcpSendBox: React.FC<{
       try {
         if (teamPermission) await teamPermission.warmupSession();
         void checkAndUpdateTitle(conversation_id, input);
+        const sentSurfaceContext = surfaceContextRef.current;
+        const inputWithSurfaceContext = appendSurfaceContextBlock(input, sentSurfaceContext);
         if (teamSendMessage) {
-          await teamSendMessage({ input, files });
+          await teamSendMessage({ input: inputWithSurfaceContext, files });
+          if (sentSurfaceContext) {
+            emitter.emit('assistant-surface.context-sent', {
+              conversationId: conversation_id,
+              surfaceId: sentSurfaceContext.surfaceId,
+              revision: sentSurfaceContext.revision,
+            });
+          }
           emitter.emit('chat.history.refresh');
           if (files.length > 0) {
             emitter.emit('acp.workspace.refresh');
@@ -310,7 +323,7 @@ const AcpSendBox: React.FC<{
         markSendStarted();
         setAiProcessing(true);
         const result = await ipcBridge.acpConversation.sendMessage.invoke({
-          input,
+          input: inputWithSurfaceContext,
           conversation_id,
           files,
           // `@@` references. Dropping this here is a silent failure: the agent
@@ -318,6 +331,13 @@ const AcpSendBox: React.FC<{
           sessions: sessions?.map(({ id }) => ({ id })),
         });
         markSendAccepted(result.turn_id, result.runtime, result.msg_id);
+        if (sentSurfaceContext) {
+          emitter.emit('assistant-surface.context-sent', {
+            conversationId: conversation_id,
+            surfaceId: sentSurfaceContext.surfaceId,
+            revision: sentSurfaceContext.revision,
+          });
+        }
         emitter.emit('chat.history.refresh');
       } catch (error: unknown) {
         const errorMsg =
@@ -812,6 +832,7 @@ Please check your local CLI tool authentication status`,
         modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
         compactLabelPrefix={t('agentMode.permission')}
         hideCompactLabelPrefixOnMobile
+        compactIconOnly={compactComposerControls}
         onModeChanged={isLeaderInTeam ? teamPermission?.propagateMode : undefined}
         beforeRuntimeSync={prepareRuntimeConfig}
         beforeRuntimeSet={teamPermission?.warmupSession}
@@ -826,6 +847,7 @@ Please check your local CLI tool authentication status`,
         conversation_id={conversation_id}
         backend={backend}
         placement='composer'
+        iconOnly={compactComposerControls}
         prepareRuntime={prepareRuntimeConfig}
         prepareSetRuntime={teamPermission?.warmupSession}
         configOptionsPort={teamPermission?.configOptionsPort}

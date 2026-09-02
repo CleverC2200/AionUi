@@ -58,6 +58,8 @@ const AcpModelSelector: React.FC<{
   prepareSetRuntime?: () => Promise<void>;
   /** Render in the conversation header or the desktop composer. */
   placement?: 'header' | 'composer';
+  /** Use an icon trigger in compact embedded composers; the dropdown still contains the full settings. */
+  iconOnly?: boolean;
   configOptionsPort?: AcpConfigOptionsPort;
   onRuntimeReadyChange?: (ready: boolean) => void;
   /** Deprecated: runtime config loading now ensures the conversation runtime. */
@@ -78,6 +80,7 @@ const AcpModelSelector: React.FC<{
   prepareRuntime,
   prepareSetRuntime,
   placement = 'header',
+  iconOnly = false,
   configOptionsPort,
   onRuntimeReadyChange,
   warmup,
@@ -149,9 +152,11 @@ const AcpModelSelector: React.FC<{
     [isConfigOptionBlocked, isRuntimeSetting, setConfigOption, thoughtLevel, t]
   );
   const tooltipContent = combinedLabel;
+  const useIconTrigger = placement === 'composer' && iconOnly;
+  const triggerLabel = `${t('common.model', { defaultValue: 'Model' })} · ${combinedLabel}`;
   const selectorClassName = `sendbox-model-btn agent-mode-compact-pill ${
     placement === 'composer' ? 'composer-model-selector' : 'header-model-btn conversation-model-selector'
-  }`;
+  } ${useIconTrigger ? 'composer-icon-selector' : ''}`;
 
   const renderLogo = () => <Brain theme='outline' size='14' fill={iconColors.secondary} className='shrink-0' />;
 
@@ -188,15 +193,17 @@ const AcpModelSelector: React.FC<{
   // spinner; otherwise it stays the existing read-only pill.
   const renderReadonlyPill = (label: string, readonlyTooltip: React.ReactNode) => {
     const clickable = !showWarmupSpinner && canManualWarmup;
-    const tooltip = clickable ? t('agent.warmup.clickToWake') : readonlyTooltip;
+    const readonlyTriggerLabel = `${t('common.model', { defaultValue: 'Model' })} · ${label}`;
+    const tooltip = clickable ? t('agent.warmup.clickToWake') : useIconTrigger ? readonlyTriggerLabel : readonlyTooltip;
     return (
       <Tooltip content={tooltip} position='top'>
         <RuntimeSelectorPill
           testId='acp-model-selector-warmup'
           className={selectorClassName}
-          label={label}
+          label={useIconTrigger ? undefined : label}
           leading={renderLogo()}
           loading={showWarmupSpinner}
+          aria-label={useIconTrigger ? readonlyTriggerLabel : undefined}
           onClick={clickable ? () => void handleWarmupClick() : undefined}
           style={{ cursor: clickable ? 'pointer' : 'default' }}
         />
@@ -222,6 +229,21 @@ const AcpModelSelector: React.FC<{
   if (!canSwitch) {
     return renderReadonlyPill(combinedLabel, tooltipContent);
   }
+
+  const trigger = (
+    <RuntimeSelectorPill
+      testId='acp-model-selector'
+      className={selectorClassName}
+      label={useIconTrigger ? undefined : combinedLabel}
+      leading={renderLogo()}
+      trailing={
+        useIconTrigger ? null : <Down theme='outline' size={12} fill={iconColors.secondary} className='shrink-0' />
+      }
+      loading={isSetting || isRuntimeSetting}
+      disabled={isRuntimeSetting}
+      aria-label={useIconTrigger ? triggerLabel : undefined}
+    />
+  );
 
   return (
     <Dropdown
@@ -294,15 +316,13 @@ const AcpModelSelector: React.FC<{
         </Menu>
       }
     >
-      <RuntimeSelectorPill
-        testId='acp-model-selector'
-        className={selectorClassName}
-        label={combinedLabel}
-        leading={renderLogo()}
-        trailing={<Down theme='outline' size={12} fill={iconColors.secondary} className='shrink-0' />}
-        loading={isSetting || isRuntimeSetting}
-        disabled={isRuntimeSetting}
-      />
+      {useIconTrigger ? (
+        <Tooltip content={triggerLabel} position='top'>
+          {trigger}
+        </Tooltip>
+      ) : (
+        trigger
+      )}
     </Dropdown>
   );
 };

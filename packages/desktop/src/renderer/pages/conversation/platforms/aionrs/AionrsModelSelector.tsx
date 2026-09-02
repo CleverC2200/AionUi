@@ -36,16 +36,27 @@ const AionrsModelSelector: React.FC<{
   setStatus?: AcpConfigSetStatus;
   onSetThoughtLevel?: (optionId: string, value: string) => Promise<unknown>;
   placement?: 'header' | 'composer';
-}> = ({ selection, disabled = false, thoughtLevel = null, onSetThoughtLevel, placement = 'header' }) => {
+  /** Use an icon trigger in compact embedded composers; the dropdown still contains the full settings. */
+  iconOnly?: boolean;
+}> = ({
+  selection,
+  disabled = false,
+  thoughtLevel = null,
+  onSetThoughtLevel,
+  placement = 'header',
+  iconOnly = false,
+}) => {
   const { t } = useTranslation();
   const { isOpen: isPreviewOpen } = usePreviewContext();
   const layout = useLayoutContext();
   const compact = isPreviewOpen || layout?.isMobile;
   const isMobileHeaderCompact = Boolean(layout?.isMobile);
+  const useIconTrigger = placement === 'composer' && iconOnly;
   const defaultModelLabel = t('common.defaultModel');
   const selectorClassName = classNames(
     'sendbox-model-btn',
     placement === 'composer' ? 'agent-mode-compact-pill composer-model-selector' : 'header-model-btn',
+    useIconTrigger && 'composer-icon-selector',
     compact && '!max-w-[120px]',
     isMobileHeaderCompact && '!max-w-[160px]'
   );
@@ -55,14 +66,23 @@ const AionrsModelSelector: React.FC<{
   const renderLogo = () => <Brain theme='outline' size='14' fill={iconColors.secondary} className='shrink-0' />;
 
   if (disabled || !selection) {
+    const readonlyLabel = t('conversation.welcome.useCliModel');
     return (
       <Tooltip content={t('conversation.welcome.modelSwitchNotSupported')} position='top'>
-        <Button className={selectorClassName} shape='round' size='small' style={{ cursor: 'default' }}>
+        <Button
+          className={selectorClassName}
+          shape='round'
+          size='small'
+          style={{ cursor: 'default' }}
+          aria-label={useIconTrigger ? `${t('common.model', { defaultValue: 'Model' })} · ${readonlyLabel}` : undefined}
+        >
           <span className='flex items-center gap-6px min-w-0'>
             {renderLogo()}
-            <span className='block truncate' title={t('conversation.welcome.useCliModel')}>
-              {t('conversation.welcome.useCliModel')}
-            </span>
+            {!useIconTrigger && (
+              <span className='block truncate' title={readonlyLabel}>
+                {readonlyLabel}
+              </span>
+            )}
           </span>
         </Button>
       </Tooltip>
@@ -78,6 +98,7 @@ const AionrsModelSelector: React.FC<{
     fallbackLabel: t('conversation.welcome.selectModel'),
   });
   const combinedLabel = composeRuntimeSelectorLabel({ modelLabel: label, thoughtLevel });
+  const triggerLabel = `${t('common.model', { defaultValue: 'Model' })} · ${combinedLabel}`;
   const handleThoughtLevelSelect = (value: string) => {
     if (!thoughtLevel || value === thoughtLevel.currentValue || !onSetThoughtLevel) return;
     void onSetThoughtLevel(thoughtLevel.id, value);
@@ -108,6 +129,28 @@ const AionrsModelSelector: React.FC<{
 
   const modelListNode = (
     <RuntimeSelectorModelList groups={modelGroups} currentModelId={currentCompositeId} onSelect={handleModelSelect} />
+  );
+
+  const trigger = (
+    <Button
+      data-testid='aionrs-model-selector'
+      className={selectorClassName}
+      shape='round'
+      size='small'
+      aria-label={useIconTrigger ? triggerLabel : undefined}
+    >
+      <span className='flex items-center gap-6px min-w-0'>
+        {renderLogo()}
+        {!useIconTrigger && (
+          <>
+            <span className='block truncate' title={combinedLabel}>
+              {combinedLabel}
+            </span>
+            <Down theme='outline' size={12} fill={iconColors.secondary} className='shrink-0' />
+          </>
+        )}
+      </span>
+    </Button>
   );
 
   return (
@@ -161,15 +204,13 @@ const AionrsModelSelector: React.FC<{
         </Menu>
       }
     >
-      <Button data-testid='aionrs-model-selector' className={selectorClassName} shape='round' size='small'>
-        <span className='flex items-center gap-6px min-w-0'>
-          {renderLogo()}
-          <span className='block truncate' title={combinedLabel}>
-            {combinedLabel}
-          </span>
-          <Down theme='outline' size={12} fill={iconColors.secondary} className='shrink-0' />
-        </span>
-      </Button>
+      {useIconTrigger ? (
+        <Tooltip content={triggerLabel} position='top'>
+          {trigger}
+        </Tooltip>
+      ) : (
+        trigger
+      )}
     </Dropdown>
   );
 };

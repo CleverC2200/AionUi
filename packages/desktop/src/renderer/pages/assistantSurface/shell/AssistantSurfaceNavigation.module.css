@@ -1,0 +1,162 @@
+.root {
+  --agent-surface-accent: rgb(var(--danger-6));
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-base);
+}
+
+.sectionLabel {
+  padding: 0 15px 5px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.menu {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  background: transparent !important;
+  scrollbar-width: none;
+}
+
+.menu::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.menu :global(.arco-menu-inner) {
+  padding: 2px 8px;
+}
+
+.menu :global(.arco-menu-inline-header) {
+  height: 40px;
+  margin-bottom: 2px;
+  padding-inline: 8px 28px;
+  border-radius: 8px;
+  background: transparent !important;
+  color: var(--text-primary);
+  line-height: 40px;
+}
+
+.menu :global(.arco-menu-inline-header:hover) {
+  background: var(--fill-2) !important;
+}
+
+.groupTitle {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.groupTitle svg {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+}
+
+.menu :global(.arco-menu-item) {
+  height: 34px;
+  min-height: 34px;
+  margin: 0 0 2px;
+  padding-inline: 37px 8px !important;
+  border-radius: 6px;
+  background: transparent !important;
+  color: var(--text-secondary);
+  line-height: 34px;
+}
+
+.menu :global(.arco-menu-item:hover) {
+  background: var(--fill-2) !important;
+  color: var(--text-primary);
+}
+
+.menu :global(.arco-menu-item.arco-menu-selected) {
+  background: color-mix(in srgb, var(--agent-surface-accent) 9%, transparent) !important;
+  color: var(--agent-surface-accent) !important;
+  font-weight: 600;
+}
+
+.sharedToolRow {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  align-items: center;
+  gap: 9px;
+}
+
+.sharedToolRow svg {
+  flex: 0 0 auto;
+}
+
+.menu > :global(.arco-menu-inner) > :global(.arco-menu-item) {
+  height: 40px;
+  min-height: 40px;
+  margin-bottom: 8px;
+  padding-inline: 8px !important;
+  line-height: 40px;
+}
+
+.agentRow {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  padding-inline-end: 4px;
+}
+
+.agentName {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge :global(.arco-badge-number) {
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  background: rgb(var(--danger-6));
+  font-size: 11px;
+  line-height: 17px;
+  box-shadow: none;
+}
+
+.badge {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.root[data-collapsed='true'] {
+  padding-top: 5px;
+}
+
+.root[data-collapsed='true'] .sectionLabel {
+  display: none;
+}
+
+.root[data-collapsed='true'] .menu {
+  min-height: 0;
+  flex: 1;
+}
+
+.root[data-collapsed='true'] .menu :global(.arco-menu-inner) {
+  padding-inline: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu :global(.arco-menu-inline-content),
+  .menu :global(.arco-menu-icon-suffix) {
+    transition: none;
+  }
+}

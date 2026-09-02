@@ -65,9 +65,12 @@ const ChatLayout: React.FC<{
   onRenameTitle?: (new_name: string) => Promise<boolean>;
   /** Optional override for the leading icon shown before the title (e.g. team Peoples icon) */
   headerLeading?: React.ReactNode;
+  /** Compact host mode used when chat is embedded inside a business surface. */
+  embedded?: boolean;
 }> = (props) => {
   const { conversation_id, workspacePath, isTemporaryWorkspace } = props;
-  const { backend, presetAssistant, agent_name, workspaceEnabled = true, workspacePreferenceKey } = props;
+  const { backend, presetAssistant, agent_name, workspacePreferenceKey } = props;
+  const workspaceEnabled = !props.embedded && (props.workspaceEnabled ?? true);
   const layout = useLayoutContext();
   const isDesktop = !layout?.isMobile;
   const isMobile = Boolean(layout?.isMobile);
@@ -85,7 +88,7 @@ const ChatLayout: React.FC<{
   // For project conversations the preview lives at the Layout host, so this
   // ChatLayout must behave as if there is no preview: chat fills, no split, no
   // preview panel. Everywhere below uses `isPreviewOpen` for that local decision.
-  const isPreviewOpen = isPreviewOpenRaw && !previewHosted;
+  const isPreviewOpen = !props.embedded && isPreviewOpenRaw && !previewHosted;
   const browserFocusActive = isPreviewOpen && isBrowserFocused && activeTab?.content_type === 'browser';
 
   // --- Hook A: workspace collapse ---
@@ -264,7 +267,7 @@ const ChatLayout: React.FC<{
           }}
         >
           <div className='shrink-0 !bg-1' style={browserFocusActive ? { display: 'none' } : undefined}>
-            {headerBlock}
+            {props.embedded ? null : headerBlock}
           </div>
           <div
             className='flex flex-1 min-h-0 relative'

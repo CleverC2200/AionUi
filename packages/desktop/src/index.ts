@@ -16,7 +16,7 @@ import { GEA_REMOTE_SERVICE_POLICY } from './common/config/geaManagedServices';
 import { shouldGrantPermissionRequest } from './process/utils/localFontPermission';
 
 import './process/utils/configureConsoleLog';
-import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage, net, powerMonitor, protocol, session } from 'electron';
 import fixPath from 'fix-path';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -86,7 +86,11 @@ import {
   syncSharedPersonalModels,
 } from './process/services/gea/LarkAuthService';
 import { getPersonalModelGatewayRuntime } from './process/services/gea/PersonalModelGatewayRuntime';
-import { initializeCoreSessionBootstrap } from './process/startup/coreSessionBootstrap';
+import {
+  initializeCoreSessionBootstrap,
+  registerTrustedSalesPlanScheme,
+  registerTrustedSalesPlanTransport,
+} from './process/startup/coreSessionBootstrap';
 import {
   GEA_ENDPOINT_PROFILE_KEY,
   getGeaEnvironment,
@@ -100,6 +104,8 @@ const { bootstrapSecret: coreSessionBootstrapSecret, initialized: electronSquirr
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('electron-squirrel-startup') as boolean;
   });
+
+registerTrustedSalesPlanScheme(protocol);
 
 initSentry();
 
@@ -585,6 +591,14 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
     },
   });
   console.log(`[AionUi] Main window created (id=${mainWindow.id})`);
+
+  registerTrustedSalesPlanTransport({
+    desktopSession: mainWindow.webContents.session,
+    mainWebContents: mainWindow.webContents,
+    backendPort: backendManager.port,
+    bootstrapSecret: coreSessionBootstrapSecret,
+    fetchFromMain: (input, init) => net.fetch(input, init),
+  });
 
   scheduleStartupLogReport(mainWindow);
 

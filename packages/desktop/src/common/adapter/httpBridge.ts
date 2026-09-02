@@ -49,6 +49,16 @@ function isWebUiBrowserMode(): boolean {
   return typeof window !== 'undefined' && typeof document !== 'undefined' && !(window as Window).__backendPort;
 }
 
+const TRUSTED_SALES_PLAN_SUBMIT_URL = 'aionui-core://trusted/api/gea/sales-plan/submissions';
+
+/** Electron uses a Main-owned protocol; WebUI keeps its authenticated reverse proxy. */
+export function getSalesPlanSubmitTransportUrl(): string {
+  if (typeof window !== 'undefined' && (window as Window).__backendPort) {
+    return TRUSTED_SALES_PLAN_SUBMIT_URL;
+  }
+  return '/api/gea/sales-plan/submissions';
+}
+
 export function getBaseUrl(): string {
   if (isWebUiBrowserMode()) {
     // Same-origin: calls like fetch(`${baseUrl}/api/foo`) resolve to `/api/foo`
@@ -165,6 +175,10 @@ export type HttpRequestOptions = {
   headers?: Record<string, string>;
   /** Keep opaque or otherwise sensitive request and response bodies out of diagnostic logs. */
   redactBodyFromLogs?: boolean;
+  /** Skip request-body logging for payloads that must not enter diagnostics. */
+  logBody?: 'redact' | 'omit';
+  /** Cancels an in-flight request when the owning Renderer query becomes stale. */
+  signal?: AbortSignal;
 };
 
 const SENSITIVE_LOG_KEY_PATTERN =
@@ -192,7 +206,7 @@ export async function httpRequest<T>(
   body?: unknown,
   options?: HttpRequestOptions
 ): Promise<T> {
-  const url = `${getBaseUrl()}${path}`;
+  const url = path === TRUSTED_SALES_PLAN_SUBMIT_URL ? path : `${getBaseUrl()}${path}`;
   const headers: Record<string, string> = {};
 
   if (body !== undefined) {
@@ -209,13 +223,16 @@ export async function httpRequest<T>(
       ? '(no body)'
       : options?.redactBodyFromLogs
         ? '[REDACTED]'
-        : JSON.stringify(redactForLog(body)).slice(0, 500)
+        : options?.logBody === 'omit'
+          ? '(body omitted)'
+          : JSON.stringify(redactForLog(body)).slice(0, 500)
   );
 
   const response = await fetch(url, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    ...(options?.signal ? { signal: options.signal } : {}),
   });
 
   if (!response.ok) {

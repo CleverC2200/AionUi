@@ -5,6 +5,7 @@
  */
 
 import type { IConversationMcpStatus } from '@/common/config/storage';
+import type { SurfaceContextSnapshot } from '@/renderer/pages/assistantSurface/surfaceContext';
 import React, { createContext, useContext } from 'react';
 
 /**
@@ -76,6 +77,12 @@ export interface ConversationContextValue {
    * attachments reach the agent as file paths, and the send box hints so.
    */
   promptCapability?: { image: boolean; audio: boolean };
+
+  /** Business workbench snapshot frozen when the next user Turn is sent. */
+  surfaceContext?: SurfaceContextSnapshot;
+
+  /** Optional scoped key used by embedded Business Conversation scroll restoration. */
+  scrollPersistenceKey?: string;
 }
 
 /**

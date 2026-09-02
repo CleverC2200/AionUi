@@ -172,6 +172,7 @@ import {
   toApiModelOptional,
 } from './apiModelMapper';
 import {
+  getSalesPlanSubmitTransportUrl,
   httpDelete,
   httpGet,
   httpPatch,
@@ -350,6 +351,468 @@ export const clientResources = {
 export const geaAuth = {
   status: httpGet<GeaAuthSessionStatus, void>('/api/gea/auth/session'),
   testMcpConnection: httpPost<GeaMcpTool[], { consumerCode: string }>('/api/gea/mcp/test'),
+};
+
+/** GEA Long identifiers remain strings so Renderer code cannot lose precision. */
+export type GeaSalesPlanId = string;
+/** Exact decimals remain strings across the JavaScript/Core/GEA boundary. */
+export type GeaSalesPlanDecimal = string;
+
+export type GeaSalesPlanPage<T> = {
+  records: T[];
+  total: number;
+  size: number;
+  current: number;
+  pages: number;
+};
+
+export type GeaSalesPlanPeriod = {
+  periodId: GeaSalesPlanId;
+  tenantId: GeaSalesPlanId;
+  periodMonth: string;
+  planType: string;
+  planTypeCode: string;
+  status: string;
+  submitDeadline?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type GeaSalesPlanPeriodQuery = {
+  periodMonth?: string;
+  planType?: string;
+  status?: string;
+  pageNo?: number;
+  pageSize?: number;
+  signal?: AbortSignal;
+};
+
+export type GeaSalesPlanListItem = {
+  planId: string;
+  versionId: string;
+  seq: number;
+  periodId: GeaSalesPlanId;
+  planTypeCode: string;
+  dealerCode: GeaSalesPlanId;
+  orgCode?: string | null;
+  provinceCode?: string | null;
+  areaCode?: string | null;
+  baseName?: string | null;
+  status: number;
+  returnReason?: string | null;
+  targetQty: GeaSalesPlanDecimal;
+  targetAmount: GeaSalesPlanDecimal;
+  skuCount: number;
+  currentQty: GeaSalesPlanDecimal;
+  currentAmount: GeaSalesPlanDecimal;
+  submitter?: string | null;
+  submitTime?: string | null;
+  finishedAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type GeaSalesPlanPageQuery = {
+  periodId?: GeaSalesPlanId;
+  planTypeCode?: string;
+  dealerCode?: GeaSalesPlanId;
+  areaCode?: string;
+  provinceCode?: string;
+  orgCode?: string;
+  baseName?: string;
+  status?: number;
+  pageNo?: number;
+  pageSize?: number;
+  signal?: AbortSignal;
+};
+
+export type GeaSalesPlanVersion = {
+  id: string;
+  planId: string;
+  seq: number;
+  periodId: GeaSalesPlanId;
+  planTypeCode: string;
+  dealerCode: GeaSalesPlanId;
+  orgCode?: string | null;
+  provinceCode?: string | null;
+  areaCode?: string | null;
+  baseName?: string | null;
+  status: number;
+  effective: boolean;
+  returnReason?: string | null;
+  targetAmount: GeaSalesPlanDecimal;
+  targetQty: GeaSalesPlanDecimal;
+  submitter?: string | null;
+  submitTime?: string | null;
+  finishedAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type GeaSalesPlanSku = {
+  id: GeaSalesPlanId;
+  versionId: string;
+  skuCode: GeaSalesPlanId;
+  productCategName: string;
+  baseQty: GeaSalesPlanDecimal;
+  qty: GeaSalesPlanDecimal;
+  price: GeaSalesPlanDecimal;
+  amt: GeaSalesPlanDecimal;
+  amtBase: GeaSalesPlanDecimal;
+  regionConfirmedQty?: GeaSalesPlanDecimal | null;
+  regionConfirmedAmount?: GeaSalesPlanDecimal | null;
+  provinceConfirmedQty?: GeaSalesPlanDecimal | null;
+  provinceConfirmedAmount?: GeaSalesPlanDecimal | null;
+  areaConfirmedQty?: GeaSalesPlanDecimal | null;
+  areaConfirmedAmount?: GeaSalesPlanDecimal | null;
+  categoryConfirmedQty?: GeaSalesPlanDecimal | null;
+  categoryConfirmedAmount?: GeaSalesPlanDecimal | null;
+};
+
+export type GeaSalesPlanApprovalLog = {
+  id: GeaSalesPlanId;
+  planId: string;
+  versionId: string;
+  fromStatus?: number | null;
+  toStatus: number;
+  actionCode: string;
+  operatorCode: string;
+  operatorName?: string | null;
+  remark?: string | null;
+  requestId?: string | null;
+  traceId?: string | null;
+  serviceClientId?: string | null;
+  actionAt: string;
+};
+
+export type GeaSalesPlanDetail = {
+  currentVersion: GeaSalesPlanVersion;
+  skus: GeaSalesPlanSku[];
+  versions: GeaSalesPlanVersion[];
+  logs: GeaSalesPlanApprovalLog[];
+};
+
+export type GeaSalesPlanChangeType = 'ADDED' | 'DELETED' | 'UPDATED';
+
+export type GeaSalesPlanSkuDiff = {
+  skuCode: GeaSalesPlanId;
+  changeType: GeaSalesPlanChangeType;
+  before?: GeaSalesPlanSku | null;
+  after?: GeaSalesPlanSku | null;
+  qtyDelta: GeaSalesPlanDecimal;
+  amountDelta: GeaSalesPlanDecimal;
+};
+
+export type GeaSalesPlanResourceQuery = {
+  planId: string;
+  signal?: AbortSignal;
+};
+
+export type GeaSalesPlanVersionSkuQuery = {
+  versionId: string;
+  signal?: AbortSignal;
+};
+
+export type GeaSalesPlanCompareQuery = {
+  planId: string;
+  fromVersionId: string;
+  toVersionId: string;
+  signal?: AbortSignal;
+};
+
+export type GeaSalesPlanSubmitItem = {
+  skuCode: GeaSalesPlanId;
+  productCategName: string;
+  baseQty: GeaSalesPlanDecimal;
+  qty: GeaSalesPlanDecimal;
+  price: GeaSalesPlanDecimal;
+};
+
+export type GeaSalesPlanSubmitRequest = {
+  periodId: GeaSalesPlanId;
+  periodMonth: string;
+  planTypeCode: string;
+  channelCode: string;
+  dealerCode: GeaSalesPlanId;
+  orgCode?: string;
+  provinceCode?: string;
+  areaCode?: string;
+  baseName?: string;
+  targetQty: GeaSalesPlanDecimal;
+  targetAmount: GeaSalesPlanDecimal;
+  submitterCode: string;
+  submitterName?: string;
+  items: GeaSalesPlanSubmitItem[];
+};
+
+export type GeaSalesPlanSubmitReceipt = {
+  planId: GeaSalesPlanId;
+  versionId: GeaSalesPlanId;
+  seq: number;
+  status: number;
+  replayed: boolean;
+  requestId: string;
+  traceId: string;
+  auditId: string;
+};
+
+export type GeaSalesPlanSubmitParams = {
+  request: GeaSalesPlanSubmitRequest;
+  idempotencyKey: string;
+  requestId: string;
+};
+
+export type GeaSalesPlanAction = 'APPROVE' | 'REJECT';
+
+export type GeaSalesPlanSkuAdjustment = {
+  skuCode: GeaSalesPlanId;
+  /** Signed quantity delta, not an absolute quantity. */
+  adjustQty: GeaSalesPlanDecimal;
+};
+
+export type GeaSalesPlanActionRequest = {
+  action: GeaSalesPlanAction;
+  expectedStatus: number;
+  remark?: string;
+  adjustments?: GeaSalesPlanSkuAdjustment[];
+};
+
+export type GeaSalesPlanActionReceipt = {
+  planId: GeaSalesPlanId;
+  versionId: GeaSalesPlanId;
+  fromStatus: number;
+  toStatus: number;
+  replayed: boolean;
+  requestId: string;
+  traceId: string;
+  auditId: string;
+};
+
+export type GeaSalesPlanActionParams = {
+  versionId: GeaSalesPlanId;
+  request: GeaSalesPlanActionRequest;
+  idempotencyKey: string;
+  requestId: string;
+};
+
+const buildSalesPlanQuery = (path: string, params: Record<string, unknown>): string => {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && key !== 'signal') query.set(key, String(value));
+  }
+  const serialized = query.toString();
+  return serialized ? `${path}?${serialized}` : path;
+};
+
+const normalizeSalesPlanId = (value: unknown): GeaSalesPlanId => {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isSafeInteger(value)) return String(value);
+  throw new TypeError('Invalid sales-plan identifier');
+};
+
+const normalizeSalesPlanDecimal = (value: unknown): GeaSalesPlanDecimal => {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  throw new TypeError('Invalid sales-plan decimal');
+};
+
+const normalizeOptionalSalesPlanDecimal = (value: unknown): GeaSalesPlanDecimal | null | undefined => {
+  if (value === null) return null;
+  if (value === undefined) return undefined;
+  return normalizeSalesPlanDecimal(value);
+};
+
+const normalizeSalesPlanPeriod = (period: GeaSalesPlanPeriod): GeaSalesPlanPeriod => ({
+  ...period,
+  periodId: normalizeSalesPlanId(period.periodId),
+  tenantId: normalizeSalesPlanId(period.tenantId),
+});
+
+const normalizeSalesPlanListItem = (item: GeaSalesPlanListItem): GeaSalesPlanListItem => ({
+  ...item,
+  periodId: normalizeSalesPlanId(item.periodId),
+  dealerCode: normalizeSalesPlanId(item.dealerCode),
+  targetQty: normalizeSalesPlanDecimal(item.targetQty),
+  targetAmount: normalizeSalesPlanDecimal(item.targetAmount),
+  currentQty: normalizeSalesPlanDecimal(item.currentQty),
+  currentAmount: normalizeSalesPlanDecimal(item.currentAmount),
+});
+
+const normalizeSalesPlanVersion = (version: GeaSalesPlanVersion): GeaSalesPlanVersion => ({
+  ...version,
+  periodId: normalizeSalesPlanId(version.periodId),
+  dealerCode: normalizeSalesPlanId(version.dealerCode),
+  targetQty: normalizeSalesPlanDecimal(version.targetQty),
+  targetAmount: normalizeSalesPlanDecimal(version.targetAmount),
+});
+
+const normalizeSalesPlanSku = (sku: GeaSalesPlanSku): GeaSalesPlanSku => ({
+  ...sku,
+  id: normalizeSalesPlanId(sku.id),
+  skuCode: normalizeSalesPlanId(sku.skuCode),
+  baseQty: normalizeSalesPlanDecimal(sku.baseQty),
+  qty: normalizeSalesPlanDecimal(sku.qty),
+  price: normalizeSalesPlanDecimal(sku.price),
+  amt: normalizeSalesPlanDecimal(sku.amt),
+  amtBase: normalizeSalesPlanDecimal(sku.amtBase),
+  regionConfirmedQty: normalizeOptionalSalesPlanDecimal(sku.regionConfirmedQty),
+  regionConfirmedAmount: normalizeOptionalSalesPlanDecimal(sku.regionConfirmedAmount),
+  provinceConfirmedQty: normalizeOptionalSalesPlanDecimal(sku.provinceConfirmedQty),
+  provinceConfirmedAmount: normalizeOptionalSalesPlanDecimal(sku.provinceConfirmedAmount),
+  areaConfirmedQty: normalizeOptionalSalesPlanDecimal(sku.areaConfirmedQty),
+  areaConfirmedAmount: normalizeOptionalSalesPlanDecimal(sku.areaConfirmedAmount),
+  categoryConfirmedQty: normalizeOptionalSalesPlanDecimal(sku.categoryConfirmedQty),
+  categoryConfirmedAmount: normalizeOptionalSalesPlanDecimal(sku.categoryConfirmedAmount),
+});
+
+const normalizeSalesPlanApprovalLog = (log: GeaSalesPlanApprovalLog): GeaSalesPlanApprovalLog => ({
+  ...log,
+  id: normalizeSalesPlanId(log.id),
+});
+
+const normalizeSalesPlanDetail = (detail: GeaSalesPlanDetail): GeaSalesPlanDetail => ({
+  currentVersion: normalizeSalesPlanVersion(detail.currentVersion),
+  skus: detail.skus.map(normalizeSalesPlanSku),
+  versions: detail.versions.map(normalizeSalesPlanVersion),
+  logs: detail.logs.map(normalizeSalesPlanApprovalLog),
+});
+
+const normalizeSalesPlanSkuDiff = (diff: GeaSalesPlanSkuDiff): GeaSalesPlanSkuDiff => ({
+  ...diff,
+  skuCode: normalizeSalesPlanId(diff.skuCode),
+  before: diff.before ? normalizeSalesPlanSku(diff.before) : diff.before,
+  after: diff.after ? normalizeSalesPlanSku(diff.after) : diff.after,
+  qtyDelta: normalizeSalesPlanDecimal(diff.qtyDelta),
+  amountDelta: normalizeSalesPlanDecimal(diff.amountDelta),
+});
+
+const normalizeSalesPlanPage = <T, M>(page: GeaSalesPlanPage<T>, map: (item: T) => M): GeaSalesPlanPage<M> => ({
+  ...page,
+  records: page.records.map(map),
+});
+
+export const salesPlan = {
+  periods: {
+    provider: () => {},
+    invoke: async ({ signal, ...query }: GeaSalesPlanPeriodQuery = {}) =>
+      normalizeSalesPlanPage(
+        await httpRequest<GeaSalesPlanPage<GeaSalesPlanPeriod>>(
+          'GET',
+          buildSalesPlanQuery('/api/gea/sales-plan/periods', query),
+          undefined,
+          { signal }
+        ),
+        normalizeSalesPlanPeriod
+      ),
+  },
+  list: {
+    provider: () => {},
+    invoke: async ({ signal, ...query }: GeaSalesPlanPageQuery = {}) =>
+      normalizeSalesPlanPage(
+        await httpRequest<GeaSalesPlanPage<GeaSalesPlanListItem>>(
+          'GET',
+          buildSalesPlanQuery('/api/gea/sales-plan/plans', query),
+          undefined,
+          { signal }
+        ),
+        normalizeSalesPlanListItem
+      ),
+  },
+  detail: {
+    provider: () => {},
+    invoke: async ({ planId, signal }: GeaSalesPlanResourceQuery) =>
+      normalizeSalesPlanDetail(
+        await httpRequest<GeaSalesPlanDetail>(
+          'GET',
+          `/api/gea/sales-plan/plans/${encodeURIComponent(planId)}`,
+          undefined,
+          { signal }
+        )
+      ),
+  },
+  versions: {
+    provider: () => {},
+    invoke: async ({ planId, signal }: GeaSalesPlanResourceQuery) =>
+      (
+        await httpRequest<GeaSalesPlanVersion[]>(
+          'GET',
+          `/api/gea/sales-plan/plans/${encodeURIComponent(planId)}/versions`,
+          undefined,
+          { signal }
+        )
+      ).map(normalizeSalesPlanVersion),
+  },
+  logs: {
+    provider: () => {},
+    invoke: async ({ planId, signal }: GeaSalesPlanResourceQuery) =>
+      (
+        await httpRequest<GeaSalesPlanApprovalLog[]>(
+          'GET',
+          `/api/gea/sales-plan/plans/${encodeURIComponent(planId)}/logs`,
+          undefined,
+          { signal }
+        )
+      ).map(normalizeSalesPlanApprovalLog),
+  },
+  versionSkus: {
+    provider: () => {},
+    invoke: async ({ versionId, signal }: GeaSalesPlanVersionSkuQuery) =>
+      (
+        await httpRequest<GeaSalesPlanSku[]>(
+          'GET',
+          `/api/gea/sales-plan/plans/versions/${encodeURIComponent(versionId)}/skus`,
+          undefined,
+          { signal }
+        )
+      ).map(normalizeSalesPlanSku),
+  },
+  compare: {
+    provider: () => {},
+    invoke: async ({ planId, fromVersionId, toVersionId, signal }: GeaSalesPlanCompareQuery) =>
+      (
+        await httpRequest<GeaSalesPlanSkuDiff[]>(
+          'GET',
+          buildSalesPlanQuery(`/api/gea/sales-plan/plans/${encodeURIComponent(planId)}/compare`, {
+            fromVersionId,
+            toVersionId,
+          }),
+          undefined,
+          { signal }
+        )
+      ).map(normalizeSalesPlanSkuDiff),
+  },
+  /**
+   * Service-account submit. Electron Main or an authenticated Lark WebHost
+   * adds the trusted capability at transport time; ordinary WebUI deliberately
+   * remains fail-closed. User approval actions keep their normal GEA session.
+   */
+  submit: {
+    provider: () => {},
+    invoke: ({ request, idempotencyKey, requestId }: GeaSalesPlanSubmitParams) =>
+      httpRequest<GeaSalesPlanSubmitReceipt>('POST', getSalesPlanSubmitTransportUrl(), request, {
+        headers: {
+          'Idempotency-Key': idempotencyKey,
+          'X-Request-Id': requestId,
+        },
+        logBody: 'omit',
+      }),
+  },
+  /** User approval action. Authentication and authorization come from the normal GEA session. */
+  action: {
+    provider: () => {},
+    invoke: ({ versionId, request, idempotencyKey, requestId }: GeaSalesPlanActionParams) =>
+      httpRequest<GeaSalesPlanActionReceipt>(
+        'POST',
+        `/api/gea/sales-plan/plans/versions/${encodeURIComponent(versionId)}/actions`,
+        request,
+        {
+          headers: {
+            'Idempotency-Key': idempotencyKey,
+            'X-Request-Id': requestId,
+          },
+          logBody: 'omit',
+        }
+      ),
+  },
 };
 
 // ---------------------------------------------------------------------------

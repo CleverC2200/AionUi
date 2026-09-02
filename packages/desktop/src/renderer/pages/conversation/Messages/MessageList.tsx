@@ -707,6 +707,7 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
   } = useAutoScroll({
     messages: list,
     itemCount: processedList.length,
+    persistenceKey: conversationContext?.scrollPersistenceKey,
   });
 
   const setScrollerRef = useCallback(

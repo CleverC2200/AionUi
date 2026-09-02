@@ -1,0 +1,353 @@
+.root {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+  padding: 18px;
+  background: var(--bg-2);
+}
+
+.header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.header h1 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 28px;
+}
+
+.header p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.listPanel {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  container-name: message-inbox;
+  container-type: inline-size;
+  border: 1px solid var(--border-base);
+  border-radius: 8px;
+  background: var(--bg-1);
+}
+
+.filterBar {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  padding-right: 16px;
+}
+
+.stateTabs {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.stateTabs > :global(.arco-tabs-header-nav) {
+  padding-inline: 16px;
+}
+
+.sourceFilter {
+  width: 180px;
+  flex: 0 1 180px;
+}
+
+.table {
+  width: 100%;
+  min-width: 0;
+}
+
+.table :global(.arco-table-container),
+.table :global(.arco-table-content-scroll),
+.table :global(table) {
+  width: 100%;
+}
+
+.table :global(.arco-table-th) {
+  height: 38px;
+  background: var(--fill-1);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.table :global(.arco-table-td) {
+  height: 64px;
+  border-bottom-color: var(--border-base);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.table :global(.arco-table-tr:hover .arco-table-td) {
+  background: var(--fill-1);
+}
+
+.messageButton {
+  display: flex !important;
+  width: 100%;
+  height: auto !important;
+  min-height: 48px;
+  align-items: center;
+  justify-content: flex-start !important;
+  padding: 0 !important;
+  color: inherit !important;
+  text-align: start;
+}
+
+.messageCell {
+  width: 100%;
+  text-align: left;
+}
+
+.messageCell :global(.arco-table-cell),
+.messageCell :global(.arco-table-cell-wrap-value) {
+  display: block;
+  width: 100%;
+}
+
+.messageLead {
+  display: inline-flex;
+  width: 24px;
+  flex: 0 0 24px;
+  align-items: center;
+  justify-content: flex-start;
+  color: var(--text-tertiary);
+}
+
+.messageCopy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.messageTitleLine {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.messageTitle {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.messageSummary {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.unreadStatus {
+  color: rgb(var(--danger-6));
+  font-weight: 600;
+}
+
+.readStatus {
+  color: var(--text-tertiary);
+}
+
+.state {
+  display: flex;
+  min-height: 240px;
+  align-items: center;
+  justify-content: center;
+}
+
+.detailModal :global(.arco-modal) {
+  width: 920px;
+  max-width: calc(100vw - 48px);
+}
+
+.detailModal :global(.arco-modal-content) {
+  padding: 0;
+}
+
+.detailBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detailSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--border-base);
+  border-radius: 8px;
+  background: var(--bg-1);
+}
+
+.detailLead,
+.summaryMetric {
+  display: flex;
+  min-width: 0;
+  padding: 12px;
+}
+
+.detailLead {
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.detailLead svg {
+  flex: 0 0 auto;
+  color: rgb(var(--danger-6));
+}
+
+.detailLead > div,
+.summaryMetric {
+  flex-direction: column;
+  gap: 5px;
+}
+
+.detailLead strong,
+.summaryMetric strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.detailLead span,
+.summaryMetric span {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.summaryMetric {
+  justify-content: center;
+  border-left: 1px solid var(--border-base);
+}
+
+.detailModal :global(.arco-tabs-header-nav) {
+  padding-inline: 12px;
+}
+
+.detailModal :global(.arco-tabs-content) {
+  padding: 10px 12px 12px;
+}
+
+.detailText {
+  margin: 0 !important;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.targetGrid {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 10px 18px;
+  align-content: start;
+  padding: 0;
+  font-size: 12px;
+}
+
+.targetGrid span {
+  color: var(--text-tertiary);
+}
+
+.targetGrid strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.modalFooter {
+  display: flex;
+  width: 100%;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.boundaryNote {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  text-align: start;
+}
+
+.modalActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.modalActionButton {
+  min-width: 60px;
+}
+
+@media (max-width: 760px) {
+  .modalFooter {
+    flex-wrap: wrap;
+  }
+
+  .modalActions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .detailSummary {
+    grid-template-columns: 1fr;
+  }
+
+  .detailLead,
+  .summaryMetric {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-base);
+  }
+
+  .summaryMetric {
+    border-left: 0;
+  }
+
+  .summaryMetric:last-child {
+    border-bottom: 0;
+  }
+}
+
+@container message-inbox (max-width: 760px) {
+  .table :global(.arco-table-th:nth-child(2)),
+  .table :global(.arco-table-td:nth-child(2)) {
+    display: none;
+  }
+}
+
+@container message-inbox (max-width: 620px) {
+  .table :global(.arco-table-th:nth-child(3)),
+  .table :global(.arco-table-td:nth-child(3)) {
+    display: none;
+  }
+
+  .sourceFilter {
+    width: 148px;
+    flex-basis: 148px;
+  }
+}

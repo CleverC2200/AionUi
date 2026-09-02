@@ -13,7 +13,7 @@ import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useLocalFilePreview } from '@/renderer/pages/conversation/Preview/hooks/useLocalFilePreview';
 import { iconColors } from '@/renderer/styles/colors';
 import { Alert, Message, Tooltip } from '@arco-design/web-react';
-import { Copy } from '@icon-park/react';
+import { Copy, Data } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +28,7 @@ import { stripSkillSuggest, hasSkillSuggest } from '@renderer/utils/chat/skillSu
 import { isForkEnabled } from '@/common/chat/forkConversation';
 import { useForkConversation } from '@/renderer/hooks/chat/useForkConversation';
 import ForkBranchIcon from '@renderer/components/base/ForkBranchIcon';
+import { parseSurfaceContextBlock } from '@/renderer/pages/assistantSurface/surfaceContext';
 
 /**
  * Format a timestamp for message display.
@@ -146,9 +147,14 @@ const MessageText: React.FC<{
     () => (isUserMessage ? parseSessionsBlock(text) : { text, sessions: [] }),
     [isUserMessage, text]
   );
-  const { text: visibleText, source: deliverySource } = useMemo(
+  const { text: textWithoutDelivery, source: deliverySource } = useMemo(
     () => (isUserMessage ? parseSessionMessageBlock(textWithoutMentions) : { text: textWithoutMentions, source: null }),
     [isUserMessage, textWithoutMentions]
+  );
+  const { text: visibleText, snapshot: surfaceContext } = useMemo(
+    () =>
+      isUserMessage ? parseSurfaceContextBlock(textWithoutDelivery) : { text: textWithoutDelivery, snapshot: null },
+    [isUserMessage, textWithoutDelivery]
   );
   const contextResetNotice = useMemo(
     () => (isTeammateMessage && senderName === 'team_system' ? parseTeamContextResetNotice(text) : null),
@@ -292,6 +298,25 @@ const MessageText: React.FC<{
                 interactive={!teamPermission}
               />
             ))}
+          </div>
+        )}
+        {surfaceContext && (
+          <div
+            className={classNames(
+              'mb-4px inline-flex max-w-full items-center gap-5px rounded-6px border border-border-2 bg-2 px-7px py-4px text-11px text-t-secondary',
+              { 'self-end': isUserMessage }
+            )}
+            data-testid='surface-context-badge'
+            title={surfaceContext.summary}
+          >
+            <Data size={13} />
+            <span className='truncate'>
+              {t('common.assistantSurface.contextMessageBadge', {
+                defaultValue: '{{label}} v{{revision}}',
+                label: surfaceContext.label,
+                revision: surfaceContext.revision,
+              })}
+            </span>
           </div>
         )}
         {files.length > 0 && (

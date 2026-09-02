@@ -26,6 +26,7 @@ import AcpE2EStreamInjector from './AcpE2EStreamInjector';
 import AcpSendBox from './AcpSendBox';
 import { useAcpMessage } from './useAcpMessage';
 import ConversationResourcesPortal from '../../components/ConversationResources';
+import type { SurfaceContextSnapshot } from '@/renderer/pages/assistantSurface/surfaceContext';
 
 const AcpChat: React.FC<{
   conversation_id: string;
@@ -46,6 +47,9 @@ const AcpChat: React.FC<{
   forkCapability?: { at_turn: boolean };
   promptCapability?: { image: boolean; audio: boolean };
   hideConversationResources?: boolean;
+  surfaceContext?: SurfaceContextSnapshot;
+  scrollPersistenceKey?: string;
+  compactComposerControls?: boolean;
 }> = ({
   conversation_id,
   workspace,
@@ -65,6 +69,9 @@ const AcpChat: React.FC<{
   forkCapability,
   promptCapability,
   hideConversationResources,
+  surfaceContext,
+  scrollPersistenceKey,
+  compactComposerControls,
 }) => {
   useMessageLstCache(conversation_id);
   usePendingConfirmationsRecovery(conversation_id);
@@ -88,6 +95,8 @@ const AcpChat: React.FC<{
         assistantId,
         forkCapability,
         promptCapability,
+        surfaceContext,
+        scrollPersistenceKey,
       }}
     >
       <ConversationArtifactProvider conversation_id={conversation_id}>
@@ -109,6 +118,7 @@ const AcpChat: React.FC<{
               teamSendMessage={teamSendMessage}
               teamRuntime={teamRuntime}
               hideComposerModelSelector={hideComposerModelSelector}
+              compactComposerControls={compactComposerControls}
             ></AcpSendBox>
           )}
         </div>

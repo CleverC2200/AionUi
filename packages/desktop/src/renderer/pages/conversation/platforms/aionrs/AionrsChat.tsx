@@ -25,6 +25,7 @@ import type { TeamSendBoxRuntime } from '@/renderer/pages/team/components/teamSe
 import AionrsSendBox from './AionrsSendBox';
 import type { AionrsModelSelection } from './useAionrsModelSelection';
 import ConversationResourcesPortal from '../../components/ConversationResources';
+import type { SurfaceContextSnapshot } from '@/renderer/pages/assistantSurface/surfaceContext';
 
 const AionrsChat: React.FC<{
   conversation_id: string;
@@ -43,6 +44,9 @@ const AionrsChat: React.FC<{
   assistantId?: string;
   hideConversationResources?: boolean;
   forkCapability?: { at_turn: boolean };
+  surfaceContext?: SurfaceContextSnapshot;
+  scrollPersistenceKey?: string;
+  compactComposerControls?: boolean;
 }> = ({
   conversation_id,
   workspace,
@@ -60,6 +64,9 @@ const AionrsChat: React.FC<{
   assistantId,
   hideConversationResources,
   forkCapability,
+  surfaceContext,
+  scrollPersistenceKey,
+  compactComposerControls,
 }) => {
   useMessageLstCache(conversation_id);
   usePendingConfirmationsRecovery(conversation_id);
@@ -74,6 +81,8 @@ const AionrsChat: React.FC<{
       loadedMcpStatuses,
       assistantId,
       forkCapability,
+      surfaceContext,
+      scrollPersistenceKey,
     };
   }, [
     conversation_id,
@@ -84,6 +93,8 @@ const AionrsChat: React.FC<{
     loadedMcpStatuses,
     assistantId,
     forkCapability,
+    surfaceContext,
+    scrollPersistenceKey,
   ]);
 
   return (
@@ -104,6 +115,7 @@ const AionrsChat: React.FC<{
             teamSendMessage={teamSendMessage}
             teamRuntime={teamRuntime}
             hideComposerModelSelector={hideComposerModelSelector}
+            compactComposerControls={compactComposerControls}
           />
         </div>
       </ConversationArtifactProvider>

@@ -23,6 +23,7 @@ const FOLLOW_BOTTOM_THRESHOLD_PX = 4;
 interface UseAutoScrollOptions {
   messages: TMessage[];
   itemCount: number;
+  persistenceKey?: string;
 }
 
 interface ScrollElementIntoViewOptions {
@@ -46,7 +47,15 @@ const getBottomGap = (element: HTMLElement): number => {
   return element.scrollHeight - element.clientHeight - element.scrollTop;
 };
 
-export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): UseAutoScrollReturn {
+const readPersistedScrollTop = (key: string | undefined): number | undefined => {
+  if (!key) return undefined;
+  const stored = window.sessionStorage.getItem(key);
+  if (stored === null) return undefined;
+  const value = Number(stored);
+  return Number.isFinite(value) && value >= 0 ? value : undefined;
+};
+
+export function useAutoScroll({ messages, itemCount, persistenceKey }: UseAutoScrollOptions): UseAutoScrollReturn {
   const [scrollerEl, setScrollerEl] = useState<HTMLDivElement | null>(null);
   const [contentEl, setContentEl] = useState<HTMLDivElement | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -160,9 +169,10 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
       }
 
       lastScrollTopRef.current = currentScrollTop;
+      if (persistenceKey) window.sessionStorage.setItem(persistenceKey, String(currentScrollTop));
       updateBottomState(target);
     },
-    [updateBottomState]
+    [persistenceKey, updateBottomState]
   );
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
@@ -192,12 +202,20 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
   useEffect(() => {
     if (!scrollerEl || initialScrollDoneRef.current || itemCount === 0) return;
 
+    const restoredScrollTop = readPersistedScrollTop(persistenceKey);
     initialScrollDoneRef.current = true;
     requestAnimationFrame(() => {
-      scrollToBottom('auto');
+      if (restoredScrollTop !== undefined) {
+        markProgrammaticScroll();
+        scrollerEl.scrollTo({ top: restoredScrollTop, behavior: 'auto' });
+        userScrolledRef.current = getBottomGap(scrollerEl) > FOLLOW_BOTTOM_THRESHOLD_PX;
+        updateBottomState(scrollerEl);
+      } else {
+        scrollToBottom('auto');
+      }
       lastScrollTopRef.current = scrollerEl.scrollTop;
     });
-  }, [itemCount, scrollerEl, scrollToBottom]);
+  }, [itemCount, markProgrammaticScroll, persistenceKey, scrollerEl, scrollToBottom, updateBottomState]);
 
   useEffect(() => {
     const currentListLength = messages.length;

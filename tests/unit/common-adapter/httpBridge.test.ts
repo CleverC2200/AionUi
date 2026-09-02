@@ -254,6 +254,38 @@ describe('httpBridge', () => {
       expect(JSON.stringify(debugSpy.mock.calls)).not.toContain(navigationReference);
       expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(navigationReference);
     });
+
+    it('omits a protected request body and never logs request headers', async () => {
+      const fetchSpy = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: { ok: true } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+      vi.stubGlobal('fetch', fetchSpy);
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      const body = { dealerCode: 'body-must-not-enter-logs' };
+
+      await httpRequest('POST', '/api/gea/sales-plan/submissions', body, {
+        headers: {
+          'Idempotency-Key': 'idempotency-must-not-enter-logs',
+          'X-Request-Id': 'request-id-must-not-enter-logs',
+        },
+        logBody: 'omit',
+      });
+
+      const logOutput = debugSpy.mock.calls.flat().join(' ');
+      expect(logOutput).toContain('(body omitted)');
+      expect(logOutput).not.toContain('body-must-not-enter-logs');
+      expect(logOutput).not.toContain('idempotency-must-not-enter-logs');
+      expect(logOutput).not.toContain('request-id-must-not-enter-logs');
+      expect(fetchSpy.mock.calls[0][1]?.body).toBe(JSON.stringify(body));
+      expect(fetchSpy.mock.calls[0][1]?.headers).toEqual({
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'idempotency-must-not-enter-logs',
+        'X-Request-Id': 'request-id-must-not-enter-logs',
+      });
+    });
   });
 
   describe('path as function', () => {
