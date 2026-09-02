@@ -189,14 +189,6 @@
         "offline": "离线",
         "failed": "读取失败"
       },
-      "states": {
-        "loading": "正在读取 Fixture 合同与风险证据…",
-        "empty": "当前 Fixture 条件下没有可审查合同。",
-        "partial": "当前为部分 Fixture 结果：部分条款证据尚未返回。",
-        "permission": "当前 Fixture 身份没有读取合同数据的权限。",
-        "offline": "当前处于 Fixture 离线状态；本地草稿已保留。",
-        "failed": "Fixture 合同数据读取失败；不会自动无限重试。"
-      },
       "search": "搜索 SKU 编码或名称",
       "statusFilter": "筛选核对状态",
       "pendingWithCount": "待处理 {{count}}",

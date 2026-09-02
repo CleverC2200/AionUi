@@ -189,14 +189,6 @@
         "offline": "Offline",
         "failed": "Read failed"
       },
-      "states": {
-        "loading": "Loading Fixture contract and risk evidence…",
-        "empty": "No contract is available for the current Fixture conditions.",
-        "partial": "This is a partial Fixture result. Some clause evidence is unavailable.",
-        "permission": "The current Fixture identity cannot read contract data.",
-        "offline": "The Fixture is offline. Local drafts are preserved.",
-        "failed": "Fixture contract data failed to load and will not retry indefinitely."
-      },
       "search": "Search SKU code or name",
       "statusFilter": "Filter review status",
       "pendingWithCount": "Pending {{count}}",
