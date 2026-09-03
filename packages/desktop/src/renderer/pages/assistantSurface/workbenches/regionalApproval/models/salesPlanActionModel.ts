@@ -20,7 +20,13 @@ export type SalesPlanActionInput = {
 };
 
 export type SalesPlanActionErrorKind =
-  'validation' | 'authentication' | 'permission' | 'conflict' | 'rateLimited' | 'unavailable' | 'failed';
+  | 'validation'
+  | 'authentication'
+  | 'permission'
+  | 'conflict'
+  | 'rateLimited'
+  | 'unavailable'
+  | 'failed';
 
 export class SalesPlanActionError extends Error {
   constructor(
