@@ -9,8 +9,6 @@ const {
   sha256File,
 } = require('../../../packages/shared-scripts/src/verify-bundled-aioncore-resources');
 
-const AIONCORE_BINARY_FIXTURE = 'binary /api/v1/notifications?pageNo= /api/gea/sales-plan/periods';
-
 describe('prepare-aioncore local bundle input', () => {
   it('records final bundle content identities separately from source provenance', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'aionui-local-bundle-'));
@@ -19,7 +17,7 @@ describe('prepare-aioncore local bundle input', () => {
     const managedResources = join(localBundle, 'managed-resources');
     const nodeRoot = join(managedResources, 'node', 'node-v24.11.0-win-x64');
     mkdirSync(nodeRoot, { recursive: true });
-    writeFileSync(join(localBundle, 'aioncore.exe'), AIONCORE_BINARY_FIXTURE);
+    writeFileSync(join(localBundle, 'aioncore.exe'), 'binary');
     writeFileSync(join(nodeRoot, 'node.exe'), 'node');
     writeFileSync(
       join(managedResources, 'manifest.json'),
@@ -66,7 +64,7 @@ describe('prepare-aioncore local bundle input', () => {
     const npmCli = join(nodeRoot, 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js');
     mkdirSync(join(nodeRoot, 'bin'), { recursive: true });
     mkdirSync(join(npmCli, '..'), { recursive: true });
-    writeFileSync(join(localBundle, 'aioncore'), AIONCORE_BINARY_FIXTURE);
+    writeFileSync(join(localBundle, 'aioncore'), 'binary');
     writeFileSync(join(nodeRoot, 'bin', 'node'), 'node');
     writeFileSync(npmCli, 'cli');
     symlinkSync('../lib/node_modules/npm/bin/npm-cli.js', join(nodeRoot, 'bin', 'npm'));

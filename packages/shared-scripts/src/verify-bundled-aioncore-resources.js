@@ -2,9 +2,6 @@ const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
 
-const REQUIRED_AIONCORE_CONTRACT_MARKERS = ['/api/v1/notifications?pageNo=', '/api/gea/sales-plan/periods'];
-const RETIRED_AIONCORE_CONTRACT_MARKERS = ['/ai/gateway/notifications'];
-
 function backendBinaryName(platform) {
   return platform === 'win32' ? 'aioncore.exe' : 'aioncore';
 }
@@ -135,37 +132,6 @@ function requireRelativeDirectory(baseDir, runtimeKey, parts, checked, missing, 
     const failure = { component: 'managed-resources', reason: 'missing_directory', path: relativePath };
     failures.push(failure);
     missing.push(relativePath);
-  }
-}
-
-function verifyAioncoreBinaryContracts(baseDir, runtimeKey, electronPlatformName, missing, failures) {
-  const binaryName = backendBinaryName(electronPlatformName);
-  const binaryPath = path.join(baseDir, binaryName);
-  if (!isFile(binaryPath)) return;
-
-  const contents = fs.readFileSync(binaryPath);
-  const relativePath = bundledPath(runtimeKey, binaryName);
-  for (const contract of REQUIRED_AIONCORE_CONTRACT_MARKERS) {
-    if (!contents.includes(contract)) {
-      failures.push({
-        component: 'aioncore',
-        reason: 'missing_required_contract',
-        path: relativePath,
-        contract,
-      });
-      missing.push(`${relativePath}<missing_required_contract:${contract}>`);
-    }
-  }
-  for (const contract of RETIRED_AIONCORE_CONTRACT_MARKERS) {
-    if (contents.includes(contract)) {
-      failures.push({
-        component: 'aioncore',
-        reason: 'retired_contract_present',
-        path: relativePath,
-        contract,
-      });
-      missing.push(`${relativePath}<retired_contract_present:${contract}>`);
-    }
   }
 }
 
@@ -485,7 +451,6 @@ function verifyBundledAioncoreResources({ resourcesDir, electronPlatformName, ta
   const failures = [];
 
   requireRelativePath(baseDir, runtimeKey, [backendBinaryName(electronPlatformName)], checked, missing, failures);
-  verifyAioncoreBinaryContracts(baseDir, runtimeKey, electronPlatformName, missing, failures);
   verifyBundleManifest(baseDir, runtimeKey, electronPlatformName, targetArch, checked, missing, failures);
   requireRelativeDirectory(baseDir, runtimeKey, ['managed-resources'], checked, missing, failures);
   verifyManagedResourcesContract(baseDir, runtimeKey, checked, missing, failures);

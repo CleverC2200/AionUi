@@ -12,8 +12,6 @@ const {
 
 const CLAUDE_VERSION = '2.1.215';
 const CODEX_VERSION = '0.144.6';
-const REQUIRED_AIONCORE_CONTRACT_MARKERS = ['/api/v1/notifications?pageNo=', '/api/gea/sales-plan/periods'];
-
 // codex ships under vendor/<triple>/... ; the triple is platform-specific.
 const CODEX_TRIPLE: Record<string, string> = {
   'win32-x64': 'x86_64-pc-windows-msvc',
@@ -139,7 +137,7 @@ function seedRuntimeKey(
   mkdirSync(join(resourcesDir, 'bundled-aioncore', runtimeKey), { recursive: true });
   const binaryName = platform === 'win32' ? 'aioncore.exe' : 'aioncore';
   const binaryPath = join(resourcesDir, 'bundled-aioncore', runtimeKey, binaryName);
-  writeFileSync(binaryPath, REQUIRED_AIONCORE_CONTRACT_MARKERS.join('\0'));
+  writeFile(binaryPath);
   writeFile(join(managedResourcesDir, ...nodeRoot.split('/'), ...nodeExecutable.split('/')));
   createManagedCliFixture({ managedResourcesDir, name: 'claude', version: CLAUDE_VERSION, runtimeKey });
   createManagedCliFixture({ managedResourcesDir, name: 'codex', version: CODEX_VERSION, runtimeKey });
@@ -207,46 +205,6 @@ describe('verifyBundledAioncoreResources', () => {
     );
   });
 
-  it('fails when the bundled binary is missing a required GEA contract', () => {
-    const binaryPath = join(resourcesDir, 'bundled-aioncore', 'win32-x64', 'aioncore.exe');
-    writeFileSync(binaryPath, REQUIRED_AIONCORE_CONTRACT_MARKERS[0]);
-    refreshBundleContentIdentity(resourcesDir, 'win32-x64', 'win32');
-
-    const result = verifyBundledAioncoreResources({
-      resourcesDir,
-      electronPlatformName: 'win32',
-      targetArch: 'x64',
-    });
-
-    expect(result.failures).toContainEqual(
-      expect.objectContaining({
-        component: 'aioncore',
-        reason: 'missing_required_contract',
-        contract: '/api/gea/sales-plan/periods',
-      })
-    );
-  });
-
-  it('fails when the bundled binary still contains a retired GEA contract', () => {
-    const binaryPath = join(resourcesDir, 'bundled-aioncore', 'win32-x64', 'aioncore.exe');
-    writeFileSync(binaryPath, `${REQUIRED_AIONCORE_CONTRACT_MARKERS.join('\0')}\0/ai/gateway/notifications`);
-    refreshBundleContentIdentity(resourcesDir, 'win32-x64', 'win32');
-
-    const result = verifyBundledAioncoreResources({
-      resourcesDir,
-      electronPlatformName: 'win32',
-      targetArch: 'x64',
-    });
-
-    expect(result.failures).toContainEqual(
-      expect.objectContaining({
-        component: 'aioncore',
-        reason: 'retired_contract_present',
-        contract: '/ai/gateway/notifications',
-      })
-    );
-  });
-
   it('fails when managed resources no longer match their content identity', () => {
     writeFileSync(join(managedResourcesDir, 'unexpected.txt'), 'changed');
 
@@ -263,7 +221,7 @@ describe('verifyBundledAioncoreResources', () => {
 
   it('atomically refreshes content identity after packaging transforms the final resource tree', () => {
     const binaryPath = join(resourcesDir, 'bundled-aioncore', 'win32-x64', 'aioncore.exe');
-    writeFileSync(binaryPath, `signed\0${REQUIRED_AIONCORE_CONTRACT_MARKERS.join('\0')}`);
+    writeFileSync(binaryPath, 'signed');
     writeFileSync(join(managedResourcesDir, 'packaged.txt'), 'copied');
 
     refreshBundledAioncoreContentIdentity({
