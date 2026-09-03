@@ -324,12 +324,11 @@ describe('RegionalApprovalWorkbench', () => {
 
     const queue = screen.getByRole('region', { name: '审批核对队列' });
     for (const heading of [
-      '组织',
+      '组织名称',
       'AI 核对意见',
       '计划数量',
       '计划金额',
-      '版本 / SKU',
-      '调整',
+      '计划进度',
       '版本对比',
       '退回原因',
       '审批状态',

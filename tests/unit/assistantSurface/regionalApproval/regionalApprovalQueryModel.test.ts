@@ -200,16 +200,16 @@ describe('regionalApprovalQueryModel', () => {
     });
     expect(projectRegionalApprovalLiveDimension(row, 'region')).toEqual({
       name: '杭州经销分区',
-      context: ['华东大区', '浙江省区', '杭州基地'],
+      context: ['浙江省区', '华东大区', '杭州基地'],
     });
     expect(projectRegionalApprovalLiveDimension(row, 'customer')).toEqual({
       name: '杭州经销商',
       customerCode: '10070026',
-      context: ['华东大区', '浙江省区', '杭州经销分区', '杭州基地'],
+      context: ['杭州经销分区', '浙江省区', '华东大区', '杭州基地'],
     });
   });
 
-  it('falls back to another localized organization name without exposing raw hierarchy codes', () => {
+  it('does not substitute a code or another hierarchy name when the selected level has no display name', () => {
     const row = toRegionalApprovalLiveRow({
       planId: 'plan-1',
       versionId: 'version-1',
@@ -229,7 +229,10 @@ describe('regionalApprovalQueryModel', () => {
       currentAmount: '1',
     });
 
-    expect(projectRegionalApprovalLiveDimension(row, 'province')).toEqual({ name: '华东', context: [] });
+    expect(projectRegionalApprovalLiveDimension(row, 'province')).toEqual({
+      name: undefined,
+      context: ['华东'],
+    });
   });
 
   it('treats status 5 as category approval completed under the latest business mapping', () => {

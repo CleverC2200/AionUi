@@ -721,14 +721,14 @@
         "organization": "组织层级"
       },
       "columns": {
-        "organization": "组织",
+        "organization": "组织名称",
         "aiOpinion": "AI 核对意见",
         "scope": "业务范围",
-        "plan": "SKU 汇总 / 计划目标",
+        "plan": "月计划",
         "category": "品类",
         "quantity": "计划数量",
         "amount": "计划金额",
-        "progress": "版本 / SKU",
+        "progress": "计划进度",
         "categoryProgress": "计划进度",
         "adjustment": "调整",
         "comparison": "版本对比",

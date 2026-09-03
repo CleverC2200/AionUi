@@ -40,12 +40,11 @@ export const adjustmentDimensionsFrom = (dimension: ApprovalDimension): Approval
   DIMENSION_ORDER.slice(Math.max(0, DIMENSION_ORDER.indexOf(dimension)));
 
 export const adjustmentDimensionName = (row: RegionalApprovalLiveRow, dimension: ApprovalDimension): string => {
-  if (dimension === 'area') return row.areaName?.trim() || row.regionName?.trim() || row.baseName?.trim() || '';
-  if (dimension === 'province')
-    return row.provinceName?.trim() || row.provinceRegionName?.trim() || row.baseName?.trim() || '';
-  if (dimension === 'region') return row.orgName?.trim() || row.salesGroupName?.trim() || row.baseName?.trim() || '';
-  if (dimension === 'base') return row.baseName?.trim() || row.orgName?.trim() || row.salesGroupName?.trim() || '';
-  return row.dealerName?.trim() || row.baseName?.trim() || row.dealerCode.trim();
+  if (dimension === 'area') return row.areaName?.trim() || row.regionName?.trim() || '';
+  if (dimension === 'province') return row.provinceName?.trim() || row.provinceRegionName?.trim() || '';
+  if (dimension === 'region') return row.orgName?.trim() || row.salesGroupName?.trim() || '';
+  if (dimension === 'base') return row.baseName?.trim() || '';
+  return row.dealerName?.trim() || '';
 };
 
 export const adjustmentDimensionKey = (row: RegionalApprovalLiveRow, dimension: ApprovalDimension): string => {

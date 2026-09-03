@@ -76,6 +76,7 @@ import {
   formatExactDecimal,
   isOpenSalesPlanPeriod,
   projectRegionalApprovalLiveDimension,
+  regionalApprovalLiveProgress,
   subtractExactDecimals,
   toRegionalApprovalLiveRow,
   VISIBLE_SALES_PLAN_STATUSES_BY_STAGE,
@@ -192,11 +193,6 @@ const number = (value: number) => value.toLocaleString();
 const money = (value: number) => `¥${value.toLocaleString()}`;
 const exactMoney = (value: string) => `¥${formatExactDecimal(value)}`;
 const isExactZero = (value: string) => /^-?0(?:\.0+)?$/.test(value);
-const signedExactDecimal = (value: string) => (value.startsWith('-') || isExactZero(value) ? value : `+${value}`);
-const signedExactMoney = (value: string) => {
-  if (value.startsWith('-')) return `-¥${formatExactDecimal(value.slice(1))}`;
-  return `${isExactZero(value) ? '' : '+'}¥${formatExactDecimal(value)}`;
-};
 const formattedProgress = (value: number | undefined) => (value === undefined ? '—' : `${value.toFixed(1)}%`);
 const csvCells = (values: Array<string | number>) =>
   values.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',');
@@ -1189,7 +1185,7 @@ const RegionalApprovalWorkbench: React.FC<{
   const liveColumns: TableColumnProps<RegionalApprovalLiveTableRow>[] = [
     {
       title: t('common.assistantSurface.regionalApproval.columns.organization'),
-      width: 180,
+      width: 220,
       render: (_, tableRow) => {
         if (tableRow.kind === 'category') {
           return (
@@ -1239,7 +1235,6 @@ const RegionalApprovalWorkbench: React.FC<{
             >
               {organizationName}
             </Button>
-            {projection.customerCode ? <span>{projection.customerCode}</span> : null}
             <span data-testid={`regional-approval-scope-${row.planId}`} title={projection.context.join(' / ')}>
               {projection.context.length > 0
                 ? projection.context.map((name, index) => (
@@ -1256,24 +1251,14 @@ const RegionalApprovalWorkbench: React.FC<{
     },
     {
       title: t('common.assistantSurface.regionalApproval.columns.plan'),
-      width: 205,
+      width: 165,
       render: (_, tableRow) => {
         const category = tableRow.kind === 'category' ? tableRow.category : undefined;
         const row = tableRow.plan;
         return (
           <div className={styles.stackCell}>
-            <strong>
-              {formatExactDecimal(category?.quantity ?? row.currentQty)} ·{' '}
-              {exactMoney(category?.amount ?? row.currentAmount)}
-            </strong>
-            <span>
-              {category
-                ? t('common.assistantSurface.regionalApproval.categoryRows.basePlan', {
-                    quantity: formatExactDecimal(category.baseQuantity),
-                    amount: exactMoney(category.baseAmount),
-                  })
-                : `${t('common.assistantSurface.regionalApproval.query.target')} ${formatExactDecimal(row.targetQty)} · ${exactMoney(row.targetAmount)}`}
-            </span>
+            <strong>{formatExactDecimal(category?.quantity ?? row.currentQty)} 件</strong>
+            <span>{exactMoney(category?.amount ?? row.currentAmount)}</span>
           </div>
         );
       },
@@ -1282,15 +1267,43 @@ const RegionalApprovalWorkbench: React.FC<{
       title: categoryComparison
         ? t('common.assistantSurface.regionalApproval.columns.categoryProgress')
         : t('common.assistantSurface.regionalApproval.columns.progress'),
-      width: categoryComparison ? 190 : 140,
+      width: 190,
       render: (_, tableRow) => {
         if (tableRow.kind === 'plan') {
+          const progress = regionalApprovalLiveProgress(tableRow.plan);
           return (
-            <div className={styles.stackCell}>
-              <strong>{t('common.assistantSurface.regionalApproval.query.version', { seq: tableRow.plan.seq })}</strong>
-              <span>
-                {t('common.assistantSurface.regionalApproval.query.skuCount', { count: tableRow.plan.skuCount })}
-              </span>
+            <div className={styles.categoryProgressCell}>
+              <strong>
+                {t('common.assistantSurface.regionalApproval.categoryRows.amountProgress', {
+                  progress: formattedProgress(progress.amount),
+                })}
+              </strong>
+              <Progress
+                percent={Math.min(progress.amount ?? 0, 100)}
+                showText={false}
+                size='small'
+                color='rgb(var(--danger-6))'
+                width={100}
+              />
+              <small>
+                {t('common.assistantSurface.regionalApproval.query.target')} {exactMoney(tableRow.plan.targetAmount)}
+              </small>
+              <strong>
+                {t('common.assistantSurface.regionalApproval.categoryRows.quantityProgress', {
+                  progress: formattedProgress(progress.quantity),
+                })}
+              </strong>
+              <Progress
+                percent={Math.min(progress.quantity ?? 0, 100)}
+                showText={false}
+                size='small'
+                color='rgb(var(--orange-6))'
+                width={100}
+              />
+              <small>
+                {t('common.assistantSurface.regionalApproval.query.target')}{' '}
+                {formatExactDecimal(tableRow.plan.targetQty)}
+              </small>
             </div>
           );
         }
@@ -1334,26 +1347,6 @@ const RegionalApprovalWorkbench: React.FC<{
           </div>
         );
       },
-    },
-    {
-      title: t('common.assistantSurface.regionalApproval.columns.adjustment'),
-      width: 150,
-      render: (_, tableRow) =>
-        tableRow.kind === 'category' ? (
-          <div className={styles.stackCell}>
-            <strong>{signedExactDecimal(formatExactDecimal(tableRow.category.quantityDelta))}</strong>
-            <span>{signedExactMoney(tableRow.category.amountDelta)}</span>
-          </div>
-        ) : (
-          <div className={styles.stackCell}>
-            <strong>
-              {signedExactDecimal(subtractExactDecimals(tableRow.plan.currentQty, tableRow.plan.targetQty))}
-            </strong>
-            <span>
-              {signedExactMoney(subtractExactDecimals(tableRow.plan.currentAmount, tableRow.plan.targetAmount))}
-            </span>
-          </div>
-        ),
     },
     {
       title: categoryComparison
@@ -1464,22 +1457,6 @@ const RegionalApprovalWorkbench: React.FC<{
             {t('common.assistantSurface.regionalApproval.quantityProgress', { progress: row.quantityProgress })}
           </strong>
           <span>{t('common.assistantSurface.regionalApproval.amountProgress', { progress: row.amountProgress })}</span>
-        </div>
-      ),
-    },
-    {
-      title: t('common.assistantSurface.regionalApproval.columns.adjustment'),
-      width: 125,
-      render: (_, row) => (
-        <div className={styles.stackCell}>
-          <strong>
-            {row.adjustmentQuantity >= 0 ? '+' : ''}
-            {number(row.adjustmentQuantity)}
-          </strong>
-          <span>
-            {row.adjustmentAmount >= 0 ? '+' : ''}
-            {money(row.adjustmentAmount)}
-          </span>
         </div>
       ),
     },
@@ -2134,7 +2111,7 @@ const RegionalApprovalWorkbench: React.FC<{
                     }}
                     pagination={false}
                     size='small'
-                    scroll={{ x: categoryComparison ? 1040 : 930 }}
+                    scroll={{ x: categoryComparison ? 835 : 660 }}
                   />
                 )}
               </Spin>

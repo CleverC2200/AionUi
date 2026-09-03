@@ -732,14 +732,14 @@
         "organization": "Organization"
       },
       "columns": {
-        "organization": "Organization",
+        "organization": "Organization name",
         "aiOpinion": "AI review opinion",
         "scope": "Business scope",
-        "plan": "SKU total / plan target",
+        "plan": "Monthly plan",
         "category": "Category",
         "quantity": "Plan quantity",
         "amount": "Plan amount",
-        "progress": "Version / SKU",
+        "progress": "Plan progress",
         "categoryProgress": "Plan progress",
         "adjustment": "Adjustment",
         "comparison": "Version comparison",

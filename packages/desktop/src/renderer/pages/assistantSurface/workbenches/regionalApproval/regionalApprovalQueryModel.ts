@@ -130,27 +130,27 @@ export const projectRegionalApprovalLiveDimension = (
 ): RegionalApprovalLiveDimensionProjection => {
   const name =
     dimension === 'area'
-      ? row.areaName?.trim() || row.regionName?.trim() || row.baseName?.trim()
+      ? row.areaName?.trim() || row.regionName?.trim()
       : dimension === 'province'
-        ? row.provinceName?.trim() || row.provinceRegionName?.trim() || row.baseName?.trim()
+        ? row.provinceName?.trim() || row.provinceRegionName?.trim()
         : dimension === 'region'
-          ? row.orgName?.trim() || row.salesGroupName?.trim() || row.baseName?.trim()
+          ? row.orgName?.trim() || row.salesGroupName?.trim()
           : dimension === 'base'
-            ? row.baseName?.trim() || row.orgName?.trim() || row.salesGroupName?.trim()
-            : row.dealerName?.trim() || row.baseName?.trim();
+            ? row.baseName?.trim()
+            : row.dealerName?.trim();
   const context =
     dimension === 'customer'
       ? uniqueNames(
           [
-            row.areaName ?? row.regionName,
-            row.provinceName ?? row.provinceRegionName,
             row.orgName ?? row.salesGroupName,
+            row.provinceName ?? row.provinceRegionName,
+            row.areaName ?? row.regionName,
             row.baseName,
           ],
           name
         )
       : dimension === 'region'
-        ? uniqueNames([row.areaName ?? row.regionName, row.provinceName ?? row.provinceRegionName, row.baseName], name)
+        ? uniqueNames([row.provinceName ?? row.provinceRegionName, row.areaName ?? row.regionName, row.baseName], name)
         : dimension === 'province'
           ? uniqueNames([row.areaName ?? row.regionName, row.baseName], name)
           : dimension === 'base'
@@ -221,6 +221,11 @@ const decimalRatio = (value: string, baseline: string): number | undefined => {
   if (!Number.isFinite(valueNumber) || !Number.isFinite(baselineNumber) || baselineNumber === 0) return undefined;
   return (valueNumber / baselineNumber) * 100;
 };
+
+export const regionalApprovalLiveProgress = (row: RegionalApprovalLiveRow) => ({
+  amount: decimalRatio(row.currentAmount, row.targetAmount),
+  quantity: decimalRatio(row.currentQty, row.targetQty),
+});
 
 export const aggregateRegionalApprovalLiveCategories = (
   skus: readonly GeaSalesPlanSku[]

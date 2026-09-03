@@ -219,9 +219,9 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     fireEvent.click(screen.getByRole('button', { name: '关闭' }));
     fireEvent.click(within(dimensionTabs).getByRole('tab', { name: '按客户' }));
     expect(screen.getByText('plan-live 经销商')).toBeVisible();
-    expect(screen.getByText('9007199254740997')).toBeVisible();
+    expect(screen.queryByText('9007199254740997')).not.toBeInTheDocument();
     expect(screen.getByTestId('regional-approval-scope-plan-live')).toHaveTextContent(
-      '华东大区 / 浙江省区 / plan-live 经销分区 / plan-live 基地'
+      'plan-live 经销分区 / 浙江省区 / 华东大区 / plan-live 基地'
     );
     expect(screen.queryByRole('button', { name: '版本对比' })).not.toBeInTheDocument();
     expect(screen.getByText('版本①')).toBeVisible();
@@ -240,12 +240,16 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     expect(await screen.findByTestId('regional-approval-category-row-plan-live-水饺')).toBeVisible();
     expect(screen.getByText('水饺品类')).toBeVisible();
     expect(screen.getByText('1 个 SKU · 不可按品类审批')).toBeVisible();
-    expect(screen.getByText('金额 100.0%')).toBeVisible();
-    expect(screen.getByText('数量 100.0%')).toBeVisible();
+    expect(screen.getAllByText('金额 100.0%').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('数量 100.0%').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('水饺品类计划与原计划基本一致')).toBeVisible();
     fireEvent.click(screen.getByRole('switch', { name: '品类维度' }));
     expect(screen.queryByTestId('regional-approval-category-row-plan-live-水饺')).not.toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: '版本 / SKU' })).toBeVisible();
+    expect(screen.getByRole('columnheader', { name: '月计划' })).toBeVisible();
+    expect(screen.getByRole('columnheader', { name: '计划进度' })).toBeVisible();
+    expect(screen.getByText('金额 100.0%')).toBeVisible();
+    expect(screen.getByText('数量 100.0%')).toBeVisible();
+    expect(screen.queryByRole('columnheader', { name: '调整' })).not.toBeInTheDocument();
     expect(screen.queryByText('GEA · 用户会话队列')).not.toBeInTheDocument();
 
     await waitFor(() =>
@@ -389,7 +393,8 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
 
     expect((await screen.findAllByText('plan-numeric 基地'))[0]).toBeVisible();
     expect(screen.getAllByText(/141,862\.04/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/目标 2,075 · ¥142,500/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('目标 ¥142,500').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('目标 2,075').length).toBeGreaterThan(0);
   });
 
   it('refreshes periods and queue, and keeps an honest empty state', async () => {
