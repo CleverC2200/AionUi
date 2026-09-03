@@ -101,6 +101,12 @@ const latestShellContext = () => {
   return props;
 };
 
+const expectedWorkbenchFocus = {
+  target: 'current-workbench',
+  priority: ['selectedEntities', 'visibleEntities', 'metrics', 'scope'],
+  constrainToSnapshot: true,
+};
+
 describe('ForecastAssistantSurface context revision', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -147,7 +153,7 @@ describe('ForecastAssistantSurface context revision', () => {
     delete window.__aionuiAssistantSurfaceFixtures;
     render(<ForecastAssistantSurface stateScope='user:forecast-live-01' />);
     expect(workbenchPropsSpy.mock.calls.at(-1)?.[0]).toEqual(
-      expect.objectContaining({ queryClient: undefined, liveActionsEnabled: true })
+      expect.objectContaining({ queryClient: undefined, liveActionsEnabled: false })
     );
     expect(shellPropsSpy.mock.calls.at(-1)?.[0]).not.toHaveProperty('fixtureBoundary');
   });
@@ -166,8 +172,10 @@ describe('ForecastAssistantSurface context revision', () => {
     act(() => contextChangeRef.current?.(context('area'), 'conversation-a'));
     const first = latestShellContext();
     expect(first.surfaceContext?.revision).toBe(1);
-    expect(first.surfaceContext?.payload).toEqual(context('area').authority);
-    expect(JSON.stringify(first.surfaceContext?.payload)).not.toMatch(/permission|visibleEntities|changes|metrics/i);
+    expect(first.surfaceContext?.payload).toEqual({
+      focus: expectedWorkbenchFocus,
+      ...context('area'),
+    });
     expect(first.surfaceContextConversationId).toBe('conversation-a');
 
     act(() => contextChangeRef.current?.(context('area'), 'conversation-a'));
@@ -181,10 +189,38 @@ describe('ForecastAssistantSurface context revision', () => {
     const changed = latestShellContext().surfaceContext;
     expect(changed?.revision).toBe(2);
 
+    act(() =>
+      contextChangeRef.current?.(
+        {
+          ...context('category'),
+          selectedEntities: [{ id: 'plan-1', organizationKey: '遂平' }],
+          metrics: { ...context('category').metrics, amount: '104223.74' },
+        },
+        'conversation-b'
+      )
+    );
+    expect(latestShellContext().surfaceContext?.revision).toBe(3);
+    expect(latestShellContext().surfaceContext?.payload).toEqual(
+      expect.objectContaining({
+        focus: expectedWorkbenchFocus,
+        selectedEntities: [{ id: 'plan-1', organizationKey: '遂平' }],
+        metrics: expect.objectContaining({ amount: '104223.74' }),
+      })
+    );
+
     firstRender.unmount();
     render(<ForecastAssistantSurface stateScope='user:forecast-fixture-01' />);
-    act(() => contextChangeRef.current?.(context('category'), 'conversation-a'));
-    expect(latestShellContext().surfaceContext).toEqual(changed);
+    act(() =>
+      contextChangeRef.current?.(
+        {
+          ...context('category'),
+          selectedEntities: [{ id: 'plan-1', organizationKey: '遂平' }],
+          metrics: { ...context('category').metrics, amount: '104223.74' },
+        },
+        'conversation-a'
+      )
+    );
+    expect(latestShellContext().surfaceContext?.revision).toBe(3);
   });
 
   it('publishes only successful authority and never converts an error state into a success Context', () => {
@@ -220,7 +256,10 @@ describe('ForecastAssistantSurface context revision', () => {
     };
 
     act(() => contextChangeRef.current?.(liveReceipt, 'conversation-a'));
-    expect(latestShellContext().surfaceContext?.payload).toEqual(liveReceipt.authority);
+    expect(latestShellContext().surfaceContext?.payload).toEqual({
+      focus: expectedWorkbenchFocus,
+      ...liveReceipt,
+    });
     const frozenCandidate = latestShellContext().surfaceContext;
 
     act(() => contextChangeRef.current?.(liveReceipt, 'conversation-b'));

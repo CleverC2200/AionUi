@@ -10,6 +10,7 @@ import {
   salesPlanComparisonMatches,
   salesPlanOverviewMatches,
   salesPlanSkusMatchVersion,
+  salesPlanSkuNodeComparison,
 } from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/models/salesPlanDetailModel';
 
 const version = (id: string, planId = 'plan-1'): GeaSalesPlanVersion => ({
@@ -141,5 +142,26 @@ describe('salesPlanDetailModel', () => {
     expect(salesPlanComparisonMatches('version-1', 'version-2', [{ ...added, before: sku('version-1') }])).toBe(false);
     expect(salesPlanComparisonMatches('version-1', 'version-2', [{ ...deleted, after: sku('version-2') }])).toBe(false);
     expect(salesPlanComparisonMatches('version-1', 'version-2', [{ ...updated, after: undefined }])).toBe(false);
+  });
+
+  it('projects exact previous/current node confirmations without floating-point coercion', () => {
+    const confirmed: GeaSalesPlanSku = {
+      ...sku('version-2'),
+      qty: '9007199254740993.125',
+      amt: '9999999999999999.99',
+      regionConfirmedQty: '9007199254740994.125',
+      regionConfirmedAmount: '10000000000000008.49',
+      provinceConfirmedQty: '9007199254740996.375',
+      provinceConfirmedAmount: '10000000000000025.49',
+    };
+
+    expect(salesPlanSkuNodeComparison(confirmed, 'province')).toEqual({
+      previousQty: '9007199254740994.125',
+      previousAmount: '10000000000000008.49',
+      currentQty: '9007199254740996.375',
+      currentAmount: '10000000000000025.49',
+      qtyDelta: '2.250',
+      amountDelta: '17.00',
+    });
   });
 });

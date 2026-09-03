@@ -87,10 +87,14 @@ export const useSalesPlanDetail = ({
   client = salesPlan,
   planId,
   initialVersionId,
+  initialFromVersionId,
+  initialToVersionId,
 }: {
   client?: SalesPlanDetailClient;
   planId?: string;
   initialVersionId?: string;
+  initialFromVersionId?: string;
+  initialToVersionId?: string;
 }) => {
   const [overviewState, setOverviewState] = useState<SalesPlanDetailState<SalesPlanOverview>>(idle);
   const [skuState, setSkuState] = useState<SalesPlanDetailState<GeaSalesPlanSku[]>>(idle);
@@ -137,7 +141,11 @@ export const useSalesPlanDetail = ({
         setOverviewState({ status: 'success', data: { detail, versions, logs } });
         setSelectedVersionId(initialVersionId);
         setToVersionId(initialVersionId);
-        setFromVersionId(versions.find((version) => version.id !== initialVersionId)?.id);
+        const current = versions.find((version) => version.id === initialVersionId);
+        const previous = versions
+          .filter((version) => version.id !== initialVersionId && (!current || version.seq < current.seq))
+          .toSorted((left, right) => right.seq - left.seq)[0];
+        setFromVersionId(previous?.id ?? versions.find((version) => version.id !== initialVersionId)?.id);
       })
       .catch((error: unknown) => {
         if (overviewRequest.current !== requestId) return;
@@ -149,6 +157,13 @@ export const useSalesPlanDetail = ({
       .finally(request.finish);
     return request.cancel;
   }, [client, initialVersionId, overviewRevision, planId]);
+
+  useEffect(() => {
+    if (overviewState.status !== 'success') return;
+    const versionIds = new Set(overviewState.data.versions.map((version) => version.id));
+    if (initialFromVersionId && versionIds.has(initialFromVersionId)) setFromVersionId(initialFromVersionId);
+    if (initialToVersionId && versionIds.has(initialToVersionId)) setToVersionId(initialToVersionId);
+  }, [initialFromVersionId, initialToVersionId, overviewState]);
 
   useEffect(() => {
     if (overviewState.status !== 'success' || !selectedVersionId) {

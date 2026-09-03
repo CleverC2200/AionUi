@@ -41,6 +41,7 @@ const version = (id: string, seq: number, effective = false): GeaSalesPlanVersio
   targetQty: seq === 2 ? '20' : '18',
   submitter: `提交人 ${seq}`,
   submitTime: `2026-09-0${seq}T08:00:00Z`,
+  returnReason: seq === 1 ? '退回后修订销量证据' : null,
 });
 
 const sku = (versionId: string, code: string, qty: string): GeaSalesPlanSku => ({
@@ -116,6 +117,25 @@ const createClient = (): SalesPlanDetailClient => ({
 });
 
 describe('RegionalApprovalLivePlanDetail', () => {
+  it('can open directly on the version comparison without changing comparison semantics', async () => {
+    render(
+      <RegionalApprovalLivePlanDetail
+        visible
+        rows={[row]}
+        row={row}
+        t={t}
+        client={createClient()}
+        initialTab='compare'
+        onClose={vi.fn()}
+        onRowChange={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByRole('tab', { name: '版本比较' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('10 → 12 (2)')).toBeVisible();
+    expect(screen.getByLabelText('版本退回原因')).toHaveTextContent('退回后修订销量证据');
+  });
+
   it('renders independent real resources and keeps nested detail resources out of the projection', async () => {
     const client = createClient();
     render(

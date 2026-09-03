@@ -1,21 +1,15 @@
-import type {
-  GeaSalesPlanActionReceipt,
-  GeaSalesPlanListItem,
-  GeaSalesPlanSubmitReceipt,
-} from '@/common/adapter/ipcBridge';
+import type { GeaSalesPlanActionReceipt, GeaSalesPlanListItem } from '@/common/adapter/ipcBridge';
 import type { ApprovalStageId } from '../regionalApprovalFixture';
 
-export type SalesPlanContextSource =
-  | 'fixture'
-  | 'gea-user-session-query'
-  | 'gea-user-session-action'
-  | 'gea-service-submit';
+export type SalesPlanContextApprovalStage = ApprovalStageId | 'all';
+
+export type SalesPlanContextSource = 'fixture' | 'gea-user-session-query' | 'gea-user-session-action';
 
 export type SalesPlanContextFilterSummary = {
   periodMonth?: string;
   planTypeCode?: string;
-  approvalStage: ApprovalStageId;
-  queueMode: 'approval' | 'resubmit';
+  approvalStage: SalesPlanContextApprovalStage;
+  queueMode: 'approval';
   organizationFilterCount: number;
 };
 
@@ -26,10 +20,6 @@ export type SalesPlanAuthorityContext = {
   versionId?: string;
   seq?: number;
   status?: number;
-  replayed?: boolean;
-  requestId?: string;
-  traceId?: string;
-  auditId?: string;
 };
 
 type SalesPlanAuthorityRow = Pick<GeaSalesPlanListItem, 'planId' | 'versionId' | 'seq' | 'status'>;
@@ -46,8 +36,8 @@ const safePlanState = (row: SalesPlanAuthorityRow): boolean =>
   Number.isSafeInteger(row.seq) &&
   row.seq > 0 &&
   Number.isSafeInteger(row.status) &&
-  row.status >= 1 &&
-  row.status <= 9;
+  row.status >= 0 &&
+  row.status <= 10;
 
 export const buildSalesPlanFilterSummary = ({
   periodMonth,
@@ -58,8 +48,8 @@ export const buildSalesPlanFilterSummary = ({
 }: {
   periodMonth?: string;
   planTypeCode?: string;
-  approvalStage: ApprovalStageId;
-  queueMode: 'approval' | 'resubmit';
+  approvalStage: SalesPlanContextApprovalStage;
+  queueMode: 'approval';
   appliedFilters: Readonly<Record<string, unknown>>;
 }): SalesPlanContextFilterSummary => ({
   ...(periodMonth && PERIOD_MONTH_PATTERN.test(periodMonth) ? { periodMonth } : {}),
@@ -126,44 +116,5 @@ export const projectSalesPlanActionContext = (
     versionId: receipt.versionId,
     seq: row.seq,
     status: receipt.toStatus,
-    replayed: receipt.replayed,
-    requestId: receipt.requestId,
-    traceId: receipt.traceId,
-    auditId: receipt.auditId,
-  };
-};
-
-export const projectSalesPlanSubmitContext = (
-  row: SalesPlanAuthorityRow,
-  receipt: GeaSalesPlanSubmitReceipt,
-  filterSummary: SalesPlanContextFilterSummary
-): SalesPlanAuthorityContext | undefined => {
-  if (
-    !safePlanState(row) ||
-    row.status < 6 ||
-    row.status > 9 ||
-    receipt.planId !== row.planId ||
-    receipt.versionId === row.versionId ||
-    !safeOpaqueId(receipt.versionId) ||
-    receipt.seq !== row.seq + 1 ||
-    receipt.status !== row.status - 5 ||
-    typeof receipt.replayed !== 'boolean' ||
-    !safeOpaqueId(receipt.requestId) ||
-    !safeOpaqueId(receipt.traceId) ||
-    !safeOpaqueId(receipt.auditId)
-  ) {
-    return undefined;
-  }
-  return {
-    source: 'gea-service-submit',
-    filterSummary,
-    planId: receipt.planId,
-    versionId: receipt.versionId,
-    seq: receipt.seq,
-    status: receipt.status,
-    replayed: receipt.replayed,
-    requestId: receipt.requestId,
-    traceId: receipt.traceId,
-    auditId: receipt.auditId,
   };
 };

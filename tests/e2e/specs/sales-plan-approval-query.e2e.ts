@@ -130,32 +130,46 @@ test.describe('Sales-plan approval query', () => {
             logs: [],
           };
         } else {
+          const requestedStatus = url.searchParams.get('status');
+          const statusTotals: Record<string, number> = {
+            '1': 0,
+            '2': 25,
+            '3': 58,
+            '4': 100,
+            '6': 6,
+            '7': 0,
+            '8': 0,
+            '9': 0,
+          };
+          const isQueueRequest = requestedStatus === null;
           data = {
-            records: [
-              {
-                planId: 'e2e-plan',
-                versionId: 'e2e-version-2',
-                seq: 2,
-                periodId,
-                planTypeCode: 'MONTHLY',
-                dealerCode: '9007199254740997',
-                orgCode: 'ORG-E2E',
-                provinceCode: 'PROVINCE-E2E',
-                areaCode: 'AREA-E2E',
-                baseName: `E2E 第 ${requestedPage} 页基地`,
-                status: 2,
-                returnReason: null,
-                targetQty: '123456789012.345',
-                targetAmount: '9999999999999999.99',
-                skuCount: 3,
-                currentQty: '123456789012.340',
-                currentAmount: '9999999999999999.90',
-              },
-            ],
-            total: 60,
-            size: 20,
+            records: isQueueRequest
+              ? [
+                  {
+                    planId: 'e2e-plan',
+                    versionId: 'e2e-version-2',
+                    seq: 2,
+                    periodId,
+                    planTypeCode: 'MONTHLY',
+                    dealerCode: '9007199254740997',
+                    orgCode: 'ORG-E2E',
+                    provinceCode: 'PROVINCE-E2E',
+                    areaCode: 'AREA-E2E',
+                    baseName: `E2E 第 ${requestedPage} 页基地`,
+                    status: 2,
+                    returnReason: null,
+                    targetQty: '123456789012.345',
+                    targetAmount: '9999999999999999.99',
+                    skuCount: 3,
+                    currentQty: '123456789012.340',
+                    currentAmount: '9999999999999999.90',
+                  },
+                ]
+              : [],
+            total: isQueueRequest ? 100 : (statusTotals[requestedStatus] ?? 0),
+            size: Number(url.searchParams.get('pageSize') ?? '20'),
             current: requestedPage,
-            pages: 3,
+            pages: isQueueRequest ? 5 : 1,
           };
         }
         return new Response(JSON.stringify({ data }), {
@@ -181,19 +195,32 @@ test.describe('Sales-plan approval query', () => {
     await modeDrawer.getByTestId('assistant-surface-option-business').click();
 
     await expect(page.getByTestId('regional-approval-workbench')).toBeVisible();
-    await expect(page.getByText('GEA · 用户会话队列', { exact: true })).toBeVisible();
+    await expect(page.getByText('GEA · 用户会话队列', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('combobox', { name: '销售计划周期' })).toHaveText('2026-09');
     await expect(page.getByText('E2E 第 1 页基地', { exact: true }).first()).toBeVisible();
     await expect(page.getByText(/9,999,999,999,999,999\.90/).first()).toBeVisible();
     await expect(page.getByText(/AI 建议和组织候选/)).toHaveCount(0);
-    await expect(page.getByTestId('regional-approval-stage-region')).toHaveAttribute('data-state', 'current');
-    await expect(page.getByTestId('regional-approval-stage-area')).toBeDisabled();
+    await expect(page.getByTestId('regional-approval-current-stage')).toHaveText('待服务端确认职责节点');
+    await expect(page.getByText('审批操作已安全关闭')).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: '各节点数据状态' })).toBeVisible();
+    await expect(page.getByTestId('regional-approval-stage-customer')).toContainText('进度 94%');
+    await expect(page.getByTestId('regional-approval-stage-region')).toHaveAttribute('data-state', 'completed');
+    await expect(page.getByTestId('regional-approval-stage-province')).toHaveAttribute('data-state', 'partial');
+    await expect(page.getByTestId('regional-approval-stage-area')).toHaveAttribute('data-state', 'critical');
+    await expect(page.getByTestId('regional-approval-stage-province')).not.toHaveAttribute('aria-current');
+    await expect(page.getByTestId('regional-approval-stage-area')).toBeEnabled();
+    await expect(page.getByRole('button', { name: '退回' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: '通过' })).toBeDisabled();
+    await expect(page.getByRole('columnheader', { name: '审批操作' })).toHaveCount(0);
+    await expect(page.getByRole('tablist', { name: '审批队列维度' })).toHaveCount(0);
     await expect(page.getByRole('combobox', { name: '大区' })).toBeEnabled();
     await expect(page.getByRole('button', { name: '查询' })).toBeDisabled();
     const requests = await page.evaluate(
       () => (window as Window & { __salesPlanQueryRequests?: string[] }).__salesPlanQueryRequests ?? []
     );
-    const queueRequest = new URL(requests.find((url) => url.includes('/api/gea/sales-plan/plans?'))!);
+    const queueRequest = new URL(
+      requests.find((url) => url.includes('/api/gea/sales-plan/plans?') && url.includes('pageSize=20'))!
+    );
     expect(queueRequest.searchParams.get('periodId')).toBe(PERIOD_ID);
     expect(queueRequest.searchParams.get('planTypeCode')).toBe('MONTHLY');
     expect(queueRequest.searchParams.has('status')).toBe(false);
@@ -203,6 +230,31 @@ test.describe('Sales-plan approval query', () => {
     expect(queueRequest.searchParams.has('provinceCode')).toBe(false);
     expect(queueRequest.searchParams.has('orgCode')).toBe(false);
     expect(queueRequest.searchParams.has('dealerCode')).toBe(false);
+
+    await page.getByTestId('regional-approval-stage-province').click();
+    await expect(page.getByTestId('regional-approval-stage-province')).toHaveAttribute('aria-pressed', 'true');
+    await expect
+      .poll(async () => {
+        const currentRequests = await page.evaluate(
+          () => (window as Window & { __salesPlanQueryRequests?: string[] }).__salesPlanQueryRequests ?? []
+        );
+        const statusRequests = new Set(
+          currentRequests
+            .map((requestUrl) => new URL(requestUrl))
+            .filter(
+              (requestUrl) =>
+                requestUrl.pathname.endsWith('/api/gea/sales-plan/plans') &&
+                requestUrl.searchParams.get('pageSize') === '20'
+            )
+            .map((requestUrl) => requestUrl.searchParams.get('status'))
+        );
+        return statusRequests.has('2') && statusRequests.has('8');
+      })
+      .toBe(true);
+    await expect(page.getByText('当前账户在本周期没有可见审批数据。')).toBeVisible();
+    await page.getByRole('button', { name: '重置' }).click();
+    await expect(page.getByTestId('regional-approval-stage-province')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByText('E2E 第 1 页基地', { exact: true }).first()).toBeVisible();
 
     await page.getByRole('button', { name: '查看 E2E 第 1 页基地 真实计划详情' }).click();
     const detailDialog = page.getByRole('dialog', { name: '销售计划详情与版本证据' });
@@ -256,11 +308,40 @@ test.describe('Sales-plan approval query', () => {
         return new URL(queueRequests.at(-1)!).searchParams.get('pageNo');
       })
       .toBe('3');
-    await page.waitForTimeout(100);
     const finalRequests = await page.evaluate(
       () => (window as Window & { __salesPlanQueryRequests?: string[] }).__salesPlanQueryRequests ?? []
     );
-    const finalQueueRequest = new URL(finalRequests.findLast((url) => url.includes('/api/gea/sales-plan/plans?'))!);
+    const finalQueueRequest = new URL(
+      finalRequests.findLast((requestUrl) => {
+        const url = new URL(requestUrl);
+        return (
+          url.pathname.endsWith('/api/gea/sales-plan/plans') &&
+          url.searchParams.get('pageSize') === '20' &&
+          !url.searchParams.has('status')
+        );
+      })!
+    );
     expect(finalQueueRequest.searchParams.get('pageNo')).toBe('3');
+
+    await page.setViewportSize({ width: 760, height: 720 });
+    await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(760);
+    await expect(page.getByTestId('regional-approval-workbench')).toBeVisible();
+    await expect(page.getByRole('navigation', { name: '各节点数据状态' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '重置' })).toBeVisible();
+    const narrowBounds = await page.getByTestId('regional-approval-workbench').boundingBox();
+    expect(narrowBounds).not.toBeNull();
+    expect(narrowBounds!.width).toBeLessThanOrEqual(760);
+
+    const darkColors = await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'dark';
+      document.body.setAttribute('arco-theme', 'dark');
+      const workbench = document.querySelector<HTMLElement>('[data-testid="regional-approval-workbench"]');
+      const styles = workbench ? getComputedStyle(workbench) : undefined;
+      return { background: styles?.backgroundColor, foreground: styles?.color };
+    });
+    expect(darkColors.background).toBeTruthy();
+    expect(darkColors.background).not.toBe('rgba(0, 0, 0, 0)');
+    expect(darkColors.foreground).toBeTruthy();
+    expect(darkColors.foreground).not.toBe(darkColors.background);
   });
 });

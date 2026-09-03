@@ -86,16 +86,26 @@ const clientFrom = (
   compare: { invoke: vi.fn(compare) },
 });
 
-const Probe: React.FC<{ client: SalesPlanDetailClient; planId?: string; versionId?: string }> = ({
-  client,
-  planId,
-  versionId,
-}) => {
-  const state = useSalesPlanDetail({ client, planId, initialVersionId: versionId });
+const Probe: React.FC<{
+  client: SalesPlanDetailClient;
+  planId?: string;
+  versionId?: string;
+  initialFromVersionId?: string;
+  initialToVersionId?: string;
+}> = ({ client, planId, versionId, initialFromVersionId, initialToVersionId }) => {
+  const state = useSalesPlanDetail({
+    client,
+    planId,
+    initialVersionId: versionId,
+    initialFromVersionId,
+    initialToVersionId,
+  });
   return (
     <div>
       <span data-testid='overview'>{state.overviewState.status}</span>
       <span data-testid='selected'>{state.selectedVersionId ?? 'none'}</span>
+      <span data-testid='from-version'>{state.fromVersionId ?? 'none'}</span>
+      <span data-testid='to-version'>{state.toVersionId ?? 'none'}</span>
       <span data-testid='sku'>
         {state.skuState.status === 'success'
           ? state.skuState.data.map((item) => item.skuCode).join(',')
@@ -117,6 +127,7 @@ const Probe: React.FC<{ client: SalesPlanDetailClient; planId?: string; versionI
       >
         reverse-compare
       </button>
+      <button onClick={() => state.toVersionId && state.selectFromVersion(state.toVersionId)}>same-compare</button>
     </div>
   );
 };
@@ -209,6 +220,46 @@ describe('useSalesPlanDetail', () => {
     await act(async () => compareA.resolve(comparison('plan-a-v1', 'plan-a-v2', '1')));
     expect(screen.getByTestId('compare')).toHaveTextContent('2');
     expect(screen.getByTestId('compare')).not.toHaveTextContent('1');
+  });
+
+  it('applies header-selected comparison versions without refetching the overview', async () => {
+    const client = clientFrom((planId) => overview(planId, `${planId}-v2`));
+    const view = render(
+      <Probe
+        client={client}
+        planId='plan-a'
+        versionId='plan-a-v2'
+        initialFromVersionId='plan-a-v1'
+        initialToVersionId='plan-a-v2'
+      />
+    );
+
+    await waitFor(() => expect(screen.getByTestId('from-version')).toHaveTextContent('plan-a-v1'));
+    expect(screen.getByTestId('to-version')).toHaveTextContent('plan-a-v2');
+    expect(client.detail.invoke).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      <Probe
+        client={client}
+        planId='plan-a'
+        versionId='plan-a-v2'
+        initialFromVersionId='plan-a-v2'
+        initialToVersionId='plan-a-v2'
+      />
+    );
+    await waitFor(() => expect(screen.getByTestId('from-version')).toHaveTextContent('plan-a-v2'));
+    expect(client.detail.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not request a meaningless comparison when both version selectors match', async () => {
+    const compare = vi.fn(async () => [] as GeaSalesPlanSkuDiff[]);
+    const client = clientFrom((planId) => overview(planId, `${planId}-v2`), undefined, compare);
+    render(<Probe client={client} planId='plan-a' versionId='plan-a-v2' />);
+
+    await waitFor(() => expect(compare).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'same-compare' }));
+    await waitFor(() => expect(screen.getByTestId('compare')).toHaveTextContent('idle'));
+    expect(compare).toHaveBeenCalledTimes(1);
   });
 
   it('aborts all in-flight resources when the detail is closed', async () => {

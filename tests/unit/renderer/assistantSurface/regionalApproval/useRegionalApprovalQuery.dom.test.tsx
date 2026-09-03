@@ -106,4 +106,65 @@ describe('useRegionalApprovalQuery refresh', () => {
 
     await waitFor(() => expect(result.current.selectedPeriod?.periodId).toBe(september.periodId));
   });
+
+  it('loads permission-scoped status totals in parallel for the aggregate stage board', async () => {
+    const september = period('period-september', '2026-09');
+    const totals: Record<number, number> = { 1: 2, 2: 2, 3: 1, 4: 4, 6: 1, 7: 1, 8: 0, 9: 0 };
+    const list = vi.fn(async (query: Parameters<SalesPlanQueryClient['list']['invoke']>[0] = {}) => ({
+      ...emptyQueue,
+      total: query.pageSize === 1 ? (query.status === undefined ? 10 : (totals[query.status] ?? 0)) : 10,
+    }));
+    const client: SalesPlanQueryClient = {
+      periods: { invoke: vi.fn().mockResolvedValue(periodsPage([september])) },
+      list: { invoke: list },
+    };
+    const { result } = renderHook(() =>
+      useRegionalApprovalQuery({ client, page: 1, pageSize: 20, loadStageProgress: true })
+    );
+
+    await waitFor(() => expect(result.current.progressState.status).toBe('success'));
+    expect(result.current.progressState.data).toEqual({
+      customer: 90,
+      region: 70,
+      province: 80,
+      area: 90,
+      category: 60,
+    });
+    expect(
+      list.mock.calls
+        .map(([query]) => query)
+        .filter((query) => query.pageSize === 1)
+        .map((query) => query.status)
+        .toSorted((left, right) => (left ?? 0) - (right ?? 0))
+    ).toEqual([1, 2, 3, 4, 6, 7, 8, 9, undefined]);
+  });
+
+  it('loads enough server pages to merge a two-status node beyond the 200-row API limit', async () => {
+    const september = period('period-september', '2026-09');
+    const list = vi.fn(async (query: Parameters<SalesPlanQueryClient['list']['invoke']>[0] = {}) => ({
+      ...emptyQueue,
+      total: query.status === 1 ? 300 : 20,
+      size: query.pageSize ?? 20,
+      current: query.pageNo ?? 1,
+      pages: query.status === 1 ? 2 : 1,
+    }));
+    const client: SalesPlanQueryClient = {
+      periods: { invoke: vi.fn().mockResolvedValue(periodsPage([september])) },
+      list: { invoke: list },
+    };
+    const { result } = renderHook(() =>
+      useRegionalApprovalQuery({ client, page: 11, pageSize: 20, stageStatuses: [1, 7] })
+    );
+
+    await waitFor(() => expect(result.current.queueState.status).toBe('success'));
+    expect(
+      list.mock.calls.map(([query]) => ({ status: query.status, pageNo: query.pageNo, pageSize: query.pageSize }))
+    ).toEqual(
+      expect.arrayContaining([
+        { status: 1, pageNo: 1, pageSize: 200 },
+        { status: 1, pageNo: 2, pageSize: 200 },
+        { status: 7, pageNo: 1, pageSize: 200 },
+      ])
+    );
+  });
 });

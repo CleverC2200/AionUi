@@ -250,15 +250,16 @@
         "retry": "Retry",
         "emptyQueue": "This account has no visible approval data for the current period.",
         "emptyQueueHint": "There may be no pending work, or this account may lack visibility for the relevant organization or approval node. Refresh or ask an administrator to verify the scope.",
-        "pendingStage": "Awaiting data",
+        "pendingStage": "Awaiting authoritative responsibility node",
         "dealerCode": "Dealer {{code}}",
+        "unnamedOrganization": "Unnamed organization",
+        "unnamedOrganizationHint": "The server did not return a displayable organization name.",
         "scopeUnset": "No area code",
         "target": "Target",
         "version": "Version {{seq}}",
         "skuCount": "{{count}} SKUs",
         "noReturnReason": "No return reason",
         "actionBoundary": "The queue, details, and current-node approval use the GEA user session. The server verifies real roles and permissions. AI guidance, organization candidates, and client-side adjustments are sample data and are not connected to production.",
-        "readOnlyBoundary": "The queue, details, and version evidence use the live GEA user session. This business surface is query-only and does not approve, reject, or submit. AI guidance and organization candidates remain sample capabilities.",
         "errors": {
           "permission": "This account cannot read the requested sales plan scope.",
           "expired": "The GEA user session expired. Sign in again, then retry.",
@@ -268,11 +269,12 @@
           "failed": "Sales plan data failed to load. It will not retry indefinitely."
         },
         "status": {
+          "0": "Draft / awaiting submission",
           "1": "Sales submission",
           "2": "Region approval",
           "3": "Province approval",
           "4": "Area approval",
-          "5": "Category approval",
+          "5": "Approval complete",
           "6": "Sales return",
           "7": "Region return",
           "8": "Province return",
@@ -280,15 +282,14 @@
           "10": "Completed"
         }
       },
-      "stageLane": "Approval stages",
-      "stageProgress": "{{progress}}% reached",
+      "stageLane": "Per-node data status",
+      "stageProgress": "Progress {{progress}}%",
       "contextSummary": "Regional approval · {{stage}} · {{count}} organization plans",
       "authorityContextSummary": "{{source}} · {{stage}} · plan {{planId}} · status {{status}}",
       "contextSources": {
         "fixture": "Sample data",
         "gea-user-session-query": "GEA user query",
-        "gea-user-session-action": "GEA user approval receipt",
-        "gea-service-submit": "GEA service submission receipt"
+        "gea-user-session-action": "GEA user approval receipt"
       },
       "customerCount": "{{count}} customers",
       "quantityProgress": "Qty {{progress}}%",
@@ -296,10 +297,16 @@
       "versions": {
         "group": "Plan version comparison",
         "primary": "Viewing version",
+        "primaryCompact": "Version ①",
         "compare": "Compare version",
+        "compareCompact": "Compare ②",
         "current": "Latest",
         "previous": "Previous",
-        "initial": "Initial"
+        "initial": "Initial",
+        "offset": "-{{offset}} version",
+        "unavailable": "No versions",
+        "info": "Version selection help",
+        "description": "Version ① is the primary view and Version ② is the comparison baseline. Version ① cannot be older than Version ②; no differences are shown when both versions match."
       },
       "dimensions": {
         "ariaLabel": "Approval queue dimensions",
@@ -310,7 +317,7 @@
         "customer": "By customer",
         "category": "By category"
       },
-      "categoryComparison": "Enable category comparison",
+      "categoryComparison": "Category dimension",
       "filters": {
         "ariaLabel": "Organization cascade filters",
         "title": "Organization scope",
@@ -329,7 +336,7 @@
         "allBranches": "All branches",
         "allDepartments": "All operating units",
         "allCustomers": "All customers",
-        "allApprovals": "All approval statuses",
+        "allApprovals": "All",
         "allHealth": "All health states",
         "query": "Query",
         "apply": "Query",
@@ -338,7 +345,8 @@
       "toolbar": {
         "progress": "View submission progress",
         "refreshData": "Refresh data",
-        "export": "Export current scope"
+        "export": "Export current scope",
+        "compareVersions": "Compare versions"
       },
       "exportFeedback": {
         "success": "Exported {{count}} {{version}} sample rows",
@@ -428,9 +436,11 @@
         "versionOption": "Version {{seq}} · {{id}}",
         "compareFrom": "Base version",
         "compareTo": "Target version",
+        "returnReasonEvidence": "Version return reasons",
         "emptySkus": "This version has no SKU details.",
         "emptyLogs": "This plan has no approval logs.",
         "emptyCompare": "The selected versions have no SKU differences.",
+        "sameVersion": "The baseline and target are the same version, so there is no difference or return reason.",
         "tabs": {
           "skus": "Version SKUs",
           "versions": "Version history",
@@ -442,6 +452,9 @@
           "category": "Product category",
           "baseQty": "Base quantity",
           "qty": "Version quantity",
+          "previousNode": "Previous node (quantity / amount)",
+          "currentNode": "Current node (quantity / amount)",
+          "nodeDelta": "Node delta (quantity / amount)",
           "price": "Price",
           "amount": "Amount",
           "version": "Version",
@@ -468,6 +481,36 @@
           "unavailable": "The sales plan detail service is unavailable. Retry manually.",
           "cancelled": "The request was cancelled. A late response cannot replace the current plan or version.",
           "failed": "Sales plan details failed to load. The client will not retry indefinitely."
+        }
+      },
+      "liveAdjustment": {
+        "title": "Adjustment details · {{organization}}",
+        "openFor": "Open adjustment details for {{plan}}",
+        "close": "Close",
+        "localDraft": "Client draft",
+        "summary": "Overall delta {{delta}} · grouped by {{dimension}} and allocated down to customer + SKU",
+        "footer": "Adjustments update the current client draft in real time; approval still enforces authoritative server permissions",
+        "loadError": "Adjustment details failed to load. No sample data was generated as a fallback.",
+        "empty": "No SKU adjustments exist in the current scope.",
+        "noAdvice": "No live AI guidance",
+        "editQty": "New planned quantity for {{sku}}",
+        "editAmount": "New planned amount for {{sku}}",
+        "dimensions": {
+          "area": "Area",
+          "province": "Province",
+          "region": "Region",
+          "base": "Base",
+          "customer": "Customer"
+        },
+        "columns": {
+          "sku": "SKU / category",
+          "baseQty": "Original quantity",
+          "qty": "New quantity",
+          "baseAmount": "Original amount",
+          "amount": "New amount",
+          "deltaQty": "Quantity delta",
+          "deltaAmount": "Amount delta",
+          "aiAdvice": "AI guidance"
         }
       },
       "liveSubmit": {
@@ -555,22 +598,32 @@
         "action": "Approval decision",
         "approve": "Approve",
         "reject": "Reject",
-        "finalNode": "The final category-review node cannot reject; only approval is allowed. The server verifies this again.",
+        "finalNode": "Category approval is complete, so this plan cannot be approved or rejected again. The server remains authoritative.",
         "approveRemark": "Approval remark (optional)",
         "rejectRemark": "Reject reason (required)",
         "remarkPlaceholder": "Enter an approval note of at most 1,000 characters",
         "noAdjustments": "The live detail is currently read-only, so this action sends no sample adjustments. Valid adjustments will be sent only after real version-SKU deltas are connected.",
         "adjustments": {
-          "title": "SKU quantity adjustments",
-          "summary": "{{count}} entered",
-          "help": "Enter a signed delta from the current confirmed quantity, with up to 3 decimal places. The server recalculates amount from the SKU price; amount cannot be edited independently. Blank or zero values are omitted.",
+          "title": "Approval-node changes",
+          "summary": "{{count}} SKUs changed at this node",
+          "help": "Enter a signed delta from the previous approval node. This node's confirmed quantity and amount update immediately, while the server still validates amount against the fixed SKU price. Blank or zero keeps the previous-node value.",
           "loading": "Loading live version SKUs…",
           "loadFailed": "Live SKU details failed to load. Approval without adjustments remains available; refresh before editing.",
           "unavailable": "This approval client has no SKU-detail source, so adjustments cannot be entered.",
+          "nodeBoundary": "The first regional node confirms submitted data and cannot include SKU adjustments. Adjustments are available at later approval nodes.",
           "rejectBoundary": "A reject action cannot include SKU adjustments. Describe the required changes in the reject reason.",
           "sku": "SKU / category",
-          "currentQty": "Current quantity",
+          "previousNode": "Previous node",
           "adjustQty": "Quantity delta (+/-)",
+          "currentNode": "This node / change",
+          "nodeSummary": "Approval-node change summary",
+          "previousTotal": "Previous-node quantity / amount",
+          "changeTotal": "This-node quantity / amount change",
+          "confirmedTotal": "This-node confirmed quantity / amount",
+          "discardTitle": "Discard unsubmitted changes?",
+          "discardDescription": "These SKU changes exist only in this approval session and will be lost when it closes.",
+          "discard": "Discard changes",
+          "keepEditing": "Keep editing",
           "placeholder": "+ increase / - decrease",
           "inputLabel": "SKU {{sku}} quantity adjustment"
         },
@@ -590,6 +643,7 @@
           "completed": "This version already has a server receipt, so duplicate actions are blocked.",
           "permission": "The server denied this user. This version is disabled for the current round.",
           "readOnly": "This business surface only queries live GEA data. Approval, rejection, and submission are disabled.",
+          "missingAuthority": "GEA has not returned authoritative responsibility node, workflow node, task state, and actionability fields. The client will not infer approval permission from plan status.",
           "queueNotFresh": "The approval queue is refreshing or failed to load. Retained rows may be stale; wait for a successful refresh before acting.",
           "closedPeriod": "Approval is available only for an OPEN period.",
           "notCurrentStage": "This plan is no longer at the selected approval node. Refresh the queue."
@@ -650,9 +704,13 @@
       "progressDialog": {
         "title": "Submission progress · {{stage}}",
         "description": "Matches the applied organization filters and {{version}} results: {{count}} rows.",
+        "allStages": "five independent nodes",
+        "liveDescription": "Calculated from deduplicated effective plans visible to the current user for the current month and plan type. Temporary organization filters, pagination, and row selection do not affect these values.",
+        "latestScope": "Current visibility, month, and plan type",
         "close": "Close"
       },
       "stages": {
+        "all": "All nodes",
         "customer": "Customer confirms AI forecast",
         "region": "Region approval",
         "province": "Province approval",
@@ -674,19 +732,34 @@
         "organization": "Organization"
       },
       "columns": {
-        "organization": "Organization / scope",
+        "organization": "Organization name",
         "aiOpinion": "AI review opinion",
         "scope": "Business scope",
-        "plan": "SKU total / plan target",
-        "category": "Compared category",
+        "plan": "Monthly plan",
+        "category": "Category",
         "quantity": "Plan quantity",
         "amount": "Plan amount",
-        "progress": "Version / SKU",
+        "progress": "Plan progress",
+        "categoryProgress": "Plan progress",
         "adjustment": "Adjustment",
         "comparison": "Version comparison",
         "returnReason": "Return reason",
         "noReturnReason": "—",
         "status": "Approval status"
+      },
+      "categoryRows": {
+        "name": "{{category}} category",
+        "skuCount": "{{count}} SKUs · category rows cannot be approved",
+        "basePlan": "Original {{quantity}} · {{amount}}",
+        "amountProgress": "Amount {{progress}}",
+        "quantityProgress": "Quantity {{progress}}",
+        "baseAmount": "Original amount {{amount}}",
+        "baseQuantity": "Original quantity {{quantity}}",
+        "advice": {
+          "healthy": "{{category}} plan is broadly aligned with the original plan",
+          "attention": "{{category}} plan differs from the original plan; review recommended",
+          "warning": "{{category}} plan differs materially from the original plan; focused review recommended"
+        }
       },
       "categories": {
         "frozen-pastry": "Frozen pastry",

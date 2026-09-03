@@ -31,8 +31,11 @@ const row = {
   dealerCode: 'dealer-1',
   baseName: '真实计划',
   areaCode: '华北',
+  areaName: '华北大区',
   provinceCode: '河北',
+  provinceName: '河北省区',
   orgCode: 'ORG-01',
+  orgName: '石家庄经销分区',
   status: 4,
   targetQty: '10',
   targetAmount: '100',
@@ -50,6 +53,28 @@ const cases = [
 ] as const;
 
 describe('RegionalApprovalLiveActionDialog', () => {
+  it('keeps SKU adjustments unavailable at the first regional approval node', () => {
+    const versionSkus = vi.fn();
+    render(
+      <RegionalApprovalLiveActionDialog
+        visible
+        row={{ ...row, status: 1 }}
+        approvalStage='region'
+        t={t}
+        client={{ action: { invoke: vi.fn() }, versionSkus: { invoke: versionSkus } }}
+        onPermissionDenied={vi.fn()}
+        onSucceeded={vi.fn()}
+        onRefresh={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
+    expect(within(dialog).getByText(/区域首节点只确认提交数据/)).toBeVisible();
+    expect(within(dialog).queryByText('节点调整明细')).not.toBeInTheDocument();
+    expect(versionSkus).not.toHaveBeenCalled();
+  });
+
   it('loads live SKUs and submits non-zero signed quantity adjustments for an approval node', async () => {
     const invoke = vi
       .fn()
@@ -103,11 +128,17 @@ describe('RegionalApprovalLiveActionDialog', () => {
     );
 
     const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
-    expect(await within(dialog).findByText('SKU 调整量')).toBeVisible();
+    expect(await within(dialog).findByText('节点调整明细')).toBeVisible();
     expect(versionSkus).toHaveBeenCalledWith(expect.objectContaining({ versionId: row.versionId }));
+    const nodeSummary = within(dialog).getByLabelText('审批节点差异汇总');
+    expect(nodeSummary).toHaveTextContent('上一节点数量 / 金额12 · ¥90');
+    expect(nodeSummary).toHaveTextContent('本节点变化数量 / 金额0 · ¥0.00');
+    expect(nodeSummary).toHaveTextContent('本节点确认数量 / 金额12 · ¥90.00');
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'SKU 10001 调整量' }), {
       target: { value: '-2.5' },
     });
+    expect(nodeSummary).toHaveTextContent('本节点变化数量 / 金额-2.5 · -¥18.75');
+    expect(nodeSummary).toHaveTextContent('本节点确认数量 / 金额9.5 · ¥71.25');
     fireEvent.click(within(dialog).getByRole('checkbox'));
     fireEvent.click(within(dialog).getByRole('button', { name: '确认通过' }));
 
@@ -154,8 +185,49 @@ describe('RegionalApprovalLiveActionDialog', () => {
     );
 
     const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
-    expect(await within(dialog).findByRole('cell', { name: '1' })).toBeVisible();
+    expect((await within(dialog).findAllByText('¥113.27')).length).toBeGreaterThan(0);
     expect(dialog).toBeVisible();
+  });
+
+  it('requires confirmation before discarding session-only SKU adjustments', async () => {
+    const onClose = vi.fn();
+    const versionSkus = vi.fn().mockResolvedValue([
+      {
+        id: 'sku-row-1',
+        versionId: row.versionId,
+        skuCode: '10001',
+        productCategName: '速冻食品',
+        baseQty: '8',
+        qty: '10',
+        price: '7.5',
+        amt: '75',
+        amtBase: '60',
+      },
+    ]);
+    render(
+      <RegionalApprovalLiveActionDialog
+        visible
+        row={row}
+        approvalStage='area'
+        t={t}
+        client={{ action: { invoke: vi.fn() }, versionSkus: { invoke: versionSkus } }}
+        onPermissionDenied={vi.fn()}
+        onSucceeded={vi.fn()}
+        onRefresh={vi.fn()}
+        onClose={onClose}
+      />
+    );
+
+    const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
+    fireEvent.change(await within(dialog).findByRole('textbox', { name: 'SKU 10001 调整量' }), {
+      target: { value: '2' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: '关闭' }));
+
+    const confirmation = await screen.findByRole('dialog', { name: '放弃未提交的调整？' });
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(within(confirmation).getByRole('button', { name: '放弃调整' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   it.each(cases)('renders a recoverable, status-specific HTTP %s result', async (status, message, recovery) => {
@@ -208,12 +280,12 @@ describe('RegionalApprovalLiveActionDialog', () => {
     );
 
     const checksum = screen.getByTestId('regional-approval-live-action-checksum');
-    expect(checksum).toHaveTextContent('真实计划 · 华北 / 河北 / ORG-01');
+    expect(checksum).toHaveTextContent('真实计划 · 华北大区 / 河北省区 / 石家庄经销分区');
     expect(checksum).toHaveTextContent('大区审批');
     expect(checksum).toHaveTextContent('目标 10 → 当前 12');
     expect(checksum).toHaveTextContent('目标 ¥100 → 当前 ¥120');
     expect(checksum).toHaveTextContent('1 个计划 · 1 个 SKU');
-    expect(checksum).toHaveTextContent('通过 → 品类审批');
+    expect(checksum).toHaveTextContent('通过 → 审批完成');
     expect(checksum).toHaveTextContent('当前登录用户（由 GEA 服务端会话校验）');
     expect(screen.queryByText(/本操作通过当前 GEA 用户会话提交/)).not.toBeInTheDocument();
     expect(screen.queryByText(/结果未知时仅以原幂等键重试同一意图/)).not.toBeInTheDocument();
@@ -248,7 +320,7 @@ describe('RegionalApprovalLiveActionDialog', () => {
     expect(screen.getByTestId('regional-approval-live-action-checksum')).toHaveTextContent('未知');
   });
 
-  it('disables REJECT at status 5 before any request is sent', () => {
+  it('disables completed status 5 before any request is sent', () => {
     const client: SalesPlanActionClient = { action: { invoke: vi.fn() } };
     render(
       <RegionalApprovalLiveActionDialog
@@ -265,6 +337,7 @@ describe('RegionalApprovalLiveActionDialog', () => {
     );
     const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
     expect(within(dialog).getByRole('radio', { name: '退回' })).toBeDisabled();
-    expect(within(dialog).getByText(/品类终审节点不支持退回/)).toBeVisible();
+    expect(within(dialog).getByRole('radio', { name: '通过' })).toBeDisabled();
+    expect(within(dialog).getByText(/已完成品类审批/)).toBeVisible();
   });
 });
