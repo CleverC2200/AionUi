@@ -66,8 +66,9 @@ export class ElectronLarkAuthSessionStore implements GeaLarkAuthSessionStore {
 
   async load(): Promise<GeaLarkAuthSession | null> {
     await this.mutation;
-    if (!this.isAvailable()) return null;
 
+    // Avoid probing Electron safeStorage until there is an encrypted session to restore.
+    // On macOS the probe itself may consult Keychain, even for a signed-out user.
     let encrypted: Buffer;
     try {
       encrypted = await readFile(this.filePath);
@@ -75,6 +76,7 @@ export class ElectronLarkAuthSessionStore implements GeaLarkAuthSessionStore {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
       throw error;
     }
+    if (!this.isAvailable()) return null;
 
     try {
       const parsed = JSON.parse(this.storage.decryptString(encrypted)) as unknown;
