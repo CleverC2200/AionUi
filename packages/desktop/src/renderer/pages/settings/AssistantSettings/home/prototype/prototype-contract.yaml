@@ -1,0 +1,137 @@
+prototype:
+  id: agent-surface-switching
+  status: selected-a-task-route
+  runtime: AionUi Electron renderer
+  facts:
+    - product modes are General and Business only
+    - General preserves the current AionUi workspace
+    - Business uses one shared three-column shell
+    - Business categories expand and each leaf menu item is an Agent
+    - Demand Forecast is the first Agent menu, not a product mode
+    - Message Inbox is a shared Business utility, not an Agent
+    - Mobile adaptation is out of scope unless the user explicitly requests it
+    - selected visual direction is A task route
+  target_viewports:
+    - 900x900
+    - 1124x720
+    - 1440x900
+    - 450x900-high-zoom-recovery
+
+roles:
+  - id: workspace-user
+    goals:
+      - switch assistants without losing conversation or local workspace state
+      - operate on forecast data while retaining a complete AI conversation
+      - ask the AI about the current board and every recoverable local change
+      - scan unread and read business messages before opening one focused detail
+
+entities:
+  - id: assistant-surface
+    identity_fields: [assistantId]
+    fields: [name, availability, managedStatus, layout]
+  - id: surface-conversation-binding
+    identity_fields: [userId, assistantId]
+    fields: [conversationId, bindingStatus, restoredAt]
+  - id: surface-snapshot
+    identity_fields: [userId, assistantId, conversationId]
+    fields: [rightPanelWidth, selection, filters, pagination, scrollPosition, draftStatus]
+  - id: forecast-plan
+    identity_fields: [customerId, planMonth, planType]
+    fields: [stage, dealerProgress, skuReview, draftStatus]
+  - id: surface-context-snapshot
+    identity_fields: [surfaceId, conversationId, revision]
+    fields: [scope, visibleEntities, selectedEntities, metrics, filters, dirtyChanges, dataEvidence, capturedAt]
+  - id: surface-change-event
+    identity_fields: [surfaceId, revision, changeId]
+    fields: [entityRef, field, before, after, source, changedAt]
+  - id: business-message
+    identity_fields: [messageId]
+    fields: [readStatus, type, title, scope, progress, risks, receivedAt, relatedAssistantId]
+
+states:
+  - general-ready
+  - surface-loading
+  - surface-unavailable
+  - conversation-binding-loading
+  - conversation-binding-empty
+  - conversation-binding-failed
+  - context-synced
+  - context-stale-for-running-turn
+  - message-inbox-unread
+  - message-inbox-read
+  - message-detail-open
+  - forecast-dealer-list-ready
+  - forecast-sku-review-ready
+  - dirty-local-draft
+  - partial-data
+  - permission-denied
+  - failed
+
+actions:
+  - id: switch-assistant
+    scope: current AionUi host
+    preconditions: [target assistant is visible and available]
+    result: current surface changes and the previous snapshot remains recoverable
+  - id: send-contextual-turn
+    scope: current forecast conversation
+    preconditions: [a real Conversation is bound and the current SurfaceContextSnapshot can be frozen]
+    result: the new Turn references the frozen board revision and later board changes do not mutate it
+  - id: select-forecast-evidence
+    scope: current fixture conversation
+    preconditions: [SKU review is ready]
+    result: the local evidence snapshot changes without an external write
+  - id: filter-business-messages
+    scope: Business Message Inbox
+    preconditions: [fixture message list is ready]
+    result: rows switch between unread and read without card layout
+  - id: open-business-message
+    scope: selected fixture message
+    preconditions: [message row is visible]
+    result: message becomes locally read and a desktop detail modal opens
+  - id: open-related-assistant
+    scope: selected message detail
+    preconditions: [message has a registered related Assistant]
+    result: modal closes and the related fixture Assistant route opens
+
+permissions:
+  - role: workspace-user
+    reads: [fixture assistant catalog, fixture forecast data, fixture contract data, fixture business messages]
+    writes: [in-memory fixture draft only, in-memory fixture message read status]
+    denied: [GEA configuration, production upload, production submit, production approval]
+
+mock_boundaries:
+  - assistant availability does not represent current enterprise authorization
+  - forecast customers, SKUs, quantities, amounts, and recommendations are sanitized fixtures
+  - contract files, clauses, and review decisions are sanitized fixtures
+  - business message rows, progress, risks, and read status are sanitized fixtures
+  - every upload, submit, approval, replacement, and formal-opinion action is disabled
+  - forecast Conversation uses the existing AionUi runtime; fixture board context is clearly identified as fixture evidence
+  - fixture context is never represented as a successful real GEA query
+
+layout:
+  desktop:
+    columns: [business-agent-menu, active-agent-board, bound-conversation]
+    conversation_panel: fixed desktop rail shared by every Business Agent
+  narrow:
+    min_width: 900
+    menu: collapsed rail
+    conversation_panel: fixed rail, never silently removed or converted to an overlay
+  mobile:
+    status: out-of-scope unless explicitly requested
+  message_inbox:
+    columns: [business-agent-menu, message-row-list]
+    detail: desktop modal with horizontal information tabs
+
+context_policy:
+  always_include: [current scope, visible page, selected entities, dirty changes, data evidence]
+  on_demand: [complete dealer dataset, complete SKU dataset]
+  running_turn: frozen at send-time revision
+  late_changes: visible as not-yet-shared and included in the next Turn
+  prohibited: [DOM scraping, hidden prompt mutation, implicit external write]
+
+open_questions:
+  - AionCore read-only Forecast adapter response contract
+  - production draft persistence and conflict authority
+  - production upload, submit, approval, and indeterminate-result handling
+  - real Contract Surface fields and workflow
+  - production business-message read authority, retention, and pagination contract

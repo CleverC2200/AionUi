@@ -1,4 +1,4 @@
-export type AssistantSurfaceId = 'general' | 'forecast';
+export type AssistantSurfaceId = 'general' | 'forecast' | 'contract';
 
 export type BusinessAssistantIcon = 'forecast';
 export type BusinessAssistantGroupId = 'planning';

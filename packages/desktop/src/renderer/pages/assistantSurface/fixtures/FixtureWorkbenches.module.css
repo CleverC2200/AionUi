@@ -1,0 +1,1337 @@
+/* Fixture workbench presentation; production ownership prevents Prototype imports. */
+.agent-surface-prototype {
+  --asp-accent: var(--color-red-6);
+  --asp-soft: var(--color-red-1);
+  --asp-strong: var(--color-red-7);
+  height: 100%;
+  min-height: 0;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  isolation: isolate;
+}
+
+.agent-surface-prototype[data-agent='contract'] {
+  --asp-accent: var(--color-blue-6);
+  --asp-soft: var(--color-blue-1);
+  --asp-strong: var(--color-blue-7);
+}
+
+.asp-agent-trigger,
+.asp-agent-option,
+.asp-general-nav-item,
+.asp-document-row,
+.asp-clause-row {
+  font: inherit;
+}
+
+.asp-agent-trigger:focus-visible,
+.asp-agent-option:focus-visible,
+.asp-general-nav-item:focus-visible,
+.asp-document-row:focus-visible,
+.asp-clause-row:focus-visible {
+  outline: 2px solid var(--asp-accent);
+  outline-offset: 2px;
+}
+
+.asp-agent-trigger {
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--text-primary);
+  background: transparent;
+  text-align: left;
+}
+
+.asp-agent-trigger:hover {
+  background: var(--bg-hover);
+}
+.asp-agent-trigger--compact {
+  width: 42px;
+  justify-content: center;
+}
+
+.asp-agent-mark {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  color: var(--color-white);
+}
+
+.asp-agent-mark--general {
+  background: var(--color-neutral-8);
+}
+
+.asp-agent-mark--business {
+  background: var(--color-red-6);
+}
+
+.asp-full-width-stack {
+  width: 100%;
+}
+
+.asp-agent-name {
+  min-width: 0;
+  flex: 1;
+  font-size: 14px;
+  font-weight: 680;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asp-agent-drawer {
+  max-width: calc(100vw - 16px);
+}
+.asp-agent-drawer :global(.arco-drawer-content) {
+  padding: 12px 16px 18px;
+}
+
+.asp-agent-option {
+  width: 100%;
+  min-height: 76px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--text-primary);
+  background: transparent;
+  line-height: normal;
+  text-align: left;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.asp-agent-option:hover:not(:disabled) {
+  background: var(--bg-active);
+}
+.asp-agent-option[data-active='true'] {
+  border-color: var(--asp-accent);
+  background: var(--asp-soft);
+}
+.asp-agent-option:active:not(:disabled) {
+  background: var(--bg-hover);
+}
+.asp-agent-option:disabled {
+  border-color: var(--border-light);
+  background: var(--fill-1);
+  opacity: 0.72;
+}
+.asp-agent-option-summary {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.asp-agent-option-check {
+  flex: 0 0 auto;
+  color: var(--asp-strong);
+}
+.asp-agent-fixture-notice {
+  margin-top: 14px;
+  border-radius: 9px;
+}
+.asp-agent-fixture-notice :global(.arco-alert-content) {
+  font-size: 11px;
+  line-height: 18px;
+}
+
+/* General Surface: preserve the current AionUi shell. */
+.asp-general-shell {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  background: var(--bg-base);
+}
+
+.asp-general-sidebar {
+  width: 260px;
+  flex: 0 0 260px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 9px 12px;
+  border-right: 1px solid var(--border-base);
+  background: var(--bg-1);
+  overflow: hidden;
+}
+
+.asp-general-brand {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 2px 3px;
+}
+.asp-general-brand .asp-agent-trigger {
+  padding-left: 3px;
+}
+.asp-general-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.asp-general-nav-item {
+  min-height: 34px;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.asp-general-nav-item[data-active='true'],
+.asp-general-nav-item:hover {
+  background: var(--bg-active);
+}
+.asp-general-nav-item > span {
+  min-width: 0;
+}
+
+.asp-general-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+}
+.asp-general-section-title {
+  min-height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 7px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+.asp-general-conversations {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.asp-general-footer {
+  padding-top: 8px;
+  border-top: 1px solid var(--border-light);
+}
+
+.asp-general-main {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 44px 24px 88px;
+  overflow: auto;
+  background: var(--bg-base);
+}
+.asp-general-center {
+  width: min(760px, 100%);
+}
+.asp-general-center h1 {
+  margin: 0 0 16px;
+  text-align: center;
+  font-size: 25px;
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.asp-general-agent-strip {
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 0 auto 14px;
+  padding: 4px 9px;
+  border-radius: 24px;
+  color: var(--text-tertiary);
+  background: var(--fill-1);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.asp-general-composer {
+  padding: 9px 12px 8px;
+  border: 1px solid var(--border-base);
+  border-radius: 22px;
+  background: var(--bg-1);
+  box-shadow: var(--shadow2-center);
+}
+.asp-general-composer :global(.arco-textarea-wrapper) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.asp-general-composer textarea {
+  min-height: 46px;
+  padding: 4px 7px;
+  resize: none;
+}
+.asp-general-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 3px;
+}
+.asp-general-working {
+  margin-top: 1px;
+  padding: 10px 14px;
+  border-radius: 0 0 18px 18px;
+  color: var(--text-tertiary);
+  background: var(--fill-1);
+  font-size: 11px;
+}
+.asp-general-prompts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  margin-top: 16px;
+  padding-left: 14px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+.asp-general-prompts :global(.arco-btn) {
+  height: 29px;
+  justify-content: flex-start;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+/* Forecast Surface */
+.asp-forecast-surface {
+  --primary-1: var(--red-1);
+  --primary-2: var(--red-2);
+  --primary-3: var(--red-3);
+  --primary-4: var(--red-4);
+  --primary-5: var(--red-5);
+  --primary-6: var(--red-6);
+  --primary-7: var(--red-7);
+  --primary-8: var(--red-8);
+  --primary-9: var(--red-9);
+  --primary-10: var(--red-10);
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+}
+.asp-forecast-header {
+  height: 60px;
+  flex: 0 0 60px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-base);
+  background: var(--bg-1);
+}
+.asp-forecast-header .asp-agent-trigger {
+  min-width: 214px;
+}
+.asp-mode-switch {
+  margin-left: auto;
+  padding: 3px;
+  border: 1px solid var(--border-base);
+  border-radius: 10px;
+  background: var(--fill-1);
+}
+.asp-mode-switch :global(.arco-radio-button) {
+  min-width: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0 !important;
+  border-radius: 8px !important;
+}
+
+.asp-forecast-content {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.asp-forecast-content[data-mode='conversation'] .asp-forecast-chat,
+.asp-forecast-content[data-mode='workbench'] .asp-forecast-workbench {
+  height: 100%;
+}
+.asp-forecast-split {
+  height: 100%;
+  min-height: 0;
+}
+.asp-forecast-content[data-mode='conversation'] :global(.arco-resizebox-split-pane.first-pane) {
+  display: block;
+  flex: 1 1 100% !important;
+}
+.asp-forecast-content[data-mode='conversation'] :global(.arco-resizebox-split-pane.second-pane),
+.asp-forecast-content[data-mode='workbench'] :global(.arco-resizebox-split-pane.first-pane) {
+  display: none;
+}
+.asp-forecast-content[data-mode='workbench'] :global(.arco-resizebox-split-pane.second-pane) {
+  display: block;
+  flex: 1 1 100%;
+}
+.asp-forecast-content:not([data-mode='split']) :global(.arco-resizebox-trigger) {
+  display: none;
+}
+.asp-forecast-split > div {
+  min-width: 0;
+  min-height: 0;
+}
+.asp-forecast-split :global(.arco-resizebox-trigger) {
+  width: 10px;
+  border: 0;
+  background: var(--bg-1);
+}
+.asp-forecast-split :global(.arco-resizebox-trigger-icon-wrapper) {
+  width: 25px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-red-3);
+  border-radius: 10px;
+  color: var(--asp-accent);
+  background: var(--bg-1);
+}
+.asp-split-keyboard-handle {
+  min-width: 18px;
+  width: 18px;
+  height: 48px;
+  padding: 0;
+  color: var(--text-tertiary);
+}
+.asp-split-keyboard-handle:focus-visible {
+  outline: 2px solid var(--asp-accent);
+  outline-offset: 1px;
+}
+
+.asp-forecast-chat {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  overflow: auto;
+  background: var(--bg-base);
+}
+.asp-forecast-chat-center {
+  width: min(590px, 100%);
+  transform: translateY(-3vh);
+}
+.asp-forecast-chat h1 {
+  margin: 0 0 20px;
+  text-align: center;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.asp-forecast-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  padding: 9px 10px;
+  border: 1px solid var(--border-base);
+  border-radius: 24px;
+  background: var(--bg-1);
+  box-shadow: var(--shadow2-center);
+}
+.asp-forecast-composer :global(.arco-textarea-wrapper) {
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.asp-forecast-composer textarea {
+  resize: none;
+}
+.asp-forecast-shortcut {
+  margin-top: 36px;
+  border-radius: 16px;
+}
+
+.asp-forecast-workbench {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--fill-1);
+}
+.asp-forecast-toolbar {
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: auto auto auto minmax(210px, 1fr) minmax(190px, 260px) minmax(130px, 180px) minmax(
+      118px,
+      150px
+    );
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-base);
+  background: var(--bg-1);
+}
+.asp-workbench-title {
+  color: var(--text-primary);
+  font-size: 17px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+.asp-plan-type {
+  width: 100%;
+}
+.asp-plan-type :global(.arco-radio-button) {
+  min-width: 100px;
+  text-align: center;
+}
+.asp-forecast-steps {
+  flex: 0 0 auto;
+  padding: 8px 14px 7px;
+  border-bottom: 1px solid var(--border-base);
+  background: var(--bg-1);
+}
+.asp-forecast-steps :global(.arco-steps-item) {
+  min-height: 28px;
+}
+.asp-forecast-steps :global(.arco-steps-item-title) {
+  font-size: 11px;
+}
+.asp-workbench-body {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.asp-dealer-queue,
+.asp-sku-review {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+}
+.asp-section-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.asp-section-toolbar h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+}
+.asp-section-toolbar :global(.arco-input-search) {
+  width: min(300px, 42%);
+  margin-left: auto;
+}
+.asp-forecast-table {
+  min-height: 0;
+  flex: 1;
+  border: 1px solid var(--border-base);
+  border-radius: 11px;
+  overflow: hidden;
+  background: var(--bg-1);
+}
+.asp-forecast-table :global(.arco-table-th) {
+  height: 42px;
+  color: var(--text-secondary);
+  background: var(--fill-2);
+  font-size: 11px;
+  font-weight: 650;
+}
+.asp-forecast-table :global(.arco-table-td) {
+  height: 94px;
+  padding: 9px 10px;
+  font-size: 11px;
+  vertical-align: middle;
+}
+.asp-forecast-table :global(.arco-table-col-fixed-right-first) {
+  box-shadow: -1px 0 0 var(--border-base);
+}
+.asp-forecast-table :global(.arco-table-th.arco-table-col-fixed-right),
+.asp-forecast-table :global(.arco-table-th.arco-table-col-fixed-right-first) {
+  z-index: 4;
+  overflow: hidden;
+  background-color: var(--bg-2);
+}
+.asp-forecast-table :global(.arco-table-td.arco-table-col-fixed-right),
+.asp-forecast-table :global(.arco-table-td.arco-table-col-fixed-right-first) {
+  z-index: 3;
+  background-color: var(--bg-base);
+}
+.asp-forecast-table .asp-warning-row :global(.arco-table-td) {
+  background: color-mix(in srgb, var(--danger) 12%, var(--bg-1));
+}
+.asp-forecast-table .asp-warning-row :global(.arco-table-td.arco-table-col-fixed-right),
+.asp-forecast-table .asp-warning-row :global(.arco-table-td.arco-table-col-fixed-right-first) {
+  background: color-mix(in srgb, var(--danger) 12%, var(--bg-1));
+}
+
+.asp-dealer-name {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 7px;
+}
+.asp-dealer-name strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.asp-dealer-name > span:last-child {
+  grid-column: 2;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.asp-metric-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.asp-metric-progress {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.asp-metric-progress :global(.arco-progress) {
+  width: 82px;
+}
+.asp-metric-progress strong {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.asp-metric-values {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.asp-metric-values span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text-tertiary);
+  font-size: 9px;
+}
+.asp-metric-values b {
+  color: var(--text-primary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.asp-inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+}
+.asp-inventory-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.asp-inventory-list dt {
+  color: var(--text-tertiary);
+}
+.asp-inventory-list dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.asp-health-analysis {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 7px;
+}
+.asp-health-analysis p {
+  margin: 0;
+  line-height: 1.45;
+}
+.asp-health-analysis > span:last-child {
+  grid-column: 2;
+  color: var(--text-tertiary);
+  font-size: 9px;
+}
+
+.asp-table-footer {
+  min-height: 44px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 3px 0;
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+.asp-table-footer :global(.arco-pagination) {
+  margin-left: auto;
+}
+.asp-sku-loading {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding: 44px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.asp-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(145px, 1fr));
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.asp-summary-card {
+  min-height: 83px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 10px;
+  padding: 11px;
+  border: 1px solid var(--border-base);
+  border-radius: 9px;
+  background: var(--bg-1);
+}
+.asp-summary-card > span {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.asp-summary-card strong {
+  grid-column: 1;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.asp-summary-card strong[data-tone='red'] {
+  color: var(--color-red-6);
+}
+.asp-summary-card small {
+  grid-column: 1 / -1;
+  color: var(--text-tertiary);
+  font-size: 9px;
+}
+
+.asp-sku-toolbar {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto auto minmax(190px, 1fr) 112px 112px auto auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--border-base);
+  border-radius: 9px 9px 0 0;
+  background: var(--bg-1);
+}
+.asp-sku-toolbar-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+.asp-sku-toolbar + :global(.arco-alert) {
+  margin: 7px 0;
+}
+.asp-filter-summary {
+  min-height: 52px;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border-base);
+  border-top: 0;
+  background: var(--bg-1);
+}
+.asp-filter-summary > span {
+  min-width: 130px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 7px 12px;
+  border-right: 1px solid var(--border-base);
+}
+.asp-filter-summary small {
+  color: var(--text-tertiary);
+  font-size: 9px;
+}
+.asp-filter-summary strong {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.asp-sku-table-title {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border: 1px solid var(--border-base);
+  border-top: 0;
+  background: var(--bg-1);
+  font-size: 11px;
+}
+.asp-sku-table-title span {
+  color: var(--text-tertiary);
+}
+.asp-sku-review .asp-forecast-table {
+  border-radius: 0;
+}
+.asp-sku-name {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 6px;
+}
+.asp-sku-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.asp-sku-name > span:last-child {
+  grid-column: 1 / -1;
+  color: var(--text-tertiary);
+  font-size: 9px;
+}
+.asp-number-stack,
+.asp-confirm-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.asp-number-stack span,
+.asp-confirm-cell span {
+  color: var(--text-tertiary);
+  font-size: 9px;
+}
+.asp-confirm-cell :global(.arco-input-number) {
+  width: 92px;
+}
+.asp-ai-suggestion {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.asp-mobile-back {
+  display: none;
+}
+
+/* Contract Surface */
+.asp-contract-surface {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--fill-1);
+}
+.asp-contract-header {
+  height: 58px;
+  flex: 0 0 58px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-base);
+  background: var(--bg-1);
+}
+.asp-contract-header .asp-agent-trigger {
+  min-width: 218px;
+}
+.asp-contract-progress {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.asp-contract-clause-select {
+  width: min(210px, 28vw);
+}
+.asp-contract-surface > :global(.arco-alert) {
+  flex: 0 0 auto;
+}
+.asp-contract-layout {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 245px minmax(440px, 1fr) 330px;
+  overflow: hidden;
+}
+.asp-contract-nav,
+.asp-risk-panel,
+.asp-document-canvas {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+.asp-contract-nav {
+  border-right: 1px solid var(--border-base);
+  background: var(--bg-1);
+}
+.asp-pane-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 13px 13px 8px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+}
+.asp-document-row,
+.asp-clause-row {
+  width: calc(100% - 16px);
+  height: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 8px 5px;
+  padding: 10px;
+  border-radius: 9px;
+  color: var(--text-primary);
+  text-align: left;
+}
+.asp-document-row[data-active='true'],
+.asp-clause-row[data-active='true'],
+.asp-document-row:hover,
+.asp-clause-row:hover {
+  background: var(--bg-active);
+}
+.asp-document-row > span,
+.asp-clause-row > span {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.asp-document-row strong,
+.asp-clause-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.asp-document-row small {
+  color: var(--text-tertiary);
+  font-size: 9px;
+}
+.asp-clause-row > span > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.asp-contract-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 10px 8px;
+  border: 1px solid var(--border-base);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.asp-contract-summary span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  text-align: center;
+}
+.asp-contract-summary span + span {
+  border-left: 1px solid var(--border-base);
+}
+.asp-contract-summary small {
+  color: var(--text-tertiary);
+  font-size: 9px;
+}
+.asp-contract-summary strong {
+  font-size: 13px;
+}
+.asp-clause-list {
+  padding-bottom: 14px;
+}
+
+.asp-document-canvas {
+  padding: 20px clamp(16px, 3vw, 38px) 70px;
+  background: var(--fill-2);
+}
+.asp-document-sheet {
+  width: min(740px, 100%);
+  min-height: 760px;
+  margin: 0 auto;
+  padding: clamp(28px, 4vw, 48px);
+  background: var(--bg-base);
+  box-shadow: var(--shadow3-center);
+}
+.asp-document-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-base);
+}
+.asp-document-title h1 {
+  margin: 0;
+  font-size: 21px;
+}
+.asp-document-title span {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+.asp-contract-copy {
+  margin-top: 22px;
+  font-size: 13px;
+  line-height: 1.95;
+}
+.asp-contract-copy h2 {
+  margin: 28px 0 10px;
+  font-size: 15px;
+}
+.asp-contract-copy h2:first-child {
+  margin-top: 0;
+}
+.asp-contract-copy p {
+  margin: 8px 0;
+}
+.asp-contract-copy mark {
+  padding: 2px 4px;
+  color: inherit;
+  background: color-mix(in srgb, var(--danger) 14%, var(--bg-1));
+  border-bottom: 1px solid var(--danger);
+}
+.asp-contract-copy mark[data-passed='true'] {
+  background: color-mix(in srgb, var(--success) 14%, var(--bg-1));
+  border-color: var(--success);
+}
+
+.asp-risk-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  border-left: 1px solid var(--border-base);
+  background: var(--bg-1);
+}
+.asp-risk-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.asp-risk-heading > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.asp-risk-heading span {
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.asp-risk-item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-base);
+}
+.asp-risk-item h3 {
+  margin: 10px 0 5px;
+  font-size: 13px;
+}
+.asp-risk-item p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.asp-risk-item label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 11px;
+  font-weight: 650;
+}
+.asp-risk-evidence {
+  margin-top: 12px;
+  padding: 11px;
+  border-radius: 9px;
+  background: var(--fill-2);
+  font-size: 10px;
+}
+.asp-risk-evidence > span {
+  font-weight: 650;
+}
+.asp-risk-evidence ul {
+  margin: 7px 0 0;
+  padding-left: 17px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.asp-prototype-state {
+  position: fixed;
+  right: 12px;
+  bottom: 14px;
+  z-index: 45;
+  max-width: min(430px, calc(100vw - 24px));
+  padding: 7px 10px;
+  border: 1px solid var(--border-base);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-1) 94%, transparent);
+  box-shadow: var(--aion-overlay-shadow);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1240px) {
+  .asp-general-sidebar {
+    width: 228px;
+    flex-basis: 228px;
+  }
+  .asp-forecast-toolbar {
+    grid-template-columns: auto auto auto minmax(190px, 1fr) 180px 140px;
+  }
+  .asp-fixture-state-select {
+    display: none;
+  }
+  .asp-workbench-title {
+    font-size: 15px;
+  }
+  .asp-contract-layout {
+    grid-template-columns: 220px minmax(390px, 1fr) 300px;
+  }
+  .asp-sku-toolbar {
+    grid-template-columns: auto auto minmax(170px, 1fr) 110px 110px;
+  }
+  .asp-sku-toolbar > :nth-last-child(-n + 2) {
+    display: none;
+  }
+}
+
+@container (max-width: 900px) {
+  .asp-contract-layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+
+  .asp-contract-nav {
+    display: none;
+  }
+
+  .asp-document-canvas {
+    padding: 14px;
+  }
+
+  .asp-document-sheet {
+    padding: 28px;
+  }
+}
+
+@container (max-width: 520px) {
+  .asp-contract-layout {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .asp-document-canvas,
+  .asp-risk-panel {
+    min-height: 520px;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 980px) {
+  .asp-general-sidebar {
+    width: 210px;
+    flex-basis: 210px;
+  }
+  .asp-forecast-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+  }
+  .asp-forecast-toolbar > :global(.arco-btn-primary) {
+    display: none;
+  }
+  .asp-forecast-toolbar > .asp-plan-type {
+    width: auto;
+    flex: 0 0 152px;
+  }
+  .asp-forecast-toolbar > .asp-plan-type :global(.arco-radio-button) {
+    min-width: 76px;
+  }
+  .asp-forecast-toolbar > :global(.arco-select) {
+    min-width: 132px;
+    flex: 1 1 160px;
+  }
+  .asp-summary-grid {
+    grid-template-columns: repeat(2, minmax(145px, 1fr));
+  }
+  .asp-contract-layout {
+    grid-template-columns: 210px minmax(420px, 1fr);
+    overflow: auto;
+  }
+  .asp-risk-panel {
+    grid-column: 1 / -1;
+    min-height: 440px;
+    border-top: 1px solid var(--border-base);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .asp-general-sidebar {
+    width: 58px;
+    flex-basis: 58px;
+    padding: 8px 7px;
+  }
+  .asp-general-sidebar .asp-agent-name,
+  .asp-general-sidebar .asp-agent-trigger svg:last-child,
+  .asp-general-nav-item > span,
+  .asp-general-section-title,
+  .asp-general-sidebar :global(.arco-tag) {
+    display: none;
+  }
+  .asp-general-sidebar .asp-agent-trigger,
+  .asp-general-nav-item {
+    width: 42px;
+    min-width: 42px;
+    justify-content: center;
+    padding: 0;
+  }
+  .asp-general-center {
+    width: 100%;
+  }
+  .asp-general-agent-strip {
+    gap: 10px;
+  }
+  .asp-forecast-header .asp-agent-trigger {
+    min-width: 0;
+  }
+  .asp-forecast-header .asp-agent-name {
+    max-width: 130px;
+  }
+  .asp-forecast-header > :global(.arco-tag) {
+    display: none;
+  }
+  .asp-forecast-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 130px;
+  }
+  .asp-forecast-toolbar > :not(.asp-workbench-title):not(:last-child) {
+    display: none;
+  }
+  .asp-plan-type {
+    display: none;
+  }
+  .asp-forecast-steps {
+    overflow-x: auto;
+  }
+  .asp-forecast-steps :global(.arco-steps) {
+    min-width: 620px;
+  }
+  .asp-dealer-queue,
+  .asp-sku-review {
+    padding: 9px;
+  }
+  .asp-section-toolbar :global(.arco-input-search) {
+    width: 52%;
+  }
+  .asp-table-footer > span {
+    display: none;
+  }
+  .asp-summary-grid {
+    display: none;
+  }
+  .asp-sku-toolbar {
+    grid-template-columns: auto auto minmax(160px, 1fr);
+  }
+  .asp-sku-toolbar > :nth-child(n + 4) {
+    display: none;
+  }
+  .asp-filter-summary > span:nth-child(n + 3) {
+    display: none;
+  }
+  .asp-mobile-back {
+    display: inline-flex;
+    position: absolute;
+    right: 12px;
+    bottom: 64px;
+    z-index: 8;
+  }
+  .asp-contract-layout {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+  .asp-contract-nav {
+    min-height: 250px;
+    overflow: visible;
+  }
+  .asp-document-canvas {
+    min-height: 620px;
+    overflow: visible;
+  }
+  .asp-risk-panel {
+    min-height: 430px;
+    overflow: visible;
+  }
+  .asp-contract-header .asp-agent-trigger {
+    min-width: 0;
+  }
+  .asp-contract-progress,
+  .asp-contract-header > :global(.arco-tag),
+  .asp-contract-header :global(.arco-btn) {
+    display: none;
+  }
+  .asp-prototype-state {
+    display: none;
+  }
+}
+
+/* The production Surface puts this fixture inside a resizable data canvas.
+ * Container rules must follow viewport rules so the inner workbench responds
+ * to its actual width rather than to the Electron window width. */
+@container (max-width: 900px) {
+  .asp-contract-layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    overflow: hidden;
+  }
+
+  .asp-contract-nav {
+    display: none;
+  }
+
+  .asp-document-canvas {
+    padding: 14px;
+  }
+
+  .asp-document-sheet {
+    padding: 28px;
+  }
+}
+
+@container (max-width: 520px) {
+  .asp-contract-layout {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .asp-document-canvas,
+  .asp-risk-panel {
+    min-height: 520px;
+    overflow: visible;
+  }
+}

@@ -18,7 +18,15 @@ import {
 import React from 'react';
 import type { TFunction } from 'i18next';
 
-export type PrototypeScenario = 'journey' | 'catalog' | 'running' | 'attention' | 'deliverable' | 'error' | 'team';
+export type PrototypeScenario =
+  | 'agent-switching'
+  | 'journey'
+  | 'catalog'
+  | 'running'
+  | 'attention'
+  | 'deliverable'
+  | 'error'
+  | 'team';
 
 type VariantProps = {
   scenario: PrototypeScenario;

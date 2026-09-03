@@ -140,16 +140,18 @@ where.exe aioncore
 
 ### 开发
 
-| 命令                        | 说明                                                                  |
-| --------------------------- | --------------------------------------------------------------------- |
-| `bun start`                 | 以开发模式启动 Electron 桌面应用                                      |
-| `bun run start:multi`       | 在已有实例旁启动第二个 Electron 实例（参见[多实例开发](#多实例开发)） |
-| `bun run cli`               | `bun start` 的别名                                                    |
-| `bun run webui`             | 以 WebUI 模式启动（基于浏览器，不打开 Electron 窗口）                 |
-| `bun run webui:remote`      | 启用远程访问并以 WebUI 模式启动                                       |
-| `bun run webui:prod`        | 以生产模式启动 WebUI                                                  |
-| `bun run webui:prod:remote` | 以生产模式启动 WebUI，并启用远程访问                                  |
-| `bun run resetpass`         | 通过 CLI 重置用户密码                                                 |
+| 命令                                       | 说明                                                                  |
+| ------------------------------------------ | --------------------------------------------------------------------- |
+| `bun start`                                | 以开发模式启动 Electron 桌面应用                                      |
+| `bun run start:agent-surface`              | 直接启动开发专用的 Agent Surface Electron 原型                        |
+| `bun run start:assistant-surface-fixtures` | 在正式应用壳中启用脱敏 Fixture 专项工作区（仅开发环境）               |
+| `bun run start:multi`                      | 在已有实例旁启动第二个 Electron 实例（参见[多实例开发](#多实例开发)） |
+| `bun run cli`                              | `bun start` 的别名                                                    |
+| `bun run webui`                            | 以 WebUI 模式启动（基于浏览器，不打开 Electron 窗口）                 |
+| `bun run webui:remote`                     | 启用远程访问并以 WebUI 模式启动                                       |
+| `bun run webui:prod`                       | 以生产模式启动 WebUI                                                  |
+| `bun run webui:prod:remote`                | 以生产模式启动 WebUI，并启用远程访问                                  |
+| `bun run resetpass`                        | 通过 CLI 重置用户密码                                                 |
 
 ### 构建与分发
 

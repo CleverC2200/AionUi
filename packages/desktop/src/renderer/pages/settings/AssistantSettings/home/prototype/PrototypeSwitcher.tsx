@@ -26,15 +26,28 @@ const JOURNEY_VARIANTS: Array<{ key: PrototypeVariant; label: string }> = [
   { key: 'C', label: '状态工作台' },
 ];
 
+const AGENT_SURFACE_VARIANTS: Array<{ key: PrototypeVariant; label: string }> = [
+  { key: 'A', label: '推荐：对话与工作区双栏' },
+  { key: 'B', label: '工作区全屏' },
+  { key: 'C', label: '对话全屏' },
+];
+
 type PrototypeSwitcherProps = {
   current: PrototypeVariant;
   onChange: (variant: PrototypeVariant) => void;
-  study?: 'work-center' | 'team-work' | 'end-to-end';
+  study?: 'work-center' | 'team-work' | 'end-to-end' | 'agent-surface';
 };
 
 const PrototypeSwitcher: React.FC<PrototypeSwitcherProps> = ({ current, onChange, study = 'work-center' }) => {
   const { t } = useTranslation();
-  const variants = study === 'team-work' ? TEAM_VARIANTS : study === 'end-to-end' ? JOURNEY_VARIANTS : VARIANTS;
+  const variants =
+    study === 'team-work'
+      ? TEAM_VARIANTS
+      : study === 'end-to-end'
+        ? JOURNEY_VARIANTS
+        : study === 'agent-surface'
+          ? AGENT_SURFACE_VARIANTS
+          : VARIANTS;
   const currentIndex = variants.findIndex((variant) => variant.key === current);
 
   const cycle = (direction: -1 | 1) => {
@@ -45,7 +58,12 @@ const PrototypeSwitcher: React.FC<PrototypeSwitcherProps> = ({ current, onChange
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.matches('input, textarea, [contenteditable="true"]')) return;
+      if (
+        target?.closest(
+          'input, textarea, select, button, a, [role="tab"], [role="radio"], [role="combobox"], [role="listbox"], [role="option"], [contenteditable="true"]'
+        )
+      )
+        return;
       if (event.key === 'ArrowLeft') cycle(-1);
       if (event.key === 'ArrowRight') cycle(1);
     };
@@ -70,9 +88,11 @@ const PrototypeSwitcher: React.FC<PrototypeSwitcherProps> = ({ current, onChange
       <span className='min-w-150px px-8px text-center text-12px font-500 text-t-primary'>
         {active.key} ·{' '}
         {t(
-          study === 'end-to-end'
-            ? `prototype.endToEnd.variant.${active.key}`
-            : `prototype.workCenter.variant.${active.key}`,
+          study === 'agent-surface'
+            ? `prototype.agentSurface.variant.${active.key}`
+            : study === 'end-to-end'
+              ? `prototype.endToEnd.variant.${active.key}`
+              : `prototype.workCenter.variant.${active.key}`,
           { defaultValue: active.label }
         )}
       </span>

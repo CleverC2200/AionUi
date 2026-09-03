@@ -13,11 +13,11 @@ describe('assistant surface session state', () => {
   });
 
   it('isolates snapshots by surface and scope', () => {
-    writeAssistantSurfaceState('forecast', 'workspace-a', { mode: 'split' });
-    writeAssistantSurfaceState('forecast', 'workspace-b', { mode: 'workbench' });
+    writeAssistantSurfaceState('forecast', 'workspace', { mode: 'split' });
+    writeAssistantSurfaceState('contract', 'workspace', { clause: 'privacy' });
 
-    expect(readAssistantSurfaceState('forecast', 'workspace-a', null)).toEqual({ mode: 'split' });
-    expect(readAssistantSurfaceState('forecast', 'workspace-b', null)).toEqual({ mode: 'workbench' });
+    expect(readAssistantSurfaceState('forecast', 'workspace', null)).toEqual({ mode: 'split' });
+    expect(readAssistantSurfaceState('contract', 'workspace', null)).toEqual({ clause: 'privacy' });
   });
 
   it('returns the fallback when stored data is invalid', () => {

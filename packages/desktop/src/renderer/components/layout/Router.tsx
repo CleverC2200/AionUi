@@ -72,7 +72,7 @@ const ProtectedLayout: React.FC<{ layout: React.ReactElement }> = ({ layout }) =
 
 const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
   const { status } = useAuth();
-  const prototypeEnabled = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+  const prototypeEnabled = window.__aionuiAgentSurfacePrototype === true || window.__aionuiE2ETest === true;
 
   return (
     <HashRouter>
