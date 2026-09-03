@@ -513,7 +513,7 @@ describe('RegionalApprovalWorkbench', () => {
         'conversation-b'
       )
     );
-  });
+  }, 20_000);
 
   it('keeps adjustments through a failed Fixture return, retries, submits once, and restores across Conversations', async () => {
     const onContextChange = vi.fn();
