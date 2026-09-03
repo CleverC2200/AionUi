@@ -1,6 +1,6 @@
 ---
 name: arco-progress
-description: "Arco Design Progress component API. Use for linear progress bars, circular progress, step progress, and custom status display."
+description: 'Arco Design Progress component API. Use for linear progress bars, circular progress, step progress, and custom status display.'
 user-invocable: false
 ---
 
@@ -25,22 +25,21 @@ import { Progress } from '@arco-design/web-react';
 
 ### ProgressProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `percent` | `number` | `0` | 百分比 |
-| `type` | `'line' \| 'circle'` | `'line'` | 类型 |
-| `status` | `'success' \| 'error' \| 'normal' \| 'warning'` | — | 状态 |
-| `size` | `'small' \| 'default' \| 'mini' \| 'large'` | `'default'` | 尺寸 |
-| `color` | `string \| Record<string, string>` | — | 颜色（渐变） |
-| `trailColor` | `string` | — | 轨道颜色 |
-| `showText` | `boolean` | `true` | 显示文字 |
-| `formatText` | `(percent) => ReactNode` | — | 自定义文字 |
-| `steps` | `number` | — | 步骤数 |
-| `strokeWidth` | `number` | — | 线宽 |
-| `width` | `number \| string` | — | 圆形进度条宽度 |
-| `animation` | `boolean` | — | 动画效果 |
-| `buffer` | `boolean` | — | 缓冲动画 |
-
+| 属性          | 类型                                            | 默认值      | 说明           |
+| ------------- | ----------------------------------------------- | ----------- | -------------- |
+| `percent`     | `number`                                        | `0`         | 百分比         |
+| `type`        | `'line' \| 'circle'`                            | `'line'`    | 类型           |
+| `status`      | `'success' \| 'error' \| 'normal' \| 'warning'` | —           | 状态           |
+| `size`        | `'small' \| 'default' \| 'mini' \| 'large'`     | `'default'` | 尺寸           |
+| `color`       | `string \| Record<string, string>`              | —           | 颜色（渐变）   |
+| `trailColor`  | `string`                                        | —           | 轨道颜色       |
+| `showText`    | `boolean`                                       | `true`      | 显示文字       |
+| `formatText`  | `(percent) => ReactNode`                        | —           | 自定义文字     |
+| `steps`       | `number`                                        | —           | 步骤数         |
+| `strokeWidth` | `number`                                        | —           | 线宽           |
+| `width`       | `number \| string`                              | —           | 圆形进度条宽度 |
+| `animation`   | `boolean`                                       | —           | 动画效果       |
+| `buffer`      | `boolean`                                       | —           | 缓冲动画       |
 
 ## 最佳实践
 

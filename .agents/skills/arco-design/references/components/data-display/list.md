@@ -1,6 +1,6 @@
 ---
 name: arco-list
-description: "Arco Design List component API. Use for data lists, paginated lists, virtual scroll lists, and grid lists with custom rendering."
+description: 'Arco Design List component API. Use for data lists, paginated lists, virtual scroll lists, and grid lists with custom rendering.'
 user-invocable: false
 ---
 
@@ -35,23 +35,23 @@ import { List } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `dataSource` | `any[]` | 数据源 |
-| `render` | `(item, index) => ReactNode` | 渲染函数 |
-| `header` / `footer` | `ReactNode` | 头部/底部 |
-| `size` | `'small' \| 'default' \| 'large'` | 尺寸 |
-| `bordered` | `boolean` | 边框 |
-| `split` | `boolean` | 分割线 |
-| `loading` | `boolean` | 加载中 |
-| `hoverable` | `boolean` | 可悬停 |
-| `pagination` | `PaginationProps \| boolean` | 分页 |
-| `grid` | `{ gutter, span, xs, sm, ... }` | 栅格布局 |
-| `virtualListProps` | `VirtualListProps` | 虚拟滚动 |
-| `scrollLoading` | `ReactNode` | 滚动加载 |
-| `onReachBottom` | `() => void` | 触底回调 |
-| `onListScroll` | `(elem: Element) => void` | 列表滚动回调 |
-| `throttleDelay` | `number` | `onListScroll` 节流时间 |
-| `wrapperStyle` | `CSSProperties` | 外层包裹样式 |
-| `wrapperClassName` | `string \| string[]` | 外层包裹 class |
-| `listRef` | `MutableRefObject<HTMLDivElement>` | 列表 DOM ref |
+| 属性                | 类型                               | 说明                    |
+| ------------------- | ---------------------------------- | ----------------------- |
+| `dataSource`        | `any[]`                            | 数据源                  |
+| `render`            | `(item, index) => ReactNode`       | 渲染函数                |
+| `header` / `footer` | `ReactNode`                        | 头部/底部               |
+| `size`              | `'small' \| 'default' \| 'large'`  | 尺寸                    |
+| `bordered`          | `boolean`                          | 边框                    |
+| `split`             | `boolean`                          | 分割线                  |
+| `loading`           | `boolean`                          | 加载中                  |
+| `hoverable`         | `boolean`                          | 可悬停                  |
+| `pagination`        | `PaginationProps \| boolean`       | 分页                    |
+| `grid`              | `{ gutter, span, xs, sm, ... }`    | 栅格布局                |
+| `virtualListProps`  | `VirtualListProps`                 | 虚拟滚动                |
+| `scrollLoading`     | `ReactNode`                        | 滚动加载                |
+| `onReachBottom`     | `() => void`                       | 触底回调                |
+| `onListScroll`      | `(elem: Element) => void`          | 列表滚动回调            |
+| `throttleDelay`     | `number`                           | `onListScroll` 节流时间 |
+| `wrapperStyle`      | `CSSProperties`                    | 外层包裹样式            |
+| `wrapperClassName`  | `string \| string[]`               | 外层包裹 class          |
+| `listRef`           | `MutableRefObject<HTMLDivElement>` | 列表 DOM ref            |

@@ -1,6 +1,6 @@
 ---
 name: arco-notification
-description: "Arco Design Notification component API. Use for rich notification toasts in page corners with title, content, and actions."
+description: 'Arco Design Notification component API. Use for rich notification toasts in page corners with title, content, and actions.'
 user-invocable: false
 ---
 
@@ -70,7 +70,7 @@ const [notification, contextHolder] = Notification.useNotification();
 <ConfigProvider locale={enUS}>
   {contextHolder}
   <Button onClick={() => notification.success({ title: 'Done!' })}>操作</Button>
-</ConfigProvider>
+</ConfigProvider>;
 ```
 
 ## 最佳实践

@@ -1,6 +1,6 @@
 ---
 name: arco-alert
-description: "Arco Design Alert component API. Use for inline alert banners — info, success, warning, error messages with optional close button and actions."
+description: 'Arco Design Alert component API. Use for inline alert banners — info, success, warning, error messages with optional close button and actions.'
 user-invocable: false
 ---
 
@@ -21,19 +21,19 @@ import { Alert } from '@arco-design/web-react';
 
 ### AlertProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `type` | `'info' \| 'success' \| 'warning' \| 'error'` | `'info'` | 类型 |
-| `title` | `ReactNode` | — | 标题 |
-| `content` | `ReactNode` | — | 内容 |
-| `showIcon` | `boolean` | `true` | 显示图标 |
-| `icon` | `ReactNode` | — | 自定义图标 |
-| `closable` | `boolean` | — | 可关闭 |
-| `closeElement` | `ReactNode` | — | 自定义关闭元素 |
-| `banner` | `boolean` | — | 横幅模式 |
-| `action` | `ReactNode` | — | 操作区域 |
-| `onClose` | `(e) => void` | — | 关闭回调 |
-| `afterClose` | `() => void` | — | 关闭动画结束后 |
+| 属性           | 类型                                          | 默认值   | 说明           |
+| -------------- | --------------------------------------------- | -------- | -------------- |
+| `type`         | `'info' \| 'success' \| 'warning' \| 'error'` | `'info'` | 类型           |
+| `title`        | `ReactNode`                                   | —        | 标题           |
+| `content`      | `ReactNode`                                   | —        | 内容           |
+| `showIcon`     | `boolean`                                     | `true`   | 显示图标       |
+| `icon`         | `ReactNode`                                   | —        | 自定义图标     |
+| `closable`     | `boolean`                                     | —        | 可关闭         |
+| `closeElement` | `ReactNode`                                   | —        | 自定义关闭元素 |
+| `banner`       | `boolean`                                     | —        | 横幅模式       |
+| `action`       | `ReactNode`                                   | —        | 操作区域       |
+| `onClose`      | `(e) => void`                                 | —        | 关闭回调       |
+| `afterClose`   | `() => void`                                  | —        | 关闭动画结束后 |
 
 ## 常用模式
 

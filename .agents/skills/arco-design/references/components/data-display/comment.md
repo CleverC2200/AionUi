@@ -1,6 +1,6 @@
 ---
 name: arco-comment
-description: "Arco Design Comment component API. Use for comment display, nested replies, comment lists with actions (like, reply)."
+description: 'Arco Design Comment component API. Use for comment display, nested replies, comment lists with actions (like, reply).'
 user-invocable: false
 ---
 
@@ -25,14 +25,14 @@ import { Comment, Avatar } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `author` | `ReactNode` | 作者名 |
-| `avatar` | `ReactNode` | 头像 |
-| `content` | `ReactNode` | 评论内容 |
-| `datetime` | `ReactNode` | 时间 |
-| `actions` | `ReactNode` | 操作列表 |
-| `align` | `'left' \| 'right' \| { datetime?: 'left' \| 'right'; actions?: 'left' \| 'right' }` | 对齐方式 |
+| 属性       | 类型                                                                                 | 说明     |
+| ---------- | ------------------------------------------------------------------------------------ | -------- |
+| `author`   | `ReactNode`                                                                          | 作者名   |
+| `avatar`   | `ReactNode`                                                                          | 头像     |
+| `content`  | `ReactNode`                                                                          | 评论内容 |
+| `datetime` | `ReactNode`                                                                          | 时间     |
+| `actions`  | `ReactNode`                                                                          | 操作列表 |
+| `align`    | `'left' \| 'right' \| { datetime?: 'left' \| 'right'; actions?: 'left' \| 'right' }` | 对齐方式 |
 
 ## 常用模式
 

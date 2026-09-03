@@ -1,6 +1,6 @@
 ---
 name: arco-tooltip
-description: "Arco Design Tooltip component API. Use for hover text hints, mini tooltips, and positioned tooltip popups. For complex content use Popover instead."
+description: 'Arco Design Tooltip component API. Use for hover text hints, mini tooltips, and positioned tooltip popups. For complex content use Popover instead.'
 user-invocable: false
 ---
 
@@ -22,26 +22,26 @@ import { Tooltip, Button } from '@arco-design/web-react';
 
 ### TooltipProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `content` | `ReactNode` | — | 提示内容 |
-| `position` | `'top' \| 'tl' \| 'tr' \| 'bottom' \| 'bl' \| 'br' \| 'left' \| 'lt' \| 'lb' \| 'right' \| 'rt' \| 'rb'` | `'top'` | 弹出位置 |
-| `trigger` | `'hover' \| 'focus' \| 'click'` | `'hover'` | 触发方式 |
-| `popupVisible` | `boolean` | — | 受控可见 |
-| `defaultPopupVisible` | `boolean` | — | 默认可见 |
-| `color` | `string` | — | 背景色 |
-| `mini` | `boolean` | — | 迷你模式 |
-| `disabled` | `boolean` | — | 禁用 |
-| `getPopupContainer` | `(node) => Element` | — | 弹出容器 |
-| `triggerProps` | `Partial<TriggerProps>` | — | 透传给底层 Trigger |
-| `unmountOnExit` | `boolean` | `true` | 关闭后销毁 |
-| `popupHoverStay` | `boolean` | `true` | 鼠标停留在弹出层时保持显示 |
-| `blurToHide` | `boolean` | `true` | focus 触发模式下 blur 关闭 |
-| `escToClose` | `boolean` | — | ESC 关闭 |
-| `mouseEnterDelay` | `number` | `100` | 显示延迟 ms（透传 Trigger） |
-| `mouseLeaveDelay` | `number` | `100` | 隐藏延迟 ms（透传 Trigger） |
-| `childrenPrefix` | `string` | — | 自定义触发元素 active class 前缀 |
-| `onVisibleChange` | `(visible: boolean) => void` | — | 可见变化 |
+| 属性                  | 类型                                                                                                     | 默认值    | 说明                             |
+| --------------------- | -------------------------------------------------------------------------------------------------------- | --------- | -------------------------------- |
+| `content`             | `ReactNode`                                                                                              | —         | 提示内容                         |
+| `position`            | `'top' \| 'tl' \| 'tr' \| 'bottom' \| 'bl' \| 'br' \| 'left' \| 'lt' \| 'lb' \| 'right' \| 'rt' \| 'rb'` | `'top'`   | 弹出位置                         |
+| `trigger`             | `'hover' \| 'focus' \| 'click'`                                                                          | `'hover'` | 触发方式                         |
+| `popupVisible`        | `boolean`                                                                                                | —         | 受控可见                         |
+| `defaultPopupVisible` | `boolean`                                                                                                | —         | 默认可见                         |
+| `color`               | `string`                                                                                                 | —         | 背景色                           |
+| `mini`                | `boolean`                                                                                                | —         | 迷你模式                         |
+| `disabled`            | `boolean`                                                                                                | —         | 禁用                             |
+| `getPopupContainer`   | `(node) => Element`                                                                                      | —         | 弹出容器                         |
+| `triggerProps`        | `Partial<TriggerProps>`                                                                                  | —         | 透传给底层 Trigger               |
+| `unmountOnExit`       | `boolean`                                                                                                | `true`    | 关闭后销毁                       |
+| `popupHoverStay`      | `boolean`                                                                                                | `true`    | 鼠标停留在弹出层时保持显示       |
+| `blurToHide`          | `boolean`                                                                                                | `true`    | focus 触发模式下 blur 关闭       |
+| `escToClose`          | `boolean`                                                                                                | —         | ESC 关闭                         |
+| `mouseEnterDelay`     | `number`                                                                                                 | `100`     | 显示延迟 ms（透传 Trigger）      |
+| `mouseLeaveDelay`     | `number`                                                                                                 | `100`     | 隐藏延迟 ms（透传 Trigger）      |
+| `childrenPrefix`      | `string`                                                                                                 | —         | 自定义触发元素 active class 前缀 |
+| `onVisibleChange`     | `(visible: boolean) => void`                                                                             | —         | 可见变化                         |
 
 ## 常用模式
 

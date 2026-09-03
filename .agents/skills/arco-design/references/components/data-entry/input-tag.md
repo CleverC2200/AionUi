@@ -1,6 +1,6 @@
 ---
 name: arco-input-tag
-description: "Arco Design InputTag component API. Use for tag input fields, managing tag lists with add/remove, validation, and drag sorting."
+description: 'Arco Design InputTag component API. Use for tag input fields, managing tag lists with add/remove, validation, and drag sorting.'
 user-invocable: false
 ---
 
@@ -11,26 +11,22 @@ user-invocable: false
 ```tsx
 import { InputTag } from '@arco-design/web-react';
 
-<InputTag
-  allowClear
-  placeholder="输入后按回车添加标签"
-  defaultValue={['标签1', '标签2']}
-/>
+<InputTag allowClear placeholder='输入后按回车添加标签' defaultValue={['标签1', '标签2']} />;
 ```
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `value` | `string[]` | 受控值 |
-| `defaultValue` | `string[]` | 默认值 |
-| `allowClear` | `boolean` | 可清除 |
-| `placeholder` | `string` | 占位文字 |
-| `maxTagCount` | `number` | 最多显示标签数 |
-| `validate` | `(value, values) => boolean \| Promise` | 标签校验 |
-| `onChange` | `(value: string[]) => void` | 变化回调 |
-| `onRemove` | `(value: string, index: number) => void` | 删除标签 |
-| `onPressEnter` | `(e: Event) => void` | 回车回调 |
+| 属性           | 类型                                     | 说明           |
+| -------------- | ---------------------------------------- | -------------- |
+| `value`        | `string[]`                               | 受控值         |
+| `defaultValue` | `string[]`                               | 默认值         |
+| `allowClear`   | `boolean`                                | 可清除         |
+| `placeholder`  | `string`                                 | 占位文字       |
+| `maxTagCount`  | `number`                                 | 最多显示标签数 |
+| `validate`     | `(value, values) => boolean \| Promise`  | 标签校验       |
+| `onChange`     | `(value: string[]) => void`              | 变化回调       |
+| `onRemove`     | `(value: string, index: number) => void` | 删除标签       |
+| `onPressEnter` | `(e: Event) => void`                     | 回车回调       |
 
 ## 常用模式
 
@@ -62,28 +58,28 @@ const [tags, setTags] = useState(['React', 'TypeScript']);
 
 ## 完整 API
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `value` / `defaultValue` | `string[]` | — | 值 |
-| `placeholder` | `string` | — | 占位文字 |
-| `allowClear` | `boolean` | — | 可清除全部 |
-| `maxTagCount` | `number` | — | 最多显示标签数 |
-| `dragToSort` | `boolean` | — | 拖拽排序 |
-| `disabled` | `boolean` | — | 禁用 |
-| `readOnly` | `boolean` | — | 只读 |
-| `size` | `'mini' \| 'small' \| 'default' \| 'large'` | — | 尺寸 |
-| `validate` | `(value, values) => boolean \| Promise` | — | 标签校验 |
-| `saveOnBlur` | `boolean` | — | 失焦时保存输入 |
-| `tokenSeparators` | `string[]` | — | 触发添加的分隔符 |
-| `status` | `'error' \| 'warning'` | — | 状态（2.45.0） |
-| `labelInValue` | `boolean` | — | 值附带 label 信息 |
-| `prefix` / `suffix` | `ReactNode` | — | 前缀 / 后缀（2.47.0） |
-| `addBefore` / `addAfter` | `ReactNode` | — | 前置 / 后置标签（2.47.0） |
-| `icon` | `{ removeIcon?: ReactNode; clearIcon?: ReactNode }` | — | 自定义图标 |
-| `onChange` | `(value: string[], reason) => void` | — | 变化回调 |
-| `onRemove` | `(value, index, e) => void` | — | 删除标签 |
-| `onPressEnter` | `(e) => void` | — | 回车回调 |
-| `onInputChange` | `(inputValue, e) => void` | — | 输入变化 |
+| 属性                     | 类型                                                | 默认值 | 说明                      |
+| ------------------------ | --------------------------------------------------- | ------ | ------------------------- |
+| `value` / `defaultValue` | `string[]`                                          | —      | 值                        |
+| `placeholder`            | `string`                                            | —      | 占位文字                  |
+| `allowClear`             | `boolean`                                           | —      | 可清除全部                |
+| `maxTagCount`            | `number`                                            | —      | 最多显示标签数            |
+| `dragToSort`             | `boolean`                                           | —      | 拖拽排序                  |
+| `disabled`               | `boolean`                                           | —      | 禁用                      |
+| `readOnly`               | `boolean`                                           | —      | 只读                      |
+| `size`                   | `'mini' \| 'small' \| 'default' \| 'large'`         | —      | 尺寸                      |
+| `validate`               | `(value, values) => boolean \| Promise`             | —      | 标签校验                  |
+| `saveOnBlur`             | `boolean`                                           | —      | 失焦时保存输入            |
+| `tokenSeparators`        | `string[]`                                          | —      | 触发添加的分隔符          |
+| `status`                 | `'error' \| 'warning'`                              | —      | 状态（2.45.0）            |
+| `labelInValue`           | `boolean`                                           | —      | 值附带 label 信息         |
+| `prefix` / `suffix`      | `ReactNode`                                         | —      | 前缀 / 后缀（2.47.0）     |
+| `addBefore` / `addAfter` | `ReactNode`                                         | —      | 前置 / 后置标签（2.47.0） |
+| `icon`                   | `{ removeIcon?: ReactNode; clearIcon?: ReactNode }` | —      | 自定义图标                |
+| `onChange`               | `(value: string[], reason) => void`                 | —      | 变化回调                  |
+| `onRemove`               | `(value, index, e) => void`                         | —      | 删除标签                  |
+| `onPressEnter`           | `(e) => void`                                       | —      | 回车回调                  |
+| `onInputChange`          | `(inputValue, e) => void`                           | —      | 输入变化                  |
 
 ## 最佳实践
 

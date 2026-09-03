@@ -1,6 +1,6 @@
 ---
 name: arco-time-picker
-description: "Arco Design TimePicker component API. Use for time selection, time range picker, 12-hour format, step intervals, and disabled hours/minutes."
+description: 'Arco Design TimePicker component API. Use for time selection, time range picker, 12-hour format, step intervals, and disabled hours/minutes.'
 user-invocable: false
 ---
 
@@ -20,31 +20,31 @@ import { TimePicker } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `value` | `Dayjs \| string` | — | 受控值 |
-| `defaultValue` | `Dayjs \| string` | — | 默认值 |
-| `format` | `string` | `'HH:mm:ss'` | 时间格式 |
-| `use12Hours` | `boolean` | — | 12 小时制 |
-| `step` | `{ hour, minute, second }` | — | 各列步长 |
-| `disableConfirm` | `boolean` | — | 选择即确认 |
-| `disabled` | `boolean` | — | 禁用 |
-| `allowClear` | `boolean` | `true` | 可清除 |
-| `placeholder` | `string` | — | 占位文字 |
-| `size` | `'mini' \| 'small' \| 'default' \| 'large'` | — | 尺寸 |
-| `showNowBtn` | `boolean` | `true` | 显示"此刻"按钮 |
-| `editable` | `boolean` | `true` | 允许手动输入 |
-| `position` | `'top' \| 'tl' \| 'tr' \| 'bottom' \| 'bl' \| 'br'` | `'bl'` | 弹出位置 |
-| `unmountOnExit` | `boolean` | — | 关闭时销毁弹出层 |
-| `triggerElement` | `ReactNode \| ((params) => ReactNode)` | — | 自定义触发元素 |
-| `extra` | `ReactNode` | — | 面板底部额外内容 |
-| `icons` | `{ inputSuffix?: ReactNode }` | — | 自定义图标 |
-| `utcOffset` | `number` | — | UTC 偏移 |
-| `timezone` | `string` | — | 时区名 |
-| `disabledHours` | `() => number[]` | — | 禁用小时 |
-| `disabledMinutes` | `(hour: number) => number[]` | — | 禁用分钟 |
-| `disabledSeconds` | `(hour: number, minute: number) => number[]` | — | 禁用秒 |
-| `onChange` | `(timeString: string, time: Dayjs) => void` | — | 值变化 |
+| 属性              | 类型                                                | 默认值       | 说明             |
+| ----------------- | --------------------------------------------------- | ------------ | ---------------- |
+| `value`           | `Dayjs \| string`                                   | —            | 受控值           |
+| `defaultValue`    | `Dayjs \| string`                                   | —            | 默认值           |
+| `format`          | `string`                                            | `'HH:mm:ss'` | 时间格式         |
+| `use12Hours`      | `boolean`                                           | —            | 12 小时制        |
+| `step`            | `{ hour, minute, second }`                          | —            | 各列步长         |
+| `disableConfirm`  | `boolean`                                           | —            | 选择即确认       |
+| `disabled`        | `boolean`                                           | —            | 禁用             |
+| `allowClear`      | `boolean`                                           | `true`       | 可清除           |
+| `placeholder`     | `string`                                            | —            | 占位文字         |
+| `size`            | `'mini' \| 'small' \| 'default' \| 'large'`         | —            | 尺寸             |
+| `showNowBtn`      | `boolean`                                           | `true`       | 显示"此刻"按钮   |
+| `editable`        | `boolean`                                           | `true`       | 允许手动输入     |
+| `position`        | `'top' \| 'tl' \| 'tr' \| 'bottom' \| 'bl' \| 'br'` | `'bl'`       | 弹出位置         |
+| `unmountOnExit`   | `boolean`                                           | —            | 关闭时销毁弹出层 |
+| `triggerElement`  | `ReactNode \| ((params) => ReactNode)`              | —            | 自定义触发元素   |
+| `extra`           | `ReactNode`                                         | —            | 面板底部额外内容 |
+| `icons`           | `{ inputSuffix?: ReactNode }`                       | —            | 自定义图标       |
+| `utcOffset`       | `number`                                            | —            | UTC 偏移         |
+| `timezone`        | `string`                                            | —            | 时区名           |
+| `disabledHours`   | `() => number[]`                                    | —            | 禁用小时         |
+| `disabledMinutes` | `(hour: number) => number[]`                        | —            | 禁用分钟         |
+| `disabledSeconds` | `(hour: number, minute: number) => number[]`        | —            | 禁用秒           |
+| `onChange`        | `(timeString: string, time: Dayjs) => void`         | —            | 值变化           |
 
 ## 常用模式
 

@@ -1,6 +1,6 @@
 ---
 name: arco-tabs
-description: "Arco Design Tabs component API. Use for tab switching, card-style tabs, editable tabs, extra content, and lazy rendering."
+description: 'Arco Design Tabs component API. Use for tab switching, card-style tabs, editable tabs, extra content, and lazy rendering.'
 user-invocable: false
 ---
 
@@ -33,23 +33,23 @@ import { Tabs } from '@arco-design/web-react';
 
 ## TabsProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `activeTab` / `defaultActiveTab` | `string` | — | 当前标签 |
-| `type` | `'line' \| 'card' \| 'card-gutter' \| 'text' \| 'rounded' \| 'capsule'` | `'line'` | 样式 |
-| `direction` | `'horizontal' \| 'vertical'` | `'horizontal'` | 方向 |
-| `size` | `'mini' \| 'small' \| 'default' \| 'large'` | — | 尺寸 |
-| `tabPosition` | `'top' \| 'right' \| 'bottom' \| 'left'` | `'top'` | 标签位置 |
-| `editable` | `boolean` | — | 可增删 |
-| `showAddButton` | `boolean` | `true` | 显示新增按钮 |
-| `extra` | `ReactNode` | — | 右侧附加内容 |
-| `destroyOnHide` | `boolean` | — | 切换时销毁 |
-| `lazyload` | `boolean` | `true` | 延迟渲染 |
-| `animation` | `boolean` | — | 切换动画 |
-| `overflow` | `'scroll' \| 'dropdown'` | `'scroll'` | 溢出处理 |
-| `scrollPosition` | `'start' \| 'end' \| 'center' \| 'auto' \| number` | `'auto'` | 滚动位置 |
-| `renderTabHeader` | `(tabProps, DefaultTabHeader) => ReactElement` | — | 自定义整个 Tab 头 |
-| `renderTabTitle` | `(tabTitle, info) => ReactNode` | — | 自定义单个 Tab 标题 |
-| `onChange` | `(key: string) => void` | — | 切换回调 |
-| `onAddTab` | `() => void` | — | 新增回调 |
-| `onDeleteTab` | `(key: string) => void` | — | 删除回调 |
+| 属性                             | 类型                                                                    | 默认值         | 说明                |
+| -------------------------------- | ----------------------------------------------------------------------- | -------------- | ------------------- |
+| `activeTab` / `defaultActiveTab` | `string`                                                                | —              | 当前标签            |
+| `type`                           | `'line' \| 'card' \| 'card-gutter' \| 'text' \| 'rounded' \| 'capsule'` | `'line'`       | 样式                |
+| `direction`                      | `'horizontal' \| 'vertical'`                                            | `'horizontal'` | 方向                |
+| `size`                           | `'mini' \| 'small' \| 'default' \| 'large'`                             | —              | 尺寸                |
+| `tabPosition`                    | `'top' \| 'right' \| 'bottom' \| 'left'`                                | `'top'`        | 标签位置            |
+| `editable`                       | `boolean`                                                               | —              | 可增删              |
+| `showAddButton`                  | `boolean`                                                               | `true`         | 显示新增按钮        |
+| `extra`                          | `ReactNode`                                                             | —              | 右侧附加内容        |
+| `destroyOnHide`                  | `boolean`                                                               | —              | 切换时销毁          |
+| `lazyload`                       | `boolean`                                                               | `true`         | 延迟渲染            |
+| `animation`                      | `boolean`                                                               | —              | 切换动画            |
+| `overflow`                       | `'scroll' \| 'dropdown'`                                                | `'scroll'`     | 溢出处理            |
+| `scrollPosition`                 | `'start' \| 'end' \| 'center' \| 'auto' \| number`                      | `'auto'`       | 滚动位置            |
+| `renderTabHeader`                | `(tabProps, DefaultTabHeader) => ReactElement`                          | —              | 自定义整个 Tab 头   |
+| `renderTabTitle`                 | `(tabTitle, info) => ReactNode`                                         | —              | 自定义单个 Tab 标题 |
+| `onChange`                       | `(key: string) => void`                                                 | —              | 切换回调            |
+| `onAddTab`                       | `() => void`                                                            | —              | 新增回调            |
+| `onDeleteTab`                    | `(key: string) => void`                                                 | —              | 删除回调            |

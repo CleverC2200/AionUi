@@ -1,6 +1,6 @@
 ---
 name: arco-button
-description: "Arco Design Button component API and usage. Use for buttons, button groups, icon buttons, loading buttons, and link-style buttons in React."
+description: 'Arco Design Button component API and usage. Use for buttons, button groups, icon buttons, loading buttons, and link-style buttons in React.'
 user-invocable: false
 ---
 
@@ -30,21 +30,21 @@ import { Button } from '@arco-design/web-react';
 
 ### ButtonProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `type` | `'default' \| 'primary' \| 'secondary' \| 'dashed' \| 'text' \| 'outline'` | `'default'` | 按钮类型 |
-| `status` | `'warning' \| 'danger' \| 'success' \| 'default'` | `'default'` | 按钮状态 |
-| `size` | `'mini' \| 'small' \| 'default' \| 'large'` | `'default'` | 尺寸 |
-| `shape` | `'circle' \| 'round' \| 'square'` | `'square'` | 按钮形状 |
-| `disabled` | `boolean` | — | 是否禁用 |
-| `loading` | `boolean` | — | 是否加载中 |
-| `loadingFixedWidth` | `boolean` | — | 加载时保持宽度不变 |
-| `icon` | `ReactNode` | — | 按钮图标 |
-| `iconOnly` | `boolean` | — | 仅图标模式 |
-| `long` | `boolean` | — | 按钮宽度撑满容器 |
-| `href` | `string` | — | 作为链接使用 |
-| `htmlType` | `'button' \| 'submit' \| 'reset'` | `'button'` | 原生 HTML type |
-| `onClick` | `(e: Event) => void` | — | 点击回调 |
+| 属性                | 类型                                                                       | 默认值      | 说明               |
+| ------------------- | -------------------------------------------------------------------------- | ----------- | ------------------ |
+| `type`              | `'default' \| 'primary' \| 'secondary' \| 'dashed' \| 'text' \| 'outline'` | `'default'` | 按钮类型           |
+| `status`            | `'warning' \| 'danger' \| 'success' \| 'default'`                          | `'default'` | 按钮状态           |
+| `size`              | `'mini' \| 'small' \| 'default' \| 'large'`                                | `'default'` | 尺寸               |
+| `shape`             | `'circle' \| 'round' \| 'square'`                                          | `'square'`  | 按钮形状           |
+| `disabled`          | `boolean`                                                                  | —           | 是否禁用           |
+| `loading`           | `boolean`                                                                  | —           | 是否加载中         |
+| `loadingFixedWidth` | `boolean`                                                                  | —           | 加载时保持宽度不变 |
+| `icon`              | `ReactNode`                                                                | —           | 按钮图标           |
+| `iconOnly`          | `boolean`                                                                  | —           | 仅图标模式         |
+| `long`              | `boolean`                                                                  | —           | 按钮宽度撑满容器   |
+| `href`              | `string`                                                                   | —           | 作为链接使用       |
+| `htmlType`          | `'button' \| 'submit' \| 'reset'`                                          | `'button'`  | 原生 HTML type     |
+| `onClick`           | `(e: Event) => void`                                                       | —           | 点击回调           |
 
 ### Button.Group
 
@@ -52,9 +52,9 @@ import { Button } from '@arco-design/web-react';
 
 ```tsx
 <Button.Group>
-  <Button type="primary">左</Button>
-  <Button type="primary">中</Button>
-  <Button type="primary">右</Button>
+  <Button type='primary'>左</Button>
+  <Button type='primary'>中</Button>
+  <Button type='primary'>右</Button>
 </Button.Group>
 ```
 

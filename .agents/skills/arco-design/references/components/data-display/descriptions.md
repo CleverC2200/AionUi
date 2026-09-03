@@ -1,6 +1,6 @@
 ---
 name: arco-descriptions
-description: "Arco Design Descriptions component API. Use for key-value detail display (detail pages), vertical/horizontal layout, bordered descriptions, and responsive columns."
+description: 'Arco Design Descriptions component API. Use for key-value detail display (detail pages), vertical/horizontal layout, bordered descriptions, and responsive columns.'
 user-invocable: false
 ---
 
@@ -10,7 +10,7 @@ user-invocable: false
 import { Descriptions } from '@arco-design/web-react';
 
 <Descriptions
-  title="用户信息"
+  title='用户信息'
   data={[
     { label: '姓名', value: '张三' },
     { label: '手机号', value: '188****8888' },
@@ -18,22 +18,22 @@ import { Descriptions } from '@arco-design/web-react';
     { label: '备注', value: '无' },
   ]}
   column={2}
-/>
+/>;
 ```
 
 ## DescriptionsProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `data` | `{ label, value, span? }[]` | — | 描述数据 |
-| `title` | `ReactNode` | — | 标题 |
-| `column` | `number \| ResponsiveValue` | `3` | 每行列数 |
-| `layout` | `'horizontal' \| 'vertical' \| 'inline-horizontal' \| 'inline-vertical'` | `'horizontal'` | 布局 |
-| `size` | `'mini' \| 'small' \| 'medium' \| 'default' \| 'large'` | — | 尺寸 |
-| `border` | `boolean` | — | 边框 |
-| `colon` | `ReactNode` | — | 冒号 |
-| `labelStyle` / `valueStyle` | `CSSProperties` | — | 标签/值样式 |
-| `tableLayout` | `'auto' \| 'fixed'` | `'auto'` | 表格 `layout-fixed`，`fixed` 时宽度均分（2.6.0） |
+| 属性                        | 类型                                                                     | 默认值         | 说明                                             |
+| --------------------------- | ------------------------------------------------------------------------ | -------------- | ------------------------------------------------ |
+| `data`                      | `{ label, value, span? }[]`                                              | —              | 描述数据                                         |
+| `title`                     | `ReactNode`                                                              | —              | 标题                                             |
+| `column`                    | `number \| ResponsiveValue`                                              | `3`            | 每行列数                                         |
+| `layout`                    | `'horizontal' \| 'vertical' \| 'inline-horizontal' \| 'inline-vertical'` | `'horizontal'` | 布局                                             |
+| `size`                      | `'mini' \| 'small' \| 'medium' \| 'default' \| 'large'`                  | —              | 尺寸                                             |
+| `border`                    | `boolean`                                                                | —              | 边框                                             |
+| `colon`                     | `ReactNode`                                                              | —              | 冒号                                             |
+| `labelStyle` / `valueStyle` | `CSSProperties`                                                          | —              | 标签/值样式                                      |
+| `tableLayout`               | `'auto' \| 'fixed'`                                                      | `'auto'`       | 表格 `layout-fixed`，`fixed` 时宽度均分（2.6.0） |
 
 ## 常用模式
 

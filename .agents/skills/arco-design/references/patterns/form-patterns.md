@@ -1,6 +1,6 @@
 ---
 name: arco-form-patterns
-description: "Arco Design form patterns and best practices. Use for dynamic forms, field validation, linked validation, nested forms, async form submission, and complex form layouts."
+description: 'Arco Design form patterns and best practices. Use for dynamic forms, field validation, linked validation, nested forms, async form submission, and complex form layouts.'
 user-invocable: false
 ---
 
@@ -28,27 +28,27 @@ function BasicForm() {
   };
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      initialValues={{ role: 'user' }}
-      scrollToFirstError
-      autoComplete="off"
-    >
-      <Form.Item field="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
-        <Input placeholder="请输入" />
+    <Form form={form} layout='vertical' initialValues={{ role: 'user' }} scrollToFirstError autoComplete='off'>
+      <Form.Item field='name' label='姓名' rules={[{ required: true, message: '请输入姓名' }]}>
+        <Input placeholder='请输入' />
       </Form.Item>
-      <Form.Item field="email" label="邮箱" rules={[
-        { required: true, message: '请输入邮箱' },
-        { type: 'email', message: '邮箱格式不正确' },
-      ]}>
-        <Input placeholder="请输入" />
+      <Form.Item
+        field='email'
+        label='邮箱'
+        rules={[
+          { required: true, message: '请输入邮箱' },
+          { type: 'email', message: '邮箱格式不正确' },
+        ]}
+      >
+        <Input placeholder='请输入' />
       </Form.Item>
-      <Form.Item field="role" label="角色" rules={[{ required: true }]}>
+      <Form.Item field='role' label='角色' rules={[{ required: true }]}>
         <Select options={['admin', 'user', 'guest']} />
       </Form.Item>
       <Form.Item>
-        <Button type="primary" onClick={onSubmit} style={{ marginRight: 16 }}>提交</Button>
+        <Button type='primary' onClick={onSubmit} style={{ marginRight: 16 }}>
+          提交
+        </Button>
         <Button onClick={() => form.resetFields()}>重置</Button>
       </Form.Item>
     </Form>
@@ -64,29 +64,27 @@ function DynamicForm() {
 
   return (
     <Form form={form}>
-      <Form.List field="users">
+      <Form.List field='users'>
         {(fields, { add, remove }) => (
           <>
             {fields.map((field, index) => (
               <div key={field.key} style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-                <Form.Item
-                  field={`${field.field}.name`}
-                  rules={[{ required: true, message: '请输入姓名' }]}
-                  noStyle
-                >
-                  <Input placeholder="姓名" />
+                <Form.Item field={`${field.field}.name`} rules={[{ required: true, message: '请输入姓名' }]} noStyle>
+                  <Input placeholder='姓名' />
                 </Form.Item>
                 <Form.Item
                   field={`${field.field}.phone`}
                   rules={[{ required: true }, { match: /^1\d{10}$/, message: '手机号格式不正确' }]}
                   noStyle
                 >
-                  <Input placeholder="手机号" />
+                  <Input placeholder='手机号' />
                 </Form.Item>
-                <Button status="danger" onClick={() => remove(index)}>删除</Button>
+                <Button status='danger' onClick={() => remove(index)}>
+                  删除
+                </Button>
               </div>
             ))}
-            <Button type="dashed" long onClick={() => add()}>
+            <Button type='dashed' long onClick={() => add()}>
               <IconPlus /> 添加用户
             </Button>
           </>
@@ -102,13 +100,13 @@ function DynamicForm() {
 ```tsx
 <Form form={form}>
   {/* 嵌套对象 */}
-  <Form.Item field="user.name" label="姓名" rules={[{ required: true }]}>
+  <Form.Item field='user.name' label='姓名' rules={[{ required: true }]}>
     <Input />
   </Form.Item>
-  <Form.Item field="user.email" label="邮箱">
+  <Form.Item field='user.email' label='邮箱'>
     <Input />
   </Form.Item>
-  <Form.Item field="address.city" label="城市">
+  <Form.Item field='address.city' label='城市'>
     <Input />
   </Form.Item>
   {/* 产出值: { user: { name, email }, address: { city } } */}
@@ -124,22 +122,22 @@ function ConditionalForm() {
 
   return (
     <Form form={form}>
-      <Form.Item field="type" label="类型" rules={[{ required: true }]}>
+      <Form.Item field='type' label='类型' rules={[{ required: true }]}>
         <Radio.Group options={['个人', '企业']} />
       </Form.Item>
 
       {type === '个人' && (
-        <Form.Item field="idCard" label="身份证" rules={[{ required: true }]}>
+        <Form.Item field='idCard' label='身份证' rules={[{ required: true }]}>
           <Input />
         </Form.Item>
       )}
 
       {type === '企业' && (
         <>
-          <Form.Item field="company" label="公司名称" rules={[{ required: true }]}>
+          <Form.Item field='company' label='公司名称' rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item field="taxId" label="税号" rules={[{ required: true }]}>
+          <Form.Item field='taxId' label='税号' rules={[{ required: true }]}>
             <Input />
           </Form.Item>
         </>
@@ -172,29 +170,37 @@ function StepForm() {
   return (
     <>
       <Steps current={step + 1}>
-        {steps.map(s => <Steps.Step key={s.title} title={s.title} />)}
+        {steps.map((s) => (
+          <Steps.Step key={s.title} title={s.title} />
+        ))}
       </Steps>
-      <Form form={form} layout="vertical">
+      <Form form={form} layout='vertical'>
         <div style={{ display: step === 0 ? 'block' : 'none' }}>
-          <Form.Item field="name" label="姓名" rules={[{ required: true }]}>
+          <Form.Item field='name' label='姓名' rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item field="email" label="邮箱" rules={[{ required: true, type: 'email' }]}>
+          <Form.Item field='email' label='邮箱' rules={[{ required: true, type: 'email' }]}>
             <Input />
           </Form.Item>
         </div>
         <div style={{ display: step === 1 ? 'block' : 'none' }}>
-          <Form.Item field="address" label="地址" rules={[{ required: true }]}>
+          <Form.Item field='address' label='地址' rules={[{ required: true }]}>
             <Input />
           </Form.Item>
         </div>
-        <div style={{ display: step === 2 ? 'block' : 'none' }}>
-          确认提交？
-        </div>
+        <div style={{ display: step === 2 ? 'block' : 'none' }}>确认提交？</div>
         <Space>
           {step > 0 && <Button onClick={() => setStep(step - 1)}>上一步</Button>}
-          {step < 2 && <Button type="primary" onClick={handleNext}>下一步</Button>}
-          {step === 2 && <Button type="primary" onClick={() => form.validate().then(submit)}>提交</Button>}
+          {step < 2 && (
+            <Button type='primary' onClick={handleNext}>
+              下一步
+            </Button>
+          )}
+          {step === 2 && (
+            <Button type='primary' onClick={() => form.validate().then(submit)}>
+              提交
+            </Button>
+          )}
         </Space>
       </Form>
     </>
@@ -213,7 +219,7 @@ function ModalForm() {
     <>
       <Button onClick={() => setVisible(true)}>新建</Button>
       <Modal
-        title="新建用户"
+        title='新建用户'
         visible={visible}
         onOk={async () => {
           const values = await form.validate();
@@ -222,10 +228,10 @@ function ModalForm() {
           form.resetFields();
         }}
         onCancel={() => setVisible(false)}
-        afterClose={() => form.resetFields()}  // 关闭后重置
+        afterClose={() => form.resetFields()} // 关闭后重置
       >
-        <Form form={form} layout="vertical">
-          <Form.Item field="name" label="姓名" rules={[{ required: true }]}>
+        <Form form={form} layout='vertical'>
+          <Form.Item field='name' label='姓名' rules={[{ required: true }]}>
             <Input />
           </Form.Item>
         </Form>

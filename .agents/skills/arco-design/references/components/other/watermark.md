@@ -1,6 +1,6 @@
 ---
 name: arco-watermark
-description: "Arco Design Watermark component API. Use for adding text or image watermarks over page content."
+description: 'Arco Design Watermark component API. Use for adding text or image watermarks over page content.'
 user-invocable: false
 ---
 
@@ -26,17 +26,17 @@ import { Watermark } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `content` | `string \| string[]` | — | 水印文字 |
-| `image` | `string` | — | 图片水印 |
-| `width` | `number` | — | 水印宽度 |
-| `height` | `number` | — | 水印高度 |
-| `gap` | `[number, number]` | `[100, 100]` | 间距 |
-| `offset` | `[number, number]` | — | 偏移 |
-| `rotate` | `number` | `-30` | 旋转角度 |
-| `fontStyle` | `{ color, fontSize, fontFamily, fontWeight }` | — | 字体样式 |
-| `zIndex` | `number` | — | 层级 |
-| `getContainer` | `() => HTMLElement` | — | 渲染容器 |
+| 属性           | 类型                                          | 默认值       | 说明     |
+| -------------- | --------------------------------------------- | ------------ | -------- |
+| `content`      | `string \| string[]`                          | —            | 水印文字 |
+| `image`        | `string`                                      | —            | 图片水印 |
+| `width`        | `number`                                      | —            | 水印宽度 |
+| `height`       | `number`                                      | —            | 水印高度 |
+| `gap`          | `[number, number]`                            | `[100, 100]` | 间距     |
+| `offset`       | `[number, number]`                            | —            | 偏移     |
+| `rotate`       | `number`                                      | `-30`        | 旋转角度 |
+| `fontStyle`    | `{ color, fontSize, fontFamily, fontWeight }` | —            | 字体样式 |
+| `zIndex`       | `number`                                      | —            | 层级     |
+| `getContainer` | `() => HTMLElement`                           | —            | 渲染容器 |
 
 > 也可使用 `useWatermark` Hook 实现无头水印，见 [Hooks 参考](../../hooks/hooks.md)。

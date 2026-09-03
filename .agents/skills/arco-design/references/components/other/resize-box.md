@@ -1,6 +1,6 @@
 ---
 name: arco-resize-box
-description: "Arco Design ResizeBox component API. Use for resizable containers and split pane layouts."
+description: 'Arco Design ResizeBox component API. Use for resizable containers and split pane layouts.'
 user-invocable: false
 ---
 
@@ -37,10 +37,10 @@ import { ResizeBox } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `width` / `height` | `number` | 受控尺寸 |
-| `directions` | `('left' \| 'right' \| 'top' \| 'bottom')[]` | 拖拽方向 |
-| `onMoving` | `(e, { width, height }) => void` | 拖拽中 |
-| `onMovingStart` | `() => void` | 开始拖拽 |
-| `onMovingEnd` | `() => void` | 结束拖拽 |
+| 属性               | 类型                                         | 说明     |
+| ------------------ | -------------------------------------------- | -------- |
+| `width` / `height` | `number`                                     | 受控尺寸 |
+| `directions`       | `('left' \| 'right' \| 'top' \| 'bottom')[]` | 拖拽方向 |
+| `onMoving`         | `(e, { width, height }) => void`             | 拖拽中   |
+| `onMovingStart`    | `() => void`                                 | 开始拖拽 |
+| `onMovingEnd`      | `() => void`                                 | 结束拖拽 |

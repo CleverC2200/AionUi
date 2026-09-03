@@ -1,6 +1,6 @@
 ---
 name: arco-space
-description: "Arco Design Space component API. Use for consistent horizontal/vertical spacing between elements, with wrap and split support."
+description: 'Arco Design Space component API. Use for consistent horizontal/vertical spacing between elements, with wrap and split support.'
 user-invocable: false
 ---
 
@@ -30,13 +30,13 @@ import { Space, Button } from '@arco-design/web-react';
 
 ### SpaceProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `direction` | `'vertical' \| 'horizontal'` | `'horizontal'` | 排列方向 |
-| `size` | `'mini' \| 'small' \| 'medium' \| 'large' \| number` | `'small'` | 间距大小 |
-| `align` | `'start' \| 'end' \| 'center' \| 'baseline'` | — | 对齐方式 |
-| `wrap` | `boolean` | `false` | 是否自动换行 |
-| `split` | `ReactNode` | — | 分隔符 |
+| 属性        | 类型                                                 | 默认值         | 说明         |
+| ----------- | ---------------------------------------------------- | -------------- | ------------ |
+| `direction` | `'vertical' \| 'horizontal'`                         | `'horizontal'` | 排列方向     |
+| `size`      | `'mini' \| 'small' \| 'medium' \| 'large' \| number` | `'small'`      | 间距大小     |
+| `align`     | `'start' \| 'end' \| 'center' \| 'baseline'`         | —              | 对齐方式     |
+| `wrap`      | `boolean`                                            | `false`        | 是否自动换行 |
+| `split`     | `ReactNode`                                          | —              | 分隔符       |
 
 ## 常用模式
 

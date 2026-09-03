@@ -1,6 +1,6 @@
 ---
 name: arco-internationalization
-description: "Arco Design internationalization (i18n) guide. Use for switching languages, adding locale packs, and customizing locale text."
+description: 'Arco Design internationalization (i18n) guide. Use for switching languages, adding locale packs, and customizing locale text.'
 user-invocable: false
 ---
 
@@ -10,27 +10,27 @@ Arco Design 内置多语言支持，通过 `ConfigProvider` 的 `locale` 属性�
 
 ## 支持的语言
 
-| 语言包 | 语言 | 导入路径 |
-|--------|------|----------|
-| `zh-CN` | 简体中文（默认） | `@arco-design/web-react/es/locale/zh-CN` |
-| `zh-TW` | 繁体中文（台湾） | `@arco-design/web-react/es/locale/zh-TW` |
-| `zh-HK` | 繁体中文（香港） | `@arco-design/web-react/es/locale/zh-HK` |
-| `en-US` | 英语 | `@arco-design/web-react/es/locale/en-US` |
-| `ja-JP` | 日语 | `@arco-design/web-react/es/locale/ja-JP` |
-| `ko-KR` | 韩语 | `@arco-design/web-react/es/locale/ko-KR` |
-| `de-DE` | 德语 | `@arco-design/web-react/es/locale/de-DE` |
-| `fr-FR` | 法语 | `@arco-design/web-react/es/locale/fr-FR` |
-| `es-ES` | 西班牙语 | `@arco-design/web-react/es/locale/es-ES` |
-| `it-IT` | 意大利语 | `@arco-design/web-react/es/locale/it-IT` |
-| `pt-BR` | 葡萄牙语（巴西） | `@arco-design/web-react/es/locale/pt-BR` |
+| 语言包  | 语言               | 导入路径                                 |
+| ------- | ------------------ | ---------------------------------------- |
+| `zh-CN` | 简体中文（默认）   | `@arco-design/web-react/es/locale/zh-CN` |
+| `zh-TW` | 繁体中文（台湾）   | `@arco-design/web-react/es/locale/zh-TW` |
+| `zh-HK` | 繁体中文（香港）   | `@arco-design/web-react/es/locale/zh-HK` |
+| `en-US` | 英语               | `@arco-design/web-react/es/locale/en-US` |
+| `ja-JP` | 日语               | `@arco-design/web-react/es/locale/ja-JP` |
+| `ko-KR` | 韩语               | `@arco-design/web-react/es/locale/ko-KR` |
+| `de-DE` | 德语               | `@arco-design/web-react/es/locale/de-DE` |
+| `fr-FR` | 法语               | `@arco-design/web-react/es/locale/fr-FR` |
+| `es-ES` | 西班牙语           | `@arco-design/web-react/es/locale/es-ES` |
+| `it-IT` | 意大利语           | `@arco-design/web-react/es/locale/it-IT` |
+| `pt-BR` | 葡萄牙语（巴西）   | `@arco-design/web-react/es/locale/pt-BR` |
 | `pt-PT` | 葡萄牙语（葡萄牙） | `@arco-design/web-react/es/locale/pt-PT` |
-| `ru-RU` | 俄语 | `@arco-design/web-react/es/locale/ru-RU` |
-| `ar-EG` | 阿拉伯语 | `@arco-design/web-react/es/locale/ar-EG` |
-| `th-TH` | 泰语 | `@arco-design/web-react/es/locale/th-TH` |
-| `tr-TR` | 土耳其语 | `@arco-design/web-react/es/locale/tr-TR` |
-| `ms-MY` | 马来语 | `@arco-design/web-react/es/locale/ms-MY` |
-| `vi-VN` | 越南语 | `@arco-design/web-react/es/locale/vi-VN` |
-| `id-ID` | 印尼语 | `@arco-design/web-react/es/locale/id-ID` |
+| `ru-RU` | 俄语               | `@arco-design/web-react/es/locale/ru-RU` |
+| `ar-EG` | 阿拉伯语           | `@arco-design/web-react/es/locale/ar-EG` |
+| `th-TH` | 泰语               | `@arco-design/web-react/es/locale/th-TH` |
+| `tr-TR` | 土耳其语           | `@arco-design/web-react/es/locale/tr-TR` |
+| `ms-MY` | 马来语             | `@arco-design/web-react/es/locale/ms-MY` |
+| `vi-VN` | 越南语             | `@arco-design/web-react/es/locale/vi-VN` |
+| `id-ID` | 印尼语             | `@arco-design/web-react/es/locale/id-ID` |
 
 ## 基本用法
 
@@ -64,9 +64,9 @@ function App() {
   return (
     <ConfigProvider locale={locales[locale]}>
       <Select value={locale} onChange={setLocale} style={{ width: 200 }}>
-        <Select.Option value="zh-CN">简体中文</Select.Option>
-        <Select.Option value="en-US">English</Select.Option>
-        <Select.Option value="ja-JP">日本語</Select.Option>
+        <Select.Option value='zh-CN'>简体中文</Select.Option>
+        <Select.Option value='en-US'>English</Select.Option>
+        <Select.Option value='ja-JP'>日本語</Select.Option>
       </Select>
       <MyApp />
     </ConfigProvider>
@@ -122,7 +122,7 @@ const customLocale = {
 
 <ConfigProvider locale={customLocale}>
   <App />
-</ConfigProvider>
+</ConfigProvider>;
 ```
 
 ## 与 dayjs 语言同步

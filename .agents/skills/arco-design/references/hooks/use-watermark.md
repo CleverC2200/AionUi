@@ -1,6 +1,6 @@
 ---
 name: arco-use-watermark
-description: "Arco Design useWatermark hook API. Use for rendering dynamic canvas-based watermarks with text/image support, rotation, custom fonts, and MutationObserver tamper protection."
+description: 'Arco Design useWatermark hook API. Use for rendering dynamic canvas-based watermarks with text/image support, rotation, custom fonts, and MutationObserver tamper protection.'
 user-invocable: false
 ---
 
@@ -14,25 +14,25 @@ import { useWatermark } from '@arco-design/web-react/hooks';
 
 ## Options
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `zIndex` | `number` | `1` | Watermark z-index |
-| `width` | `number \| string` | `100` (image) | Single watermark width |
-| `height` | `number \| string` | — | Single watermark height |
-| `rotate` | `number` | `-20` | Rotation angle in degrees |
-| `image` | `string` | — | Image URL (takes priority over content) |
-| `content` | `string \| string[]` | — | Text content (array for multiple lines) |
-| `fontStyle` | `object` | — | Font style: `{ color, fontSize, fontFamily, fontWeight }` |
-| `gap` | `[number, number]` | `[100, 100]` | Spacing between watermarks `[horizontal, vertical]` |
-| `offset` | `[number, number]` | — | Offset from origin |
-| `getContainer` | `() => HTMLElement` | — | Container element to attach watermark to |
+| Prop           | Type                 | Default       | Description                                               |
+| -------------- | -------------------- | ------------- | --------------------------------------------------------- |
+| `zIndex`       | `number`             | `1`           | Watermark z-index                                         |
+| `width`        | `number \| string`   | `100` (image) | Single watermark width                                    |
+| `height`       | `number \| string`   | —             | Single watermark height                                   |
+| `rotate`       | `number`             | `-20`         | Rotation angle in degrees                                 |
+| `image`        | `string`             | —             | Image URL (takes priority over content)                   |
+| `content`      | `string \| string[]` | —             | Text content (array for multiple lines)                   |
+| `fontStyle`    | `object`             | —             | Font style: `{ color, fontSize, fontFamily, fontWeight }` |
+| `gap`          | `[number, number]`   | `[100, 100]`  | Spacing between watermarks `[horizontal, vertical]`       |
+| `offset`       | `[number, number]`   | —             | Offset from origin                                        |
+| `getContainer` | `() => HTMLElement`  | —             | Container element to attach watermark to                  |
 
 ## Return Value
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `destroy` | `() => void` | Remove watermark and clean up MutationObserver |
-| `setWatermark` | `(options) => void` | Apply or update watermark with new options |
+| Property       | Type                | Description                                    |
+| -------------- | ------------------- | ---------------------------------------------- |
+| `destroy`      | `() => void`        | Remove watermark and clean up MutationObserver |
+| `setWatermark` | `(options) => void` | Apply or update watermark with new options     |
 
 ## Example
 

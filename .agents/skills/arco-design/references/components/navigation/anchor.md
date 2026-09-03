@@ -1,6 +1,6 @@
 ---
 name: arco-anchor
-description: "Arco Design Anchor component API. Use for in-page anchor navigation, scroll-to-section, and table of contents."
+description: 'Arco Design Anchor component API. Use for in-page anchor navigation, scroll-to-section, and table of contents.'
 user-invocable: false
 ---
 
@@ -10,24 +10,24 @@ user-invocable: false
 import { Anchor } from '@arco-design/web-react';
 
 <Anchor>
-  <Anchor.Link href="#section1" title="章节一" />
-  <Anchor.Link href="#section2" title="章节二">
-    <Anchor.Link href="#section2-1" title="子章节" />
+  <Anchor.Link href='#section1' title='章节一' />
+  <Anchor.Link href='#section2' title='章节二'>
+    <Anchor.Link href='#section2-1' title='子章节' />
   </Anchor.Link>
-  <Anchor.Link href="#section3" title="章节三" />
-</Anchor>
+  <Anchor.Link href='#section3' title='章节三' />
+</Anchor>;
 ```
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `affix` | `boolean` | 是否固定 |
-| `offsetTop` | `number` | 固定偏移 |
-| `boundary` | `number \| 'start' \| 'center' \| 'end' \| 'nearest'` | 滚动边界 |
-| `lineless` | `boolean` | 无左侧线 |
-| `scrollContainer` | `string \| HTMLElement \| Window` | 滚动容器 |
-| `onChange` | `(newLink, oldLink) => void` | 锚点变化 |
+| 属性              | 类型                                                  | 说明     |
+| ----------------- | ----------------------------------------------------- | -------- |
+| `affix`           | `boolean`                                             | 是否固定 |
+| `offsetTop`       | `number`                                              | 固定偏移 |
+| `boundary`        | `number \| 'start' \| 'center' \| 'end' \| 'nearest'` | 滚动边界 |
+| `lineless`        | `boolean`                                             | 无左侧线 |
+| `scrollContainer` | `string \| HTMLElement \| Window`                     | 滚动容器 |
+| `onChange`        | `(newLink, oldLink) => void`                          | 锚点变化 |
 
 ## 常用模式
 
@@ -60,24 +60,24 @@ import { Anchor } from '@arco-design/web-react';
 
 ### AnchorProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `affix` | `boolean` | `true` | 是否固定 |
-| `offsetTop` | `number` | — | 固定时顶部偏移 |
-| `direction` | `'vertical' \| 'horizontal'` | `'vertical'` | 方向 |
-| `boundary` | `number \| 'start' \| 'center' \| 'end' \| 'nearest'` | `'start'` | 滚动边界 |
-| `lineless` | `boolean` | — | 无左侧竖线 |
-| `scrollContainer` | `string \| HTMLElement \| Window` | — | 滚动容器 |
-| `targetOffset` | `number` | — | 锚点滚动偏移量 |
-| `hash` | `boolean` | `true` | 是否改变 URL hash |
-| `onChange` | `(newLink, oldLink) => void` | — | 锚点变化回调 |
-| `onSelect` | `(newLink, oldLink) => void` | — | 点击锚点回调 |
+| 属性              | 类型                                                  | 默认值       | 说明              |
+| ----------------- | ----------------------------------------------------- | ------------ | ----------------- |
+| `affix`           | `boolean`                                             | `true`       | 是否固定          |
+| `offsetTop`       | `number`                                              | —            | 固定时顶部偏移    |
+| `direction`       | `'vertical' \| 'horizontal'`                          | `'vertical'` | 方向              |
+| `boundary`        | `number \| 'start' \| 'center' \| 'end' \| 'nearest'` | `'start'`    | 滚动边界          |
+| `lineless`        | `boolean`                                             | —            | 无左侧竖线        |
+| `scrollContainer` | `string \| HTMLElement \| Window`                     | —            | 滚动容器          |
+| `targetOffset`    | `number`                                              | —            | 锚点滚动偏移量    |
+| `hash`            | `boolean`                                             | `true`       | 是否改变 URL hash |
+| `onChange`        | `(newLink, oldLink) => void`                          | —            | 锚点变化回调      |
+| `onSelect`        | `(newLink, oldLink) => void`                          | —            | 点击锚点回调      |
 
 ### Anchor.Link Props
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `href` | `string` | 锚点链接 |
+| 属性    | 类型        | 说明     |
+| ------- | ----------- | -------- |
+| `href`  | `string`    | 锚点链接 |
 | `title` | `ReactNode` | 锚点标题 |
 
 ## 最佳实践

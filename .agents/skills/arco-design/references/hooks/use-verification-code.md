@@ -1,6 +1,6 @@
 ---
 name: arco-use-verification-code
-description: "Arco Design useVerificationCode hook API. Use for building custom OTP / verification code input with multi-character input management, focus control, paste handling, and keyboard navigation."
+description: 'Arco Design useVerificationCode hook API. Use for building custom OTP / verification code input with multi-character input management, focus control, paste handling, and keyboard navigation.'
 user-invocable: false
 ---
 
@@ -14,22 +14,22 @@ import { useVerificationCode } from '@arco-design/web-react/hooks';
 
 ## Options
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `length` | `number` | `6` | Number of digits |
-| `defaultValue` | `string` | — | Uncontrolled initial value |
-| `value` | `string` | — | Controlled value |
-| `onChange` | `(value: string) => void` | — | Called when value changes |
-| `onFinish` | `(value: string) => void` | — | Called when all digits are filled |
-| `getInputRefList` | `() => HTMLInputElement[]` | — | Returns the list of input DOM elements |
+| Prop              | Type                       | Default | Description                            |
+| ----------------- | -------------------------- | ------- | -------------------------------------- |
+| `length`          | `number`                   | `6`     | Number of digits                       |
+| `defaultValue`    | `string`                   | —       | Uncontrolled initial value             |
+| `value`           | `string`                   | —       | Controlled value                       |
+| `onChange`        | `(value: string) => void`  | —       | Called when value changes              |
+| `onFinish`        | `(value: string) => void`  | —       | Called when all digits are filled      |
+| `getInputRefList` | `() => HTMLInputElement[]` | —       | Returns the list of input DOM elements |
 
 ## Return Value
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `filledValue` | `string[]` | Array of each digit's value |
-| `value` | `string` | Current concatenated full value |
-| `setValue` | `(value: string) => void` | Imperatively set value |
+| Property        | Type                            | Description                         |
+| --------------- | ------------------------------- | ----------------------------------- |
+| `filledValue`   | `string[]`                      | Array of each digit's value         |
+| `value`         | `string`                        | Current concatenated full value     |
+| `setValue`      | `(value: string) => void`       | Imperatively set value              |
 | `getInputProps` | `(index: number) => InputProps` | Get props for the Nth input element |
 
 ## Example
@@ -55,7 +55,9 @@ const CustomOTP = () => {
         return (
           <input
             key={index}
-            ref={(node) => { inputRefList.current[index] = node; }}
+            ref={(node) => {
+              inputRefList.current[index] = node;
+            }}
             style={{ width: 40, height: 40, textAlign: 'center', fontSize: 18 }}
             {...inputProps}
             onChange={(e) => inputProps.onChange?.(e.target.value)}

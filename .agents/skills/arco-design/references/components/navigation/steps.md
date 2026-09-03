@@ -1,6 +1,6 @@
 ---
 name: arco-steps
-description: "Arco Design Steps component API. Use for step-by-step workflows, vertical steps, dot-style steps, and error state indicators."
+description: 'Arco Design Steps component API. Use for step-by-step workflows, vertical steps, dot-style steps, and error state indicators.'
 user-invocable: false
 ---
 
@@ -27,15 +27,15 @@ import { Steps } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `current` | `number` | `1` | 当前步骤 |
-| `type` | `'default' \| 'arrow' \| 'dot' \| 'navigation'` | `'default'` | 类型 |
-| `size` | `'default' \| 'small'` | `'default'` | 尺寸 |
-| `direction` | `'vertical' \| 'horizontal'` | `'horizontal'` | 方向 |
-| `status` | `'wait' \| 'process' \| 'finish' \| 'error'` | — | 当前步骤状态 |
-| `lineless` | `boolean` | — | 无连接线 |
-| `onChange` | `(current, id) => void` | — | 点击步骤 |
+| 属性        | 类型                                            | 默认值         | 说明         |
+| ----------- | ----------------------------------------------- | -------------- | ------------ |
+| `current`   | `number`                                        | `1`            | 当前步骤     |
+| `type`      | `'default' \| 'arrow' \| 'dot' \| 'navigation'` | `'default'`    | 类型         |
+| `size`      | `'default' \| 'small'`                          | `'default'`    | 尺寸         |
+| `direction` | `'vertical' \| 'horizontal'`                    | `'horizontal'` | 方向         |
+| `status`    | `'wait' \| 'process' \| 'finish' \| 'error'`    | —              | 当前步骤状态 |
+| `lineless`  | `boolean`                                       | —              | 无连接线     |
+| `onChange`  | `(current, id) => void`                         | —              | 点击步骤     |
 
 ## 常用模式
 

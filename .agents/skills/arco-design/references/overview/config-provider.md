@@ -1,6 +1,6 @@
 ---
 name: arco-config-provider
-description: "Arco Design ConfigProvider API guide. Use for global component configuration — size, theme, locale, default props, and prefixCls customization."
+description: 'Arco Design ConfigProvider API guide. Use for global component configuration — size, theme, locale, default props, and prefixCls customization.'
 user-invocable: false
 ---
 
@@ -16,8 +16,8 @@ import enUS from '@arco-design/web-react/es/locale/en-US';
 
 function App() {
   return (
-    <ConfigProvider locale={enUS} size="large">
-      <Button type="primary">Large Button</Button>
+    <ConfigProvider locale={enUS} size='large'>
+      <Button type='primary'>Large Button</Button>
       <DatePicker />
     </ConfigProvider>
   );
@@ -28,23 +28,23 @@ function App() {
 
 ### ConfigProviderProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `locale` | `Locale` | 中文 | 语言包 |
-| `theme` | `Record<string, any>` | — | CSS 变量主题对象 |
-| `size` | `'mini' \| 'small' \| 'default' \| 'large'` | `'default'` | 全局组件尺寸 |
-| `prefixCls` | `string` | `'arco'` | 全局 CSS 类名前缀 |
-| `rtl` | `boolean` | `false` | 从右到左布局（RTL） |
-| `componentConfig` | `ComponentConfig` | — | 全局组件默认 props |
-| `getPopupContainer` | `(node: HTMLElement) => Element` | — | 全局弹出层挂载节点 |
-| `loadingElement` | `ReactNode` | — | 全局加载动画元素 |
-| `tablePagination` | `PaginationProps` | — | 全局表格分页配置 |
-| `renderEmpty` | `(componentName?: string) => ReactNode` | — | 全局空状态渲染 |
-| `focusLock` | `{ modal?: boolean; drawer?: boolean }` | — | 全局焦点锁定设置 |
-| `autoInsertSpaceInButton` | `boolean` | `true` | 按钮中中文字符间自动插入空格 |
-| `effectGlobalModal` | `boolean` | `true` | 是否影响全局 Modal 配置 |
-| `effectGlobalNotification` | `boolean` | `true` | 是否影响全局 Notification 配置 |
-| `effectGlobalMessage` | `boolean` | `true` | 是否影响全局 Message 配置 |
+| 属性                       | 类型                                        | 默认值      | 说明                           |
+| -------------------------- | ------------------------------------------- | ----------- | ------------------------------ |
+| `locale`                   | `Locale`                                    | 中文        | 语言包                         |
+| `theme`                    | `Record<string, any>`                       | —           | CSS 变量主题对象               |
+| `size`                     | `'mini' \| 'small' \| 'default' \| 'large'` | `'default'` | 全局组件尺寸                   |
+| `prefixCls`                | `string`                                    | `'arco'`    | 全局 CSS 类名前缀              |
+| `rtl`                      | `boolean`                                   | `false`     | 从右到左布局（RTL）            |
+| `componentConfig`          | `ComponentConfig`                           | —           | 全局组件默认 props             |
+| `getPopupContainer`        | `(node: HTMLElement) => Element`            | —           | 全局弹出层挂载节点             |
+| `loadingElement`           | `ReactNode`                                 | —           | 全局加载动画元素               |
+| `tablePagination`          | `PaginationProps`                           | —           | 全局表格分页配置               |
+| `renderEmpty`              | `(componentName?: string) => ReactNode`     | —           | 全局空状态渲染                 |
+| `focusLock`                | `{ modal?: boolean; drawer?: boolean }`     | —           | 全局焦点锁定设置               |
+| `autoInsertSpaceInButton`  | `boolean`                                   | `true`      | 按钮中中文字符间自动插入空格   |
+| `effectGlobalModal`        | `boolean`                                   | `true`      | 是否影响全局 Modal 配置        |
+| `effectGlobalNotification` | `boolean`                                   | `true`      | 是否影响全局 Notification 配置 |
+| `effectGlobalMessage`      | `boolean`                                   | `true`      | 是否影响全局 Message 配置      |
 
 ## 全局组件默认 Props
 
@@ -89,11 +89,9 @@ function App() {
 `ConfigProvider` 支持嵌套，内层配置会覆盖外层：
 
 ```tsx
-<ConfigProvider size="large" locale={zhCN}>
+<ConfigProvider size='large' locale={zhCN}>
   {/* 这里的组件都是 large + 中文 */}
-  <ConfigProvider size="small">
-    {/* 这里的组件是 small + 中文（继承外层 locale） */}
-  </ConfigProvider>
+  <ConfigProvider size='small'>{/* 这里的组件是 small + 中文（继承外层 locale） */}</ConfigProvider>
 </ConfigProvider>
 ```
 

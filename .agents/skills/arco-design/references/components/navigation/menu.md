@@ -1,6 +1,6 @@
 ---
 name: arco-menu
-description: "Arco Design Menu component API. Use for sidebar navigation, top navigation bar, multi-level menus, collapsible menus, and menu groups."
+description: 'Arco Design Menu component API. Use for sidebar navigation, top navigation bar, multi-level menus, collapsible menus, and menu groups.'
 user-invocable: false
 ---
 
@@ -43,42 +43,42 @@ const ItemGroup = Menu.ItemGroup;
 
 ### MenuProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `mode` | `'vertical' \| 'horizontal' \| 'pop' \| 'popButton'` | `'vertical'` | 菜单模式 |
-| `theme` | `'light' \| 'dark'` | `'light'` | 主题 |
-| `selectedKeys` / `defaultSelectedKeys` | `string[]` | — | 选中的菜单项 |
-| `openKeys` / `defaultOpenKeys` | `string[]` | — | 展开的子菜单 |
-| `collapse` | `boolean` | — | 收起菜单（垂直模式） |
-| `accordion` | `boolean` | — | 手风琴模式 |
-| `levelIndent` | `number` | — | 层级缩进 |
-| `autoOpen` | `boolean` | — | 默认展开选中项父菜单 |
-| `autoScrollIntoView` | `boolean` | — | 自动滚动到选中项 |
-| `hasCollapseButton` | `boolean` | — | 显示收起按钮 |
-| `icons` | `{ horizontalArrowDown, popArrowRight, collapseDefault, collapseActive }` | — | 自定义图标 |
-| `ellipsis` | `boolean` | `true` | 水平模式溢出省略 |
-| `scrollConfig` | `{ [key: string]: any }` | — | 滚动到选中项时透传给 `scroll-into-view-if-needed` 的配置 |
-| `tooltipProps` | `TooltipProps` | — | 收起时项目 Tooltip 配置 |
-| `triggerProps` | `TriggerProps` | — | SubMenu pop 模式下 Trigger 配置 |
-| `onClickMenuItem` | `(key, event, keyPath) => void` | — | 点击菜单项 |
-| `onClickSubMenu` | `(key, openKeys, keyPath) => void` | — | 点击子菜单 |
-| `onCollapseChange` | `(collapse) => void` | — | 收起变化 |
+| 属性                                   | 类型                                                                      | 默认值       | 说明                                                     |
+| -------------------------------------- | ------------------------------------------------------------------------- | ------------ | -------------------------------------------------------- |
+| `mode`                                 | `'vertical' \| 'horizontal' \| 'pop' \| 'popButton'`                      | `'vertical'` | 菜单模式                                                 |
+| `theme`                                | `'light' \| 'dark'`                                                       | `'light'`    | 主题                                                     |
+| `selectedKeys` / `defaultSelectedKeys` | `string[]`                                                                | —            | 选中的菜单项                                             |
+| `openKeys` / `defaultOpenKeys`         | `string[]`                                                                | —            | 展开的子菜单                                             |
+| `collapse`                             | `boolean`                                                                 | —            | 收起菜单（垂直模式）                                     |
+| `accordion`                            | `boolean`                                                                 | —            | 手风琴模式                                               |
+| `levelIndent`                          | `number`                                                                  | —            | 层级缩进                                                 |
+| `autoOpen`                             | `boolean`                                                                 | —            | 默认展开选中项父菜单                                     |
+| `autoScrollIntoView`                   | `boolean`                                                                 | —            | 自动滚动到选中项                                         |
+| `hasCollapseButton`                    | `boolean`                                                                 | —            | 显示收起按钮                                             |
+| `icons`                                | `{ horizontalArrowDown, popArrowRight, collapseDefault, collapseActive }` | —            | 自定义图标                                               |
+| `ellipsis`                             | `boolean`                                                                 | `true`       | 水平模式溢出省略                                         |
+| `scrollConfig`                         | `{ [key: string]: any }`                                                  | —            | 滚动到选中项时透传给 `scroll-into-view-if-needed` 的配置 |
+| `tooltipProps`                         | `TooltipProps`                                                            | —            | 收起时项目 Tooltip 配置                                  |
+| `triggerProps`                         | `TriggerProps`                                                            | —            | SubMenu pop 模式下 Trigger 配置                          |
+| `onClickMenuItem`                      | `(key, event, keyPath) => void`                                           | —            | 点击菜单项                                               |
+| `onClickSubMenu`                       | `(key, openKeys, keyPath) => void`                                        | —            | 点击子菜单                                               |
+| `onCollapseChange`                     | `(collapse) => void`                                                      | —            | 收起变化                                                 |
 
 ### Menu.Item Props
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `key` | `string` | 唯一标识 |
-| `disabled` | `boolean` | 禁用 |
-| `wrapper` | `string` | 外层元素标签 |
+| 属性       | 类型      | 说明         |
+| ---------- | --------- | ------------ |
+| `key`      | `string`  | 唯一标识     |
+| `disabled` | `boolean` | 禁用         |
+| `wrapper`  | `string`  | 外层元素标签 |
 
 ### Menu.SubMenu Props
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `key` | `string` | 唯一标识 |
-| `title` | `ReactNode` | 子菜单标题 |
-| `selectable` | `boolean` | 子菜单本身可选 |
+| 属性         | 类型        | 说明           |
+| ------------ | ----------- | -------------- |
+| `key`        | `string`    | 唯一标识       |
+| `title`      | `ReactNode` | 子菜单标题     |
+| `selectable` | `boolean`   | 子菜单本身可选 |
 
 ## 常用模式
 
@@ -102,5 +102,3 @@ const ItemGroup = Menu.ItemGroup;
   </SubMenu>
 </Menu>
 ```
-
-

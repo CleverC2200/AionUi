@@ -1,6 +1,6 @@
 ---
 name: arco-theming
-description: "Arco Design theming and customization guide. Use for custom theme colors, CSS variable overrides, Less variable modification, and dark mode toggle."
+description: 'Arco Design theming and customization guide. Use for custom theme colors, CSS variable overrides, Less variable modification, and dark mode toggle.'
 user-invocable: false
 ---
 
@@ -14,10 +14,10 @@ Arco Design 支持通过 Less 变量进行主题定制。
 
 ```less
 // custom-theme.less
-@arcoblue-6: #165DFF;  // 主色
-@green-6: #00B42A;     // 成功色
-@gold-6: #FF7D00;      // 警告色
-@red-6: #F53F3F;       // 危险色
+@arcoblue-6: #165dff; // 主色
+@green-6: #00b42a; // 成功色
+@gold-6: #ff7d00; // 警告色
+@red-6: #f53f3f; // 危险色
 
 @border-radius-small: 2px;
 @border-radius-medium: 4px;
@@ -31,20 +31,24 @@ Arco Design 支持通过 Less 变量进行主题定制。
 // webpack.config.js
 module.exports = {
   module: {
-    rules: [{
-      test: /\.less$/,
-      use: [{
-        loader: 'less-loader',
-        options: {
-          lessOptions: {
-            modifyVars: {
-              'arcoblue-6': '#165DFF',
+    rules: [
+      {
+        test: /\.less$/,
+        use: [
+          {
+            loader: 'less-loader',
+            options: {
+              lessOptions: {
+                modifyVars: {
+                  'arcoblue-6': '#165DFF',
+                },
+                javascriptEnabled: true,
+              },
             },
-            javascriptEnabled: true,
           },
-        },
-      }],
-    }],
+        ],
+      },
+    ],
   },
 };
 ```
@@ -101,7 +105,7 @@ function useTheme() {
 当页面中存在多套 Arco Design 或与其他库冲突时，可自定义前缀：
 
 ```tsx
-<ConfigProvider prefixCls="my-app">
+<ConfigProvider prefixCls='my-app'>
   <Button>自定义前缀</Button>
 </ConfigProvider>
 ```
@@ -118,4 +122,4 @@ function useTheme() {
 
 2. **暗色模式使用 `arco-theme` 属性方案**，方便动态切换
 3. **只覆盖需要修改的变量**，其余继承默认值
-5. **自定义 prefixCls 时注意一致性**，Less 变量和 ConfigProvider 要同步设置
+4. **自定义 prefixCls 时注意一致性**，Less 变量和 ConfigProvider 要同步设置

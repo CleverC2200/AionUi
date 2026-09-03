@@ -1,6 +1,6 @@
 ---
 name: arco-architecture
-description: "Arco Design component architecture and design patterns. Use for understanding component structure, controlled/uncontrolled patterns, props merging, sub-component patterns (Component.SubComponent), and ref forwarding."
+description: 'Arco Design component architecture and design patterns. Use for understanding component structure, controlled/uncontrolled patterns, props merging, sub-component patterns (Component.SubComponent), and ref forwarding.'
 user-invocable: false
 ---
 
@@ -49,25 +49,25 @@ import type { ButtonProps, SelectProps, TableProps } from '@arco-design/web-reac
 
 ### 命名约定
 
-| 非受控（默认值） | 受控（当前值） | 变更回调 |
-|----------------|--------------|---------|
-| `defaultValue` | `value` | `onChange` |
-| `defaultVisible` | `visible` | `onVisibleChange` |
-| `defaultActiveKey` | `activeKey` | `onChange` |
-| `defaultSelectedKeys` | `selectedKeys` | `onSelect` |
-| `defaultExpandedKeys` | `expandedKeys` | `onExpand` |
-| `defaultChecked` | `checked` | `onChange` |
-| `defaultCurrentPage` | `current` | `onChange` |
+| 非受控（默认值）      | 受控（当前值） | 变更回调          |
+| --------------------- | -------------- | ----------------- |
+| `defaultValue`        | `value`        | `onChange`        |
+| `defaultVisible`      | `visible`      | `onVisibleChange` |
+| `defaultActiveKey`    | `activeKey`    | `onChange`        |
+| `defaultSelectedKeys` | `selectedKeys` | `onSelect`        |
+| `defaultExpandedKeys` | `expandedKeys` | `onExpand`        |
+| `defaultChecked`      | `checked`      | `onChange`        |
+| `defaultCurrentPage`  | `current`      | `onChange`        |
 
 ### 使用方式
 
 ```tsx
 // 非受控 —— 组件内部管理状态
-<Select defaultValue="option1" onChange={(val) => console.log(val)} />
+<Select defaultValue='option1' onChange={(val) => console.log(val)} />;
 
 // 受控 —— 外部管理状态
 const [value, setValue] = useState('option1');
-<Select value={value} onChange={setValue} />
+<Select value={value} onChange={setValue} />;
 ```
 
 ### 内部实现：`useMergeValue` Hook
@@ -77,8 +77,8 @@ const [value, setValue] = useState('option1');
 ```tsx
 // 简化版实现逻辑
 const [value, setValue] = useMergeValue(defaultValue, {
-  value: propValue,      // 受控值
-  defaultValue,          // 非受控默认值
+  value: propValue, // 受控值
+  defaultValue, // 非受控默认值
 });
 ```
 
@@ -93,7 +93,7 @@ const [value, setValue] = useMergeValue(defaultValue, {
 ```tsx
 // 优先级: componentConfig.Button.type < 这里传入的 type
 <ConfigProvider componentConfig={{ Button: { type: 'primary' } }}>
-  <Button type="secondary">此按钮为 secondary</Button>
+  <Button type='secondary'>此按钮为 secondary</Button>
   <Button>此按钮为 primary（来自 componentConfig）</Button>
 </ConfigProvider>
 ```
@@ -149,7 +149,7 @@ const [value, setValue] = useMergeValue(defaultValue, {
 const selectRef = useRef<SelectHandle>(null);
 selectRef.current.focus();
 selectRef.current.blur();
-selectRef.current.getOptionInfoList();  // 获取所有选项信息
+selectRef.current.getOptionInfoList(); // 获取所有选项信息
 
 // Form Ref / useForm
 const [form] = Form.useForm();
@@ -166,7 +166,7 @@ tableRef.current.scrollIntoView('rowKey');
 const inputRef = useRef<RefInputType>(null);
 inputRef.current.focus();
 inputRef.current.blur();
-inputRef.current.dom;  // 获取原生 input DOM
+inputRef.current.dom; // 获取原生 input DOM
 ```
 
 ## CSS 命名约定
@@ -183,25 +183,25 @@ CSS 类名遵循 BEM-like 命名（可通过 `prefixCls` 自定义前缀）：
 
 ## 构建产物
 
-| 目录 | 格式 | 用途 |
-|------|------|------|
-| `es/` | ESM | 现代打包工具（Vite、Webpack 5+） |
-| `lib/` | CJS | Node.js / 旧打包工具 |
-| `dist/` | UMD | CDN / 直接 `<script>` 引入 |
+| 目录    | 格式 | 用途                             |
+| ------- | ---- | -------------------------------- |
+| `es/`   | ESM  | 现代打包工具（Vite、Webpack 5+） |
+| `lib/`  | CJS  | Node.js / 旧打包工具             |
+| `dist/` | UMD  | CDN / 直接 `<script>` 引入       |
 
 每个组件在 `es/` 和 `lib/` 下都有独立目录，支持按需加载。
 
 ## 内部共享模块
 
-| 模块 | 位置 | 说明 |
-|------|------|------|
-| `VirtualList` | `_class/VirtualList/` | 虚拟滚动列表（Table、Select、Tree 共用） |
-| `Draggable` | `_class/Draggable/` | 拖拽基础组件 |
-| `SelectView` | `_class/select-view.tsx` | 共享选择器输入框（Select、Cascader、TreeSelect） |
-| `Notice` | `_class/notice.tsx` | 通知基础组件（Message、Notification） |
-| `Picker` | `_class/picker/` | 日期/时间选择器输入框 |
-| Hooks | `_util/hooks/` | 22 个内部 Hooks |
-| Utils | `_util/` | 类型判断、DOM 操作、颜色处理等工具 |
+| 模块          | 位置                     | 说明                                             |
+| ------------- | ------------------------ | ------------------------------------------------ |
+| `VirtualList` | `_class/VirtualList/`    | 虚拟滚动列表（Table、Select、Tree 共用）         |
+| `Draggable`   | `_class/Draggable/`      | 拖拽基础组件                                     |
+| `SelectView`  | `_class/select-view.tsx` | 共享选择器输入框（Select、Cascader、TreeSelect） |
+| `Notice`      | `_class/notice.tsx`      | 通知基础组件（Message、Notification）            |
+| `Picker`      | `_class/picker/`         | 日期/时间选择器输入框                            |
+| Hooks         | `_util/hooks/`           | 22 个内部 Hooks                                  |
+| Utils         | `_util/`                 | 类型判断、DOM 操作、颜色处理等工具               |
 
 ## 最佳实践
 

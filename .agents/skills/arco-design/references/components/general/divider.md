@@ -1,6 +1,6 @@
 ---
 name: arco-divider
-description: "Arco Design Divider component API. Use for horizontal/vertical dividers and section separators with optional text."
+description: 'Arco Design Divider component API. Use for horizontal/vertical dividers and section separators with optional text.'
 user-invocable: false
 ---
 
@@ -30,10 +30,10 @@ import { Divider } from '@arco-design/web-react';
 
 ## DividerProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `type` | `'horizontal' \| 'vertical'` | `'horizontal'` | 方向 |
-| `orientation` | `'left' \| 'center' \| 'right'` | `'center'` | 文字位置 |
+| 属性          | 类型                            | 默认值         | 说明     |
+| ------------- | ------------------------------- | -------------- | -------- |
+| `type`        | `'horizontal' \| 'vertical'`    | `'horizontal'` | 方向     |
+| `orientation` | `'left' \| 'center' \| 'right'` | `'center'`     | 文字位置 |
 
 ## 常用模式
 

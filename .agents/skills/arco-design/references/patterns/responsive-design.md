@@ -1,6 +1,6 @@
 ---
 name: arco-responsive-design
-description: "Arco Design responsive design guide. Use for Grid breakpoints (xs/sm/md/lg/xl/xxl), responsive layout, and adaptive page design."
+description: 'Arco Design responsive design guide. Use for Grid breakpoints (xs/sm/md/lg/xl/xxl), responsive layout, and adaptive page design.'
 user-invocable: false
 ---
 
@@ -12,14 +12,14 @@ user-invocable: false
 
 Arco Design Grid 支持 5 个响应式断点：
 
-| 断点 | 最小宽度 | 说明 |
-|------|----------|------|
-| `xs` | < 576px | 超小屏/手机 |
-| `sm` | ≥ 576px | 小屏/平板竖屏 |
-| `md` | ≥ 768px | 中屏/平板横屏 |
-| `lg` | ≥ 992px | 大屏/笔记本 |
-| `xl` | ≥ 1200px | 超大屏/桌面 |
-| `xxl` | ≥ 1600px | 宽屏显示器 |
+| 断点  | 最小宽度 | 说明          |
+| ----- | -------- | ------------- |
+| `xs`  | < 576px  | 超小屏/手机   |
+| `sm`  | ≥ 576px  | 小屏/平板竖屏 |
+| `md`  | ≥ 768px  | 中屏/平板横屏 |
+| `lg`  | ≥ 992px  | 大屏/笔记本   |
+| `xl`  | ≥ 1200px | 超大屏/桌面   |
+| `xxl` | ≥ 1600px | 宽屏显示器    |
 
 ### 响应式列宽
 
@@ -41,7 +41,7 @@ const { Row, Col } = Grid;
   <Col xs={24} sm={12} md={8} lg={6}>
     <div>响应式列</div>
   </Col>
-</Row>
+</Row>;
 ```
 
 ### 响应式对象写法
@@ -49,12 +49,7 @@ const { Row, Col } = Grid;
 同时控制 span 和 offset：
 
 ```tsx
-<Col
-  xs={{ span: 24 }}
-  sm={{ span: 12 }}
-  md={{ span: 8, offset: 2 }}
-  lg={{ span: 6, offset: 0 }}
->
+<Col xs={{ span: 24 }} sm={{ span: 12 }} md={{ span: 8, offset: 2 }} lg={{ span: 6, offset: 0 }}>
   内容
 </Col>
 ```
@@ -88,8 +83,8 @@ const { Sider, Content } = Layout;
 
 <Layout>
   <Sider
-    breakpoint="lg"       // 在 lg 断点时自动折叠
-    collapsedWidth={60}   // 折叠后宽度
+    breakpoint='lg' // 在 lg 断点时自动折叠
+    collapsedWidth={60} // 折叠后宽度
     onBreakpoint={(broken) => {
       console.log('breakpoint:', broken);
     }}
@@ -100,7 +95,7 @@ const { Sider, Content } = Layout;
     <Menu>...</Menu>
   </Sider>
   <Content>...</Content>
-</Layout>
+</Layout>;
 ```
 
 ### 手动控制 Sider 折叠
@@ -108,15 +103,9 @@ const { Sider, Content } = Layout;
 ```tsx
 const [collapsed, setCollapsed] = useState(false);
 
-<Sider
-  collapsed={collapsed}
-  onCollapse={setCollapsed}
-  collapsible
-  width={220}
-  collapsedWidth={60}
->
+<Sider collapsed={collapsed} onCollapse={setCollapsed} collapsible width={220} collapsedWidth={60}>
   <Menu collapse={collapsed}>...</Menu>
-</Sider>
+</Sider>;
 ```
 
 ## Space 响应式
@@ -146,22 +135,18 @@ const AdminLayout = () => {
         collapsed={collapsed}
         onCollapse={setCollapsed}
         collapsible
-        breakpoint="md"
+        breakpoint='md'
         width={220}
         collapsedWidth={60}
       >
         <Menu collapse={collapsed} defaultSelectedKeys={['1']}>
-          <Menu.Item key="1">首页</Menu.Item>
-          <Menu.Item key="2">设置</Menu.Item>
+          <Menu.Item key='1'>首页</Menu.Item>
+          <Menu.Item key='2'>设置</Menu.Item>
         </Menu>
       </Sider>
       <Layout>
-        <Layout.Header style={{ height: 60, padding: '0 16px' }}>
-          Header
-        </Layout.Header>
-        <Layout.Content style={{ padding: 16 }}>
-          Content
-        </Layout.Content>
+        <Layout.Header style={{ height: 60, padding: '0 16px' }}>Header</Layout.Header>
+        <Layout.Content style={{ padding: 16 }}>Content</Layout.Content>
       </Layout>
     </Layout>
   );
@@ -175,9 +160,7 @@ const CardGrid = ({ items }) => (
   <Row gutter={[16, 16]}>
     {items.map((item) => (
       <Col key={item.id} xs={24} sm={12} md={8} lg={6} xl={4}>
-        <Card title={item.title}>
-          {item.content}
-        </Card>
+        <Card title={item.title}>{item.content}</Card>
       </Col>
     ))}
   </Row>
@@ -188,30 +171,30 @@ const CardGrid = ({ items }) => (
 
 ```tsx
 // 小屏单列，大屏多列
-<Form layout="horizontal">
+<Form layout='horizontal'>
   <Row gutter={24}>
     <Col xs={24} md={12}>
-      <Form.Item label="姓名" field="name">
+      <Form.Item label='姓名' field='name'>
         <Input />
       </Form.Item>
     </Col>
     <Col xs={24} md={12}>
-      <Form.Item label="邮箱" field="email">
+      <Form.Item label='邮箱' field='email'>
         <Input />
       </Form.Item>
     </Col>
     <Col xs={24} md={8}>
-      <Form.Item label="城市" field="city">
+      <Form.Item label='城市' field='city'>
         <Select />
       </Form.Item>
     </Col>
     <Col xs={24} md={8}>
-      <Form.Item label="区域" field="district">
+      <Form.Item label='区域' field='district'>
         <Select />
       </Form.Item>
     </Col>
     <Col xs={24} md={8}>
-      <Form.Item label="邮编" field="zip">
+      <Form.Item label='邮编' field='zip'>
         <Input />
       </Form.Item>
     </Col>
@@ -257,9 +240,7 @@ const CardGrid = ({ items }) => (
 
 ```tsx
 <div style={{ padding: 'var(--page-padding)' }}>
-  <Row gutter={24}>
-    ...
-  </Row>
+  <Row gutter={24}>...</Row>
 </div>
 ```
 

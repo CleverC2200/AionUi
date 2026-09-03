@@ -1,6 +1,6 @@
 ---
 name: arco-link
-description: "Arco Design Link component API. Use for hyperlinks, icon links, and styled navigation links."
+description: 'Arco Design Link component API. Use for hyperlinks, icon links, and styled navigation links.'
 user-invocable: false
 ---
 
@@ -21,13 +21,13 @@ import { Link } from '@arco-design/web-react';
 
 ### LinkProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `href` | `string` | — | 链接地址 |
-| `status` | `'error' \| 'success' \| 'warning'` | — | 链接状态（未设置则为默认色） |
-| `disabled` | `boolean` | — | 禁用 |
-| `icon` | `boolean \| ReactNode` | — | 显示图标 |
-| `hoverable` | `boolean` | `true` | 是否有 hover 下划线 |
+| 属性        | 类型                                | 默认值 | 说明                         |
+| ----------- | ----------------------------------- | ------ | ---------------------------- |
+| `href`      | `string`                            | —      | 链接地址                     |
+| `status`    | `'error' \| 'success' \| 'warning'` | —      | 链接状态（未设置则为默认色） |
+| `disabled`  | `boolean`                           | —      | 禁用                         |
+| `icon`      | `boolean \| ReactNode`              | —      | 显示图标                     |
+| `hoverable` | `boolean`                           | `true` | 是否有 hover 下划线          |
 
 ## 常用模式
 

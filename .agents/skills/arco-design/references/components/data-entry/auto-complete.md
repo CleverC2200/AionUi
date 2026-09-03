@@ -1,6 +1,6 @@
 ---
 name: arco-auto-complete
-description: "Arco Design AutoComplete component API. Use for input autocomplete, search suggestions, and custom dropdown options."
+description: 'Arco Design AutoComplete component API. Use for input autocomplete, search suggestions, and custom dropdown options.'
 user-invocable: false
 ---
 
@@ -11,23 +11,19 @@ user-invocable: false
 ```tsx
 import { AutoComplete } from '@arco-design/web-react';
 
-<AutoComplete
-  placeholder="请输入"
-  data={['北京', '上海', '广州', '深圳']}
-  style={{ width: 300 }}
-/>
+<AutoComplete placeholder='请输入' data={['北京', '上海', '广州', '深圳']} style={{ width: 300 }} />;
 ```
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `data` | `(string \| { value, name })[]` | 数据源 |
-| `filterOption` | `boolean \| (inputValue, option) => boolean` | 过滤函数 |
-| `triggerElement` | `ReactNode` | 自定义触发元素 |
-| `onSearch` | `(value: string) => void` | 搜索回调 |
-| `onSelect` | `(value: string) => void` | 选中回调 |
-| `virtualListProps` | `object` | 虚拟滚动 |
+| 属性               | 类型                                         | 说明           |
+| ------------------ | -------------------------------------------- | -------------- |
+| `data`             | `(string \| { value, name })[]`              | 数据源         |
+| `filterOption`     | `boolean \| (inputValue, option) => boolean` | 过滤函数       |
+| `triggerElement`   | `ReactNode`                                  | 自定义触发元素 |
+| `onSearch`         | `(value: string) => void`                    | 搜索回调       |
+| `onSelect`         | `(value: string) => void`                    | 选中回调       |
+| `virtualListProps` | `object`                                     | 虚拟滚动       |
 
 ## 常用模式
 
@@ -64,23 +60,23 @@ const [options, setOptions] = useState([]);
 
 ## 完整 API
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `data` | `(string \| { value, name })[]` | — | 数据源 |
-| `value` / `defaultValue` | `string` | — | 值 |
-| `placeholder` | `string` | — | 占位文字 |
-| `filterOption` | `boolean \| (inputValue, option) => boolean` | `true` | 过滤函数（false 禁用过滤） |
-| `triggerElement` | `ReactNode` | — | 自定义触发元素 |
-| `defaultActiveFirstOption` | `boolean` | `true` | 默认高亮第一项 |
-| `allowClear` | `boolean` | — | 可清除 |
-| `disabled` | `boolean` | — | 禁用 |
-| `virtualListProps` | `object` | — | 虚拟滚动配置 |
-| `dropdownRender` | `(menu) => ReactNode` | — | 自定义下拉框 |
-| `onSearch` | `(value: string) => void` | — | 搜索回调 |
-| `onSelect` | `(value: string, option) => void` | — | 选中回调 |
-| `onChange` | `(value: string) => void` | — | 值变化 |
-| `onFocus` | `(e) => void` | — | 聚焦 |
-| `onBlur` | `(e) => void` | — | 失焦 |
+| 属性                       | 类型                                         | 默认值 | 说明                       |
+| -------------------------- | -------------------------------------------- | ------ | -------------------------- |
+| `data`                     | `(string \| { value, name })[]`              | —      | 数据源                     |
+| `value` / `defaultValue`   | `string`                                     | —      | 值                         |
+| `placeholder`              | `string`                                     | —      | 占位文字                   |
+| `filterOption`             | `boolean \| (inputValue, option) => boolean` | `true` | 过滤函数（false 禁用过滤） |
+| `triggerElement`           | `ReactNode`                                  | —      | 自定义触发元素             |
+| `defaultActiveFirstOption` | `boolean`                                    | `true` | 默认高亮第一项             |
+| `allowClear`               | `boolean`                                    | —      | 可清除                     |
+| `disabled`                 | `boolean`                                    | —      | 禁用                       |
+| `virtualListProps`         | `object`                                     | —      | 虚拟滚动配置               |
+| `dropdownRender`           | `(menu) => ReactNode`                        | —      | 自定义下拉框               |
+| `onSearch`                 | `(value: string) => void`                    | —      | 搜索回调                   |
+| `onSelect`                 | `(value: string, option) => void`            | —      | 选中回调                   |
+| `onChange`                 | `(value: string) => void`                    | —      | 值变化                     |
+| `onFocus`                  | `(e) => void`                                | —      | 聚焦                       |
+| `onBlur`                   | `(e) => void`                                | —      | 失焦                       |
 
 ## 最佳实践
 

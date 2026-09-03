@@ -1,6 +1,6 @@
 ---
 name: arco-skeleton
-description: "Arco Design Skeleton component API. Use for loading skeleton placeholders with text rows, image blocks, and animation."
+description: 'Arco Design Skeleton component API. Use for loading skeleton placeholders with text rows, image blocks, and animation.'
 user-invocable: false
 ---
 
@@ -25,12 +25,12 @@ import { Skeleton } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `loading` | `boolean` | `true` | 是否显示骨架 |
-| `animation` | `boolean` | — | 动画效果 |
-| `image` | `boolean \| SkeletonImageProps` | — | 图片占位 |
-| `text` | `boolean \| { rows, width }` | `true` | 文字占位 |
+| 属性        | 类型                            | 默认值 | 说明         |
+| ----------- | ------------------------------- | ------ | ------------ |
+| `loading`   | `boolean`                       | `true` | 是否显示骨架 |
+| `animation` | `boolean`                       | —      | 动画效果     |
+| `image`     | `boolean \| SkeletonImageProps` | —      | 图片占位     |
+| `text`      | `boolean \| { rows, width }`    | `true` | 文字占位     |
 
 ## 最佳实践
 

@@ -1,6 +1,6 @@
 ---
 name: arco-portal
-description: "Arco Design Portal component API. Use for rendering children into a different DOM node (React portal)."
+description: 'Arco Design Portal component API. Use for rendering children into a different DOM node (React portal).'
 user-invocable: false
 ---
 
@@ -13,13 +13,13 @@ import { Portal } from '@arco-design/web-react';
 
 <Portal getContainer={() => document.getElementById('target')}>
   <div>被传送的内容</div>
-</Portal>
+</Portal>;
 ```
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
+| 属性           | 类型            | 说明     |
+| -------------- | --------------- | -------- |
 | `getContainer` | `() => Element` | 目标容器 |
 
 ## 常用模式
@@ -43,12 +43,12 @@ import { Portal } from '@arco-design/web-react';
 
 ## 完整 API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
+| 属性           | 类型            | 说明                         |
+| -------------- | --------------- | ---------------------------- |
 | `getContainer` | `() => Element` | 目标容器，默认 document.body |
-| `forceRender` | `boolean` | 强制渲染（不论 visible） |
-| `visible` | `boolean` | 是否可见 |
-| `children` | `ReactNode` | 子节点 |
+| `forceRender`  | `boolean`       | 强制渲染（不论 visible）     |
+| `visible`      | `boolean`       | 是否可见                     |
+| `children`     | `ReactNode`     | 子节点                       |
 
 ## 最佳实践
 

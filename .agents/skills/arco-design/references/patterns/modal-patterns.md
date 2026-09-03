@@ -1,6 +1,6 @@
 ---
 name: arco-modal-patterns
-description: "Arco Design modal/dialog patterns. Use for form-in-modal, confirmation flows, nested drawers, and global message/notification patterns."
+description: 'Arco Design modal/dialog patterns. Use for form-in-modal, confirmation flows, nested drawers, and global message/notification patterns.'
 user-invocable: false
 ---
 
@@ -10,24 +10,23 @@ Modal、Drawer、Message、Notification 的使用模式。
 
 ## Modal vs Drawer 选择
 
-| 场景 | 推荐 | 原因 |
-|------|------|------|
-| 简单确认操作 | Modal | 轻量，居中吸引注意力 |
-| 简短表单（3-5 个字段） | Modal | 不需要大空间 |
-| 复杂表单 / 详情查看 | Drawer | 更大空间，不遮挡背景内容 |
-| 多步骤向导 | Modal | 居中聚焦 |
-| 编辑面板 | Drawer | 可对照原始数据 |
+| 场景                   | 推荐   | 原因                     |
+| ---------------------- | ------ | ------------------------ |
+| 简单确认操作           | Modal  | 轻量，居中吸引注意力     |
+| 简短表单（3-5 个字段） | Modal  | 不需要大空间             |
+| 复杂表单 / 详情查看    | Drawer | 更大空间，不遮挡背景内容 |
+| 多步骤向导             | Modal  | 居中聚焦                 |
+| 编辑面板               | Drawer | 可对照原始数据           |
 
 ## 确认删除模式
 
 ### 方式一：Popconfirm（轻量）
 
 ```tsx
-<Popconfirm
-  title="确认删除此项？"
-  onOk={() => handleDelete(id)}
->
-  <Button type="text" status="danger" size="small">删除</Button>
+<Popconfirm title='确认删除此项？' onOk={() => handleDelete(id)}>
+  <Button type='text' status='danger' size='small'>
+    删除
+  </Button>
 </Popconfirm>
 ```
 
@@ -57,7 +56,7 @@ function EditModal({ visible, onClose, record }) {
 
   return (
     <Modal
-      title="编辑"
+      title='编辑'
       visible={visible}
       confirmLoading={loading}
       onOk={async () => {
@@ -66,7 +65,7 @@ function EditModal({ visible, onClose, record }) {
           setLoading(true);
           await api.update(record.id, values);
           Message.success('保存成功');
-          onClose(true);  // true 表示需要刷新
+          onClose(true); // true 表示需要刷新
         } catch {
           // form.validate 失败不需要处理
         } finally {
@@ -75,10 +74,10 @@ function EditModal({ visible, onClose, record }) {
       }}
       onCancel={() => onClose(false)}
       afterClose={() => form.resetFields()}
-      maskClosable={false}  // 防止误关闭
+      maskClosable={false} // 防止误关闭
     >
-      <Form form={form} layout="vertical" initialValues={record}>
-        <Form.Item field="name" label="名称" rules={[{ required: true }]}>
+      <Form form={form} layout='vertical' initialValues={record}>
+        <Form.Item field='name' label='名称' rules={[{ required: true }]}>
           <Input />
         </Form.Item>
       </Form>
@@ -119,13 +118,19 @@ const handleSubmit = async () => {
 Notification.info({
   title: '新版本可用',
   content: '发现新版本 v2.0.0',
-  duration: 0,  // 不自动关闭
+  duration: 0, // 不自动关闭
   btn: (
     <Space>
-      <Button type="secondary" size="small" onClick={() => Notification.remove('update')}>
+      <Button type='secondary' size='small' onClick={() => Notification.remove('update')}>
         稍后
       </Button>
-      <Button type="primary" size="small" onClick={() => { window.location.reload(); }}>
+      <Button
+        type='primary'
+        size='small'
+        onClick={() => {
+          window.location.reload();
+        }}
+      >
         立即更新
       </Button>
     </Space>
@@ -157,12 +162,14 @@ function App() {
     <ConfigProvider locale={enUS}>
       {modalHolder}
       {messageHolder}
-      <Button onClick={() => {
-        modal.confirm({
-          title: 'Confirm',
-          content: 'Are you sure?',  // 会使用 enUS locale
-        });
-      }}>
+      <Button
+        onClick={() => {
+          modal.confirm({
+            title: 'Confirm',
+            content: 'Are you sure?', // 会使用 enUS locale
+          });
+        }}
+      >
         Action
       </Button>
     </ConfigProvider>

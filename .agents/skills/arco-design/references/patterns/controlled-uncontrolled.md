@@ -1,6 +1,6 @@
 ---
 name: arco-controlled-uncontrolled
-description: "Arco Design controlled vs uncontrolled component patterns. Use for understanding value/onChange (controlled) vs defaultValue (uncontrolled) state management."
+description: 'Arco Design controlled vs uncontrolled component patterns. Use for understanding value/onChange (controlled) vs defaultValue (uncontrolled) state management.'
 user-invocable: false
 ---
 
@@ -30,46 +30,48 @@ Arco Design 中所有有状态的组件同时支持**受控**和**非受控**两
 
 ```tsx
 const [value, setValue] = useState('初始值');
-<Input value={value} onChange={setValue} />
+<Input value={value} onChange={setValue} />;
 
 const [checked, setChecked] = useState(true);
-<Switch checked={checked} onChange={setChecked} />
+<Switch checked={checked} onChange={setChecked} />;
 
 const [visible, setVisible] = useState(false);
-<Modal visible={visible} onCancel={() => setVisible(false)}>...</Modal>
+<Modal visible={visible} onCancel={() => setVisible(false)}>
+  ...
+</Modal>;
 ```
 
 ## 何时使用受控
 
-| 场景 | 模式 | 说明 |
-|------|------|------|
-| 简单的独立控件 | 非受控 | 不需要读取或操控状态 |
-| 表单 (Form.Item 内) | 非受控 | Form 内部管理状态 |
-| 组件间联动 | 受控 | 一个控件影响另一个 |
-| 外部重置/赋值 | 受控 | 需要 setState 改变值 |
-| 与 URL 参数同步 | 受控 | 值来源于 URL |
-| 格式化/拦截输入 | 受控 | onChange 中过滤/转换值 |
+| 场景                | 模式   | 说明                   |
+| ------------------- | ------ | ---------------------- |
+| 简单的独立控件      | 非受控 | 不需要读取或操控状态   |
+| 表单 (Form.Item 内) | 非受控 | Form 内部管理状态      |
+| 组件间联动          | 受控   | 一个控件影响另一个     |
+| 外部重置/赋值       | 受控   | 需要 setState 改变值   |
+| 与 URL 参数同步     | 受控   | 值来源于 URL           |
+| 格式化/拦截输入     | 受控   | onChange 中过滤/转换值 |
 
 ## 常见命名约定
 
-| 组件 | 非受控 | 受控 | 回调 |
-|------|--------|------|------|
-| Input | `defaultValue` | `value` | `onChange` |
-| Select | `defaultValue` | `value` | `onChange` |
-| DatePicker | `defaultValue` | `value` | `onChange` |
-| Checkbox | `defaultChecked` | `checked` | `onChange` |
-| Switch | `defaultChecked` | `checked` | `onChange` |
-| Modal | — | `visible` | `onCancel` |
-| Drawer | — | `visible` | `onCancel` |
-| Collapse | `defaultActiveKey` | `activeKey` | `onChange` |
-| Tabs | `defaultActiveTab` | `activeTab` | `onChange` |
-| Tree | `defaultExpandedKeys` | `expandedKeys` | `onExpand` |
-| Tree | `defaultSelectedKeys` | `selectedKeys` | `onSelect` |
-| Tree | `defaultCheckedKeys` | `checkedKeys` | `onCheck` |
-| Pagination | `defaultCurrent` | `current` | `onChange` |
-| Tooltip | `defaultPopupVisible` | `popupVisible` | `onVisibleChange` |
-| Menu | `defaultSelectedKeys` | `selectedKeys` | `onClickMenuItem` |
-| Menu | `defaultOpenKeys` | `openKeys` | `onClickSubMenu` |
+| 组件       | 非受控                | 受控           | 回调              |
+| ---------- | --------------------- | -------------- | ----------------- |
+| Input      | `defaultValue`        | `value`        | `onChange`        |
+| Select     | `defaultValue`        | `value`        | `onChange`        |
+| DatePicker | `defaultValue`        | `value`        | `onChange`        |
+| Checkbox   | `defaultChecked`      | `checked`      | `onChange`        |
+| Switch     | `defaultChecked`      | `checked`      | `onChange`        |
+| Modal      | —                     | `visible`      | `onCancel`        |
+| Drawer     | —                     | `visible`      | `onCancel`        |
+| Collapse   | `defaultActiveKey`    | `activeKey`    | `onChange`        |
+| Tabs       | `defaultActiveTab`    | `activeTab`    | `onChange`        |
+| Tree       | `defaultExpandedKeys` | `expandedKeys` | `onExpand`        |
+| Tree       | `defaultSelectedKeys` | `selectedKeys` | `onSelect`        |
+| Tree       | `defaultCheckedKeys`  | `checkedKeys`  | `onCheck`         |
+| Pagination | `defaultCurrent`      | `current`      | `onChange`        |
+| Tooltip    | `defaultPopupVisible` | `popupVisible` | `onVisibleChange` |
+| Menu       | `defaultSelectedKeys` | `selectedKeys` | `onClickMenuItem` |
+| Menu       | `defaultOpenKeys`     | `openKeys`     | `onClickSubMenu`  |
 
 ## 在 Form 中的受控模式
 

@@ -1,6 +1,6 @@
 ---
 name: arco-message
-description: "Arco Design Message component API. Use for global toast messages — success, error, warning, info, and loading feedback at page top."
+description: 'Arco Design Message component API. Use for global toast messages — success, error, warning, info, and loading feedback at page top.'
 user-invocable: false
 ---
 
@@ -65,7 +65,5 @@ const [message, contextHolder] = Message.useMessage();
 <ConfigProvider locale={enUS}>
   {contextHolder}
   <Button onClick={() => message.success('Done!')}>操作</Button>
-</ConfigProvider>
+</ConfigProvider>;
 ```
-
-

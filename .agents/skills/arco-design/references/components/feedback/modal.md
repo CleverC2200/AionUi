@@ -1,6 +1,6 @@
 ---
 name: arco-modal
-description: "Arco Design Modal component API. Use for modal dialogs, Modal.confirm() confirmation, Modal.info/success/warning/error, useModal hook, and form-in-modal patterns. Use unmountOnExit to reset form state."
+description: 'Arco Design Modal component API. Use for modal dialogs, Modal.confirm() confirmation, Modal.info/success/warning/error, useModal hook, and form-in-modal patterns. Use unmountOnExit to reset form state.'
 user-invocable: false
 ---
 
@@ -20,9 +20,12 @@ function Demo() {
     <>
       <Button onClick={() => setVisible(true)}>打开弹窗</Button>
       <Modal
-        title="标题"
+        title='标题'
         visible={visible}
-        onOk={() => { handleOk(); setVisible(false); }}
+        onOk={() => {
+          handleOk();
+          setVisible(false);
+        }}
         onCancel={() => setVisible(false)}
       >
         弹窗内容
@@ -36,37 +39,37 @@ function Demo() {
 
 ### ModalProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `visible` | `boolean` | — | 是否可见 |
-| `title` | `ReactNode` | — | 标题 |
-| `onOk` | `(e) => void \| Promise` | — | 确认回调 |
-| `onCancel` | `(e) => void` | — | 取消回调 |
-| `okText` | `string` | `'确定'` | 确认按钮文字 |
-| `cancelText` | `string` | `'取消'` | 取消按钮文字 |
-| `okButtonProps` | `ButtonProps` | — | 确认按钮属性 |
-| `cancelButtonProps` | `ButtonProps` | — | 取消按钮属性 |
-| `footer` | `ReactNode \| null` | — | 底部内容（null 隐藏） |
-| `closable` | `boolean` | `true` | 显示关闭按钮 |
-| `closeIcon` | `ReactNode` | — | 自定义关闭图标 |
-| `mask` | `boolean` | `true` | 显示遮罩 |
-| `maskClosable` | `boolean` | `true` | 点击遮罩关闭 |
-| `maskStyle` | `CSSProperties` | — | 遮罩样式 |
-| `wrapStyle` | `CSSProperties` | — | 遮罩外层包裹样式 |
-| `confirmLoading` | `boolean` | — | 确认按钮加载中 |
-| `simple` | `boolean` | — | 简洁模式（无标题栏） |
-| `alignCenter` | `boolean` | `true` | 垂直居中 |
-| `escToExit` | `boolean` | `true` | ESC 关闭 |
-| `focusLock` | `boolean` | `true` | 焦点锁定 |
-| `autoFocus` | `boolean` | `true` | 自动聚焦 |
-| `mountOnEnter` | `boolean` | `true` | 首次打开时才渲染 |
-| `unmountOnExit` | `boolean` | — | 关闭后销毁 DOM |
-| `getPopupContainer` | `() => Element` | — | 弹出容器 |
-| `getChildrenPopupContainer` | `(node) => Element` | — | 子弹出层容器 |
-| `wrapClassName` | `string` | — | 遮罩层类名 |
-| `modalRender` | `(node: ReactNode) => ReactNode` | — | 自定义渲染 |
-| `afterOpen` | `() => void` | — | 打开后回调 |
-| `afterClose` | `() => void` | — | 关闭后回调 |
+| 属性                        | 类型                             | 默认值   | 说明                  |
+| --------------------------- | -------------------------------- | -------- | --------------------- |
+| `visible`                   | `boolean`                        | —        | 是否可见              |
+| `title`                     | `ReactNode`                      | —        | 标题                  |
+| `onOk`                      | `(e) => void \| Promise`         | —        | 确认回调              |
+| `onCancel`                  | `(e) => void`                    | —        | 取消回调              |
+| `okText`                    | `string`                         | `'确定'` | 确认按钮文字          |
+| `cancelText`                | `string`                         | `'取消'` | 取消按钮文字          |
+| `okButtonProps`             | `ButtonProps`                    | —        | 确认按钮属性          |
+| `cancelButtonProps`         | `ButtonProps`                    | —        | 取消按钮属性          |
+| `footer`                    | `ReactNode \| null`              | —        | 底部内容（null 隐藏） |
+| `closable`                  | `boolean`                        | `true`   | 显示关闭按钮          |
+| `closeIcon`                 | `ReactNode`                      | —        | 自定义关闭图标        |
+| `mask`                      | `boolean`                        | `true`   | 显示遮罩              |
+| `maskClosable`              | `boolean`                        | `true`   | 点击遮罩关闭          |
+| `maskStyle`                 | `CSSProperties`                  | —        | 遮罩样式              |
+| `wrapStyle`                 | `CSSProperties`                  | —        | 遮罩外层包裹样式      |
+| `confirmLoading`            | `boolean`                        | —        | 确认按钮加载中        |
+| `simple`                    | `boolean`                        | —        | 简洁模式（无标题栏）  |
+| `alignCenter`               | `boolean`                        | `true`   | 垂直居中              |
+| `escToExit`                 | `boolean`                        | `true`   | ESC 关闭              |
+| `focusLock`                 | `boolean`                        | `true`   | 焦点锁定              |
+| `autoFocus`                 | `boolean`                        | `true`   | 自动聚焦              |
+| `mountOnEnter`              | `boolean`                        | `true`   | 首次打开时才渲染      |
+| `unmountOnExit`             | `boolean`                        | —        | 关闭后销毁 DOM        |
+| `getPopupContainer`         | `() => Element`                  | —        | 弹出容器              |
+| `getChildrenPopupContainer` | `(node) => Element`              | —        | 子弹出层容器          |
+| `wrapClassName`             | `string`                         | —        | 遮罩层类名            |
+| `modalRender`               | `(node: ReactNode) => ReactNode` | —        | 自定义渲染            |
+| `afterOpen`                 | `() => void`                     | —        | 打开后回调            |
+| `afterClose`                | `() => void`                     | —        | 关闭后回调            |
 
 ### 静态方法
 
@@ -100,12 +103,14 @@ const [modal, contextHolder] = Modal.useModal();
 // 在 JSX 中放置 contextHolder
 <ConfigProvider>
   {contextHolder}
-  <Button onClick={() => {
-    modal.confirm({ title: '确认', content: '确认操作？' });
-  }}>
+  <Button
+    onClick={() => {
+      modal.confirm({ title: '确认', content: '确认操作？' });
+    }}
+  >
     操作
   </Button>
-</ConfigProvider>
+</ConfigProvider>;
 ```
 
 > **`useModal` 的优势**：能够读取 ConfigProvider 的 context（locale、theme 等），而静态方法 `Modal.confirm` 无法获取 context。
@@ -114,7 +119,7 @@ const [modal, contextHolder] = Modal.useModal();
 
 ```tsx
 <Modal
-  title="提交"
+  title='提交'
   visible={visible}
   confirmLoading={loading}
   onOk={async () => {

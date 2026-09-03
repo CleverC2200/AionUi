@@ -1,6 +1,6 @@
 ---
 name: arco-dropdown
-description: "Arco Design Dropdown component API. Use for dropdown menus, context menus, button dropdowns, and action lists."
+description: 'Arco Design Dropdown component API. Use for dropdown menus, context menus, button dropdowns, and action lists.'
 user-invocable: false
 ---
 
@@ -32,28 +32,22 @@ import { Dropdown, Menu, Button } from '@arco-design/web-react';
 
 ### DropdownProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `droplist` | `ReactNode` | — | 下拉菜单（通常为 Menu） |
-| `position` | `'top' \| 'tl' \| 'tr' \| 'bottom' \| 'bl' \| 'br'` | `'bl'` | 弹出位置 |
-| `trigger` | `'hover' \| 'click' \| 'contextMenu'` | `'hover'` | 触发方式 |
-| `disabled` | `boolean` | — | 禁用 |
-| `popupVisible` / `defaultPopupVisible` | `boolean` | — | 可见状态 |
-| `unmountOnExit` | `boolean` | `true` | 关闭销毁 |
-| `getPopupContainer` | `(node) => Element` | — | 弹出容器（默认 `document.body`） |
-| `triggerProps` | `Partial<TriggerProps>` | — | 透传给底层 Trigger（如 `mouseEnterDelay`、`autoFitPosition`） |
-| `onVisibleChange` | `(visible) => void` | — | 可见变化 |
+| 属性                                   | 类型                                                | 默认值    | 说明                                                          |
+| -------------------------------------- | --------------------------------------------------- | --------- | ------------------------------------------------------------- |
+| `droplist`                             | `ReactNode`                                         | —         | 下拉菜单（通常为 Menu）                                       |
+| `position`                             | `'top' \| 'tl' \| 'tr' \| 'bottom' \| 'bl' \| 'br'` | `'bl'`    | 弹出位置                                                      |
+| `trigger`                              | `'hover' \| 'click' \| 'contextMenu'`               | `'hover'` | 触发方式                                                      |
+| `disabled`                             | `boolean`                                           | —         | 禁用                                                          |
+| `popupVisible` / `defaultPopupVisible` | `boolean`                                           | —         | 可见状态                                                      |
+| `unmountOnExit`                        | `boolean`                                           | `true`    | 关闭销毁                                                      |
+| `getPopupContainer`                    | `(node) => Element`                                 | —         | 弹出容器（默认 `document.body`）                              |
+| `triggerProps`                         | `Partial<TriggerProps>`                             | —         | 透传给底层 Trigger（如 `mouseEnterDelay`、`autoFitPosition`） |
+| `onVisibleChange`                      | `(visible) => void`                                 | —         | 可见变化                                                      |
 
 ### Dropdown.Button
 
 ```tsx
-<Dropdown.Button
-  type="primary"
-  droplist={<Menu>...</Menu>}
-  onClick={() => handleClick()}
->
+<Dropdown.Button type='primary' droplist={<Menu>...</Menu>} onClick={() => handleClick()}>
   操作
 </Dropdown.Button>
 ```
-
-

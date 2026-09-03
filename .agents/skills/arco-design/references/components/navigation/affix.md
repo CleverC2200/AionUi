@@ -1,6 +1,6 @@
 ---
 name: arco-affix
-description: "Arco Design Affix component API. Use for pinning elements to viewport at a fixed position on scroll."
+description: 'Arco Design Affix component API. Use for pinning elements to viewport at a fixed position on scroll.'
 user-invocable: false
 ---
 
@@ -20,12 +20,12 @@ import { Affix, Button } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `offsetTop` | `number` | 距顶部距离 |
-| `offsetBottom` | `number` | 距底部距离 |
-| `target` | `() => HTMLElement` | 滚动容器 |
-| `onChange` | `(affixed: boolean) => void` | 固钉状态变化 |
+| 属性           | 类型                         | 说明         |
+| -------------- | ---------------------------- | ------------ |
+| `offsetTop`    | `number`                     | 距顶部距离   |
+| `offsetBottom` | `number`                     | 距底部距离   |
+| `target`       | `() => HTMLElement`          | 滚动容器     |
+| `onChange`     | `(affixed: boolean) => void` | 固钉状态变化 |
 
 ## 常用模式
 
@@ -53,15 +53,15 @@ import { Affix, Button } from '@arco-design/web-react';
 
 ## 完整 API
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `offsetTop` | `number` | `0` | 距窗口顶部固定距离 |
-| `offsetBottom` | `number` | — | 距窗口底部固定距离 |
-| `target` | `() => HTMLElement \| Window` | `() => window` | 滚动容器 |
-| `targetContainer` | `() => HTMLElement \| Window` | — | 目标容器（计算偏移的参考） |
-| `affixClassName` | `string` | — | 固定状态的类名 |
-| `affixStyle` | `CSSProperties` | — | 固定状态的样式 |
-| `onChange` | `(affixed: boolean) => void` | — | 固钉状态变化回调 |
+| 属性              | 类型                          | 默认值         | 说明                       |
+| ----------------- | ----------------------------- | -------------- | -------------------------- |
+| `offsetTop`       | `number`                      | `0`            | 距窗口顶部固定距离         |
+| `offsetBottom`    | `number`                      | —              | 距窗口底部固定距离         |
+| `target`          | `() => HTMLElement \| Window` | `() => window` | 滚动容器                   |
+| `targetContainer` | `() => HTMLElement \| Window` | —              | 目标容器（计算偏移的参考） |
+| `affixClassName`  | `string`                      | —              | 固定状态的类名             |
+| `affixStyle`      | `CSSProperties`               | —              | 固定状态的样式             |
+| `onChange`        | `(affixed: boolean) => void`  | —              | 固钉状态变化回调           |
 
 ## 最佳实践
 

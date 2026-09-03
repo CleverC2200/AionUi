@@ -1,6 +1,6 @@
 ---
 name: arco-color-picker
-description: "Arco Design ColorPicker component API. Use for color selection with hex/rgb/hsl support."
+description: 'Arco Design ColorPicker component API. Use for color selection with hex/rgb/hsl support.'
 user-invocable: false
 ---
 
@@ -15,17 +15,17 @@ import { ColorPicker } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `value` | `string` | 受控颜色值 |
-| `defaultValue` | `string` | 默认颜色 |
-| `format` | `'hex' \| 'rgb'` | 颜色格式 |
-| `showHistory` | `boolean` | 显示历史颜色 |
-| `showPreset` | `boolean` | 显示预设颜色 |
-| `showText` | `boolean` | 显示颜色文字 |
-| `disabled` | `boolean` | 禁用 |
-| `disabledAlpha` | `boolean` | 禁用透明度 |
-| `onChange` | `(value: string) => void` | 变化回调 |
+| 属性            | 类型                      | 说明         |
+| --------------- | ------------------------- | ------------ |
+| `value`         | `string`                  | 受控颜色值   |
+| `defaultValue`  | `string`                  | 默认颜色     |
+| `format`        | `'hex' \| 'rgb'`          | 颜色格式     |
+| `showHistory`   | `boolean`                 | 显示历史颜色 |
+| `showPreset`    | `boolean`                 | 显示预设颜色 |
+| `showText`      | `boolean`                 | 显示颜色文字 |
+| `disabled`      | `boolean`                 | 禁用         |
+| `disabledAlpha` | `boolean`                 | 禁用透明度   |
+| `onChange`      | `(value: string) => void` | 变化回调     |
 
 ## 常用模式
 
@@ -55,19 +55,19 @@ const [color, setColor] = useState('#165DFF');
 
 ## 完整 API
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `value` / `defaultValue` | `string` | — | 颜色值 |
-| `format` | `'hex' \| 'rgb'` | `'hex'` | 颜色格式 |
-| `size` | `'mini' \| 'small' \| 'default' \| 'large'` | — | 尺寸 |
-| `showText` | `boolean` | — | 显示颜色文字 |
-| `showHistory` | `boolean` | — | 显示历史颜色 |
-| `showPreset` | `boolean` | — | 显示预设颜色 |
-| `presetColors` | `string[]` | — | 预设颜色列表 |
-| `disabled` | `boolean` | — | 禁用 |
-| `disabledAlpha` | `boolean` | — | 禁用透明度 |
-| `triggerElement` | `ReactNode` | — | 自定义触发元素 |
-| `onChange` | `(value: string) => void` | — | 变化回调 |
+| 属性                     | 类型                                        | 默认值  | 说明           |
+| ------------------------ | ------------------------------------------- | ------- | -------------- |
+| `value` / `defaultValue` | `string`                                    | —       | 颜色值         |
+| `format`                 | `'hex' \| 'rgb'`                            | `'hex'` | 颜色格式       |
+| `size`                   | `'mini' \| 'small' \| 'default' \| 'large'` | —       | 尺寸           |
+| `showText`               | `boolean`                                   | —       | 显示颜色文字   |
+| `showHistory`            | `boolean`                                   | —       | 显示历史颜色   |
+| `showPreset`             | `boolean`                                   | —       | 显示预设颜色   |
+| `presetColors`           | `string[]`                                  | —       | 预设颜色列表   |
+| `disabled`               | `boolean`                                   | —       | 禁用           |
+| `disabledAlpha`          | `boolean`                                   | —       | 禁用透明度     |
+| `triggerElement`         | `ReactNode`                                 | —       | 自定义触发元素 |
+| `onChange`               | `(value: string) => void`                   | —       | 变化回调       |
 
 ## 最佳实践
 

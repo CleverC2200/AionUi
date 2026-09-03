@@ -1,6 +1,6 @@
 ---
 name: arco-empty
-description: "Arco Design Empty component API. Use for empty state placeholders when no data is available."
+description: 'Arco Design Empty component API. Use for empty state placeholders when no data is available.'
 user-invocable: false
 ---
 
@@ -18,11 +18,11 @@ import { Empty } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `icon` | `ReactNode` | 自定义图标 |
-| `description` | `ReactNode` | 描述文字 |
-| `imgSrc` | `string` | 自定义图片地址 |
+| 属性          | 类型        | 说明           |
+| ------------- | ----------- | -------------- |
+| `icon`        | `ReactNode` | 自定义图标     |
+| `description` | `ReactNode` | 描述文字       |
+| `imgSrc`      | `string`    | 自定义图片地址 |
 
 ## 常用模式
 

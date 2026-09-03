@@ -1,6 +1,6 @@
 ---
 name: arco-checkbox
-description: "Arco Design Checkbox component API. Use for multiple selection, Checkbox.Group, select all / indeterminate state, and controlled checkbox."
+description: 'Arco Design Checkbox component API. Use for multiple selection, Checkbox.Group, select all / indeterminate state, and controlled checkbox.'
 user-invocable: false
 ---
 
@@ -27,23 +27,23 @@ import { Checkbox } from '@arco-design/web-react';
 
 ### CheckboxProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `checked` | `boolean` | — | 受控选中 |
-| `defaultChecked` | `boolean` | — | 默认选中 |
-| `disabled` | `boolean` | — | 禁用 |
-| `indeterminate` | `boolean` | — | 半选状态 |
-| `value` | `string \| number` | — | 在 Group 中的值 |
-| `onChange` | `(checked: boolean, e: Event) => void` | — | 变化回调 |
+| 属性             | 类型                                   | 默认值 | 说明            |
+| ---------------- | -------------------------------------- | ------ | --------------- |
+| `checked`        | `boolean`                              | —      | 受控选中        |
+| `defaultChecked` | `boolean`                              | —      | 默认选中        |
+| `disabled`       | `boolean`                              | —      | 禁用            |
+| `indeterminate`  | `boolean`                              | —      | 半选状态        |
+| `value`          | `string \| number`                     | —      | 在 Group 中的值 |
+| `onChange`       | `(checked: boolean, e: Event) => void` | —      | 变化回调        |
 
 ### Checkbox.Group Props
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `value` / `defaultValue` | `(string \| number)[]` | 选中的值 |
-| `options` | `(string \| { label, value, disabled })[]` | 选项列表 |
-| `direction` | `'horizontal' \| 'vertical'` | 排列方向 |
-| `onChange` | `(values: any[]) => void` | 变化回调 |
+| 属性                     | 类型                                       | 说明     |
+| ------------------------ | ------------------------------------------ | -------- |
+| `value` / `defaultValue` | `(string \| number)[]`                     | 选中的值 |
+| `options`                | `(string \| { label, value, disabled })[]` | 选项列表 |
+| `direction`              | `'horizontal' \| 'vertical'`               | 排列方向 |
+| `onChange`               | `(values: any[]) => void`                  | 变化回调 |
 
 ### 全选 / 半选
 
@@ -62,5 +62,3 @@ const checkAll = checkedList.length === allOptions.length;
 </Checkbox>
 <Checkbox.Group value={checkedList} onChange={setCheckedList} options={allOptions} />
 ```
-
-

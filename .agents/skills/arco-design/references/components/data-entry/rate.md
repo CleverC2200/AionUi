@@ -1,6 +1,6 @@
 ---
 name: arco-rate
-description: "Arco Design Rate component API. Use for star rating, half-star rating, readonly display, and custom rating characters."
+description: 'Arco Design Rate component API. Use for star rating, half-star rating, readonly display, and custom rating characters.'
 user-invocable: false
 ---
 
@@ -18,20 +18,20 @@ import { Rate } from '@arco-design/web-react';
 
 ## RateProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `value` | `number` | — | 受控值 |
-| `defaultValue` | `number` | — | 默认值 |
-| `count` | `number` | `5` | 总数 |
-| `allowHalf` | `boolean` | — | 允许半选 |
-| `allowClear` | `boolean` | — | 允许清零 |
-| `readonly` | `boolean` | — | 只读 |
-| `disabled` | `boolean` | — | 禁用 |
-| `grading` | `boolean` | — | 笑脸分级 |
-| `character` | `ReactNode \| ((index: number) => ReactNode)` | — | 自定义图标 |
-| `tooltips` | `string[]` | — | 各分值提示文案 |
-| `onChange` | `(value: number) => void` | — | 变化回调 |
-| `onHoverChange` | `(value: number) => void` | — | hover 变化 |
+| 属性            | 类型                                          | 默认值 | 说明           |
+| --------------- | --------------------------------------------- | ------ | -------------- |
+| `value`         | `number`                                      | —      | 受控值         |
+| `defaultValue`  | `number`                                      | —      | 默认值         |
+| `count`         | `number`                                      | `5`    | 总数           |
+| `allowHalf`     | `boolean`                                     | —      | 允许半选       |
+| `allowClear`    | `boolean`                                     | —      | 允许清零       |
+| `readonly`      | `boolean`                                     | —      | 只读           |
+| `disabled`      | `boolean`                                     | —      | 禁用           |
+| `grading`       | `boolean`                                     | —      | 笑脸分级       |
+| `character`     | `ReactNode \| ((index: number) => ReactNode)` | —      | 自定义图标     |
+| `tooltips`      | `string[]`                                    | —      | 各分值提示文案 |
+| `onChange`      | `(value: number) => void`                     | —      | 变化回调       |
+| `onHoverChange` | `(value: number) => void`                     | —      | hover 变化     |
 
 ## 常用模式
 

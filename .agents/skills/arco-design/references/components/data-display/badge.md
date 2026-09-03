@@ -1,6 +1,6 @@
 ---
 name: arco-badge
-description: "Arco Design Badge component API. Use for numeric badges, status dots, and count indicators on elements."
+description: 'Arco Design Badge component API. Use for numeric badges, status dots, and count indicators on elements.'
 user-invocable: false
 ---
 
@@ -18,17 +18,17 @@ import { Badge, Avatar } from '@arco-design/web-react';
 
 ## BadgeProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `count` | `number \| ReactNode` | — | 数字 |
-| `maxCount` | `number` | `99` | 最大显示数 |
-| `dot` | `boolean` | — | 小红点 |
-| `dotStyle` | `CSSProperties` | — | 点样式 |
-| `dotClassName` | `string \| string[]` | — | 点 class |
-| `offset` | `[number, number]` | — | 偏移 |
-| `text` | `string` | — | 文本 |
-| `status` | `'default' \| 'processing' \| 'success' \| 'warning' \| 'error'` | — | 状态点 |
-| `color` | `string` | — | 自定义颜色 |
+| 属性           | 类型                                                             | 默认值 | 说明       |
+| -------------- | ---------------------------------------------------------------- | ------ | ---------- |
+| `count`        | `number \| ReactNode`                                            | —      | 数字       |
+| `maxCount`     | `number`                                                         | `99`   | 最大显示数 |
+| `dot`          | `boolean`                                                        | —      | 小红点     |
+| `dotStyle`     | `CSSProperties`                                                  | —      | 点样式     |
+| `dotClassName` | `string \| string[]`                                             | —      | 点 class   |
+| `offset`       | `[number, number]`                                               | —      | 偏移       |
+| `text`         | `string`                                                         | —      | 文本       |
+| `status`       | `'default' \| 'processing' \| 'success' \| 'warning' \| 'error'` | —      | 状态点     |
+| `color`        | `string`                                                         | —      | 自定义颜色 |
 
 ## 常用模式
 

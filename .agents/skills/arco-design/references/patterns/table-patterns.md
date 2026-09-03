@@ -1,6 +1,6 @@
 ---
 name: arco-table-patterns
-description: "Arco Design table patterns and best practices. Use for remote data loading, editable table rows, virtual scroll for large datasets, custom filters, and row selection."
+description: 'Arco Design table patterns and best practices. Use for remote data loading, editable table rows, virtual scroll for large datasets, custom filters, and row selection.'
 user-invocable: false
 ---
 
@@ -28,22 +28,24 @@ function ServerTable() {
       ...filters,
     });
     setData(res.data);
-    setPagination(prev => ({ ...prev, total: res.total }));
+    setPagination((prev) => ({ ...prev, total: res.total }));
     setLoading(false);
   }, [pagination.current, pagination.pageSize, sorter, filters]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const columns = [
     {
       title: '名称',
       dataIndex: 'name',
-      sorter: true,  // 服务端排序只需 true，不传排序函数
+      sorter: true, // 服务端排序只需 true，不传排序函数
       filters: [
         { text: '类型A', value: 'A' },
         { text: '类型B', value: 'B' },
       ],
-      onFilter: undefined,  // 不传则走服务端筛选
+      onFilter: undefined, // 不传则走服务端筛选
     },
     { title: '金额', dataIndex: 'amount', sorter: true },
     { title: '日期', dataIndex: 'date' },
@@ -84,8 +86,12 @@ function SelectableTable() {
           closable
           action={
             <Space>
-              <Button size="small" onClick={() => batchDelete(selectedRowKeys)}>批量删除</Button>
-              <Button size="small" onClick={() => setSelectedRowKeys([])}>取消选择</Button>
+              <Button size='small' onClick={() => batchDelete(selectedRowKeys)}>
+                批量删除
+              </Button>
+              <Button size='small' onClick={() => setSelectedRowKeys([])}>
+                取消选择
+              </Button>
             </Space>
           }
         />
@@ -97,7 +103,7 @@ function SelectableTable() {
           type: 'checkbox',
           selectedRowKeys,
           onChange: (keys) => setSelectedRowKeys(keys),
-          preserveSelectedRowKeys: true,  // 跨页保持选中
+          preserveSelectedRowKeys: true, // 跨页保持选中
           checkboxProps: (record) => ({
             disabled: record.status === 'locked',
           }),
@@ -148,7 +154,11 @@ function SelectableTable() {
       title: '操作',
       fixed: 'right',
       width: 120,
-      render: (_, record) => <Button type="text" size="small">编辑</Button>,
+      render: (_, record) => (
+        <Button type='text' size='small'>
+          编辑
+        </Button>
+      ),
     },
   ]}
   data={data}
@@ -162,8 +172,8 @@ function SelectableTable() {
   virtualized
   scroll={{ y: 500 }}
   columns={columns}
-  data={bigData}  // 10000+ 行
-  rowKey="id"
+  data={bigData} // 10000+ 行
+  rowKey='id'
 />
 ```
 
@@ -174,9 +184,7 @@ function EditableTable() {
   const [data, setData] = useState(initialData);
 
   const handleSave = (rowKey, field, value) => {
-    setData(prev => prev.map(row =>
-      row.key === rowKey ? { ...row, [field]: value } : row
-    ));
+    setData((prev) => prev.map((row) => (row.key === rowKey ? { ...row, [field]: value } : row)));
   };
 
   const columns = [
@@ -184,22 +192,13 @@ function EditableTable() {
       title: '名称',
       dataIndex: 'name',
       editable: true,
-      render: (col, record) => (
-        <EditableCell
-          value={col}
-          onSave={(value) => handleSave(record.key, 'name', value)}
-        />
-      ),
+      render: (col, record) => <EditableCell value={col} onSave={(value) => handleSave(record.key, 'name', value)} />,
     },
     {
       title: '金额',
       dataIndex: 'amount',
       render: (col, record) => (
-        <EditableCell
-          value={col}
-          component={InputNumber}
-          onSave={(value) => handleSave(record.key, 'amount', value)}
-        />
+        <EditableCell value={col} component={InputNumber} onSave={(value) => handleSave(record.key, 'amount', value)} />
       ),
     },
   ];
@@ -217,12 +216,22 @@ function EditableCell({ value, onSave, component: Component = Input }) {
         autoFocus
         value={editValue}
         onChange={setEditValue}
-        onBlur={() => { onSave(editValue); setEditing(false); }}
-        onPressEnter={() => { onSave(editValue); setEditing(false); }}
+        onBlur={() => {
+          onSave(editValue);
+          setEditing(false);
+        }}
+        onPressEnter={() => {
+          onSave(editValue);
+          setEditing(false);
+        }}
       />
     );
   }
-  return <span onClick={() => setEditing(true)} style={{ cursor: 'pointer' }}>{value}</span>;
+  return (
+    <span onClick={() => setEditing(true)} style={{ cursor: 'pointer' }}>
+      {value}
+    </span>
+  );
 }
 ```
 
@@ -235,19 +244,32 @@ function SearchTable() {
 
   return (
     <div>
-      <Form form={form} layout="inline" style={{ marginBottom: 16 }}>
-        <Form.Item field="name" label="名称">
-          <Input placeholder="搜索名称" />
+      <Form form={form} layout='inline' style={{ marginBottom: 16 }}>
+        <Form.Item field='name' label='名称'>
+          <Input placeholder='搜索名称' />
         </Form.Item>
-        <Form.Item field="status" label="状态">
-          <Select options={['全部', '启用', '禁用']} placeholder="选择状态" />
+        <Form.Item field='status' label='状态'>
+          <Select options={['全部', '启用', '禁用']} placeholder='选择状态' />
         </Form.Item>
         <Form.Item>
-          <Button type="primary" onClick={async () => {
-            const values = form.getFieldsValue();
-            setParams(values);
-          }}>搜索</Button>
-          <Button onClick={() => { form.resetFields(); setParams({}); }} style={{ marginLeft: 8 }}>重置</Button>
+          <Button
+            type='primary'
+            onClick={async () => {
+              const values = form.getFieldsValue();
+              setParams(values);
+            }}
+          >
+            搜索
+          </Button>
+          <Button
+            onClick={() => {
+              form.resetFields();
+              setParams({});
+            }}
+            style={{ marginLeft: 8 }}
+          >
+            重置
+          </Button>
         </Form.Item>
       </Form>
       <Table columns={columns} data={filteredData} />

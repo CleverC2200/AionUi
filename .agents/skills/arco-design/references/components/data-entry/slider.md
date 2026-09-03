@@ -1,6 +1,6 @@
 ---
 name: arco-slider
-description: "Arco Design Slider component API. Use for range sliders, marks/ticks, vertical slider, step control, and tooltip formatting."
+description: 'Arco Design Slider component API. Use for range sliders, marks/ticks, vertical slider, step control, and tooltip formatting.'
 user-invocable: false
 ---
 
@@ -18,25 +18,25 @@ import { Slider } from '@arco-design/web-react';
 
 ## SliderProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `value` | `number \| [number, number]` | — | 受控值 |
-| `defaultValue` | `number \| [number, number]` | — | 默认值 |
-| `min` | `number` | `0` | 最小值 |
-| `max` | `number` | `100` | 最大值 |
-| `step` | `number` | `1` | 步长 |
-| `range` | `boolean` | — | 范围选择 |
-| `vertical` | `boolean` | — | 垂直方向 |
-| `marks` | `Record<number, ReactNode>` | — | 刻度标记 |
-| `showTicks` | `boolean` | — | 显示刻度 |
-| `showInput` | `boolean` | — | 显示输入框 |
-| `disabled` | `boolean` | — | 禁用 |
-| `reverse` | `boolean` | — | 反向 |
-| `tooltipVisible` | `boolean` | — | 提示是否一直显示 |
-| `formatTooltip` | `(value: number) => ReactNode` | — | 提示格式化 |
-| `getIntervalConfig` | `(intervalKey: number, prevIntervalKey: number) => { step?, marks? }` | — | 分段配置不同 step / marks（2.30.0） |
-| `onChange` | `(value) => void` | — | 值变化（松开后） |
-| `onAfterChange` | `(value) => void` | — | 拖拽结束回调 |
+| 属性                | 类型                                                                  | 默认值 | 说明                                |
+| ------------------- | --------------------------------------------------------------------- | ------ | ----------------------------------- |
+| `value`             | `number \| [number, number]`                                          | —      | 受控值                              |
+| `defaultValue`      | `number \| [number, number]`                                          | —      | 默认值                              |
+| `min`               | `number`                                                              | `0`    | 最小值                              |
+| `max`               | `number`                                                              | `100`  | 最大值                              |
+| `step`              | `number`                                                              | `1`    | 步长                                |
+| `range`             | `boolean`                                                             | —      | 范围选择                            |
+| `vertical`          | `boolean`                                                             | —      | 垂直方向                            |
+| `marks`             | `Record<number, ReactNode>`                                           | —      | 刻度标记                            |
+| `showTicks`         | `boolean`                                                             | —      | 显示刻度                            |
+| `showInput`         | `boolean`                                                             | —      | 显示输入框                          |
+| `disabled`          | `boolean`                                                             | —      | 禁用                                |
+| `reverse`           | `boolean`                                                             | —      | 反向                                |
+| `tooltipVisible`    | `boolean`                                                             | —      | 提示是否一直显示                    |
+| `formatTooltip`     | `(value: number) => ReactNode`                                        | —      | 提示格式化                          |
+| `getIntervalConfig` | `(intervalKey: number, prevIntervalKey: number) => { step?, marks? }` | —      | 分段配置不同 step / marks（2.30.0） |
+| `onChange`          | `(value) => void`                                                     | —      | 值变化（松开后）                    |
+| `onAfterChange`     | `(value) => void`                                                     | —      | 拖拽结束回调                        |
 
 ## 常用模式
 

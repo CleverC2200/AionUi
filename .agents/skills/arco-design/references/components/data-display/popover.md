@@ -1,6 +1,6 @@
 ---
 name: arco-popover
-description: "Arco Design Popover component API. Use for click/hover popup cards with rich content, titles, and interactive elements."
+description: 'Arco Design Popover component API. Use for click/hover popup cards with rich content, titles, and interactive elements.'
 user-invocable: false
 ---
 
@@ -28,16 +28,16 @@ import { Popover, Button } from '@arco-design/web-react';
 
 继承 Tooltip 的所有 props，额外支持：
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `title` | `ReactNode \| (() => ReactNode)` | 标题（函数形式 2.48.0） |
-| `content` | `ReactNode \| (() => ReactNode)` | 内容 |
-| `position` | `'top' \| 'tl' \| 'tr' \| 'bottom' \| 'bl' \| 'br' \| 'left' \| 'lt' \| 'lb' \| 'right' \| 'rt' \| 'rb'` | 弹出位置 |
-| `trigger` | `'hover' \| 'focus' \| 'click'` | 触发方式 |
-| `popupVisible` / `defaultPopupVisible` | `boolean` | 可见状态 |
-| `disabled` | `boolean` | 禁用 |
-| `getPopupContainer` | `(node) => Element` | 弹出容器 |
-| `onVisibleChange` | `(visible: boolean) => void` | 可见变化 |
+| 属性                                   | 类型                                                                                                     | 说明                    |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `title`                                | `ReactNode \| (() => ReactNode)`                                                                         | 标题（函数形式 2.48.0） |
+| `content`                              | `ReactNode \| (() => ReactNode)`                                                                         | 内容                    |
+| `position`                             | `'top' \| 'tl' \| 'tr' \| 'bottom' \| 'bl' \| 'br' \| 'left' \| 'lt' \| 'lb' \| 'right' \| 'rt' \| 'rb'` | 弹出位置                |
+| `trigger`                              | `'hover' \| 'focus' \| 'click'`                                                                          | 触发方式                |
+| `popupVisible` / `defaultPopupVisible` | `boolean`                                                                                                | 可见状态                |
+| `disabled`                             | `boolean`                                                                                                | 禁用                    |
+| `getPopupContainer`                    | `(node) => Element`                                                                                      | 弹出容器                |
+| `onVisibleChange`                      | `(visible: boolean) => void`                                                                             | 可见变化                |
 
 ## 常用模式
 

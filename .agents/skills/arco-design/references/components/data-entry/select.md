@@ -1,6 +1,6 @@
 ---
 name: arco-select
-description: "Arco Design Select component API. Use for dropdown select, multi-select, searchable select, remote search, option groups, Select.Option, and virtual scroll for large lists."
+description: 'Arco Design Select component API. Use for dropdown select, multi-select, searchable select, remote search, option groups, Select.Option, and virtual scroll for large lists.'
 user-invocable: false
 ---
 
@@ -42,50 +42,50 @@ const Option = Select.Option;
 
 ### SelectProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `value` | `string \| string[] \| LabeledValue \| LabeledValue[]` | — | 受控值 |
-| `defaultValue` | 同上 | — | 默认值 |
-| `mode` | `'multiple' \| 'tags'` | — | 多选 / 标签创建模式 |
-| `options` | `(string \| number \| OptionInfo)[]` | — | 数据化选项 |
-| `labelInValue` | `boolean` | — | 值为 `{ label, value }` 格式 |
-| `placeholder` | `string` | — | 占位文字 |
-| `allowClear` | `boolean` | — | 允许清除 |
-| `allowCreate` | `boolean` | — | 允许创建新选项 |
-| `showSearch` | `boolean` | — | 可搜索 |
-| `filterOption` | `boolean \| (inputValue, option) => boolean` | `true` | 本地搜索过滤 |
-| `onSearch` | `(value: string) => void` | — | 搜索回调（远程搜索） |
-| `loading` | `boolean` | — | 加载中 |
-| `disabled` | `boolean` | — | 禁用 |
-| `size` | `'mini' \| 'small' \| 'default' \| 'large'` | — | 尺寸 |
-| `bordered` | `boolean` | `true` | 显示边框 |
-| `maxTagCount` | `number` | — | 多选时最多显示标签数 |
-| `virtualListProps` | `AvailableVirtualListProps` | — | 虚拟滚动配置 |
-| `triggerProps` | `TriggerProps` | — | 下拉框触发器属性 |
-| `dropdownMenuStyle` | `CSSProperties` | — | 下拉菜单样式 |
-| `dropdownRender` | `(menu: ReactNode) => ReactNode` | — | 自定义下拉内容 |
-| `triggerElement` | `ReactNode` | — | 自定义触发元素 |
-| `onChange` | `(value, option) => void` | — | 值变化回调 |
-| `onVisibleChange` | `(visible: boolean) => void` | — | 下拉可见性变化 |
-| `onSelect` | `(value, option) => void` | — | 单次选中回调（2.52.0） |
-| `onDeselect` | `(value, option) => void` | — | 取消选中回调（多选模式） |
-| `onPopupScroll` | `(elem: HTMLElement) => void` | — | 下拉滚动 |
-| `onInputValueChange` | `(value: string, reason) => void` | — | 输入值变化 |
-| `onPaste` | `(e) => void` | — | 粘贴回调 |
-| `renderFormat` | `(option, value) => ReactNode` | — | 自定义选中态展示 |
+| 属性                 | 类型                                                   | 默认值 | 说明                         |
+| -------------------- | ------------------------------------------------------ | ------ | ---------------------------- |
+| `value`              | `string \| string[] \| LabeledValue \| LabeledValue[]` | —      | 受控值                       |
+| `defaultValue`       | 同上                                                   | —      | 默认值                       |
+| `mode`               | `'multiple' \| 'tags'`                                 | —      | 多选 / 标签创建模式          |
+| `options`            | `(string \| number \| OptionInfo)[]`                   | —      | 数据化选项                   |
+| `labelInValue`       | `boolean`                                              | —      | 值为 `{ label, value }` 格式 |
+| `placeholder`        | `string`                                               | —      | 占位文字                     |
+| `allowClear`         | `boolean`                                              | —      | 允许清除                     |
+| `allowCreate`        | `boolean`                                              | —      | 允许创建新选项               |
+| `showSearch`         | `boolean`                                              | —      | 可搜索                       |
+| `filterOption`       | `boolean \| (inputValue, option) => boolean`           | `true` | 本地搜索过滤                 |
+| `onSearch`           | `(value: string) => void`                              | —      | 搜索回调（远程搜索）         |
+| `loading`            | `boolean`                                              | —      | 加载中                       |
+| `disabled`           | `boolean`                                              | —      | 禁用                         |
+| `size`               | `'mini' \| 'small' \| 'default' \| 'large'`            | —      | 尺寸                         |
+| `bordered`           | `boolean`                                              | `true` | 显示边框                     |
+| `maxTagCount`        | `number`                                               | —      | 多选时最多显示标签数         |
+| `virtualListProps`   | `AvailableVirtualListProps`                            | —      | 虚拟滚动配置                 |
+| `triggerProps`       | `TriggerProps`                                         | —      | 下拉框触发器属性             |
+| `dropdownMenuStyle`  | `CSSProperties`                                        | —      | 下拉菜单样式                 |
+| `dropdownRender`     | `(menu: ReactNode) => ReactNode`                       | —      | 自定义下拉内容               |
+| `triggerElement`     | `ReactNode`                                            | —      | 自定义触发元素               |
+| `onChange`           | `(value, option) => void`                              | —      | 值变化回调                   |
+| `onVisibleChange`    | `(visible: boolean) => void`                           | —      | 下拉可见性变化               |
+| `onSelect`           | `(value, option) => void`                              | —      | 单次选中回调（2.52.0）       |
+| `onDeselect`         | `(value, option) => void`                              | —      | 取消选中回调（多选模式）     |
+| `onPopupScroll`      | `(elem: HTMLElement) => void`                          | —      | 下拉滚动                     |
+| `onInputValueChange` | `(value: string, reason) => void`                      | —      | 输入值变化                   |
+| `onPaste`            | `(e) => void`                                          | —      | 粘贴回调                     |
+| `renderFormat`       | `(option, value) => ReactNode`                         | —      | 自定义选中态展示             |
 
 ### Select.Option Props
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `value` | `string \| number` | 选项值 |
-| `disabled` | `boolean` | 禁用 |
-| `extra` | `any` | 附加数据 |
+| 属性       | 类型               | 说明     |
+| ---------- | ------------------ | -------- |
+| `value`    | `string \| number` | 选项值   |
+| `disabled` | `boolean`          | 禁用     |
+| `extra`    | `any`              | 附加数据 |
 
 ### Select.OptGroup Props
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
+| 属性    | 类型        | 说明     |
+| ------- | ----------- | -------- |
 | `label` | `ReactNode` | 分组标签 |
 
 ### SelectHandle (Ref)
@@ -94,9 +94,9 @@ const Option = Select.Option;
 const ref = useRef<SelectHandle>(null);
 ref.current.focus();
 ref.current.blur();
-ref.current.getOptionInfoList();     // 获取所有选项
-ref.current.activeOptionValue;        // 当前高亮选项值
-ref.current.scrollIntoView(value);    // 滚动到指定选项
+ref.current.getOptionInfoList(); // 获取所有选项
+ref.current.activeOptionValue; // 当前高亮选项值
+ref.current.scrollIntoView(value); // 滚动到指定选项
 ```
 
 ## 常用模式
@@ -112,18 +112,18 @@ function RemoteSelect() {
     if (!value) return;
     setLoading(true);
     const data = await fetchOptions(value);
-    setOptions(data.map(d => ({ label: d.name, value: d.id })));
+    setOptions(data.map((d) => ({ label: d.name, value: d.id })));
     setLoading(false);
   };
 
   return (
     <Select
       showSearch
-      filterOption={false}  // 禁用本地过滤
+      filterOption={false} // 禁用本地过滤
       options={options}
       onSearch={handleSearch}
       loading={loading}
-      placeholder="搜索用户"
+      placeholder='搜索用户'
     />
   );
 }
@@ -152,14 +152,18 @@ function RemoteSelect() {
       {menu}
       <Divider style={{ margin: '4px 0' }} />
       <div style={{ padding: '4px 8px' }}>
-        <Button type="text" size="small" onClick={addNewOption}>
+        <Button type='text' size='small' onClick={addNewOption}>
           <IconPlus /> 新增选项
         </Button>
       </div>
     </div>
   )}
 >
-  {options.map(opt => <Option key={opt} value={opt}>{opt}</Option>)}
+  {options.map((opt) => (
+    <Option key={opt} value={opt}>
+      {opt}
+    </Option>
+  ))}
 </Select>
 ```
 

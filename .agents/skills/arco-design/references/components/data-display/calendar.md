@@ -1,6 +1,6 @@
 ---
 name: arco-calendar
-description: "Arco Design Calendar component API. Use for calendar views, event marking on dates, and date panel display."
+description: 'Arco Design Calendar component API. Use for calendar views, event marking on dates, and date panel display.'
 user-invocable: false
 ---
 
@@ -16,18 +16,18 @@ import { Calendar } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `value` / `defaultValue` | `Dayjs` | 当前日期 |
-| `mode` | `'day' \| 'week' \| 'month' \| 'year'` | 视图模式 |
-| `panel` | `boolean` | 面板模式（无切换按钮） |
-| `panelWidth` | `number \| string` | 面板宽度 |
-| `dayStartOfWeek` | `0 \| 1` | 周起始日 |
-| `dateRender` | `(date) => ReactNode` | 自定义日期渲染 |
-| `dateInnerContent` | `(date) => ReactNode` | 日期内容 |
-| `disabledDate` | `(date) => boolean` | 禁用日期 |
-| `onChange` | `(date) => void` | 日期变化 |
-| `onPanelChange` | `(date) => void` | 面板变化 |
+| 属性                     | 类型                                   | 说明                   |
+| ------------------------ | -------------------------------------- | ---------------------- |
+| `value` / `defaultValue` | `Dayjs`                                | 当前日期               |
+| `mode`                   | `'day' \| 'week' \| 'month' \| 'year'` | 视图模式               |
+| `panel`                  | `boolean`                              | 面板模式（无切换按钮） |
+| `panelWidth`             | `number \| string`                     | 面板宽度               |
+| `dayStartOfWeek`         | `0 \| 1`                               | 周起始日               |
+| `dateRender`             | `(date) => ReactNode`                  | 自定义日期渲染         |
+| `dateInnerContent`       | `(date) => ReactNode`                  | 日期内容               |
+| `disabledDate`           | `(date) => boolean`                    | 禁用日期               |
+| `onChange`               | `(date) => void`                       | 日期变化               |
+| `onPanelChange`          | `(date) => void`                       | 面板变化               |
 
 ## 常用模式
 

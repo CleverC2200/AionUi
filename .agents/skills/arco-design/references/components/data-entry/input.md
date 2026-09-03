@@ -1,6 +1,6 @@
 ---
 name: arco-input
-description: "Arco Design Input component API. Use for text input, password input (Input.Password), search box (Input.Search), textarea (Input.TextArea), input groups, and prefix/suffix addons."
+description: 'Arco Design Input component API. Use for text input, password input (Input.Password), search box (Input.Search), textarea (Input.TextArea), input groups, and prefix/suffix addons.'
 user-invocable: false
 ---
 
@@ -24,30 +24,30 @@ import { Input } from '@arco-design/web-react';
 
 ### InputProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `value` | `string` | — | 受控值 |
-| `defaultValue` | `string` | — | 默认值 |
-| `placeholder` | `string` | — | 占位文字 |
-| `allowClear` | `boolean` | — | 可清除 |
-| `disabled` | `boolean` | — | 禁用 |
-| `readOnly` | `boolean` | — | 只读 |
-| `status` | `'error' \| 'warning'` | — | 状态 |
-| `size` | `'mini' \| 'small' \| 'default' \| 'large'` | — | 尺寸 |
-| `prefix` | `ReactNode` | — | 前缀 |
-| `suffix` | `ReactNode` | — | 后缀 |
-| `addBefore` | `ReactNode` | — | 前置标签 |
-| `addAfter` | `ReactNode` | — | 后置标签 |
-| `maxLength` | `number \| { length: number; errorOnly?: boolean }` | — | 最大长度（`errorOnly: true` 时超长仅 error 态、不限制输入） |
-| `normalize` | `(value: string) => string` | — | 值规范化（2.50.0） |
-| `normalizeTrigger` | `('onBlur' \| 'onPressEnter')[]` | `['onBlur']` | 触发 `normalize` 的事件（2.50.0） |
-| `clearIcon` | `ReactNode` | — | 自定义清除图标（2.50.0） |
-| `showWordLimit` | `boolean` | — | 显示字数统计 |
-| `onChange` | `(value: string, e: Event) => void` | — | 值变化 |
-| `onPressEnter` | `(e: Event) => void` | — | 回车回调 |
-| `onClear` | `() => void` | — | 清除回调 |
-| `normalize` | `(value: string) => string` | — | 值规范化 |
-| `height` | `number \| string` | — | 自定义高度 |
+| 属性               | 类型                                                | 默认值       | 说明                                                        |
+| ------------------ | --------------------------------------------------- | ------------ | ----------------------------------------------------------- |
+| `value`            | `string`                                            | —            | 受控值                                                      |
+| `defaultValue`     | `string`                                            | —            | 默认值                                                      |
+| `placeholder`      | `string`                                            | —            | 占位文字                                                    |
+| `allowClear`       | `boolean`                                           | —            | 可清除                                                      |
+| `disabled`         | `boolean`                                           | —            | 禁用                                                        |
+| `readOnly`         | `boolean`                                           | —            | 只读                                                        |
+| `status`           | `'error' \| 'warning'`                              | —            | 状态                                                        |
+| `size`             | `'mini' \| 'small' \| 'default' \| 'large'`         | —            | 尺寸                                                        |
+| `prefix`           | `ReactNode`                                         | —            | 前缀                                                        |
+| `suffix`           | `ReactNode`                                         | —            | 后缀                                                        |
+| `addBefore`        | `ReactNode`                                         | —            | 前置标签                                                    |
+| `addAfter`         | `ReactNode`                                         | —            | 后置标签                                                    |
+| `maxLength`        | `number \| { length: number; errorOnly?: boolean }` | —            | 最大长度（`errorOnly: true` 时超长仅 error 态、不限制输入） |
+| `normalize`        | `(value: string) => string`                         | —            | 值规范化（2.50.0）                                          |
+| `normalizeTrigger` | `('onBlur' \| 'onPressEnter')[]`                    | `['onBlur']` | 触发 `normalize` 的事件（2.50.0）                           |
+| `clearIcon`        | `ReactNode`                                         | —            | 自定义清除图标（2.50.0）                                    |
+| `showWordLimit`    | `boolean`                                           | —            | 显示字数统计                                                |
+| `onChange`         | `(value: string, e: Event) => void`                 | —            | 值变化                                                      |
+| `onPressEnter`     | `(e: Event) => void`                                | —            | 回车回调                                                    |
+| `onClear`          | `() => void`                                        | —            | 清除回调                                                    |
+| `normalize`        | `(value: string) => string`                         | —            | 值规范化                                                    |
+| `height`           | `number \| string`                                  | —            | 自定义高度                                                  |
 
 ### Input.Search
 
@@ -60,46 +60,41 @@ import { Input } from '@arco-design/web-react';
 />
 ```
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `searchButton` | `boolean \| ReactNode` | 搜索按钮 |
-| `loading` | `boolean` | 搜索加载中 |
-| `onSearch` | `(value: string) => void` | 搜索回调 |
+| 属性           | 类型                      | 说明       |
+| -------------- | ------------------------- | ---------- |
+| `searchButton` | `boolean \| ReactNode`    | 搜索按钮   |
+| `loading`      | `boolean`                 | 搜索加载中 |
+| `onSearch`     | `(value: string) => void` | 搜索回调   |
 
 ### Input.TextArea
 
 ```tsx
-<Input.TextArea
-  placeholder="多行输入"
-  autoSize={{ minRows: 3, maxRows: 6 }}
-  maxLength={500}
-  showWordLimit
-/>
+<Input.TextArea placeholder='多行输入' autoSize={{ minRows: 3, maxRows: 6 }} maxLength={500} showWordLimit />
 ```
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
+| 属性       | 类型                              | 说明         |
+| ---------- | --------------------------------- | ------------ |
 | `autoSize` | `boolean \| { minRows, maxRows }` | 自动调整高度 |
 
 ### Input.Password
 
 ```tsx
-<Input.Password placeholder="请输入密码" />
+<Input.Password placeholder='请输入密码' />
 ```
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
+| 属性               | 类型      | 说明              |
+| ------------------ | --------- | ----------------- |
 | `visibilityToggle` | `boolean` | 显示/隐藏密码切换 |
 
 ### Input.Group
 
 ```tsx
 <Input.Group compact>
-  <Select defaultValue="http" style={{ width: 100 }}>
-    <Option value="http">http://</Option>
-    <Option value="https">https://</Option>
+  <Select defaultValue='http' style={{ width: 100 }}>
+    <Option value='http'>http://</Option>
+    <Option value='https'>https://</Option>
   </Select>
-  <Input placeholder="域名" style={{ width: 300 }} />
+  <Input placeholder='域名' style={{ width: 300 }} />
 </Input.Group>
 ```
 
@@ -132,7 +127,7 @@ import { IconUser, IconLock } from '@arco-design/web-react/icon';
 const inputRef = useRef<RefInputType>(null);
 inputRef.current.focus();
 inputRef.current.blur();
-inputRef.current.dom;  // 原生 input 元素
+inputRef.current.dom; // 原生 input 元素
 ```
 
 ## 最佳实践

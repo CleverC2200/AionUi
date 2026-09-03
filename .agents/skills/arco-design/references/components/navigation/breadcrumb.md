@@ -1,6 +1,6 @@
 ---
 name: arco-breadcrumb
-description: "Arco Design Breadcrumb component API. Use for page navigation hierarchy, route-based breadcrumbs, and dropdown breadcrumbs."
+description: 'Arco Design Breadcrumb component API. Use for page navigation hierarchy, route-based breadcrumbs, and dropdown breadcrumbs.'
 user-invocable: false
 ---
 
@@ -26,19 +26,19 @@ import { Breadcrumb } from '@arco-design/web-react';
 
 ## API
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `separator` | `ReactNode` | 自定义分隔符 |
-| `maxCount` | `number` | 最多显示的面包屑数量 |
-| `routes` | `{ path, breadcrumbName }[]` | 通过配置生成 |
+| 属性        | 类型                         | 说明                 |
+| ----------- | ---------------------------- | -------------------- |
+| `separator` | `ReactNode`                  | 自定义分隔符         |
+| `maxCount`  | `number`                     | 最多显示的面包屑数量 |
+| `routes`    | `{ path, breadcrumbName }[]` | 通过配置生成         |
 
 ### Breadcrumb.Item
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `href` | `string` | 链接地址 |
-| `droplist` | `ReactNode` | 下拉菜单 |
-| `onClick` | `(e) => void` | 点击回调 |
+| 属性       | 类型          | 说明     |
+| ---------- | ------------- | -------- |
+| `href`     | `string`      | 链接地址 |
+| `droplist` | `ReactNode`   | 下拉菜单 |
+| `onClick`  | `(e) => void` | 点击回调 |
 
 ## 常用模式
 

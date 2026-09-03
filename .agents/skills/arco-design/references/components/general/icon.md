@@ -1,6 +1,6 @@
 ---
 name: arco-icon
-description: "Arco Design Icon component usage. Use for built-in icons, custom SVG icons, and IconFont integration."
+description: 'Arco Design Icon component usage. Use for built-in icons, custom SVG icons, and IconFont integration.'
 user-invocable: false
 ---
 
@@ -21,16 +21,17 @@ import { IconSearch, IconPlus, IconDelete, IconEdit } from '@arco-design/web-rea
 
 ### IconProps
 
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `style` | `CSSProperties` | — | 行内样式（支持 fontSize、color） |
-| `className` | `string` | — | 自定义类名 |
-| `spin` | `boolean` | — | 是否旋转 |
-| `onClick` | `(e: Event) => void` | — | 点击回调 |
+| 属性        | 类型                 | 默认值 | 说明                             |
+| ----------- | -------------------- | ------ | -------------------------------- |
+| `style`     | `CSSProperties`      | —      | 行内样式（支持 fontSize、color） |
+| `className` | `string`             | —      | 自定义类名                       |
+| `spin`      | `boolean`            | —      | 是否旋转                         |
+| `onClick`   | `(e: Event) => void` | —      | 点击回调                         |
 
 ## 图标分类
 
 图标按功能分为以下几类：
+
 - **方向类**: IconUp, IconDown, IconLeft, IconRight, IconArrowUp, IconArrowDown...
 - **提示类**: IconInfo, IconInfoCircle, IconWarning, IconCheck, IconClose...
 - **编辑类**: IconEdit, IconDelete, IconCopy, IconPaste, IconUndo, IconRedo...
@@ -65,8 +66,8 @@ import { IconSearch, IconHome, IconSettings } from '@arco-design/web-react/icon'
 import { Icon } from '@arco-design/web-react/icon';
 
 const CustomIcon = (props) => (
-  <Icon {...props} viewBox="0 0 1024 1024">
-    <path d="M..." />
+  <Icon {...props} viewBox='0 0 1024 1024'>
+    <path d='M...' />
   </Icon>
 );
 ```
