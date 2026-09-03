@@ -964,29 +964,68 @@ const RegionalApprovalWorkbench: React.FC<{
     {
       title: t('common.assistantSurface.regionalApproval.columns.organization'),
       width: 180,
-      render: (_, row) => (
-        <div className={styles.organizationCell}>
-          <Button
-            type='text'
-            size='small'
-            className={styles.detailTrigger}
-            onClick={() => {
-              selectLivePlanContext(row);
-              setFocusedLivePlanId(row.planId);
-              setLiveDetailInitialTab('skus');
-              setLiveDetailPlanId(row.planId);
-            }}
-            aria-label={t('common.assistantSurface.regionalApproval.liveDetail.openFor', {
-              plan: row.baseName ?? t('common.assistantSurface.regionalApproval.query.unnamedOrganization'),
-            })}
-            title={
-              row.baseName ? undefined : t('common.assistantSurface.regionalApproval.query.unnamedOrganizationHint')
-            }
+      render: (_, row) => {
+        const organizationName =
+          row.salesGroupName ??
+          row.dealerName ??
+          row.baseName ??
+          t('common.assistantSurface.regionalApproval.query.unnamedOrganization');
+        return (
+          <div className={styles.organizationCell}>
+            <Button
+              type='text'
+              size='small'
+              className={styles.detailTrigger}
+              onClick={() => {
+                selectLivePlanContext(row);
+                setFocusedLivePlanId(row.planId);
+                setLiveDetailInitialTab('skus');
+                setLiveDetailPlanId(row.planId);
+              }}
+              aria-label={t('common.assistantSurface.regionalApproval.liveDetail.openFor', {
+                plan: organizationName,
+              })}
+              title={
+                organizationName === t('common.assistantSurface.regionalApproval.query.unnamedOrganization')
+                  ? t('common.assistantSurface.regionalApproval.query.unnamedOrganizationHint')
+                  : undefined
+              }
+            >
+              {organizationName}
+            </Button>
+            <span>{row.dealerCode}</span>
+          </div>
+        );
+      },
+    },
+    {
+      title: '',
+      width: 205,
+      render: (_, row) => {
+        const scopeNames = [row.regionName, row.provinceRegionName, row.baseName]
+          .map((value) => value?.trim())
+          .filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
+        return (
+          <div
+            className={styles.stackCell}
+            data-testid={`regional-approval-scope-${row.planId}`}
+            title={scopeNames.join(' / ')}
           >
-            {row.baseName ?? t('common.assistantSurface.regionalApproval.query.unnamedOrganization')}
-          </Button>
-        </div>
-      ),
+            {scopeNames.length > 0 ? (
+              <span>
+                {scopeNames.map((name, index) => (
+                  <React.Fragment key={`${name}-${index}`}>
+                    {index > 0 ? ' / ' : null}
+                    <span>{name}</span>
+                  </React.Fragment>
+                ))}
+              </span>
+            ) : (
+              <span>—</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: t('common.assistantSurface.regionalApproval.columns.plan'),

@@ -63,7 +63,11 @@ const liveRow = (planId: string, status = 4): GeaSalesPlanListItem => ({
   orgCode: 'ORG-001',
   provinceCode: 'PROVINCE-01',
   areaCode: 'AREA-01',
+  regionName: '华东大区',
+  provinceRegionName: '浙江省区',
+  salesGroupName: `${planId} 经销分区`,
   baseName: `${planId} 基地`,
+  dealerName: `${planId} 经销商`,
   status,
   returnReason: null,
   targetQty: '123456789012.345',
@@ -134,8 +138,17 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     expect(within(toolbarActions).getByRole('button', { name: '通过' })).toBeDisabled();
     expect(within(toolbarActions).getByRole('button', { name: '退回' })).toBeDisabled();
     expect(screen.queryByRole('columnheader', { name: '审批操作' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: '业务范围' })).not.toBeInTheDocument();
+    expect(screen.getByText('plan-live 经销分区')).toBeVisible();
+    expect(screen.getByText('9007199254740997')).toBeVisible();
+    expect(screen.queryByText('经销商 9007199254740997')).not.toBeInTheDocument();
+    expect(screen.getByTestId('regional-approval-scope-plan-live')).toHaveTextContent(
+      '华东大区 / 浙江省区 / plan-live 基地'
+    );
+    expect(screen.queryByText('AREA-01')).not.toBeInTheDocument();
+    expect(screen.queryByText('PROVINCE-01 · ORG-001')).not.toBeInTheDocument();
     expect(screen.getByRole('radio')).toBeDisabled();
-    expect(screen.getByRole('button', { name: '查看 plan-live 基地 真实计划详情' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '查看 plan-live 经销分区 真实计划详情' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '版本对比' })).toBeDisabled();
     expect(screen.queryByRole('tablist', { name: '审批队列维度' })).not.toBeInTheDocument();
     expect(screen.queryByText('GEA · 用户会话队列')).not.toBeInTheDocument();

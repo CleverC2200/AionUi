@@ -397,7 +397,11 @@ export type GeaSalesPlanListItem = {
   orgCode?: string | null;
   provinceCode?: string | null;
   areaCode?: string | null;
+  regionName?: string | null;
+  provinceRegionName?: string | null;
+  salesGroupName?: string | null;
   baseName?: string | null;
+  dealerName?: string | null;
   status: number;
   returnReason?: string | null;
   targetQty: GeaSalesPlanDecimal;
