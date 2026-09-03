@@ -1,13 +1,14 @@
 import { ipcBridge } from '@/common';
 import { ConversationPreparation, createAionCoreConversationPreparationAdapter } from '@/common/adapter/conversation';
-import type { TChatConversation } from '@/common/config/storage';
-import type { Assistant } from '@/common/types/agent/assistantTypes';
+import type { IProvider, TChatConversation, TProviderWithModel } from '@/common/config/storage';
+import { isAionrsAssistant, type Assistant } from '@/common/types/agent/assistantTypes';
 import ChatConversation, {
   createConversationFromConversation,
 } from '@/renderer/pages/conversation/components/ChatConversation';
 import { getConversationCreateErrorMessage } from '@/renderer/pages/conversation/utils/conversationCreateError';
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
 import { useConversationRuntimeView } from '@/renderer/pages/conversation/runtime/useConversationRuntimeView';
+import { getAvailableModels } from '@/renderer/pages/guid/utils/modelUtils';
 import { getActivityTime } from '@/renderer/utils/chat/timeline';
 import { addEventListener, emitter } from '@/renderer/utils/emitter';
 import { Alert, Button, Drawer, Empty, Message, Spin, Steps, Tag, Tooltip } from '@arco-design/web-react';
@@ -24,6 +25,7 @@ type SpecializedSurfaceId = Exclude<AssistantSurfaceId, 'general'>;
 type SupportedConversation = Extract<TChatConversation, { type: 'aionrs' | 'acp' | 'antigravity' }>;
 
 const RECENT_CONVERSATION_LIMIT = 50;
+const SALES_FORECAST_ASSISTANT_ID = 'sales-forecast-planning';
 const SALES_FORECAST_SKILL_ID = 'sales-forecast-submit';
 const createPreparationIdempotencyKey = (): string =>
   globalThis.crypto?.randomUUID?.() ?? `conversation-preparation-${Date.now()}`;
@@ -37,11 +39,24 @@ export const useBusinessSurfaceSession = () => React.useContext(BusinessSurfaceS
 const isSupportedConversation = (conversation: TChatConversation): conversation is SupportedConversation =>
   conversation.type === 'aionrs' || conversation.type === 'acp' || conversation.type === 'antigravity';
 
-const findPreferredForecastAssistant = (assistants: Assistant[]): Assistant | undefined => {
+export const findPreferredForecastAssistant = (assistants: Assistant[]): Assistant | undefined => {
+  const builtin = assistants.find(
+    (candidate) => candidate.id === SALES_FORECAST_ASSISTANT_ID && candidate.source === 'builtin'
+  );
+  if (builtin) return builtin;
+
   const candidates = assistants.filter((candidate) =>
     [...(candidate.enabled_skills ?? []), ...(candidate.custom_skill_names ?? [])].includes(SALES_FORECAST_SKILL_ID)
   );
   return candidates.find((candidate) => candidate.source !== 'generated') ?? candidates[0];
+};
+
+export const findDefaultForecastModel = (providers: IProvider[]): TProviderWithModel | undefined => {
+  const provider = providers.find(
+    (candidate) => candidate.enabled !== false && getAvailableModels(candidate).length > 0
+  );
+  const useModel = provider ? getAvailableModels(provider)[0] : undefined;
+  return provider && useModel ? { ...provider, use_model: useModel } : undefined;
 };
 
 const isConversationForAssistant = (
@@ -246,11 +261,19 @@ const BusinessSurfaceShell: React.FC<BusinessSurfaceShellProps> = ({
           Message.error(t('conversation.attention.salesForecast.startFailed'));
           return;
         }
+        const model = isAionrsAssistant(assistant)
+          ? findDefaultForecastModel(await ipcBridge.mode.listProviders.invoke())
+          : undefined;
+        if (isAionrsAssistant(assistant) && !model) {
+          Message.error(t('conversation.noModelConfigured'));
+          return;
+        }
         created = await ipcBridge.conversation.create.invoke(
           preparationResult.preparation
             ? { preparation: preparationResult.preparation }
             : {
                 name: conversationTitle,
+                model,
                 assistant: { id: assistant.id, locale: i18n.language, conversation_overrides: {} },
                 extra: {},
               }

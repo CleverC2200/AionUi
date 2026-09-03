@@ -5,7 +5,9 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { Message } from '@arco-design/web-react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TChatConversation } from '@/common/config/storage';
-import BusinessSurfaceShell from '@/renderer/pages/assistantSurface/components/BusinessSurfaceShell';
+import BusinessSurfaceShell, {
+  findPreferredForecastAssistant,
+} from '@/renderer/pages/assistantSurface/components/BusinessSurfaceShell';
 import { readAssistantSurfaceState, writeAssistantSurfaceState } from '@/renderer/pages/assistantSurface/storage';
 import type { SurfaceContextSnapshot } from '@/renderer/pages/assistantSurface/surfaceContext';
 import { emitter } from '@/renderer/utils/emitter';
@@ -29,6 +31,7 @@ const {
   listConversations,
   navigateMock,
   prepareConfigurationMock,
+  providerCatalogMock,
   runtimeViewMock,
 } = vi.hoisted(() => ({
   assistantCatalogMock: vi.fn(),
@@ -40,6 +43,7 @@ const {
   listConversations: vi.fn(),
   navigateMock: vi.fn(),
   prepareConfigurationMock: vi.fn(),
+  providerCatalogMock: vi.fn(),
   runtimeViewMock: {
     isProcessing: false,
     activeTurnId: null as string | null,
@@ -56,6 +60,9 @@ vi.mock('@/common', () => ({
       create: { invoke: directCreateMock },
       get: { invoke: getConversationMock },
       prepareConfiguration: { invoke: prepareConfigurationMock },
+    },
+    mode: {
+      listProviders: { invoke: providerCatalogMock },
     },
     database: {
       getUserConversations: { invoke: listConversations },
@@ -149,6 +156,22 @@ const standardForecastAssistant = {
   custom_skill_names: ['sales-forecast-submit'],
 };
 
+const builtinForecastAssistant = {
+  ...standardForecastAssistant,
+  id: 'sales-forecast-planning',
+  agent: { type: 'aionrs', source: 'internal' },
+};
+
+const defaultProvider = {
+  id: 'provider-deepseek',
+  platform: 'custom',
+  name: 'DeepSeek',
+  base_url: 'https://example.invalid',
+  api_key: 'secret',
+  models: ['deepseek-v4-flash'],
+  enabled: true,
+};
+
 const snapshot: SurfaceContextSnapshot = {
   schemaVersion: 1,
   surfaceId: 'forecast',
@@ -225,6 +248,7 @@ describe('BusinessSurfaceShell context receipt', () => {
     assistantCatalogMock.mockResolvedValue([managedForecastAssistant]);
     assistantSetStateMock.mockResolvedValue(undefined);
     prepareConfigurationMock.mockResolvedValue(managedConversationReady);
+    providerCatalogMock.mockResolvedValue([defaultProvider]);
     directCreateMock.mockResolvedValue(directConversation);
     setNarrowViewport(false);
     listConversations.mockResolvedValue({ items: conversations });
@@ -234,6 +258,17 @@ describe('BusinessSurfaceShell context receipt', () => {
       id: 'conversation-new',
       name: 'Conversation New',
     });
+  });
+
+  it('prefers the packaged system Forecast Assistant over custom or generated skill matches', () => {
+    expect(
+      findPreferredForecastAssistant([
+        managedForecastAssistant,
+        standardForecastAssistant,
+        { ...standardForecastAssistant, id: 'forecast-generated', source: 'generated' },
+        builtinForecastAssistant,
+      ] as never[])
+    ).toMatchObject({ id: 'sales-forecast-planning', source: 'builtin' });
   });
 
   it('omits the boundary footer when the current board does not provide one', () => {
@@ -423,10 +458,10 @@ describe('BusinessSurfaceShell context receipt', () => {
   it('creates a standard Forecast Conversation directly when no template exists', async () => {
     const standardConversation = {
       ...directConversation,
-      assistant: { ...directConversation.assistant!, id: 'forecast-standard', source: 'builtin' },
+      assistant: { ...directConversation.assistant!, id: 'sales-forecast-planning', source: 'builtin' },
     };
     listConversations.mockResolvedValueOnce({ items: [] }).mockResolvedValue({ items: [standardConversation] });
-    assistantCatalogMock.mockResolvedValue([standardForecastAssistant]);
+    assistantCatalogMock.mockResolvedValue([standardForecastAssistant, builtinForecastAssistant]);
     directCreateMock.mockResolvedValue(standardConversation);
     renderStatefulShell();
 
@@ -436,11 +471,24 @@ describe('BusinessSurfaceShell context receipt', () => {
     expect(prepareConfigurationMock).not.toHaveBeenCalled();
     expect(directCreateMock).toHaveBeenCalledWith({
       name: '需求预测对话',
-      assistant: { id: 'forecast-standard', locale: 'zh-CN', conversation_overrides: {} },
+      model: { ...defaultProvider, use_model: 'deepseek-v4-flash' },
+      assistant: { id: 'sales-forecast-planning', locale: 'zh-CN', conversation_overrides: {} },
       extra: {},
     });
     expect(await screen.findByText('chat:需求预测对话')).toBeVisible();
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('does not create an unusable Aionrs Forecast Conversation when no model provider is available', async () => {
+    listConversations.mockResolvedValue({ items: [] });
+    assistantCatalogMock.mockResolvedValue([builtinForecastAssistant]);
+    providerCatalogMock.mockResolvedValue([]);
+    renderStatefulShell();
+
+    fireEvent.click(await screen.findByRole('button', { name: '新建 AI 对话' }));
+
+    await waitFor(() => expect(messageErrorMock).toHaveBeenCalledWith('conversation.noModelConfigured'));
+    expect(directCreateMock).not.toHaveBeenCalled();
   });
 
   it('stays empty when the Forecast Assistant is unavailable', async () => {
