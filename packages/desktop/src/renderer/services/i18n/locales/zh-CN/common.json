@@ -478,6 +478,30 @@
           "failed": "销售计划详情读取失败；不会自动无限重试。"
         }
       },
+      "liveAdjustment": {
+        "title": "调整明细 · {{organization}}",
+        "openFor": "打开 {{plan}} 调整明细",
+        "close": "关闭",
+        "localDraft": "客户端草稿",
+        "summary": "整体差异 {{delta}} 件 · 当前按「{{dimension}}」聚合，调整向下分摊至客户 + SKU",
+        "footer": "调整实时同步至当前客户端草稿；提交审批前仍按服务端真实权限校验",
+        "loadError": "调整明细读取失败；未生成或回退到样例数据。",
+        "empty": "当前范围没有 SKU 调整明细。",
+        "noAdvice": "暂无真实 AI 建议",
+        "editQty": "{{sku}} 新计划量",
+        "editAmount": "{{sku}} 新计划金额",
+        "dimensions": { "area": "大区", "province": "省区", "region": "区域", "base": "基地", "customer": "客户" },
+        "columns": {
+          "sku": "SKU 编码 / 品类",
+          "baseQty": "原计划量",
+          "qty": "新计划量",
+          "baseAmount": "原计划金额",
+          "amount": "新计划金额",
+          "deltaQty": "调整量",
+          "deltaAmount": "调整金额",
+          "aiAdvice": "AI 建议"
+        }
+      },
       "liveSubmit": {
         "title": "真实销售计划退回重提",
         "column": "退回重提",

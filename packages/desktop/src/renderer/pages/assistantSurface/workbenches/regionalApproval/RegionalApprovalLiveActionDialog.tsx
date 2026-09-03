@@ -20,7 +20,9 @@ const SIGNED_DECIMAL_PATTERN = /^[+-]?\d+(?:\.\d{1,3})?$/;
 const ZERO_DECIMAL_PATTERN = /^[+-]?0+(?:\.0{1,3})?$/;
 
 type AdjustmentSkuState =
-  { status: 'idle' | 'loading' } | { status: 'success'; data: GeaSalesPlanSku[] } | { status: 'error' };
+  | { status: 'idle' | 'loading' }
+  | { status: 'success'; data: GeaSalesPlanSku[] }
+  | { status: 'error' };
 
 const decimalText = (value: unknown): string | undefined => {
   if (typeof value === 'string' && /^[+-]?\d+(?:\.\d+)?$/.test(value.trim())) return value.trim();
@@ -172,9 +174,11 @@ const RegionalApprovalLiveActionDialog: React.FC<{
       : unknown;
   const displayNodeTotal = (quantity: string | undefined, amount: string | undefined) =>
     quantity && amount ? `${formatExactDecimal(quantity)} · ¥${formatExactDecimal(amount)}` : unknown;
-  const organizationPath = [row.areaCode, row.provinceCode, row.orgCode].filter(
-    (value): value is string => typeof value === 'string' && value.trim().length > 0
-  );
+  const organizationPath = [
+    row.areaName ?? row.regionName,
+    row.provinceName ?? row.provinceRegionName,
+    row.orgName ?? row.salesGroupName,
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
   const organization = `${row.baseName?.trim() || row.dealerCode?.trim() || unknown} · ${
     organizationPath.length > 0 ? organizationPath.join(' / ') : unknown
   }`;

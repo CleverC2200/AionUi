@@ -395,8 +395,12 @@ export type GeaSalesPlanListItem = {
   planTypeCode: string;
   dealerCode: GeaSalesPlanId;
   orgCode?: string | null;
+  orgName?: string | null;
   provinceCode?: string | null;
+  provinceName?: string | null;
   areaCode?: string | null;
+  areaName?: string | null;
+  /** Legacy aliases accepted from older GEA deployments. */
   regionName?: string | null;
   provinceRegionName?: string | null;
   salesGroupName?: string | null;
@@ -437,8 +441,11 @@ export type GeaSalesPlanVersion = {
   planTypeCode: string;
   dealerCode: GeaSalesPlanId;
   orgCode?: string | null;
+  orgName?: string | null;
   provinceCode?: string | null;
+  provinceName?: string | null;
   areaCode?: string | null;
+  areaName?: string | null;
   baseName?: string | null;
   status: number;
   effective: boolean;

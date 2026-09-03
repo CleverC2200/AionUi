@@ -31,8 +31,11 @@ const row = {
   dealerCode: 'dealer-1',
   baseName: '真实计划',
   areaCode: '华北',
+  areaName: '华北大区',
   provinceCode: '河北',
+  provinceName: '河北省区',
   orgCode: 'ORG-01',
+  orgName: '石家庄经销分区',
   status: 4,
   targetQty: '10',
   targetAmount: '100',
@@ -277,7 +280,7 @@ describe('RegionalApprovalLiveActionDialog', () => {
     );
 
     const checksum = screen.getByTestId('regional-approval-live-action-checksum');
-    expect(checksum).toHaveTextContent('真实计划 · 华北 / 河北 / ORG-01');
+    expect(checksum).toHaveTextContent('真实计划 · 华北大区 / 河北省区 / 石家庄经销分区');
     expect(checksum).toHaveTextContent('大区审批');
     expect(checksum).toHaveTextContent('目标 10 → 当前 12');
     expect(checksum).toHaveTextContent('目标 ¥100 → 当前 ¥120');

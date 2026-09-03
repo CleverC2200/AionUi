@@ -69,9 +69,9 @@ const liveRow = (planId: string, status = 4): GeaSalesPlanListItem => ({
   orgCode: 'ORG-001',
   provinceCode: 'PROVINCE-01',
   areaCode: 'AREA-01',
-  regionName: '华东大区',
-  provinceRegionName: '浙江省区',
-  salesGroupName: `${planId} 经销分区`,
+  areaName: '华东大区',
+  provinceName: '浙江省区',
+  orgName: `${planId} 经销分区`,
   baseName: `${planId} 基地`,
   dealerName: `${planId} 经销商`,
   status,
@@ -201,7 +201,22 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     expect(screen.queryByText('AREA-01')).not.toBeInTheDocument();
     expect(screen.queryByText('PROVINCE-01 · ORG-001')).not.toBeInTheDocument();
     expect(screen.getByRole('radio')).toBeDisabled();
-    expect(screen.getByRole('button', { name: '查看 浙江省区 真实计划详情' })).toBeEnabled();
+    fireEvent.click(within(dimensionTabs).getByRole('tab', { name: '按区域' }));
+    const adjustmentTrigger = screen.getByRole('button', { name: '打开 plan-live 经销分区 调整明细' });
+    expect(adjustmentTrigger).toBeEnabled();
+    fireEvent.click(adjustmentTrigger);
+    expect(await screen.findByText('调整明细 · plan-live 经销分区')).toBeVisible();
+    expect(screen.getByRole('tab', { name: '区域' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: '基地' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: '客户' })).toBeVisible();
+    expect(screen.getByRole('columnheader', { name: 'SKU 编码 / 品类' })).toBeVisible();
+    expect(screen.getByRole('columnheader', { name: '原计划量' })).toBeVisible();
+    expect(screen.getByRole('columnheader', { name: '新计划量' })).toBeVisible();
+    const quantityInput = screen.getByRole('spinbutton', { name: '10001 新计划量' });
+    fireEvent.change(quantityInput, { target: { value: '6' } });
+    expect(screen.getByText(/整体差异 \+5 件/)).toBeVisible();
+    fireEvent.change(quantityInput, { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }));
     fireEvent.click(within(dimensionTabs).getByRole('tab', { name: '按客户' }));
     expect(screen.getByText('plan-live 经销商')).toBeVisible();
     expect(screen.getByText('9007199254740997')).toBeVisible();
@@ -334,7 +349,7 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
 
     expect((await screen.findAllByText('plan-filtered 基地'))[0]).toBeVisible();
     fireEvent.click(screen.getByRole('combobox', { name: '大区' }));
-    fireEvent.click(await screen.findByRole('option', { name: 'AREA-01' }));
+    fireEvent.click(await screen.findByRole('option', { name: '华东大区' }));
     fireEvent.click(screen.getByRole('combobox', { name: '审批状态' }));
     fireEvent.click(await screen.findByRole('option', { name: '区域审批' }));
     fireEvent.click(screen.getByRole('button', { name: '查询' }));

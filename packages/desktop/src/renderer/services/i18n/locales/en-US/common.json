@@ -483,6 +483,36 @@
           "failed": "Sales plan details failed to load. The client will not retry indefinitely."
         }
       },
+      "liveAdjustment": {
+        "title": "Adjustment details · {{organization}}",
+        "openFor": "Open adjustment details for {{plan}}",
+        "close": "Close",
+        "localDraft": "Client draft",
+        "summary": "Overall delta {{delta}} · grouped by {{dimension}} and allocated down to customer + SKU",
+        "footer": "Adjustments update the current client draft in real time; approval still enforces authoritative server permissions",
+        "loadError": "Adjustment details failed to load. No sample data was generated as a fallback.",
+        "empty": "No SKU adjustments exist in the current scope.",
+        "noAdvice": "No live AI guidance",
+        "editQty": "New planned quantity for {{sku}}",
+        "editAmount": "New planned amount for {{sku}}",
+        "dimensions": {
+          "area": "Area",
+          "province": "Province",
+          "region": "Region",
+          "base": "Base",
+          "customer": "Customer"
+        },
+        "columns": {
+          "sku": "SKU / category",
+          "baseQty": "Original quantity",
+          "qty": "New quantity",
+          "baseAmount": "Original amount",
+          "amount": "New amount",
+          "deltaQty": "Quantity delta",
+          "deltaAmount": "Amount delta",
+          "aiAdvice": "AI guidance"
+        }
+      },
       "liveSubmit": {
         "title": "Live sales plan resubmission",
         "column": "Resubmit",

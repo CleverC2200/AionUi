@@ -130,23 +130,38 @@ export const projectRegionalApprovalLiveDimension = (
 ): RegionalApprovalLiveDimensionProjection => {
   const name =
     dimension === 'area'
-      ? row.regionName?.trim() || row.baseName?.trim()
+      ? row.areaName?.trim() || row.regionName?.trim() || row.baseName?.trim()
       : dimension === 'province'
-        ? row.provinceRegionName?.trim() || row.salesGroupName?.trim() || row.baseName?.trim()
+        ? row.provinceName?.trim() || row.provinceRegionName?.trim() || row.baseName?.trim()
         : dimension === 'region'
-          ? row.salesGroupName?.trim() || row.provinceRegionName?.trim() || row.baseName?.trim()
+          ? row.orgName?.trim() || row.salesGroupName?.trim() || row.baseName?.trim()
           : dimension === 'base'
-            ? row.baseName?.trim() || row.salesGroupName?.trim()
+            ? row.baseName?.trim() || row.orgName?.trim() || row.salesGroupName?.trim()
             : row.dealerName?.trim() || row.baseName?.trim();
   const context =
     dimension === 'customer'
-      ? uniqueNames([row.regionName, row.provinceRegionName, row.salesGroupName, row.baseName], name)
+      ? uniqueNames(
+          [
+            row.areaName ?? row.regionName,
+            row.provinceName ?? row.provinceRegionName,
+            row.orgName ?? row.salesGroupName,
+            row.baseName,
+          ],
+          name
+        )
       : dimension === 'region'
-        ? uniqueNames([row.regionName, row.provinceRegionName, row.baseName], name)
+        ? uniqueNames([row.areaName ?? row.regionName, row.provinceName ?? row.provinceRegionName, row.baseName], name)
         : dimension === 'province'
-          ? uniqueNames([row.regionName, row.baseName], name)
+          ? uniqueNames([row.areaName ?? row.regionName, row.baseName], name)
           : dimension === 'base'
-            ? uniqueNames([row.regionName, row.provinceRegionName, row.salesGroupName], name)
+            ? uniqueNames(
+                [
+                  row.areaName ?? row.regionName,
+                  row.provinceName ?? row.provinceRegionName,
+                  row.orgName ?? row.salesGroupName,
+                ],
+                name
+              )
             : uniqueNames([row.baseName], name);
   return {
     name,
