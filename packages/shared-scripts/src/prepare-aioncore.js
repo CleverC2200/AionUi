@@ -30,6 +30,15 @@ const DEFAULT_RELEASE_REPOSITORY = 'iOfficeAI/AionCore';
 const DEFAULT_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
 const VERIFIED_ACTIONS_POLICY = 'verified-actions';
 
+const MANAGED_NODE_TARGETS = {
+  'darwin-arm64': { folderSuffix: 'darwin-arm64', archiveExt: 'tar.gz', executable: 'bin/node' },
+  'darwin-x64': { folderSuffix: 'darwin-x64', archiveExt: 'tar.gz', executable: 'bin/node' },
+  'linux-arm64': { folderSuffix: 'linux-arm64', archiveExt: 'tar.gz', executable: 'bin/node' },
+  'linux-x64': { folderSuffix: 'linux-x64', archiveExt: 'tar.gz', executable: 'bin/node' },
+  'win32-arm64': { folderSuffix: 'win-arm64', archiveExt: 'zip', executable: 'node.exe' },
+  'win32-x64': { folderSuffix: 'win-x64', archiveExt: 'zip', executable: 'node.exe' },
+};
+
 const ACTIONS_ARTIFACT_TARGETS = {
   'darwin-arm64': {
     artifactName: 'aioncore-manual-macos-arm64',
@@ -219,7 +228,71 @@ function getActionsArtifactMissingMessage({ runId, platform, arch, expectedArtif
   ].join(' ');
 }
 
-function prepareManagedResources(binaryPath, targetDir) {
+function prepareCrossTargetManagedResources(binaryPath, targetDir, platform, arch) {
+  const runtimeKey = `${platform}-${arch}`;
+  const target = MANAGED_NODE_TARGETS[runtimeKey];
+  if (!target) throw new Error(`Unsupported managed Node target: ${runtimeKey}`);
+
+  const version = (process.env.AIONUI_BACKEND_MANAGED_NODE_VERSION || '').trim();
+  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+    throw new Error('AIONUI_BACKEND_MANAGED_NODE_VERSION is required for cross-platform packaging');
+  }
+  if (!fs.readFileSync(binaryPath).includes(Buffer.from(version))) {
+    throw new Error(`Managed Node version ${version} was not found in the target AionCore binary`);
+  }
+
+  const bundleOut = path.join(targetDir, 'managed-resources');
+  const nodeDirName = `node-v${version}-${target.folderSuffix}`;
+  const archiveName = `${nodeDirName}.${target.archiveExt}`;
+  const tempDir = path.join(os.tmpdir(), 'aioncore-managed-node', runtimeKey, version);
+  const archivePath = path.join(tempDir, archiveName);
+  const checksumsPath = path.join(tempDir, 'SHASUMS256.txt');
+
+  removeDirectorySafe(bundleOut);
+  removeDirectorySafe(tempDir);
+  ensureDirectory(path.join(bundleOut, 'node'));
+  ensureDirectory(tempDir);
+
+  try {
+    const releaseUrl = `https://nodejs.org/dist/v${version}`;
+    console.log(`  Preparing ${runtimeKey} managed Node ${version} from nodejs.org`);
+    downloadFile(`${releaseUrl}/${archiveName}`, archivePath);
+    downloadFile(`${releaseUrl}/SHASUMS256.txt`, checksumsPath);
+    const checksumLine = fs
+      .readFileSync(checksumsPath, 'utf8')
+      .split(/\r?\n/)
+      .find((line) => line.endsWith(`  ${archiveName}`));
+    if (!checksumLine || !/^[a-f0-9]{64}  /.test(checksumLine)) {
+      throw new Error(`Node checksum missing for ${archiveName}`);
+    }
+    verifyFileSha256(archivePath, checksumLine.slice(0, 64), archiveName);
+    extractArchive(archivePath, path.join(bundleOut, 'node'), platform);
+
+    const nodeRoot = path.join(bundleOut, 'node', nodeDirName);
+    if (!fs.existsSync(path.join(nodeRoot, ...target.executable.split('/')))) {
+      throw new Error(`Managed Node executable missing after extracting ${archiveName}`);
+    }
+    writeJson(path.join(bundleOut, 'manifest.json'), {
+      schemaVersion: 2,
+      runtimeKey,
+      node: {
+        version,
+        root: `node/${nodeDirName}`,
+        executable: target.executable,
+      },
+      clis: [],
+    });
+    return bundleOut;
+  } finally {
+    removeDirectorySafe(tempDir);
+  }
+}
+
+function prepareManagedResources(binaryPath, targetDir, platform = process.platform, arch = process.arch) {
+  if (platform === 'win32' && process.platform !== 'win32') {
+    return prepareCrossTargetManagedResources(binaryPath, targetDir, platform, arch);
+  }
+
   const bundleOut = path.join(targetDir, 'managed-resources');
   const dataDir = path.join(targetDir, '.prepare-data');
 
@@ -334,7 +407,7 @@ function downloadFile(url, outputPath) {
 function extractArchive(archivePath, outputDir, platform) {
   ensureDirectory(outputDir);
   if (platform === 'win32' || archivePath.endsWith('.zip')) {
-    if (platform === 'win32') {
+    if (process.platform === 'win32') {
       const ps = `Expand-Archive -LiteralPath '${archivePath.replace(/'/g, "''")}' -DestinationPath '${outputDir.replace(/'/g, "''")}' -Force`;
       execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps]);
     } else {
@@ -804,7 +877,7 @@ function prepareAioncore(options) {
   if (sourcePath) {
     copyFileSafe(sourcePath, targetBinaryPath);
     ensureExecutableMode(targetBinaryPath);
-    const bundledManagedResourcesDir = prepareManagedResources(targetBinaryPath, targetDir);
+    const bundledManagedResourcesDir = prepareManagedResources(targetBinaryPath, targetDir, platform, arch);
 
     // The release tag is the authoritative version — the aioncore
     // binary does not expose a --version flag (it has --app-version which
@@ -844,6 +917,7 @@ function prepareAioncore(options) {
 module.exports = {
   downloadAndExtractActionsArtifact,
   downloadFileWithAuth,
+  extractArchive,
   getActionsArtifactMissingMessage,
   getActionsArtifactName,
   getActionsRepository,
@@ -852,6 +926,7 @@ module.exports = {
   getBackendSourcePolicy,
   getExpectedActionsHeadSha,
   getExpectedActionsSha256,
+  prepareManagedResources,
   prepareAioncore,
   validateActionsArtifactMetadata,
   verifyFileSha256,

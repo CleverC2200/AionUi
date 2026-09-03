@@ -41,6 +41,21 @@ function verifyBundledResources(resourcesDir, electronPlatformName, targetArch) 
   console.log(`   ✓ Bundled resources verified for ${result.runtimeKey} (${result.checked.length} checks)`);
 }
 
+function pruneNonTargetBundledAioncore(resourcesDir, electronPlatformName, targetArch) {
+  const bundledRoot = path.join(resourcesDir, 'bundled-aioncore');
+  if (!fs.existsSync(bundledRoot)) return [];
+
+  const targetRuntimeKey = `${electronPlatformName}-${targetArch}`;
+  const runtimeDirectoryPattern = /^(?:darwin|win32|linux)-(?:x64|arm64|ia32|armv7l)$/;
+  const removed = [];
+  for (const entry of fs.readdirSync(bundledRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name === targetRuntimeKey || !runtimeDirectoryPattern.test(entry.name)) continue;
+    fs.rmSync(path.join(bundledRoot, entry.name), { recursive: true, force: true });
+    removed.push(entry.name);
+  }
+  return removed;
+}
+
 module.exports = async function afterPack(context) {
   const { arch, electronPlatformName, appOutDir, packager } = context;
   const targetArch = normalizeArch(typeof arch === 'string' ? arch : Arch[arch] || process.arch);
@@ -77,6 +92,10 @@ module.exports = async function afterPack(context) {
     }
 
     verifyBundledResources(resourcesDir, electronPlatformName, targetArch);
+    const removedRuntimeKeys = pruneNonTargetBundledAioncore(resourcesDir, electronPlatformName, targetArch);
+    if (removedRuntimeKeys.length > 0) {
+      console.log(`   ✓ Removed non-target AionCore runtime(s): ${removedRuntimeKeys.join(', ')}`);
+    }
   } else {
     throw new Error(`resources directory not found: ${resourcesDir}`);
   }
@@ -228,3 +247,5 @@ module.exports = async function afterPack(context) {
 
   console.log(`✅ All native modules rebuilt successfully for ${targetArch}\n`);
 };
+
+module.exports.pruneNonTargetBundledAioncore = pruneNonTargetBundledAioncore;

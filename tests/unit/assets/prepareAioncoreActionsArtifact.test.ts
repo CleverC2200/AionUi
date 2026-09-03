@@ -6,6 +6,7 @@ import { delimiter, dirname, join } from 'node:path';
 const {
   downloadAndExtractActionsArtifact,
   downloadFileWithAuth,
+  extractArchive,
   getActionsArtifactName,
   getActionsArtifactMissingMessage,
   getActionsRepository,
@@ -13,6 +14,7 @@ const {
   getActionsRunProvenance,
   getExpectedActionsHeadSha,
   getExpectedActionsSha256,
+  prepareManagedResources,
   prepareAioncore,
   validateActionsArtifactMetadata,
 } = require('../../../packages/shared-scripts/src/prepare-aioncore');
@@ -43,6 +45,7 @@ function createFakeToolchain(root: string, { curlFails = false, artifactDigest =
       : `#!/usr/bin/env bash
 set -euo pipefail
 out=''
+args="$*"
 while [[ $# -gt 0 ]]; do
   if [[ "$1" == '-o' ]]; then
     shift
@@ -55,7 +58,11 @@ if [[ -z "$out" ]]; then
   exit 0
 fi
 mkdir -p "$(dirname "$out")"
-printf 'archive' > "$out"
+if [[ "$args" == *"SHASUMS256.txt"* ]]; then
+  printf '${ARCHIVE_SHA256}  node-v24.11.0-win-x64.zip\n' > "$out"
+else
+  printf 'archive' > "$out"
+fi
 `
   );
   writeExecutable(join(binDir, 'wget'), '#!/usr/bin/env bash\nexit 1\n');
@@ -84,6 +91,7 @@ esac
     `#!/usr/bin/env bash
 set -euo pipefail
 out=''
+args="$*"
 while [[ $# -gt 0 ]]; do
   if [[ "$1" == '-d' ]]; then
     shift
@@ -92,7 +100,12 @@ while [[ $# -gt 0 ]]; do
   shift || true
 done
 mkdir -p "$out"
-printf 'archive' > "$out/aioncore-v0.1.46-x86_64-unknown-linux-gnu.tar.gz"
+if [[ "$args" == *"node-v24.11.0-win-x64.zip"* ]]; then
+  mkdir -p "$out/node-v24.11.0-win-x64"
+  printf 'node' > "$out/node-v24.11.0-win-x64/node.exe"
+else
+  printf 'archive' > "$out/aioncore-v0.1.46-x86_64-unknown-linux-gnu.tar.gz"
+fi
 `
   );
   writeExecutable(
@@ -129,11 +142,61 @@ afterEach(() => {
   delete process.env.AIONUI_BACKEND_SHA256S;
   delete process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR;
   delete process.env.AIONUI_BACKEND_LOCAL_BINARY;
+  delete process.env.AIONUI_BACKEND_MANAGED_NODE_VERSION;
   rmSync(join(tmpdir(), 'aioncore-prepare', 'v0.1.46'), { recursive: true, force: true });
   rmSync(join(tmpdir(), 'aioncore-prepare-actions', '123'), { recursive: true, force: true });
 });
 
 describe('prepare-aioncore GitHub Actions artifact resolver', () => {
+  posixFakeToolchainIt('uses the host unzip tool when extracting a Windows target on POSIX', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-windows-extract-'));
+    const fakeBin = createFakeToolchain(tmp);
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
+
+    try {
+      const outputDir = join(tmp, 'extracted');
+      extractArchive(join(tmp, 'artifact.zip'), outputDir, 'win32');
+      expect(readFileSync(join(outputDir, 'aioncore-v0.1.46-x86_64-unknown-linux-gnu.tar.gz'), 'utf8')).toBe('archive');
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  posixFakeToolchainIt('prepares checksummed Windows managed resources on a POSIX build host', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'aionui-windows-managed-node-'));
+    const fakeBin = createFakeToolchain(tmp);
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
+    process.env.AIONUI_BACKEND_MANAGED_NODE_VERSION = '24.11.0';
+
+    try {
+      const binaryPath = join(tmp, 'aioncore.exe');
+      const targetDir = join(tmp, 'bundle');
+      writeFile(binaryPath, 'target binary uses managed Node 24.11.0');
+      prepareManagedResources(binaryPath, targetDir, 'win32', 'x64');
+      expect(JSON.parse(readFileSync(join(targetDir, 'managed-resources', 'manifest.json'), 'utf8'))).toEqual({
+        schemaVersion: 2,
+        runtimeKey: 'win32-x64',
+        node: {
+          version: '24.11.0',
+          root: 'node/node-v24.11.0-win-x64',
+          executable: 'node.exe',
+        },
+        clis: [],
+      });
+      expect(
+        readFileSync(join(targetDir, 'managed-resources', 'node', 'node-v24.11.0-win-x64', 'node.exe'), 'utf8')
+      ).toBe('node');
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   posixFakeToolchainIt('writes the gh api response when curl cannot download an artifact', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-download-'));
     const fakeBin = createFakeToolchain(tmp, { curlFails: true });

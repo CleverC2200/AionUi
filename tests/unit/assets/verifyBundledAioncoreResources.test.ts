@@ -12,7 +12,6 @@ const {
 
 const CLAUDE_VERSION = '2.1.215';
 const CODEX_VERSION = '0.144.6';
-
 // codex ships under vendor/<triple>/... ; the triple is platform-specific.
 const CODEX_TRIPLE: Record<string, string> = {
   'win32-x64': 'x86_64-pc-windows-msvc',
