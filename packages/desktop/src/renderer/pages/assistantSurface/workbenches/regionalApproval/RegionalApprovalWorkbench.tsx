@@ -68,6 +68,7 @@ import {
   type ApprovalDetailStore,
 } from './regionalApprovalDetailModel';
 import {
+  aggregateRegionalApprovalLiveCategories,
   addExactDecimals,
   approvalStageForSalesPlanStatus,
   clampSalesPlanPageNumber,
@@ -76,6 +77,7 @@ import {
   projectRegionalApprovalLiveDimension,
   toRegionalApprovalLiveRow,
   VISIBLE_SALES_PLAN_STATUSES_BY_STAGE,
+  type RegionalApprovalLiveCategorySummary,
   type RegionalApprovalLiveRow,
 } from './regionalApprovalQueryModel';
 import {
@@ -186,6 +188,13 @@ const customerLabelKey = (customer: RegionalApprovalRow['customerKey']) =>
 const number = (value: number) => value.toLocaleString();
 const money = (value: number) => `¥${value.toLocaleString()}`;
 const exactMoney = (value: string) => `¥${formatExactDecimal(value)}`;
+const isExactZero = (value: string) => /^-?0(?:\.0+)?$/.test(value);
+const signedExactDecimal = (value: string) => (value.startsWith('-') || isExactZero(value) ? value : `+${value}`);
+const signedExactMoney = (value: string) => {
+  if (value.startsWith('-')) return `-¥${formatExactDecimal(value.slice(1))}`;
+  return `${isExactZero(value) ? '' : '+'}¥${formatExactDecimal(value)}`;
+};
+const formattedProgress = (value: number | undefined) => (value === undefined ? '—' : `${value.toFixed(1)}%`);
 const csvCells = (values: Array<string | number>) =>
   values.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',');
 
@@ -254,6 +263,30 @@ const EMPTY_LIVE_APPROVAL_FILTERS: LiveApprovalFilters = {
 
 const uniqueLiveFilterValues = (values: Array<string | null | undefined>) =>
   [...new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value)))].toSorted();
+
+type RegionalApprovalLiveTableRow =
+  | { kind: 'plan'; tableRowId: string; plan: RegionalApprovalLiveRow }
+  | {
+      kind: 'category';
+      tableRowId: string;
+      plan: RegionalApprovalLiveRow;
+      category: RegionalApprovalLiveCategorySummary;
+    };
+
+const categoryComparisonState = (summary: RegionalApprovalLiveCategorySummary) => {
+  if (
+    (summary.amountProgress === undefined && !isExactZero(summary.amountDelta)) ||
+    (summary.quantityProgress === undefined && !isExactZero(summary.quantityDelta))
+  ) {
+    return 'warning' as const;
+  }
+  const progress = [summary.amountProgress, summary.quantityProgress].filter(
+    (value): value is number => value !== undefined
+  );
+  if (progress.some((value) => value < 85 || value > 115)) return 'warning' as const;
+  if (progress.some((value) => value < 95 || value > 105)) return 'attention' as const;
+  return 'healthy' as const;
+};
 
 type PersistedApprovalWorkbenchState = {
   currentStage: ApprovalStageId;
@@ -379,7 +412,9 @@ const RegionalApprovalWorkbench: React.FC<{
   const [page, setPage] = useState(initialState.page);
   const [dimension, setDimension] = useState(initialState.dimension);
   const [categoryComparison, setCategoryComparison] = useState(initialState.categoryComparison);
-  const [liveCategoryNames, setLiveCategoryNames] = useState<Record<string, string[]>>({});
+  const [liveCategorySummaries, setLiveCategorySummaries] = useState<
+    Record<string, RegionalApprovalLiveCategorySummary[]>
+  >({});
   const [liveCategoriesLoading, setLiveCategoriesLoading] = useState(false);
   const [draftLiveFilters, setDraftLiveFilters] = useState<LiveApprovalFilters>(EMPTY_LIVE_APPROVAL_FILTERS);
   const [appliedLiveFilters, setAppliedLiveFilters] = useState<LiveApprovalFilters>(EMPTY_LIVE_APPROVAL_FILTERS);
@@ -469,7 +504,7 @@ const RegionalApprovalWorkbench: React.FC<{
 
   useEffect(() => {
     if (!liveQuery.enabled || !categoryComparison || !detailClient || liveRows.length === 0) {
-      setLiveCategoryNames({});
+      setLiveCategorySummaries({});
       setLiveCategoriesLoading(false);
       return;
     }
@@ -479,17 +514,14 @@ const RegionalApprovalWorkbench: React.FC<{
       liveRows.map(async (row) => {
         try {
           const skus = await detailClient.versionSkus.invoke({ versionId: row.versionId, signal: controller.signal });
-          const categories = [
-            ...new Set(skus.map((sku) => sku.productCategName.trim()).filter((name) => Boolean(name))),
-          ];
-          return [row.planId, categories] as const;
+          return [row.planId, aggregateRegionalApprovalLiveCategories(skus)] as const;
         } catch {
           return [row.planId, []] as const;
         }
       })
     )
       .then((entries) => {
-        if (!controller.signal.aborted) setLiveCategoryNames(Object.fromEntries(entries));
+        if (!controller.signal.aborted) setLiveCategorySummaries(Object.fromEntries(entries));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLiveCategoriesLoading(false);
@@ -523,6 +555,21 @@ const RegionalApprovalWorkbench: React.FC<{
   const prioritizedLiveRows = useMemo(
     () => liveRows.toSorted((left, right) => livePriority(left) - livePriority(right)),
     [liveRows]
+  );
+  const liveTableRows = useMemo<RegionalApprovalLiveTableRow[]>(
+    () =>
+      prioritizedLiveRows.flatMap((plan) => [
+        { kind: 'plan' as const, tableRowId: plan.planId, plan },
+        ...(categoryComparison
+          ? (liveCategorySummaries[plan.planId] ?? []).map((category) => ({
+              kind: 'category' as const,
+              tableRowId: `${plan.planId}:category:${category.categoryName}`,
+              plan,
+              category,
+            }))
+          : []),
+      ]),
+    [categoryComparison, liveCategorySummaries, prioritizedLiveRows]
   );
   const selectableFixtureRow = (row: RegionalApprovalRow) =>
     row.approvalState === 'pending' && row.permission === 'writable' && row.reachedStage === currentStage;
@@ -1080,12 +1127,35 @@ const RegionalApprovalWorkbench: React.FC<{
     localApprovalResults
       .toReversed()
       .find((result) => result.scope.organizationId === row.id && result.scope.version === primaryVersion);
-  const liveColumns: TableColumnProps<RegionalApprovalLiveRow>[] = [
+  const liveColumns: TableColumnProps<RegionalApprovalLiveTableRow>[] = [
     {
       title: t('common.assistantSurface.regionalApproval.columns.organization'),
       width: 180,
-      render: (_, row) => {
-        const projection = projectRegionalApprovalLiveDimension(row, dimension);
+      render: (_, tableRow) => {
+        if (tableRow.kind === 'category') {
+          return (
+            <div
+              className={styles.categoryOrganizationCell}
+              data-testid={`regional-approval-category-row-${tableRow.plan.planId}-${tableRow.category.categoryName}`}
+            >
+              <span aria-hidden>›</span>
+              <div>
+                <strong>
+                  {t('common.assistantSurface.regionalApproval.categoryRows.name', {
+                    category: tableRow.category.categoryName,
+                  })}
+                </strong>
+                <small>
+                  {t('common.assistantSurface.regionalApproval.categoryRows.skuCount', {
+                    count: tableRow.category.skuCount,
+                  })}
+                </small>
+              </div>
+            </div>
+          );
+        }
+        const row = tableRow.plan;
+        const projection = projectRegionalApprovalLiveDimension(tableRow.plan, dimension);
         const organizationName =
           projection.name ?? t('common.assistantSurface.regionalApproval.query.unnamedOrganization');
         return (
@@ -1126,71 +1196,137 @@ const RegionalApprovalWorkbench: React.FC<{
         );
       },
     },
-    ...(categoryComparison
-      ? [
-          {
-            title: t('common.assistantSurface.regionalApproval.columns.category'),
-            width: 150,
-            render: (_: unknown, row: RegionalApprovalLiveRow) => (
-              <Spin loading={liveCategoriesLoading && liveCategoryNames[row.planId] === undefined} size={12}>
-                <div className={styles.categoryTags}>
-                  {(liveCategoryNames[row.planId] ?? []).map((name) => (
-                    <Tag key={name} size='small'>
-                      {name}
-                    </Tag>
-                  ))}
-                  {liveCategoryNames[row.planId]?.length === 0 ? <span>—</span> : null}
-                </div>
-              </Spin>
-            ),
-          },
-        ]
-      : []),
     {
       title: t('common.assistantSurface.regionalApproval.columns.plan'),
       width: 205,
-      render: (_, row) => (
-        <div className={styles.stackCell}>
-          <strong>
-            {formatExactDecimal(row.currentQty)} · {exactMoney(row.currentAmount)}
-          </strong>
-          <span>
-            {t('common.assistantSurface.regionalApproval.query.target')} {formatExactDecimal(row.targetQty)} ·{' '}
-            {exactMoney(row.targetAmount)}
-          </span>
-        </div>
-      ),
+      render: (_, tableRow) => {
+        const category = tableRow.kind === 'category' ? tableRow.category : undefined;
+        const row = tableRow.plan;
+        return (
+          <div className={styles.stackCell}>
+            <strong>
+              {formatExactDecimal(category?.quantity ?? row.currentQty)} ·{' '}
+              {exactMoney(category?.amount ?? row.currentAmount)}
+            </strong>
+            <span>
+              {category
+                ? t('common.assistantSurface.regionalApproval.categoryRows.basePlan', {
+                    quantity: formatExactDecimal(category.baseQuantity),
+                    amount: exactMoney(category.baseAmount),
+                  })
+                : `${t('common.assistantSurface.regionalApproval.query.target')} ${formatExactDecimal(row.targetQty)} · ${exactMoney(row.targetAmount)}`}
+            </span>
+          </div>
+        );
+      },
     },
     {
-      title: t('common.assistantSurface.regionalApproval.columns.progress'),
-      width: 140,
-      render: (_, row) => (
-        <div className={styles.stackCell}>
-          <strong>{t('common.assistantSurface.regionalApproval.query.version', { seq: row.seq })}</strong>
-          <span>{t('common.assistantSurface.regionalApproval.query.skuCount', { count: row.skuCount })}</span>
-        </div>
-      ),
+      title: categoryComparison
+        ? t('common.assistantSurface.regionalApproval.columns.categoryProgress')
+        : t('common.assistantSurface.regionalApproval.columns.progress'),
+      width: categoryComparison ? 190 : 140,
+      render: (_, tableRow) => {
+        if (tableRow.kind === 'plan') {
+          return (
+            <div className={styles.stackCell}>
+              <strong>{t('common.assistantSurface.regionalApproval.query.version', { seq: tableRow.plan.seq })}</strong>
+              <span>
+                {t('common.assistantSurface.regionalApproval.query.skuCount', { count: tableRow.plan.skuCount })}
+              </span>
+            </div>
+          );
+        }
+        const { category } = tableRow;
+        return (
+          <div className={styles.categoryProgressCell}>
+            <strong>
+              {t('common.assistantSurface.regionalApproval.categoryRows.amountProgress', {
+                progress: formattedProgress(category.amountProgress),
+              })}
+            </strong>
+            <Progress
+              percent={Math.min(category.amountProgress ?? 0, 100)}
+              showText={false}
+              size='small'
+              color='rgb(var(--danger-6))'
+              width={100}
+            />
+            <small>
+              {t('common.assistantSurface.regionalApproval.categoryRows.baseAmount', {
+                amount: exactMoney(category.baseAmount),
+              })}
+            </small>
+            <strong>
+              {t('common.assistantSurface.regionalApproval.categoryRows.quantityProgress', {
+                progress: formattedProgress(category.quantityProgress),
+              })}
+            </strong>
+            <Progress
+              percent={Math.min(category.quantityProgress ?? 0, 100)}
+              showText={false}
+              size='small'
+              color='rgb(var(--orange-6))'
+              width={100}
+            />
+            <small>
+              {t('common.assistantSurface.regionalApproval.categoryRows.baseQuantity', {
+                quantity: formatExactDecimal(category.baseQuantity),
+              })}
+            </small>
+          </div>
+        );
+      },
     },
     {
       title: t('common.assistantSurface.regionalApproval.columns.adjustment'),
       width: 150,
-      render: (_, row) => (
-        <div className={styles.stackCell}>
-          <strong>{row.submitter ?? '—'}</strong>
-          <span>{row.returnReason ?? t('common.assistantSurface.regionalApproval.query.noReturnReason')}</span>
-        </div>
-      ),
+      render: (_, tableRow) =>
+        tableRow.kind === 'category' ? (
+          <div className={styles.stackCell}>
+            <strong>{signedExactDecimal(formatExactDecimal(tableRow.category.quantityDelta))}</strong>
+            <span>{signedExactMoney(tableRow.category.amountDelta)}</span>
+          </div>
+        ) : (
+          <div className={styles.stackCell}>
+            <strong>{tableRow.plan.submitter ?? '—'}</strong>
+            <span>
+              {tableRow.plan.returnReason ?? t('common.assistantSurface.regionalApproval.query.noReturnReason')}
+            </span>
+          </div>
+        ),
     },
     {
-      title: t('common.assistantSurface.regionalApproval.columns.status'),
-      width: 95,
-      render: (_, row) => (
-        <Tag
-          color={row.approvalState === 'approved' ? 'green' : row.approvalState === 'returned' ? 'orange' : 'arcoblue'}
-        >
-          {t(`common.assistantSurface.regionalApproval.query.status.${row.status}`)}
-        </Tag>
-      ),
+      title: categoryComparison
+        ? t('common.assistantSurface.regionalApproval.columns.aiOpinion')
+        : t('common.assistantSurface.regionalApproval.columns.status'),
+      width: categoryComparison ? 220 : 95,
+      render: (_, tableRow) => {
+        if (tableRow.kind === 'plan') {
+          const row = tableRow.plan;
+          return (
+            <Tag
+              color={
+                row.approvalState === 'approved' ? 'green' : row.approvalState === 'returned' ? 'orange' : 'arcoblue'
+              }
+            >
+              {t(`common.assistantSurface.regionalApproval.query.status.${row.status}`)}
+            </Tag>
+          );
+        }
+        const state = categoryComparisonState(tableRow.category);
+        return (
+          <div className={styles.categoryOpinionCell}>
+            <Tag color={state === 'healthy' ? 'green' : state === 'attention' ? 'orange' : 'red'}>
+              {t(`common.assistantSurface.regionalApproval.health.${state}`)}
+            </Tag>
+            <span>
+              {t(`common.assistantSurface.regionalApproval.categoryRows.advice.${state}`, {
+                category: tableRow.category.categoryName,
+              })}
+            </span>
+          </div>
+        );
+      },
     },
   ];
   const columns: TableColumnProps<RegionalApprovalRow>[] = [
@@ -1906,20 +2042,23 @@ const RegionalApprovalWorkbench: React.FC<{
                   />
                 ) : (
                   <Table
-                    rowKey='planId'
+                    rowKey='tableRowId'
                     columns={liveColumns}
-                    data={prioritizedLiveRows}
+                    data={liveTableRows}
+                    loading={liveCategoriesLoading}
+                    rowClassName={(row) => (row.kind === 'category' ? styles.categoryComparisonRow : '')}
                     rowSelection={{
                       type: 'radio',
                       selectedRowKeys: liveActionsEnabled ? selectedRowIds : [],
                       onChange: (keys) => setSelectedRowIds(keys.map(String).slice(-1)),
-                      checkboxProps: (row) => ({
-                        disabled: Boolean(liveActionDisabledReason(row)),
-                      }),
+                      checkboxProps: (row) =>
+                        row.kind === 'category'
+                          ? { disabled: true }
+                          : { disabled: Boolean(liveActionDisabledReason(row.plan)) },
                     }}
                     pagination={false}
                     size='small'
-                    scroll={{ x: 930 }}
+                    scroll={{ x: categoryComparison ? 1040 : 930 }}
                   />
                 )}
               </Spin>

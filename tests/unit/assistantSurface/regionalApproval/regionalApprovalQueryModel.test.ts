@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   SALES_PLAN_STATUS_BY_STAGE,
   addExactDecimals,
+  aggregateRegionalApprovalLiveCategories,
   approvalStageForSalesPlanStatus,
   approvalStageProgressForSalesPlanStatusTotals,
   chooseInitialSalesPlanPeriod,
@@ -81,6 +82,67 @@ describe('regionalApprovalQueryModel', () => {
   it('adds and formats decimal text exactly beyond the JavaScript safe integer range', () => {
     expect(addExactDecimals(['9999999999999999.99', '0.01', '123456789012.345'])).toBe('10000123456789012.345');
     expect(formatExactDecimal('10000123456789012.345')).toBe('10,000,123,456,789,012.345');
+  });
+
+  it('aggregates live SKU rows into official-order category comparison rows', () => {
+    const categories = aggregateRegionalApprovalLiveCategories([
+      {
+        id: 'sku-2',
+        versionId: 'version-1',
+        skuCode: '20002',
+        productCategName: '汤圆',
+        baseQty: '10',
+        qty: '12',
+        price: '2',
+        amt: '24',
+        amtBase: '20',
+      },
+      {
+        id: 'sku-1',
+        versionId: 'version-1',
+        skuCode: '10001',
+        productCategName: '水饺',
+        baseQty: '9999999999999999.9',
+        qty: '9999999999999999.8',
+        price: '1',
+        amt: '9999999999999999.8',
+        amtBase: '9999999999999999.9',
+      },
+      {
+        id: 'sku-3',
+        versionId: 'version-1',
+        skuCode: '10002',
+        productCategName: '水饺',
+        baseQty: '0.1',
+        qty: '0.2',
+        price: '1',
+        amt: '0.2',
+        amtBase: '0.1',
+      },
+    ]);
+
+    expect(categories.map((category) => category.categoryName)).toEqual(['水饺', '汤圆']);
+    expect(categories[0]).toMatchObject({
+      skuCount: 2,
+      quantity: '10000000000000000.0',
+      amount: '10000000000000000.0',
+      baseQuantity: '10000000000000000.0',
+      baseAmount: '10000000000000000.0',
+      quantityDelta: '0.0',
+      amountDelta: '0.0',
+      quantityProgress: 100,
+      amountProgress: 100,
+    });
+    expect(categories[1]).toMatchObject({
+      quantity: '12',
+      amount: '24',
+      baseQuantity: '10',
+      baseAmount: '20',
+      quantityDelta: '2',
+      amountDelta: '4',
+      quantityProgress: 120,
+      amountProgress: 120,
+    });
   });
 
   it('keeps the wire identifiers and decimals unchanged in the shared live-row domain model', () => {

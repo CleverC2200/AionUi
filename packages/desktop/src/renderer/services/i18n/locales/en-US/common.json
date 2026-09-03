@@ -710,11 +710,26 @@
         "quantity": "Plan quantity",
         "amount": "Plan amount",
         "progress": "Version / SKU",
+        "categoryProgress": "Plan progress",
         "adjustment": "Adjustment",
         "comparison": "Version comparison",
         "returnReason": "Return reason",
         "noReturnReason": "—",
         "status": "Approval status"
+      },
+      "categoryRows": {
+        "name": "{{category}} category",
+        "skuCount": "{{count}} SKUs · category rows cannot be approved",
+        "basePlan": "Original {{quantity}} · {{amount}}",
+        "amountProgress": "Amount {{progress}}",
+        "quantityProgress": "Quantity {{progress}}",
+        "baseAmount": "Original amount {{amount}}",
+        "baseQuantity": "Original quantity {{quantity}}",
+        "advice": {
+          "healthy": "{{category}} plan is broadly aligned with the original plan",
+          "attention": "{{category}} plan differs from the original plan; review recommended",
+          "warning": "{{category}} plan differs materially from the original plan; focused review recommended"
+        }
       },
       "categories": {
         "frozen-pastry": "Frozen pastry",

@@ -364,13 +364,56 @@
   white-space: nowrap;
 }
 
-.categoryTags {
+.categoryOrganizationCell {
   display: flex;
-  min-height: 22px;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
+  gap: 6px;
+  padding-left: 18px;
+}
+
+.categoryOrganizationCell > span,
+.categoryOrganizationCell strong {
+  color: rgb(var(--danger-6));
+}
+
+.categoryOrganizationCell > div,
+.categoryProgressCell,
+.categoryOpinionCell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
   gap: 4px;
+}
+
+.categoryOrganizationCell small,
+.categoryProgressCell small {
   color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.categoryProgressCell strong {
+  font-size: 11px;
+}
+
+.categoryProgressCell :global(.arco-progress-line) {
+  width: 100px;
+  margin: 0;
+}
+
+.categoryOpinionCell {
+  flex-direction: row;
+  align-items: flex-start;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.categoryComparisonRow {
+  background: var(--bg-1);
+}
+
+.categoryComparisonRow :global(.arco-radio) {
+  visibility: hidden;
 }
 
 .advancedToggle {

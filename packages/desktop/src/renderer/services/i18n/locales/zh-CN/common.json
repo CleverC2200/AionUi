@@ -705,11 +705,26 @@
         "quantity": "计划数量",
         "amount": "计划金额",
         "progress": "版本 / SKU",
+        "categoryProgress": "计划进度",
         "adjustment": "调整",
         "comparison": "版本对比",
         "returnReason": "退回原因",
         "noReturnReason": "—",
         "status": "审批状态"
+      },
+      "categoryRows": {
+        "name": "{{category}}品类",
+        "skuCount": "{{count}} 个 SKU · 不可按品类审批",
+        "basePlan": "原计划 {{quantity}} · {{amount}}",
+        "amountProgress": "金额 {{progress}}",
+        "quantityProgress": "数量 {{progress}}",
+        "baseAmount": "原计划金额 {{amount}}",
+        "baseQuantity": "原计划数量 {{quantity}}",
+        "advice": {
+          "healthy": "{{category}}品类计划与原计划基本一致",
+          "attention": "{{category}}品类计划与原计划存在偏差，建议复核",
+          "warning": "{{category}}品类计划与原计划偏差较大，建议重点复核"
+        }
       },
       "categories": {
         "frozen-pastry": "速冻面点",

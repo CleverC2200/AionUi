@@ -1,4 +1,9 @@
-import type { GeaSalesPlanListItem, GeaSalesPlanPageQuery, GeaSalesPlanPeriod } from '@/common/adapter/ipcBridge';
+import type {
+  GeaSalesPlanListItem,
+  GeaSalesPlanPageQuery,
+  GeaSalesPlanPeriod,
+  GeaSalesPlanSku,
+} from '@/common/adapter/ipcBridge';
 import type { ApprovalDimension, ApprovalStageId } from './regionalApprovalFixture';
 
 export const SALES_PLAN_STATUS_BY_STAGE: Record<ApprovalStageId, number> = {
@@ -82,6 +87,36 @@ export type RegionalApprovalLiveDimensionProjection = {
   customerCode?: string;
 };
 
+const OFFICIAL_SALES_PLAN_CATEGORY_ORDER = [
+  '水饺',
+  '蒸煎饺',
+  '汤圆',
+  '馄饨',
+  '面点',
+  '饼类',
+  '休闲',
+  '米休闲',
+  '火锅料',
+  '烤肠',
+  '鸡肉调理品',
+  '粽子',
+  '灌汤包',
+  '其他',
+] as const;
+
+export type RegionalApprovalLiveCategorySummary = {
+  categoryName: string;
+  skuCount: number;
+  quantity: string;
+  amount: string;
+  baseQuantity: string;
+  baseAmount: string;
+  quantityDelta: string;
+  amountDelta: string;
+  quantityProgress?: number;
+  amountProgress?: number;
+};
+
 const uniqueNames = (values: Array<string | null | undefined>, excluded?: string) =>
   values
     .map((value) => value?.trim())
@@ -163,6 +198,51 @@ export const subtractExactDecimals = (left: string | number, right: string | num
   const normalizedRight = (typeof right === 'number' ? String(right) : right).trim();
   const negatedRight = normalizedRight.startsWith('-') ? normalizedRight.slice(1) : `-${normalizedRight}`;
   return addExactDecimals([normalizedLeft, negatedRight]);
+};
+
+const decimalRatio = (value: string, baseline: string): number | undefined => {
+  const valueNumber = Number(value);
+  const baselineNumber = Number(baseline);
+  if (!Number.isFinite(valueNumber) || !Number.isFinite(baselineNumber) || baselineNumber === 0) return undefined;
+  return (valueNumber / baselineNumber) * 100;
+};
+
+export const aggregateRegionalApprovalLiveCategories = (
+  skus: readonly GeaSalesPlanSku[]
+): RegionalApprovalLiveCategorySummary[] => {
+  const categorySkus = new Map<string, GeaSalesPlanSku[]>();
+  skus.forEach((sku) => {
+    const categoryName = sku.productCategName.trim() || '其他';
+    const current = categorySkus.get(categoryName) ?? [];
+    current.push(sku);
+    categorySkus.set(categoryName, current);
+  });
+
+  const officialRank = new Map<string, number>(OFFICIAL_SALES_PLAN_CATEGORY_ORDER.map((name, index) => [name, index]));
+  return [...categorySkus.entries()]
+    .toSorted(([left], [right]) => {
+      const leftRank = officialRank.get(left) ?? OFFICIAL_SALES_PLAN_CATEGORY_ORDER.length;
+      const rightRank = officialRank.get(right) ?? OFFICIAL_SALES_PLAN_CATEGORY_ORDER.length;
+      return leftRank - rightRank || left.localeCompare(right, 'zh-CN');
+    })
+    .map(([categoryName, categoryItems]) => {
+      const quantity = addExactDecimals(categoryItems.map((sku) => String(sku.qty)));
+      const amount = addExactDecimals(categoryItems.map((sku) => String(sku.amt)));
+      const baseQuantity = addExactDecimals(categoryItems.map((sku) => String(sku.baseQty)));
+      const baseAmount = addExactDecimals(categoryItems.map((sku) => String(sku.amtBase)));
+      return {
+        categoryName,
+        skuCount: categoryItems.length,
+        quantity,
+        amount,
+        baseQuantity,
+        baseAmount,
+        quantityDelta: subtractExactDecimals(quantity, baseQuantity),
+        amountDelta: subtractExactDecimals(amount, baseAmount),
+        quantityProgress: decimalRatio(quantity, baseQuantity),
+        amountProgress: decimalRatio(amount, baseAmount),
+      };
+    });
 };
 
 export const formatExactDecimal = (value: string | number): string => {

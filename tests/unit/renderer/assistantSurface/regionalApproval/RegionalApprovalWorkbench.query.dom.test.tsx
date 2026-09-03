@@ -221,8 +221,16 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     expect(await screen.findByText('销售计划详情与版本证据')).toBeVisible();
     expect(screen.getByRole('switch', { name: '品类维度' })).toBeVisible();
     fireEvent.click(screen.getByRole('switch', { name: '品类维度' }));
-    expect(await screen.findByRole('columnheader', { name: '品类' })).toBeVisible();
-    expect(await screen.findByText('水饺')).toBeVisible();
+    expect(screen.queryByRole('columnheader', { name: '品类' })).not.toBeInTheDocument();
+    expect(await screen.findByTestId('regional-approval-category-row-plan-live-水饺')).toBeVisible();
+    expect(screen.getByText('水饺品类')).toBeVisible();
+    expect(screen.getByText('1 个 SKU · 不可按品类审批')).toBeVisible();
+    expect(screen.getByText('金额 100.0%')).toBeVisible();
+    expect(screen.getByText('数量 100.0%')).toBeVisible();
+    expect(screen.getByText('水饺品类计划与原计划基本一致')).toBeVisible();
+    fireEvent.click(screen.getByRole('switch', { name: '品类维度' }));
+    expect(screen.queryByTestId('regional-approval-category-row-plan-live-水饺')).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '版本 / SKU' })).toBeVisible();
     expect(screen.queryByText('GEA · 用户会话队列')).not.toBeInTheDocument();
 
     await waitFor(() =>
