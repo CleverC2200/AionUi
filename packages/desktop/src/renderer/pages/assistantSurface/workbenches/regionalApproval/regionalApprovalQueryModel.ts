@@ -1,5 +1,5 @@
 import type { GeaSalesPlanListItem, GeaSalesPlanPageQuery, GeaSalesPlanPeriod } from '@/common/adapter/ipcBridge';
-import type { ApprovalStageId } from './regionalApprovalFixture';
+import type { ApprovalDimension, ApprovalStageId } from './regionalApprovalFixture';
 
 export const SALES_PLAN_STATUS_BY_STAGE: Record<ApprovalStageId, number> = {
   customer: 6,
@@ -75,6 +75,50 @@ export const toRegionalApprovalLiveRow = (row: GeaSalesPlanListItem): RegionalAp
   approvalState:
     row.status === 5 || row.status === 10 ? 'approved' : row.status >= 6 && row.status <= 9 ? 'returned' : 'pending',
 });
+
+export type RegionalApprovalLiveDimensionProjection = {
+  name?: string;
+  context: string[];
+  customerCode?: string;
+};
+
+const uniqueNames = (values: Array<string | null | undefined>, excluded?: string) =>
+  values
+    .map((value) => value?.trim())
+    .filter(
+      (value, index, names): value is string => Boolean(value) && value !== excluded && names.indexOf(value) === index
+    );
+
+export const projectRegionalApprovalLiveDimension = (
+  row: RegionalApprovalLiveRow,
+  dimension: ApprovalDimension
+): RegionalApprovalLiveDimensionProjection => {
+  const name =
+    dimension === 'area'
+      ? row.regionName?.trim() || row.baseName?.trim()
+      : dimension === 'province'
+        ? row.provinceRegionName?.trim() || row.salesGroupName?.trim() || row.baseName?.trim()
+        : dimension === 'region'
+          ? row.salesGroupName?.trim() || row.provinceRegionName?.trim() || row.baseName?.trim()
+          : dimension === 'base'
+            ? row.baseName?.trim() || row.salesGroupName?.trim()
+            : row.dealerName?.trim() || row.baseName?.trim();
+  const context =
+    dimension === 'customer'
+      ? uniqueNames([row.regionName, row.provinceRegionName, row.salesGroupName, row.baseName], name)
+      : dimension === 'region'
+        ? uniqueNames([row.regionName, row.provinceRegionName, row.baseName], name)
+        : dimension === 'province'
+          ? uniqueNames([row.regionName, row.baseName], name)
+          : dimension === 'base'
+            ? uniqueNames([row.regionName, row.provinceRegionName, row.salesGroupName], name)
+            : uniqueNames([row.baseName], name);
+  return {
+    name,
+    context,
+    ...(dimension === 'customer' ? { customerCode: row.dealerCode.trim() } : {}),
+  };
+};
 
 export const chooseInitialSalesPlanPeriod = (periods: readonly GeaSalesPlanPeriod[]): GeaSalesPlanPeriod | undefined =>
   periods.find((period) => period.status.toUpperCase() === 'OPEN') ?? periods[0];

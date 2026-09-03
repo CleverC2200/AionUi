@@ -335,6 +335,13 @@
   overflow-x: auto;
 }
 
+.dimensionControls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
 .dimensionTabs :global(.arco-btn) {
   min-height: 32px;
   flex: 0 0 auto;
@@ -355,6 +362,15 @@
   color: var(--text-secondary);
   font-size: 11px;
   white-space: nowrap;
+}
+
+.categoryTags {
+  display: flex;
+  min-height: 22px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
 }
 
 .advancedToggle {

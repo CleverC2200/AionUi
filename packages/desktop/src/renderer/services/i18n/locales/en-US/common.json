@@ -317,7 +317,7 @@
         "customer": "By customer",
         "category": "By category"
       },
-      "categoryComparison": "Enable category comparison",
+      "categoryComparison": "Category dimension",
       "filters": {
         "ariaLabel": "Organization cascade filters",
         "title": "Organization scope",
@@ -706,7 +706,7 @@
         "aiOpinion": "AI review opinion",
         "scope": "Business scope",
         "plan": "SKU total / plan target",
-        "category": "Compared category",
+        "category": "Category",
         "quantity": "Plan quantity",
         "amount": "Plan amount",
         "progress": "Version / SKU",

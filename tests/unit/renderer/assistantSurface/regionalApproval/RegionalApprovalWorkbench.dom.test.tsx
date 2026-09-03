@@ -62,7 +62,7 @@ describe('RegionalApprovalWorkbench', () => {
     fireEvent.click(writableRow!);
     await waitFor(() => expect(screen.getByRole('button', { name: '退回' })).toBeEnabled());
 
-    fireEvent.click(screen.getByRole('switch', { name: '启用品类比较维度' }));
+    fireEvent.click(screen.getByRole('switch', { name: '品类维度' }));
     fireEvent.click(screen.getByRole('button', { name: '查看 华北大区 证据与调整' }));
     expect(await screen.findByTestId('regional-approval-plan-detail')).toBeVisible();
   });
@@ -137,7 +137,7 @@ describe('RegionalApprovalWorkbench', () => {
     expect(screen.getByRole('combobox', { name: '计划月份' })).toBeVisible();
     expect(screen.getByRole('tablist', { name: '审批队列维度' })).toBeVisible();
     expect(screen.getByRole('tab', { name: '按省区' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('switch', { name: '启用品类比较维度' })).toBeVisible();
+    expect(screen.getByRole('switch', { name: '品类维度' })).toBeVisible();
     expect(screen.getByRole('combobox', { name: '省区' })).toBeVisible();
     expect(screen.getByRole('combobox', { name: '区域' })).toBeVisible();
     expect(screen.getByRole('combobox', { name: '客户' })).toBeVisible();
@@ -438,7 +438,7 @@ describe('RegionalApprovalWorkbench', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('switch', { name: '启用品类比较维度' }));
+    fireEvent.click(screen.getByRole('switch', { name: '品类维度' }));
     fireEvent.click(screen.getByRole('button', { name: '查看 华北大区 证据与调整' }));
     const detail = await screen.findByTestId('regional-approval-plan-detail');
     expect(detail).toBeVisible();

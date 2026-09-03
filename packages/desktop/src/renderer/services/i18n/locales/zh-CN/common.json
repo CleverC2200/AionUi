@@ -317,7 +317,7 @@
         "customer": "按客户",
         "category": "按品类"
       },
-      "categoryComparison": "启用品类比较维度",
+      "categoryComparison": "品类维度",
       "filters": {
         "ariaLabel": "组织级联筛选",
         "title": "组织范围",
@@ -701,7 +701,7 @@
         "aiOpinion": "AI 核对意见",
         "scope": "业务范围",
         "plan": "SKU 汇总 / 计划目标",
-        "category": "比较类目",
+        "category": "品类",
         "quantity": "计划数量",
         "amount": "计划金额",
         "progress": "版本 / SKU",

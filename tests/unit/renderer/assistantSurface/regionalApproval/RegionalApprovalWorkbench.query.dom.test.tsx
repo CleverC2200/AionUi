@@ -154,7 +154,21 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
           ]),
       },
       logs: { invoke: unusedDetailRequest },
-      versionSkus: { invoke: unusedDetailRequest },
+      versionSkus: {
+        invoke: vi.fn().mockResolvedValue([
+          {
+            id: 'sku-1',
+            versionId: 'plan-live-version',
+            skuCode: '10001',
+            productCategName: '水饺',
+            baseQty: '1',
+            qty: '1',
+            price: '1',
+            amt: '1',
+            amtBase: '1',
+          },
+        ]),
+      },
       compare: { invoke: unusedDetailRequest },
     } satisfies SalesPlanDetailClient;
 
@@ -176,16 +190,24 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     expect(within(toolbarActions).getByRole('button', { name: '退回' })).toBeDisabled();
     expect(screen.queryByRole('columnheader', { name: '审批操作' })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: '业务范围' })).not.toBeInTheDocument();
-    expect(screen.getByText('plan-live 经销分区')).toBeVisible();
-    expect(screen.getByText('9007199254740997')).toBeVisible();
+    const dimensionTabs = screen.getByRole('tablist', { name: '审批队列维度' });
+    expect(within(dimensionTabs).getByRole('tab', { name: '按省区' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(dimensionTabs).getByRole('tab', { name: '按区域' })).toBeVisible();
+    expect(within(dimensionTabs).getByRole('tab', { name: '按客户' })).toBeVisible();
+    expect(screen.getByText('浙江省区')).toBeVisible();
+    expect(screen.queryByText('9007199254740997')).not.toBeInTheDocument();
     expect(screen.queryByText('经销商 9007199254740997')).not.toBeInTheDocument();
-    expect(screen.getByTestId('regional-approval-scope-plan-live')).toHaveTextContent(
-      '华东大区 / 浙江省区 / plan-live 基地'
-    );
+    expect(screen.getByTestId('regional-approval-scope-plan-live')).toHaveTextContent('华东大区 / plan-live 基地');
     expect(screen.queryByText('AREA-01')).not.toBeInTheDocument();
     expect(screen.queryByText('PROVINCE-01 · ORG-001')).not.toBeInTheDocument();
     expect(screen.getByRole('radio')).toBeDisabled();
-    expect(screen.getByRole('button', { name: '查看 plan-live 经销分区 真实计划详情' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '查看 浙江省区 真实计划详情' })).toBeEnabled();
+    fireEvent.click(within(dimensionTabs).getByRole('tab', { name: '按客户' }));
+    expect(screen.getByText('plan-live 经销商')).toBeVisible();
+    expect(screen.getByText('9007199254740997')).toBeVisible();
+    expect(screen.getByTestId('regional-approval-scope-plan-live')).toHaveTextContent(
+      '华东大区 / 浙江省区 / plan-live 经销分区 / plan-live 基地'
+    );
     expect(screen.queryByRole('button', { name: '版本对比' })).not.toBeInTheDocument();
     expect(screen.getByText('版本①')).toBeVisible();
     expect(screen.getByText('对比版本②')).toBeVisible();
@@ -197,7 +219,10 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     await waitFor(() => expect(screen.getByRole('combobox', { name: '当前查看版本' })).toHaveTextContent('-1 版'));
     expect(screen.getByRole('combobox', { name: '对比版本' })).toHaveTextContent('-1 版');
     expect(await screen.findByText('销售计划详情与版本证据')).toBeVisible();
-    expect(screen.queryByRole('tablist', { name: '审批队列维度' })).not.toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '品类维度' })).toBeVisible();
+    fireEvent.click(screen.getByRole('switch', { name: '品类维度' }));
+    expect(await screen.findByRole('columnheader', { name: '品类' })).toBeVisible();
+    expect(await screen.findByText('水饺')).toBeVisible();
     expect(screen.queryByText('GEA · 用户会话队列')).not.toBeInTheDocument();
 
     await waitFor(() =>
@@ -271,6 +296,10 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
       expect(list.mock.calls.some(([query]) => query?.status === 7 && query.pageSize === 20)).toBe(true);
     });
     expect(screen.getByTestId('regional-approval-stage-region')).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => {
+      const tabs = within(screen.getByRole('tablist', { name: '审批队列维度' })).getAllByRole('tab');
+      expect(tabs.map((tab) => tab.textContent)).toEqual(['按区域', '按客户']);
+    });
     expect(screen.getAllByText('region-pending 基地')[0]).toBeVisible();
     expect(screen.getAllByText('region-returned 基地')[0]).toBeVisible();
     expect(screen.queryByText('customer-returned 基地')).not.toBeInTheDocument();

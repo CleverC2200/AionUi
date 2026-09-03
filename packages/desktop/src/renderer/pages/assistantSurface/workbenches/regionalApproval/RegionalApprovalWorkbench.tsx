@@ -73,6 +73,7 @@ import {
   clampSalesPlanPageNumber,
   formatExactDecimal,
   isOpenSalesPlanPeriod,
+  projectRegionalApprovalLiveDimension,
   toRegionalApprovalLiveRow,
   VISIBLE_SALES_PLAN_STATUSES_BY_STAGE,
   type RegionalApprovalLiveRow,
@@ -378,6 +379,8 @@ const RegionalApprovalWorkbench: React.FC<{
   const [page, setPage] = useState(initialState.page);
   const [dimension, setDimension] = useState(initialState.dimension);
   const [categoryComparison, setCategoryComparison] = useState(initialState.categoryComparison);
+  const [liveCategoryNames, setLiveCategoryNames] = useState<Record<string, string[]>>({});
+  const [liveCategoriesLoading, setLiveCategoriesLoading] = useState(false);
   const [draftLiveFilters, setDraftLiveFilters] = useState<LiveApprovalFilters>(EMPTY_LIVE_APPROVAL_FILTERS);
   const [appliedLiveFilters, setAppliedLiveFilters] = useState<LiveApprovalFilters>(EMPTY_LIVE_APPROVAL_FILTERS);
   const [liveStageFilter, setLiveStageFilter] = useState<ApprovalStageId>();
@@ -449,6 +452,8 @@ const RegionalApprovalWorkbench: React.FC<{
     () => (liveQuery.queueState.data?.records ?? []).map(toRegionalApprovalLiveRow),
     [liveQuery.queueState.data?.records]
   );
+  const dimensionStage = liveQuery.enabled ? (liveStageFilter ?? currentStage) : currentStage;
+  const availableDimensions = APPROVAL_DIMENSIONS_BY_STAGE[dimensionStage];
   const liveStageProgress = liveQuery.progressState.data ?? {
     customer: 0,
     region: 0,
@@ -456,6 +461,41 @@ const RegionalApprovalWorkbench: React.FC<{
     area: 0,
     category: 0,
   };
+
+  useEffect(() => {
+    if (availableDimensions.includes(dimension)) return;
+    setDimension(availableDimensions[0]);
+  }, [availableDimensions, dimension]);
+
+  useEffect(() => {
+    if (!liveQuery.enabled || !categoryComparison || !detailClient || liveRows.length === 0) {
+      setLiveCategoryNames({});
+      setLiveCategoriesLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    setLiveCategoriesLoading(true);
+    void Promise.all(
+      liveRows.map(async (row) => {
+        try {
+          const skus = await detailClient.versionSkus.invoke({ versionId: row.versionId, signal: controller.signal });
+          const categories = [
+            ...new Set(skus.map((sku) => sku.productCategName.trim()).filter((name) => Boolean(name))),
+          ];
+          return [row.planId, categories] as const;
+        } catch {
+          return [row.planId, []] as const;
+        }
+      })
+    )
+      .then((entries) => {
+        if (!controller.signal.aborted) setLiveCategoryNames(Object.fromEntries(entries));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLiveCategoriesLoading(false);
+      });
+    return () => controller.abort();
+  }, [categoryComparison, detailClient, liveQuery.enabled, liveRows]);
   const liveFilterOptions = useMemo(() => {
     const provinceRows =
       draftLiveFilters.areaCode !== ALL_ORGANIZATIONS
@@ -1045,11 +1085,9 @@ const RegionalApprovalWorkbench: React.FC<{
       title: t('common.assistantSurface.regionalApproval.columns.organization'),
       width: 180,
       render: (_, row) => {
+        const projection = projectRegionalApprovalLiveDimension(row, dimension);
         const organizationName =
-          row.salesGroupName ??
-          row.dealerName ??
-          row.baseName ??
-          t('common.assistantSurface.regionalApproval.query.unnamedOrganization');
+          projection.name ?? t('common.assistantSurface.regionalApproval.query.unnamedOrganization');
         return (
           <div className={styles.organizationCell}>
             <Button
@@ -1073,40 +1111,41 @@ const RegionalApprovalWorkbench: React.FC<{
             >
               {organizationName}
             </Button>
-            <span>{row.dealerCode}</span>
+            {projection.customerCode ? <span>{projection.customerCode}</span> : null}
+            <span data-testid={`regional-approval-scope-${row.planId}`} title={projection.context.join(' / ')}>
+              {projection.context.length > 0
+                ? projection.context.map((name, index) => (
+                    <React.Fragment key={`${name}-${index}`}>
+                      {index > 0 ? ' / ' : null}
+                      <span>{name}</span>
+                    </React.Fragment>
+                  ))
+                : '—'}
+            </span>
           </div>
         );
       },
     },
-    {
-      title: '',
-      width: 205,
-      render: (_, row) => {
-        const scopeNames = [row.regionName, row.provinceRegionName, row.baseName]
-          .map((value) => value?.trim())
-          .filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
-        return (
-          <div
-            className={styles.stackCell}
-            data-testid={`regional-approval-scope-${row.planId}`}
-            title={scopeNames.join(' / ')}
-          >
-            {scopeNames.length > 0 ? (
-              <span>
-                {scopeNames.map((name, index) => (
-                  <React.Fragment key={`${name}-${index}`}>
-                    {index > 0 ? ' / ' : null}
-                    <span>{name}</span>
-                  </React.Fragment>
-                ))}
-              </span>
-            ) : (
-              <span>—</span>
-            )}
-          </div>
-        );
-      },
-    },
+    ...(categoryComparison
+      ? [
+          {
+            title: t('common.assistantSurface.regionalApproval.columns.category'),
+            width: 150,
+            render: (_: unknown, row: RegionalApprovalLiveRow) => (
+              <Spin loading={liveCategoriesLoading && liveCategoryNames[row.planId] === undefined} size={12}>
+                <div className={styles.categoryTags}>
+                  {(liveCategoryNames[row.planId] ?? []).map((name) => (
+                    <Tag key={name} size='small'>
+                      {name}
+                    </Tag>
+                  ))}
+                  {liveCategoryNames[row.planId]?.length === 0 ? <span>—</span> : null}
+                </div>
+              </Spin>
+            ),
+          },
+        ]
+      : []),
     {
       title: t('common.assistantSurface.regionalApproval.columns.plan'),
       width: 205,
@@ -1603,13 +1642,22 @@ const RegionalApprovalWorkbench: React.FC<{
             aria-label={t('common.assistantSurface.regionalApproval.filters.ariaLabel')}
           >
             <div className={styles.controlToolbar}>
-              {!liveQuery.enabled ? (
+              <div className={styles.dimensionControls}>
+                <label className={styles.categorySwitch}>
+                  <Switch
+                    size='small'
+                    checked={categoryComparison}
+                    aria-label={t('common.assistantSurface.regionalApproval.categoryComparison')}
+                    onChange={setCategoryComparison}
+                  />
+                  <span>{t('common.assistantSurface.regionalApproval.categoryComparison')}</span>
+                </label>
                 <div
                   className={styles.dimensionTabs}
                   role='tablist'
                   aria-label={t('common.assistantSurface.regionalApproval.dimensions.ariaLabel')}
                 >
-                  {APPROVAL_DIMENSIONS_BY_STAGE[currentStage].map((candidate) => (
+                  {availableDimensions.map((candidate) => (
                     <Button
                       key={candidate}
                       size='small'
@@ -1623,19 +1671,8 @@ const RegionalApprovalWorkbench: React.FC<{
                     </Button>
                   ))}
                 </div>
-              ) : null}
+              </div>
               <div className={styles.toolbarActions} data-testid='regional-approval-toolbar-actions'>
-                {!liveQuery.enabled ? (
-                  <label className={styles.categorySwitch}>
-                    <Switch
-                      size='small'
-                      checked={categoryComparison}
-                      aria-label={t('common.assistantSurface.regionalApproval.categoryComparison')}
-                      onChange={setCategoryComparison}
-                    />
-                    <span>{t('common.assistantSurface.regionalApproval.categoryComparison')}</span>
-                  </label>
-                ) : null}
                 <Button size='small' onClick={() => setProgressOpen(true)}>
                   {t('common.assistantSurface.regionalApproval.toolbar.progress')}
                 </Button>
