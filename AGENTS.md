@@ -12,6 +12,7 @@
 - 新增或修改的用户可见文本必须使用 i18n key；新 UI 优先复用项目已有业务组件与封装，其次使用 `@arco-design/web-react`，禁止新增原生交互元素。布局、间距和交互状态沿用同类页面的现有风格，颜色使用语义 Token 或 CSS 变量。
 - 保持变更聚焦。不得因当前改动顺带清理既有目录结构或单文件目录问题，也不要改动不属于本次任务的脏文件。
 - 开始代码修改、Git 操作或全量门禁前，确认当前 checkout、branch、upstream、worktree 和 dirty/untracked 状态；无关改动可能被扫描或修改时，改用隔离 worktree。
+- 创建工作树时必须使用 `$worktree-lifecycle-guidance`；创建完成后按其 Create 模式在目标路径重建并验证 CodeGraph 索引，不得复制其他工作树的 `.codegraph` 数据。
 - 源文档已有 `*.zh-CN.md` 对应版本时，修改源文档必须同步更新译文；命令、路径、URL、环境变量和代码块保持可执行。
 
 ## 条件资料
