@@ -594,6 +594,27 @@ describe('LarkAuthService', () => {
     expect(service.getStatus()).toMatchObject({ authenticated: true, user: { id: '10086' } });
   });
 
+  it('does not access secure storage when no persisted desktop session exists', async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), 'aionui-lark-auth-empty-'));
+    const storage: LarkAuthSafeStorageAdapter = {
+      isEncryptionAvailable: vi.fn(() => true),
+      getSelectedStorageBackend: vi.fn(() => 'keychain'),
+      encryptString: vi.fn(),
+      decryptString: vi.fn(),
+    };
+
+    try {
+      const store = new ElectronLarkAuthSessionStore(path.join(tempDir, 'missing-session.bin'), storage);
+
+      await expect(store.load()).resolves.toBeNull();
+      expect(storage.isEncryptionAvailable).not.toHaveBeenCalled();
+      expect(storage.getSelectedStorageBackend).not.toHaveBeenCalled();
+      expect(storage.decryptString).not.toHaveBeenCalled();
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it('persists the desktop session only as encrypted bytes and removes invalid data', async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), 'aionui-lark-auth-'));
     const filePath = path.join(tempDir, 'lark-auth-session.bin');
