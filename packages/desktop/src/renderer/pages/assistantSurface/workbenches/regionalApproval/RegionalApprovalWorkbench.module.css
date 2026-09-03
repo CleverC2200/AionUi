@@ -83,8 +83,34 @@
   width: 108px;
 }
 
-.headerAction {
-  margin-left: auto;
+.versionControls {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.versionField {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.versionControls :global(.arco-select) {
+  width: 84px;
+}
+
+.versionControls .versionInfo {
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0;
+  color: rgb(var(--danger-6));
+}
+
+.versionControls .versionInfo:hover,
+.versionControls .versionInfo:focus-visible {
+  color: rgb(var(--danger-7));
 }
 
 .stageViewport {

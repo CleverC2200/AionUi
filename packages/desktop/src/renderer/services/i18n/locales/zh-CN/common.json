@@ -297,10 +297,16 @@
       "versions": {
         "group": "计划版本对比",
         "primary": "当前查看版本",
+        "primaryCompact": "版本①",
         "compare": "对比版本",
+        "compareCompact": "对比版本②",
         "current": "最新版",
         "previous": "上一版",
-        "initial": "初始版"
+        "initial": "初始版",
+        "offset": "-{{offset}} 版",
+        "unavailable": "暂无版本",
+        "info": "版本选择说明",
+        "description": "版本①为主显示，版本②为对比基准；版本①不能早于版本②，两版相同时不展示差异。"
       },
       "dimensions": {
         "ariaLabel": "审批队列维度",

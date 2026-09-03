@@ -3,11 +3,17 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackendHttpError } from '@/common/adapter/httpBridge';
-import type { GeaSalesPlanListItem, GeaSalesPlanPage, GeaSalesPlanPageQuery } from '@/common/adapter/ipcBridge';
+import type {
+  GeaSalesPlanListItem,
+  GeaSalesPlanPage,
+  GeaSalesPlanPageQuery,
+  GeaSalesPlanVersion,
+} from '@/common/adapter/ipcBridge';
 import RegionalApprovalWorkbench, {
   type RegionalApprovalWorkbenchContext,
 } from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/RegionalApprovalWorkbench';
 import type { SalesPlanQueryClient } from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/useRegionalApprovalQuery';
+import type { SalesPlanDetailClient } from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/hooks/useSalesPlanDetail';
 import zhCN from '@/renderer/services/i18n/locales/zh-CN/common.json';
 
 vi.mock('@/renderer/pages/assistantSurface/components/BusinessSurfaceShell', () => ({
@@ -77,6 +83,19 @@ const liveRow = (planId: string, status = 4): GeaSalesPlanListItem => ({
   currentAmount: '9999999999999999.90',
 });
 
+const liveVersion = (planId: string, id: string, seq: number): GeaSalesPlanVersion => ({
+  id,
+  planId,
+  seq,
+  periodId: '9007199254740995',
+  planTypeCode: 'MONTHLY',
+  dealerCode: '9007199254740997',
+  status: 2,
+  effective: true,
+  targetAmount: '9999999999999999.99',
+  targetQty: '123456789012.345',
+});
+
 const queuePage = (
   records: GeaSalesPlanListItem[],
   pagination: Partial<Pick<GeaSalesPlanPage<GeaSalesPlanListItem>, 'total' | 'size' | 'current' | 'pages'>> = {}
@@ -121,6 +140,23 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
       periods: { invoke: vi.fn().mockResolvedValue(periodPage) },
       list: { invoke: list },
     };
+    const unusedDetailRequest = vi.fn(async () => {
+      throw new Error('unused detail request');
+    });
+    const detailClient = {
+      detail: { invoke: unusedDetailRequest },
+      versions: {
+        invoke: vi
+          .fn()
+          .mockResolvedValue([
+            liveVersion('plan-live', 'plan-live-version', 3),
+            liveVersion('plan-live', 'plan-live-version-2', 2),
+          ]),
+      },
+      logs: { invoke: unusedDetailRequest },
+      versionSkus: { invoke: unusedDetailRequest },
+      compare: { invoke: unusedDetailRequest },
+    } satisfies SalesPlanDetailClient;
 
     render(
       <RegionalApprovalWorkbench
@@ -128,6 +164,7 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
         t={t}
         onContextChange={onContextChange}
         queryClient={client}
+        detailClient={detailClient}
       />
     );
 
@@ -149,7 +186,17 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     expect(screen.queryByText('PROVINCE-01 · ORG-001')).not.toBeInTheDocument();
     expect(screen.getByRole('radio')).toBeDisabled();
     expect(screen.getByRole('button', { name: '查看 plan-live 经销分区 真实计划详情' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: '版本对比' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '版本对比' })).not.toBeInTheDocument();
+    expect(screen.getByText('版本①')).toBeVisible();
+    expect(screen.getByText('对比版本②')).toBeVisible();
+    expect(screen.getByRole('button', { name: '版本选择说明' })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole('combobox', { name: '当前查看版本' })).toHaveTextContent('最新版'));
+    expect(screen.getByRole('combobox', { name: '对比版本' })).toHaveTextContent('-1 版');
+    fireEvent.click(screen.getByRole('combobox', { name: '当前查看版本' }));
+    fireEvent.click(await screen.findByRole('option', { name: '-1 版' }));
+    await waitFor(() => expect(screen.getByRole('combobox', { name: '当前查看版本' })).toHaveTextContent('-1 版'));
+    expect(screen.getByRole('combobox', { name: '对比版本' })).toHaveTextContent('-1 版');
+    expect(await screen.findByText('销售计划详情与版本证据')).toBeVisible();
     expect(screen.queryByRole('tablist', { name: '审批队列维度' })).not.toBeInTheDocument();
     expect(screen.queryByText('GEA · 用户会话队列')).not.toBeInTheDocument();
 

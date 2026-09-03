@@ -10,10 +10,11 @@ import {
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from '@arco-design/web-react';
 import type { TableColumnProps } from '@arco-design/web-react';
-import { CheckOne, DataSwitching, Download, Refresh } from '@icon-park/react';
+import { CheckOne, Download, Info, Refresh } from '@icon-park/react';
 import type { TFunction } from 'i18next';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useBusinessSurfaceSession } from '../../components/BusinessSurfaceShell';
@@ -83,7 +84,7 @@ import {
 } from './useRegionalApprovalQuery';
 import type { SalesPlanDetailClient } from './hooks/useSalesPlanDetail';
 import { salesPlanApprovalNodeForStatus, type SalesPlanActionClient } from './models/salesPlanActionModel';
-import type { GeaSalesPlanActionReceipt } from '@/common/adapter/ipcBridge';
+import type { GeaSalesPlanActionReceipt, GeaSalesPlanVersion } from '@/common/adapter/ipcBridge';
 import {
   buildSalesPlanFilterSummary,
   projectFixtureSalesPlanContext,
@@ -386,6 +387,10 @@ const RegionalApprovalWorkbench: React.FC<{
   const [detailRowId, setDetailRowId] = useState<string>();
   const [liveDetailPlanId, setLiveDetailPlanId] = useState<string>();
   const [focusedLivePlanId, setFocusedLivePlanId] = useState<string>();
+  const [liveVersions, setLiveVersions] = useState<GeaSalesPlanVersion[]>([]);
+  const [liveVersionsLoading, setLiveVersionsLoading] = useState(false);
+  const [livePrimaryVersionId, setLivePrimaryVersionId] = useState<string>();
+  const [liveCompareVersionId, setLiveCompareVersionId] = useState<string>();
   const [liveDetailInitialTab, setLiveDetailInitialTab] = useState<RegionalApprovalLivePlanDetailTab>('skus');
   const [liveActionPlanId, setLiveActionPlanId] = useState<string>();
   const [liveActionKind, setLiveActionKind] = useState<LiveActionKind>('APPROVE');
@@ -507,7 +512,7 @@ const RegionalApprovalWorkbench: React.FC<{
   );
   const activeDetailRow = visibleRows.find((row) => row.id === detailRowId);
   const activeLiveDetailRow = liveRows.find((row) => row.planId === liveDetailPlanId);
-  const focusedLiveRow = liveRows.find((row) => row.planId === focusedLivePlanId);
+  const focusedLiveRow = liveRows.find((row) => row.planId === focusedLivePlanId) ?? liveRows[0];
   const activeLiveActionRow = liveRows.find((row) => row.planId === liveActionPlanId);
   const activeActionRow = visibleRows.find((row) => row.id === actionRowId);
   const contextFilterSummary = useMemo(
@@ -521,6 +526,50 @@ const RegionalApprovalWorkbench: React.FC<{
       }),
     [contextAppliedFilters, effectiveStage, liveQuery.enabled, liveQuery.selectedPeriod]
   );
+
+  useEffect(() => {
+    const planId = focusedLiveRow?.planId;
+    const currentVersionId = focusedLiveRow?.versionId;
+    if (!liveQuery.enabled || !detailClient || !planId || !currentVersionId) {
+      setLiveVersions([]);
+      setLiveVersionsLoading(false);
+      setLivePrimaryVersionId(undefined);
+      setLiveCompareVersionId(undefined);
+      return;
+    }
+    const controller = new AbortController();
+    setLiveVersionsLoading(true);
+    void detailClient.versions
+      .invoke({ planId, signal: controller.signal })
+      .then((versions) => {
+        if (controller.signal.aborted) return;
+        const matchingVersions = versions
+          .filter((version) => version.planId === planId)
+          .toSorted((left, right) => right.seq - left.seq);
+        const currentVersion = matchingVersions.find((version) => version.id === currentVersionId);
+        if (!currentVersion) {
+          setLiveVersions([]);
+          setLivePrimaryVersionId(undefined);
+          setLiveCompareVersionId(undefined);
+          return;
+        }
+        const currentIndex = matchingVersions.findIndex((version) => version.id === currentVersion.id);
+        const previousVersion = matchingVersions[currentIndex + 1] ?? currentVersion;
+        setLiveVersions(matchingVersions);
+        setLivePrimaryVersionId(currentVersion.id);
+        setLiveCompareVersionId(previousVersion.id);
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setLiveVersions([]);
+        setLivePrimaryVersionId(undefined);
+        setLiveCompareVersionId(undefined);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLiveVersionsLoading(false);
+      });
+    return () => controller.abort();
+  }, [detailClient, focusedLiveRow?.planId, focusedLiveRow?.versionId, liveQuery.enabled]);
 
   const liveActionDisabledReason = (row: RegionalApprovalLiveRow) => {
     if (!liveActionsEnabled) return 'missingAuthority';
@@ -856,6 +905,37 @@ const RegionalApprovalWorkbench: React.FC<{
   const openAction = (row: RegionalApprovalRow) => setActionRowId(row.id);
 
   const versionLabel = (version: ApprovalVersion) => t(`common.assistantSurface.regionalApproval.versions.${version}`);
+
+  const liveVersionLabel = (versionId: string) => {
+    const offset = liveVersions.findIndex((version) => version.id === versionId);
+    return offset <= 0
+      ? t('common.assistantSurface.regionalApproval.versions.current')
+      : t('common.assistantSurface.regionalApproval.versions.offset', { offset });
+  };
+
+  const openLiveVersionComparison = (primaryVersionId: string, compareVersionId: string) => {
+    const row = focusedLiveRow;
+    if (!row) return;
+    setLivePrimaryVersionId(primaryVersionId);
+    setLiveCompareVersionId(compareVersionId);
+    selectLivePlanContext(row);
+    setLiveDetailInitialTab('compare');
+    setLiveDetailPlanId(row.planId);
+  };
+
+  const changeLivePrimaryVersion = (versionId: string) => {
+    const primary = liveVersions.find((version) => version.id === versionId);
+    const compare = liveVersions.find((version) => version.id === liveCompareVersionId);
+    if (!primary) return;
+    openLiveVersionComparison(primary.id, compare && compare.seq <= primary.seq ? compare.id : primary.id);
+  };
+
+  const changeLiveCompareVersion = (versionId: string) => {
+    const primary = liveVersions.find((version) => version.id === livePrimaryVersionId);
+    const compare = liveVersions.find((version) => version.id === versionId);
+    if (!compare) return;
+    openLiveVersionComparison(primary && primary.seq >= compare.seq ? primary.id : compare.id, compare.id);
+  };
 
   const exportQueue = () => {
     if (liveQuery.enabled) {
@@ -1294,10 +1374,29 @@ const RegionalApprovalWorkbench: React.FC<{
           ) : null}
         </div>
         <div className={styles.scope} aria-label={t('common.assistantSurface.regionalApproval.scopeAria')}>
-          {!liveQuery.enabled ? (
-            <>
-              <span>
-                <small>{t('common.assistantSurface.regionalApproval.versions.primary')}</small>
+          <div
+            className={styles.versionControls}
+            aria-label={t('common.assistantSurface.regionalApproval.versions.group')}
+            data-testid='regional-approval-version-controls'
+          >
+            <span className={styles.versionField}>
+              <small>{t('common.assistantSurface.regionalApproval.versions.primaryCompact')}</small>
+              {liveQuery.enabled ? (
+                <Select
+                  size='small'
+                  value={livePrimaryVersionId}
+                  aria-label={t('common.assistantSurface.regionalApproval.versions.primary')}
+                  placeholder={t('common.assistantSurface.regionalApproval.versions.unavailable')}
+                  disabled={liveVersionsLoading || liveVersions.length === 0}
+                  onChange={(value) => changeLivePrimaryVersion(String(value))}
+                >
+                  {liveVersions.map((version) => (
+                    <Select.Option key={version.id} value={version.id}>
+                      {liveVersionLabel(version.id)}
+                    </Select.Option>
+                  ))}
+                </Select>
+              ) : (
                 <Select
                   size='small'
                   value={primaryVersion}
@@ -1310,9 +1409,26 @@ const RegionalApprovalWorkbench: React.FC<{
                     </Select.Option>
                   ))}
                 </Select>
-              </span>
-              <span>
-                <small>{t('common.assistantSurface.regionalApproval.versions.compare')}</small>
+              )}
+            </span>
+            <span className={styles.versionField}>
+              <small>{t('common.assistantSurface.regionalApproval.versions.compareCompact')}</small>
+              {liveQuery.enabled ? (
+                <Select
+                  size='small'
+                  value={liveCompareVersionId}
+                  aria-label={t('common.assistantSurface.regionalApproval.versions.compare')}
+                  placeholder={t('common.assistantSurface.regionalApproval.versions.unavailable')}
+                  disabled={liveVersionsLoading || liveVersions.length === 0}
+                  onChange={(value) => changeLiveCompareVersion(String(value))}
+                >
+                  {liveVersions.map((version) => (
+                    <Select.Option key={version.id} value={version.id}>
+                      {liveVersionLabel(version.id)}
+                    </Select.Option>
+                  ))}
+                </Select>
+              ) : (
                 <Select
                   size='small'
                   value={compareVersion}
@@ -1325,9 +1441,18 @@ const RegionalApprovalWorkbench: React.FC<{
                     </Select.Option>
                   ))}
                 </Select>
-              </span>
-            </>
-          ) : null}
+              )}
+            </span>
+            <Tooltip content={t('common.assistantSurface.regionalApproval.versions.description')}>
+              <Button
+                className={styles.versionInfo}
+                type='text'
+                size='mini'
+                aria-label={t('common.assistantSurface.regionalApproval.versions.info')}
+                icon={<Info size={14} />}
+              />
+            </Tooltip>
+          </div>
           <span>
             <small>{t('common.assistantSurface.regionalApproval.planMonth')}</small>
             {liveQuery.enabled ? (
@@ -1366,23 +1491,6 @@ const RegionalApprovalWorkbench: React.FC<{
                 : t('common.assistantSurface.regionalApproval.query.pendingStage')}
             </strong>
           </span>
-          {liveQuery.enabled ? (
-            <Button
-              className={styles.headerAction}
-              size='small'
-              icon={<DataSwitching size={14} />}
-              disabled={!focusedLiveRow}
-              onClick={() => {
-                const row = focusedLiveRow;
-                if (!row) return;
-                selectLivePlanContext(row);
-                setLiveDetailInitialTab('compare');
-                setLiveDetailPlanId(row.planId);
-              }}
-            >
-              {t('common.assistantSurface.regionalApproval.toolbar.compareVersions')}
-            </Button>
-          ) : null}
         </div>
       </header>
 
@@ -1922,12 +2030,16 @@ const RegionalApprovalWorkbench: React.FC<{
           t={t}
           client={detailClient}
           initialTab={liveDetailInitialTab}
+          initialFromVersionId={liveCompareVersionId}
+          initialToVersionId={livePrimaryVersionId}
           onClose={() => setLiveDetailPlanId(undefined)}
           onRowChange={(planId) => {
             const row = liveRows.find((candidate) => candidate.planId === planId);
             if (row) selectLivePlanContext(row);
             setLiveDetailPlanId(planId);
           }}
+          onCompareFromVersionChange={changeLiveCompareVersion}
+          onCompareToVersionChange={changeLivePrimaryVersion}
         />
       ) : null}
 

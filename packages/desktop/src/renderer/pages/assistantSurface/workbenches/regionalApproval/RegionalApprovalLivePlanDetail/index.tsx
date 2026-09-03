@@ -65,11 +65,34 @@ const RegionalApprovalLivePlanDetail: React.FC<{
   t: TFunction;
   client?: SalesPlanDetailClient;
   initialTab?: RegionalApprovalLivePlanDetailTab;
+  initialFromVersionId?: string;
+  initialToVersionId?: string;
   onClose: () => void;
   onRowChange: (planId: string) => void;
-}> = ({ visible, rows, row, t, client, initialTab = 'skus', onClose, onRowChange }) => {
+  onCompareFromVersionChange?: (versionId: string) => void;
+  onCompareToVersionChange?: (versionId: string) => void;
+}> = ({
+  visible,
+  rows,
+  row,
+  t,
+  client,
+  initialTab = 'skus',
+  initialFromVersionId,
+  initialToVersionId,
+  onClose,
+  onRowChange,
+  onCompareFromVersionChange,
+  onCompareToVersionChange,
+}) => {
   const [activeTab, setActiveTab] = useState<RegionalApprovalLivePlanDetailTab>(initialTab);
-  const detail = useSalesPlanDetail({ client, planId: row.planId, initialVersionId: row.versionId });
+  const detail = useSalesPlanDetail({
+    client,
+    planId: row.planId,
+    initialVersionId: row.versionId,
+    initialFromVersionId,
+    initialToVersionId,
+  });
   const approvalStage = approvalStageForSalesPlanStatus(row.status) ?? 'customer';
   const comparedVersions = detail.overviewState.status === 'success' ? detail.overviewState.data.versions : [];
   const comparedFromVersion = comparedVersions.find((version) => version.id === detail.fromVersionId);
@@ -341,7 +364,11 @@ const RegionalApprovalLivePlanDetail: React.FC<{
                       <Select
                         value={detail.fromVersionId}
                         aria-label={t('common.assistantSurface.regionalApproval.liveDetail.compareFrom')}
-                        onChange={(versionId) => detail.selectFromVersion(String(versionId))}
+                        onChange={(versionId) => {
+                          const nextVersionId = String(versionId);
+                          detail.selectFromVersion(nextVersionId);
+                          onCompareFromVersionChange?.(nextVersionId);
+                        }}
                       >
                         {overview.versions.map((version) => (
                           <Select.Option key={version.id} value={version.id}>
@@ -355,7 +382,11 @@ const RegionalApprovalLivePlanDetail: React.FC<{
                       <Select
                         value={detail.toVersionId}
                         aria-label={t('common.assistantSurface.regionalApproval.liveDetail.compareTo')}
-                        onChange={(versionId) => detail.selectToVersion(String(versionId))}
+                        onChange={(versionId) => {
+                          const nextVersionId = String(versionId);
+                          detail.selectToVersion(nextVersionId);
+                          onCompareToVersionChange?.(nextVersionId);
+                        }}
                       >
                         {overview.versions.map((version) => (
                           <Select.Option key={version.id} value={version.id}>

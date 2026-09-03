@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { salesPlan } from '@/common/adapter/ipcBridge';
 import BusinessSurfaceShell from './components/BusinessSurfaceShell';
 import BusinessMessageInbox from './components/BusinessMessageInbox';
 import RegionalApprovalWorkbench, {
@@ -124,6 +125,7 @@ const ForecastAssistantSurface: React.FC<{ stateScope: string; businessView?: st
           t={t}
           onContextChange={handleBoardContextChange}
           queryClient={queryClient}
+          detailClient={salesPlan}
           liveActionsEnabled={liveActionsEnabled}
         />
       )}

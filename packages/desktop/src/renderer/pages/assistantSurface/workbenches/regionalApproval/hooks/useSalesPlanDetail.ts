@@ -20,7 +20,14 @@ import {
 const DETAIL_TIMEOUT_MS = 15_000;
 
 export type SalesPlanDetailError =
-  'permission' | 'expired' | 'missing' | 'versionMismatch' | 'timeout' | 'unavailable' | 'cancelled' | 'failed';
+  | 'permission'
+  | 'expired'
+  | 'missing'
+  | 'versionMismatch'
+  | 'timeout'
+  | 'unavailable'
+  | 'cancelled'
+  | 'failed';
 
 export type SalesPlanDetailState<T> =
   | { status: 'idle'; data?: undefined; error?: undefined }
@@ -80,10 +87,14 @@ export const useSalesPlanDetail = ({
   client = salesPlan,
   planId,
   initialVersionId,
+  initialFromVersionId,
+  initialToVersionId,
 }: {
   client?: SalesPlanDetailClient;
   planId?: string;
   initialVersionId?: string;
+  initialFromVersionId?: string;
+  initialToVersionId?: string;
 }) => {
   const [overviewState, setOverviewState] = useState<SalesPlanDetailState<SalesPlanOverview>>(idle);
   const [skuState, setSkuState] = useState<SalesPlanDetailState<GeaSalesPlanSku[]>>(idle);
@@ -146,6 +157,13 @@ export const useSalesPlanDetail = ({
       .finally(request.finish);
     return request.cancel;
   }, [client, initialVersionId, overviewRevision, planId]);
+
+  useEffect(() => {
+    if (overviewState.status !== 'success') return;
+    const versionIds = new Set(overviewState.data.versions.map((version) => version.id));
+    if (initialFromVersionId && versionIds.has(initialFromVersionId)) setFromVersionId(initialFromVersionId);
+    if (initialToVersionId && versionIds.has(initialToVersionId)) setToVersionId(initialToVersionId);
+  }, [initialFromVersionId, initialToVersionId, overviewState]);
 
   useEffect(() => {
     if (overviewState.status !== 'success' || !selectedVersionId) {

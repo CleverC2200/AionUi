@@ -297,10 +297,16 @@
       "versions": {
         "group": "Plan version comparison",
         "primary": "Viewing version",
+        "primaryCompact": "Version ①",
         "compare": "Compare version",
+        "compareCompact": "Compare ②",
         "current": "Latest",
         "previous": "Previous",
-        "initial": "Initial"
+        "initial": "Initial",
+        "offset": "-{{offset}} version",
+        "unavailable": "No versions",
+        "info": "Version selection help",
+        "description": "Version ① is the primary view and Version ② is the comparison baseline. Version ① cannot be older than Version ②; no differences are shown when both versions match."
       },
       "dimensions": {
         "ariaLabel": "Approval queue dimensions",
