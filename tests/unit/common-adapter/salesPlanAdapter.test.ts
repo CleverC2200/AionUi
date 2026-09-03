@@ -293,6 +293,57 @@ describe('sales-plan user query adapter', () => {
     expect(page.records[0].targetAmount).toBe('9999999999999999.99');
   });
 
+  it('normalizes snake-case organization names returned by the live GEA endpoint', async () => {
+    const page = {
+      records: [
+        {
+          planId: 'plan-1',
+          versionId: 'version-1',
+          seq: 1,
+          periodId: 20260901,
+          planTypeCode: 'Y',
+          dealerCode: 10070026,
+          orgCode: '167',
+          orgName: '上海网点经销组',
+          provinceCode: '0034',
+          province_name: '上海经销直管区',
+          areaCode: '27',
+          areaName: '浙沪经销业务(不用)',
+          baseName: '华东',
+          dealer_name: '上海冠申食品有限公司',
+          status: 5,
+          targetQty: 26445,
+          targetAmount: 1539999.99,
+          skuCount: 205,
+          currentQty: 26445,
+          currentAmount: 2064404.28,
+        },
+      ],
+      total: 1,
+      size: 20,
+      current: 1,
+      pages: 1,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: page }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+    );
+
+    const result = await salesPlan.list.invoke();
+
+    expect(result.records[0]).toMatchObject({
+      provinceName: '上海经销直管区',
+      dealerName: '上海冠申食品有限公司',
+    });
+    expect(result.records[0]).not.toHaveProperty('province_name');
+    expect(result.records[0]).not.toHaveProperty('dealer_name');
+  });
+
   it('maps detail, versions, logs, version SKU, and comparison to the protected read endpoints', async () => {
     const controller = new AbortController();
     const fetchSpy = vi.fn().mockImplementation(async (input: string) => {

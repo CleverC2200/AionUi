@@ -638,15 +638,25 @@ const normalizeSalesPlanPeriod = (period: GeaSalesPlanPeriod): GeaSalesPlanPerio
   tenantId: normalizeSalesPlanId(period.tenantId),
 });
 
-const normalizeSalesPlanListItem = (item: GeaSalesPlanListItem): GeaSalesPlanListItem => ({
-  ...item,
-  periodId: normalizeSalesPlanId(item.periodId),
-  dealerCode: normalizeSalesPlanId(item.dealerCode),
-  targetQty: normalizeSalesPlanDecimal(item.targetQty),
-  targetAmount: normalizeSalesPlanDecimal(item.targetAmount),
-  currentQty: normalizeSalesPlanDecimal(item.currentQty),
-  currentAmount: normalizeSalesPlanDecimal(item.currentAmount),
-});
+type GeaSalesPlanListItemWire = GeaSalesPlanListItem & {
+  dealer_name?: string | null;
+  province_name?: string | null;
+};
+
+const normalizeSalesPlanListItem = (item: GeaSalesPlanListItemWire): GeaSalesPlanListItem => {
+  const { dealer_name, province_name, ...normalizedItem } = item;
+  return {
+    ...normalizedItem,
+    periodId: normalizeSalesPlanId(item.periodId),
+    dealerCode: normalizeSalesPlanId(item.dealerCode),
+    dealerName: item.dealerName ?? dealer_name,
+    provinceName: item.provinceName ?? province_name,
+    targetQty: normalizeSalesPlanDecimal(item.targetQty),
+    targetAmount: normalizeSalesPlanDecimal(item.targetAmount),
+    currentQty: normalizeSalesPlanDecimal(item.currentQty),
+    currentAmount: normalizeSalesPlanDecimal(item.currentAmount),
+  };
+};
 
 const normalizeSalesPlanVersion = (version: GeaSalesPlanVersion): GeaSalesPlanVersion => ({
   ...version,
