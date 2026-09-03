@@ -1,0 +1,30 @@
+:root {
+  --primary-1: var(--red-1);
+  --primary-2: var(--red-2);
+  --primary-3: var(--red-3);
+  --primary-4: var(--red-4);
+  --primary-5: var(--red-5);
+  --primary-6: var(--red-6);
+  --primary-7: var(--red-7);
+  --primary-8: var(--red-8);
+  --primary-9: var(--red-9);
+  --primary-10: var(--red-10);
+}
+
+body {
+  margin: 0;
+  color: var(--color-text-1);
+  background: var(--color-fill-1);
+}
+
+.review-shell {
+  box-sizing: border-box;
+  width: min(100%, 1200px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.review-stack {
+  width: 100%;
+}

@@ -48,6 +48,7 @@ import './components/workspace/registerWebFsPicker';
 import type { PropsWithChildren } from 'react';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { HashRouter } from 'react-router-dom';
 import { SWRConfig } from 'swr';
 import type { TFunction } from 'i18next';
 
@@ -120,6 +121,10 @@ import {
   showInstallationIntegrityModal,
 } from './components/layout/InstallationIntegrityDialog';
 import { createRuntimeInstallationReconciler } from './services/runtime/runtimeInstallationReconciler';
+
+const AGENT_SURFACE_PROTOTYPE_HASH =
+  '#/prototype/work-center?scenario=agent-switching&variant=A&agent=forecast&prototype=work-center';
+const WorkCenterPrototype = React.lazy(() => import('./pages/settings/AssistantSettings/home/prototype'));
 
 // Arco ships several locales that predate its newer components: sections such
 // as Form, ColorPicker and the Calendar month/year formats are missing there.
@@ -344,29 +349,35 @@ const Config: React.FC<PropsWithChildren> = ({ children }) => {
 const Main = () => {
   const { ready } = useAuth();
   const [configReady, setConfigReady] = useState(false);
-  const isLocalWorkCenterPrototype =
-    ['127.0.0.1', 'localhost'].includes(window.location.hostname) &&
-    window.location.hash.startsWith('#/prototype/work-center');
+  const shouldOpenWorkCenterPrototype = window.__aionuiAgentSurfacePrototype === true;
+  const isWorkCenterPrototype =
+    shouldOpenWorkCenterPrototype ||
+    (window.__aionuiE2ETest === true && window.location.hash.startsWith('#/prototype/work-center'));
+
+  useEffect(() => {
+    if (!shouldOpenWorkCenterPrototype || isWorkCenterPrototype) return;
+    window.location.hash = AGENT_SURFACE_PROTOTYPE_HASH.slice(1);
+  }, [isWorkCenterPrototype, shouldOpenWorkCenterPrototype]);
 
   useEffect(() => {
     if (!ready) return;
-    if (isLocalWorkCenterPrototype) {
+    if (isWorkCenterPrototype) {
       setConfigReady(true);
       return;
     }
     void bootstrapRendererConfig().finally(() => setConfigReady(true));
-  }, [isLocalWorkCenterPrototype, ready]);
+  }, [isWorkCenterPrototype, ready]);
 
   useEffect(() => {
-    if (!ready || isLocalWorkCenterPrototype) return;
+    if (!ready || isWorkCenterPrototype) return;
     void repairAllCronJobTimeZonesOnce();
-  }, [isLocalWorkCenterPrototype, ready]);
+  }, [isWorkCenterPrototype, ready]);
 
   if (!ready || !configReady) {
     return null;
   }
 
-  const layout = isLocalWorkCenterPrototype ? (
+  const layout = isWorkCenterPrototype ? (
     <></>
   ) : (
     <ConversationHistoryProvider>
@@ -378,6 +389,16 @@ const Main = () => {
 };
 
 const App = HOC.Wrapper(Config)(Main);
+
+const AgentSurfacePrototypeApp: React.FC = () => (
+  <Config>
+    <HashRouter>
+      <React.Suspense fallback={null}>
+        <WorkCenterPrototype />
+      </React.Suspense>
+    </HashRouter>
+  </Config>
+);
 
 const BackendStartupFailureDialog: React.FC<{ failure: BackendStartupFailureInfo }> = ({ failure }) => {
   const { t } = useTranslation();
@@ -498,22 +519,27 @@ const BackendStartupFailureDialog: React.FC<{ failure: BackendStartupFailureInfo
 void registerPwa();
 
 const root = createRoot(document.getElementById('root')!);
-root.render(
-  <BackendStartupGate
-    renderStarting={() => (
-      <Config>
-        <BackendStartingView />
-      </Config>
-    )}
-    renderFailure={(failure) => (
-      <Config>
-        <BackendStartupFailureDialog failure={failure} />
-      </Config>
-    )}
-    renderApp={() => (
-      <AppProviders>
-        <App />
-      </AppProviders>
-    )}
-  />
-);
+if (window.__aionuiAgentSurfacePrototype === true) {
+  window.location.hash = AGENT_SURFACE_PROTOTYPE_HASH;
+  root.render(<AgentSurfacePrototypeApp />);
+} else {
+  root.render(
+    <BackendStartupGate
+      renderStarting={() => (
+        <Config>
+          <BackendStartingView />
+        </Config>
+      )}
+      renderFailure={(failure) => (
+        <Config>
+          <BackendStartupFailureDialog failure={failure} />
+        </Config>
+      )}
+      renderApp={() => (
+        <AppProviders>
+          <App />
+        </AppProviders>
+      )}
+    />
+  );
+}

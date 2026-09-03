@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Aion 轻量业务原型'
+  short_description: '为业务人员新建或改造统一的 Arco 可交互评审原型'
+  default_prompt: 'Use $aion-prototype-kit to turn this business brief or existing prototype into a directly reviewable Arco-style prototype.'

@@ -15,6 +15,8 @@
   "scripts": {
     "dev": "electron-vite dev --config packages/desktop/electron.vite.config.ts",
     "start": "electron-vite dev --config packages/desktop/electron.vite.config.ts",
+    "start:agent-surface": "cross-env AIONUI_AGENT_SURFACE_PROTOTYPE=1 electron-vite dev --config packages/desktop/electron.vite.config.ts",
+    "start:assistant-surface-fixtures": "cross-env AIONUI_ASSISTANT_SURFACE_FIXTURES=1 electron-vite dev --config packages/desktop/electron.vite.config.ts",
     "start:multi": "cross-env AIONUI_MULTI_INSTANCE=1 electron-vite dev --config packages/desktop/electron.vite.config.ts",
     "cli": "electron-vite dev --config packages/desktop/electron.vite.config.ts",
     "webui": "tsx scripts/webui.ts",

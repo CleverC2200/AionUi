@@ -140,16 +140,18 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 
 ### Development
 
-| Command                     | Description                                                                                                    |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `bun start`                 | Start Electron app in development mode (desktop)                                                               |
-| `bun run start:multi`       | Start a second Electron instance alongside an existing one (see [Multi-Instance](#multi-instance-development)) |
-| `bun run cli`               | Alias for `bun start`                                                                                          |
-| `bun run webui`             | Start in WebUI mode (browser-based, no Electron window)                                                        |
-| `bun run webui:remote`      | Start in WebUI mode with remote access enabled                                                                 |
-| `bun run webui:prod`        | Start WebUI in production mode                                                                                 |
-| `bun run webui:prod:remote` | Start WebUI in production mode with remote access                                                              |
-| `bun run resetpass`         | Reset user password via CLI                                                                                    |
+| Command                                    | Description                                                                                                    |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `bun start`                                | Start Electron app in development mode (desktop)                                                               |
+| `bun run start:agent-surface`              | Start Electron directly in the development-only Agent Surface prototype                                        |
+| `bun run start:assistant-surface-fixtures` | Enable sanitized specialized workspaces inside the product shell (development only)                            |
+| `bun run start:multi`                      | Start a second Electron instance alongside an existing one (see [Multi-Instance](#multi-instance-development)) |
+| `bun run cli`                              | Alias for `bun start`                                                                                          |
+| `bun run webui`                            | Start in WebUI mode (browser-based, no Electron window)                                                        |
+| `bun run webui:remote`                     | Start in WebUI mode with remote access enabled                                                                 |
+| `bun run webui:prod`                       | Start WebUI in production mode                                                                                 |
+| `bun run webui:prod:remote`                | Start WebUI in production mode with remote access                                                              |
+| `bun run resetpass`                        | Reset user password via CLI                                                                                    |
 
 ### Build & Distribution
 

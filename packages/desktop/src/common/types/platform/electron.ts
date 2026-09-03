@@ -96,6 +96,7 @@ declare global {
     electronAPI?: ElectronBridgeAPI;
     __initialLanguage?: string | null;
     __aionuiE2ETest?: boolean;
+    __aionuiAgentSurfacePrototype?: boolean;
     __aionuiAssistantSurfaceFixtures?: boolean;
     __aionuiE2EAuthBypass?: boolean;
     __aionuiE2ESalesPlanQuery?: boolean;

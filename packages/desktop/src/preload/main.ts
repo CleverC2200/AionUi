@@ -62,6 +62,10 @@ contextBridge.exposeInMainWorld('__backendPort', backendPort > 0 ? backendPort :
 contextBridge.exposeInMainWorld('__initialLanguage', initialLanguage ?? null);
 contextBridge.exposeInMainWorld('__aionuiE2ETest', process.env.AIONUI_E2E_TEST === '1');
 contextBridge.exposeInMainWorld(
+  '__aionuiAgentSurfacePrototype',
+  process.env.NODE_ENV !== 'production' && process.env.AIONUI_AGENT_SURFACE_PROTOTYPE === '1'
+);
+contextBridge.exposeInMainWorld(
   '__aionuiAssistantSurfaceFixtures',
   process.env.NODE_ENV !== 'production' && process.env.AIONUI_ASSISTANT_SURFACE_FIXTURES === '1'
 );

@@ -8,11 +8,13 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PrototypeSwitcher, { type PrototypeVariant } from './PrototypeSwitcher';
+import { AgentSurfaceVariantA, type AgentSurfaceId } from './agentSurfaceVariants';
 import { JourneyVariantA, JourneyVariantB, JourneyVariantC, type JourneyStep } from './journeyVariants';
 import { TeamVariantA, TeamVariantB, TeamVariantC } from './teamVariants';
 import { VariantA, VariantB, VariantC, type PrototypeScenario } from './variants';
 
 const SCENARIOS: Array<{ key: PrototypeScenario; label: string }> = [
+  { key: 'agent-switching', label: 'Agent Surface' },
   { key: 'journey', label: '完整旅程' },
   { key: 'catalog', label: '企业助手' },
   { key: 'running', label: '执行中' },
@@ -25,6 +27,8 @@ const SCENARIOS: Array<{ key: PrototypeScenario; label: string }> = [
 const isVariant = (value: string | null): value is PrototypeVariant => value === 'A' || value === 'B' || value === 'C';
 const isScenario = (value: string | null): value is PrototypeScenario =>
   SCENARIOS.some((scenario) => scenario.key === value);
+const isAgentSurfaceId = (value: string | null): value is AgentSurfaceId =>
+  value === 'general' || value === 'forecast' || value === 'contract';
 const isJourneyStep = (value: string | null): value is JourneyStep =>
   value === 'catalog' ||
   value === 'detail' ||
@@ -113,13 +117,21 @@ const WorkCenterPrototype: React.FC = () => {
   const requestedVariant = params.get('variant');
   const requestedScenario = params.get('scenario');
   const requestedJourneyStep = params.get('stage');
+  const requestedAgentId = params.get('agent');
   const variant: PrototypeVariant = isVariant(requestedVariant) ? requestedVariant : 'A';
   const scenario: PrototypeScenario = isScenario(requestedScenario) ? requestedScenario : 'journey';
   const journeyStep: JourneyStep = isJourneyStep(requestedJourneyStep) ? requestedJourneyStep : 'catalog';
+  const invalidAgentRequested = requestedAgentId !== null && !isAgentSurfaceId(requestedAgentId);
+  const agentId: AgentSurfaceId = isAgentSurfaceId(requestedAgentId)
+    ? requestedAgentId
+    : invalidAgentRequested
+      ? 'general'
+      : 'forecast';
   const teamStudy = scenario === 'team';
   const journeyStudy = scenario === 'journey';
+  const agentSurfaceStudy = scenario === 'agent-switching';
 
-  const updateParam = (key: 'variant' | 'scenario' | 'stage', value: string) => {
+  const updateParam = (key: 'variant' | 'scenario' | 'stage' | 'agent', value: string) => {
     const next = new URLSearchParams(location.search);
     next.set('prototype', 'work-center');
     next.set(key, value);
@@ -131,16 +143,22 @@ const WorkCenterPrototype: React.FC = () => {
       <div className='flex min-h-54px shrink-0 flex-wrap items-center gap-12px border-b border-border-2 px-18px py-8px'>
         <div className='mr-auto min-w-0'>
           <div className='text-14px font-600 text-t-primary'>
-            {journeyStudy
-              ? t('prototype.endToEnd.title', { defaultValue: '统一 Agent 工作体验 · 端到端原型' })
-              : teamStudy
-                ? t('prototype.workCenter.teamTitle', { defaultValue: 'Team Work 呈现原型' })
-                : t('prototype.workCenter.title', { defaultValue: '会话中心信息架构原型' })}
+            {agentSurfaceStudy
+              ? t('prototype.agentSurface.title', { defaultValue: 'Agent Surface 切换原型' })
+              : journeyStudy
+                ? t('prototype.endToEnd.title', { defaultValue: '统一 Agent 工作体验 · 端到端原型' })
+                : teamStudy
+                  ? t('prototype.workCenter.teamTitle', { defaultValue: 'Team Work 呈现原型' })
+                  : t('prototype.workCenter.title', { defaultValue: '会话中心信息架构原型' })}
           </div>
           <div className='mt-2px text-11px text-t-tertiary'>
-            {t('prototype.workCenter.fixtureNotice', {
-              defaultValue: 'Fixture 数据 · 不连接 GEA · 不执行真实操作',
-            })}
+            {invalidAgentRequested
+              ? t('prototype.agentSurface.unknownFallback', {
+                  defaultValue: '未知 Agent，已回退到 GEA 通用助手 · Fixture 原型',
+                })
+              : t('prototype.workCenter.fixtureNotice', {
+                  defaultValue: 'Fixture 数据 · 不连接 GEA · 不执行真实操作',
+                })}
           </div>
         </div>
         <div className='max-w-full overflow-x-auto'>
@@ -160,6 +178,9 @@ const WorkCenterPrototype: React.FC = () => {
         </div>
       </div>
       <div className='min-h-0 flex-1 overflow-hidden'>
+        {agentSurfaceStudy ? (
+          <AgentSurfaceVariantA t={t} agentId={agentId} onAgentChange={(next) => updateParam('agent', next)} />
+        ) : null}
         {journeyStudy && variant === 'A' ? (
           <JourneyVariantA t={t} step={journeyStep} onStepChange={(next) => updateParam('stage', next)} />
         ) : null}
@@ -172,19 +193,27 @@ const WorkCenterPrototype: React.FC = () => {
         {teamStudy && variant === 'A' ? <TeamVariantA t={t} /> : null}
         {teamStudy && variant === 'B' ? <TeamVariantB t={t} /> : null}
         {teamStudy && variant === 'C' ? <TeamVariantC t={t} /> : null}
-        {!teamStudy && !journeyStudy && variant === 'A' ? <VariantA scenario={scenario} t={t} /> : null}
-        {!teamStudy && !journeyStudy && variant === 'B' ? <VariantB scenario={scenario} t={t} /> : null}
-        {!teamStudy && !journeyStudy && variant === 'C' ? <VariantC scenario={scenario} t={t} /> : null}
+        {!agentSurfaceStudy && !teamStudy && !journeyStudy && variant === 'A' ? (
+          <VariantA scenario={scenario} t={t} />
+        ) : null}
+        {!agentSurfaceStudy && !teamStudy && !journeyStudy && variant === 'B' ? (
+          <VariantB scenario={scenario} t={t} />
+        ) : null}
+        {!agentSurfaceStudy && !teamStudy && !journeyStudy && variant === 'C' ? (
+          <VariantC scenario={scenario} t={t} />
+        ) : null}
       </div>
-      <PrototypeSwitcher
-        current={variant}
-        study={journeyStudy ? 'end-to-end' : teamStudy ? 'team-work' : 'work-center'}
-        onChange={(next) => updateParam('variant', next)}
-      />
+      {!agentSurfaceStudy ? (
+        <PrototypeSwitcher
+          current={variant}
+          study={journeyStudy ? 'end-to-end' : teamStudy ? 'team-work' : 'work-center'}
+          onChange={(next) => updateParam('variant', next)}
+        />
+      ) : null}
     </div>
   );
 
-  return location.pathname === '/prototype/work-center' ? (
+  return location.pathname === '/prototype/work-center' && !agentSurfaceStudy ? (
     <StandalonePrototypeFrame teamActive={teamStudy}>{content}</StandalonePrototypeFrame>
   ) : (
     content
