@@ -12,6 +12,8 @@ import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import {
   GeaClientError,
+  requireSameUploadedPackage,
+  getGeaPackageExtension,
   type ClientVersion,
   type GeaClientAdapter,
   type GeaClientRelease,
@@ -28,18 +30,7 @@ export async function downloadGeaPackage(options: {
   onProgress: (received: number, total: number) => void;
 }): Promise<string> {
   const { adapter, release, version, directory, signal } = options;
-  const fresh = await adapter.check(version, signal);
-  if (
-    !fresh.upgradeAvailable ||
-    fresh.versionCode !== release.versionCode ||
-    fresh.sha256 !== release.sha256 ||
-    fresh.fileSize !== release.fileSize ||
-    fresh.distributionType !== 'UPLOAD' ||
-    !fresh.sha256 ||
-    !fresh.fileSize
-  ) {
-    throw new GeaClientError('CLIENT_RELEASE_CHANGED');
-  }
+  const fresh = requireSameUploadedPackage(await adapter.check(version, signal), release);
   const response = await adapter.download(
     fresh.downloadUrl!,
     options.allowedHosts,
@@ -47,13 +38,8 @@ export async function downloadGeaPackage(options: {
   );
   let partial: string | undefined;
   try {
-    const disposition = response.headers.get('content-disposition') ?? '';
-    const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
-    const fileName = encoded ? decodeURIComponent(encoded) : disposition.match(/filename="([^"]+)"/i)?.[1];
-    const extension = path.extname(fileName ?? '').toLowerCase();
-    const allowedExtensions = version.platform === 'MACOS' ? ['.dmg', '.pkg'] : ['.exe', '.msi'];
-    if (!allowedExtensions.includes(extension) || !response.body)
-      throw new GeaClientError('CLIENT_PACKAGE_TYPE_UNAVAILABLE');
+    const extension = getGeaPackageExtension(response.headers.get('content-disposition') ?? '', version.platform);
+    if (!response.body) throw new GeaClientError('CLIENT_PACKAGE_TYPE_UNAVAILABLE');
     const target = path.join(directory, `GEAUi-${fresh.versionCode}-${randomUUID()}${extension}`);
     partial = target + '.part';
     const checksum = createHash('sha256');

@@ -79,28 +79,28 @@ describe('GEA update bridge policy', () => {
     vi.stubEnv('AIONUI_GEA_CLIENT_INTEGRATION', '1');
     vi.stubEnv('AIONUI_GEA_VERSION_CODE', '100');
     initializeGeaEnvironment({ isPackaged: false, env: { AIONUI_GEA_BASE_URL: 'http://127.0.0.1:1234/gea-boot' } });
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            success: true,
-            result: {
-              upgradeAvailable: true,
-              mandatory: false,
-              versionName: '1.0.0',
-              versionCode: 101,
-              releaseNotes: 'New build',
-              downloadUrl: '/gea-boot/api/v1/public/client-releases/download/abc',
-              distributionType: 'UPLOAD',
-              fileSize: 100,
-              sha256: 'a'.repeat(64),
-            },
-          })
-        )
-      );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          result: {
+            upgradeAvailable: true,
+            mandatory: false,
+            versionName: '1.0.0',
+            versionCode: 101,
+            releaseNotes: 'New build',
+            downloadUrl: '/gea-boot/api/v1/public/client-releases/download/abc',
+            distributionType: 'UPLOAD',
+            fileSize: 100,
+            sha256: 'a'.repeat(64),
+          },
+        })
+      )
+    );
     vi.stubGlobal('fetch', fetchMock);
     initUpdateBridge();
+    const startup = vi.mocked(ipcBridge.update.getStartupCheckEnabled.provider).mock.calls.at(-1)![0];
+    await expect(startup()).resolves.toBe(true);
     const check = vi.mocked(ipcBridge.update.check.provider).mock.calls.at(-1)?.[0];
     expect(check).toBeDefined();
     await expect(check!({})).resolves.toMatchObject({
@@ -231,6 +231,8 @@ describe('GEA update bridge policy', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     initUpdateBridge();
+    const startup = vi.mocked(ipcBridge.update.getStartupCheckEnabled.provider).mock.calls.at(-1)![0];
+    await expect(startup()).resolves.toBe(false);
 
     const check = vi.mocked(ipcBridge.update.check.provider).mock.calls.at(-1)?.[0];
     const download = vi.mocked(ipcBridge.update.download.provider).mock.calls.at(-1)?.[0];

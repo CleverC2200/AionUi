@@ -674,6 +674,10 @@ export function createAutoUpdateStatusBroadcast(): (
 }
 
 export function initUpdateBridge(): void {
+  ipcBridge.update.getStartupCheckEnabled.provider(
+    async () => isGeaClientIntegrationEnabled() && process.env.AIONUI_DISABLE_AUTO_UPDATE !== '1'
+  );
+
   ipcBridge.update.consumeInstallerLastFailure.provider(
     async (): Promise<{ success: boolean; data: InstallerLastFailureMarker | null; msg?: string }> => {
       try {
@@ -801,7 +805,10 @@ export function initUpdateBridge(): void {
                   error: (await getI18n()).t('update.downloadFailed'),
                 });
             })
-            .finally(() => cleanupManualDownload(downloadId));
+            .finally(() => {
+              cancelledManualDownloadIds.delete(downloadId);
+              cleanupManualDownload(downloadId);
+            });
           return { success: true, data: { downloadId, file_path: '' } };
         } catch {
           return { success: false, msg: (await getI18n()).t('update.downloadFailed') };

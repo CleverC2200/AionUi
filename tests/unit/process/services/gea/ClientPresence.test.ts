@@ -67,7 +67,7 @@ afterEach(async () => {
 it('restores login, immediately heartbeats with a stable installation ID, and stops on logout', async () => {
   const store = { load: async () => ({ accessToken: 'test-token' }), save: vi.fn(), clear: vi.fn() };
   await initializeSharedLarkAuthSession(store);
-  expect(heartbeats).toHaveLength(1);
+  await vi.waitFor(() => expect(heartbeats).toHaveLength(1));
   const first = heartbeats[0];
   expect(first.body.deviceInstanceId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   expect(first.body).not.toHaveProperty('userId');
@@ -81,7 +81,7 @@ it('restores login, immediately heartbeats with a stable installation ID, and st
   expect(heartbeats).toHaveLength(2);
   resetSharedLarkAuthServiceForTests();
   await initializeSharedLarkAuthSession(store);
-  expect(heartbeats).toHaveLength(3);
+  await vi.waitFor(() => expect(heartbeats).toHaveLength(3));
   expect(heartbeats[2].body.deviceInstanceId).toBe(first.body.deviceInstanceId);
 });
 
@@ -98,10 +98,11 @@ it('stops heartbeat retries when the server invalidates authentication', async (
     save: vi.fn(),
     clear: vi.fn(),
   });
+  const { getSharedLarkAuthService } = await import('@process/services/gea/LarkAuthService');
+  await vi.waitFor(() => expect(getSharedLarkAuthService().getStatus().authenticated).toBe(false));
   const calls = vi.mocked(fetch).mock.calls.length;
   await vi.advanceTimersByTimeAsync(600000);
   expect(vi.mocked(fetch).mock.calls).toHaveLength(calls);
-  const { getSharedLarkAuthService } = await import('@process/services/gea/LarkAuthService');
   expect(getSharedLarkAuthService().getStatus().authenticated).toBe(false);
 });
 
@@ -124,6 +125,11 @@ it('does not schedule another heartbeat when a late response arrives after logou
     clear: vi.fn(),
   });
   await vi.waitFor(() => expect(finish).toBeDefined());
+  let loginCompleted = false;
+  void restoring.then(() => {
+    loginCompleted = true;
+  });
+  await vi.waitFor(() => expect(loginCompleted).toBe(true));
   await logoutSharedLarkAuthSession();
   finish(new Response(JSON.stringify({ success: true, result: { heartbeatIntervalSeconds: 30 } })));
   await restoring;
@@ -138,6 +144,7 @@ it('resumes exactly one heartbeat loop after sleep', async () => {
     save: vi.fn(),
     clear: vi.fn(),
   });
+  await vi.waitFor(() => expect(heartbeats).toHaveLength(1));
   const { powerMonitor } = await import('electron');
   const suspend = vi
     .mocked(powerMonitor.on)
@@ -156,4 +163,41 @@ it('resumes exactly one heartbeat loop after sleep', async () => {
   expect(heartbeats).toHaveLength(2);
   await vi.advanceTimersByTimeAsync(30000);
   expect(heartbeats).toHaveLength(3);
+});
+
+it('uses the new authenticated identity after logout and login without keeping the old loop', async () => {
+  const store = (accessToken: string) => ({ load: async () => ({ accessToken }), save: vi.fn(), clear: vi.fn() });
+  await initializeSharedLarkAuthSession(store('first-token'));
+  await vi.waitFor(() => expect(heartbeats).toHaveLength(1));
+  await logoutSharedLarkAuthSession();
+  await initializeSharedLarkAuthSession(store('second-token'));
+  await vi.waitFor(() => expect(heartbeats).toHaveLength(2));
+  await vi.advanceTimersByTimeAsync(30000);
+  expect(heartbeats).toHaveLength(3);
+  expect(heartbeats.slice(1).map((request) => request.headers.get('X-Access-Token'))).toEqual([
+    'second-token',
+    'second-token',
+  ]);
+});
+
+it('recovers a network failure with a bounded retry and then the returned interval', async () => {
+  const original = globalThis.fetch;
+  let attempts = 0;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith('/heartbeat') && ++attempts === 1) return Promise.reject(new Error('network unavailable'));
+      return original(url, init);
+    })
+  );
+  await initializeSharedLarkAuthSession({
+    load: async () => ({ accessToken: 'test-token' }),
+    save: vi.fn(),
+    clear: vi.fn(),
+  });
+  await vi.waitFor(() => expect(attempts).toBe(1));
+  await vi.advanceTimersByTimeAsync(30000);
+  expect(heartbeats).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(30000);
+  expect(heartbeats).toHaveLength(2);
 });

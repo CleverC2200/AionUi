@@ -173,3 +173,32 @@ export class GeaClientAdapter {
     return envelope.data.result;
   }
 }
+
+/** Validate refreshed release metadata before admitting bytes to the installer. */
+export function requireSameUploadedPackage(
+  fresh: GeaClientRelease,
+  expected: GeaClientRelease
+): GeaClientRelease & { sha256: string; fileSize: number } {
+  if (
+    !fresh.upgradeAvailable ||
+    fresh.versionCode !== expected.versionCode ||
+    fresh.sha256 !== expected.sha256 ||
+    fresh.fileSize !== expected.fileSize ||
+    fresh.distributionType !== 'UPLOAD' ||
+    !fresh.sha256 ||
+    !fresh.fileSize
+  ) {
+    throw new GeaClientError('CLIENT_RELEASE_CHANGED');
+  }
+  return { ...fresh, sha256: fresh.sha256, fileSize: fresh.fileSize };
+}
+
+export function getGeaPackageExtension(disposition: string, platform: ClientVersion['platform']): string {
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const name = encoded ? decodeURIComponent(encoded) : disposition.match(/filename="([^"]+)"/i)?.[1];
+  const extension = name?.match(/\.[a-z0-9]+$/i)?.[0].toLowerCase();
+  if (!extension || !(platform === 'MACOS' ? ['.dmg', '.pkg'] : ['.exe', '.msi']).includes(extension)) {
+    throw new GeaClientError('CLIENT_PACKAGE_TYPE_UNAVAILABLE');
+  }
+  return extension;
+}

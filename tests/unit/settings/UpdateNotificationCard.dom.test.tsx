@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   autoUpdateQuitAndInstallMock: vi.fn(),
   consumeInstallerLastFailureMock: vi.fn(),
   updateCheckMock: vi.fn(),
+  startupEnabledMock: vi.fn(),
   updateDownloadMock: vi.fn(),
   updateCancelDownloadMock: vi.fn(),
   openFeedbackMock: vi.fn(),
@@ -61,6 +62,7 @@ vi.mock('@/common', () => ({
       },
     },
     update: {
+      getStartupCheckEnabled: { invoke: mocks.startupEnabledMock },
       check: { invoke: mocks.updateCheckMock },
       consumeInstallerLastFailure: { invoke: mocks.consumeInstallerLastFailureMock },
       download: { invoke: mocks.updateDownloadMock },
@@ -91,6 +93,7 @@ import UpdateNotificationCard from '@/renderer/components/settings/UpdateNotific
 describe('UpdateNotificationCard', () => {
   beforeEach(() => {
     vi.stubGlobal('__APP_VERSION__', '2.1.15');
+    mocks.startupEnabledMock.mockResolvedValue(false);
     mocks.manualProgressHandler = null;
     mocks.autoStatusHandler = null;
     mocks.updateOpenHandler = null;
@@ -137,6 +140,49 @@ describe('UpdateNotificationCard', () => {
     cleanup();
     vi.clearAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it('checks once on startup despite translation rerenders', async () => {
+    mocks.startupEnabledMock.mockResolvedValue(true);
+    const view = render(<UpdateNotificationCard />);
+    await screen.findByTestId('update-notification-card');
+    view.rerender(<UpdateNotificationCard />);
+    await act(async () => {});
+    expect(mocks.startupEnabledMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a ready installation when a late startup check fails', async () => {
+    mocks.startupEnabledMock.mockResolvedValue(true);
+    mocks.autoUpdateRestoreDownloadedMock.mockResolvedValue({
+      success: true,
+      data: { ready: true, version: '2.1.99' },
+    });
+    let finish!: (value: unknown) => void;
+    mocks.updateCheckMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    render(<UpdateNotificationCard />);
+    await waitFor(() => expect(finish).toBeDefined());
+    await screen.findByRole('button', { name: 'update.restartNow' });
+    await act(async () => {
+      finish({ success: false, msg: 'network error' });
+    });
+    expect(screen.getByRole('button', { name: 'update.restartNow' })).toBeTruthy();
+    expect(screen.queryByText('network error')).toBeNull();
+  });
+
+  it('keeps a successful no-update startup check silent', async () => {
+    mocks.startupEnabledMock.mockResolvedValue(true);
+    mocks.updateCheckMock.mockResolvedValue({
+      success: true,
+      data: { currentVersion: '2.1.15', updateAvailable: false },
+    });
+    render(<UpdateNotificationCard />);
+    await waitFor(() => expect(mocks.updateCheckMock).toHaveBeenCalled());
+    expect(screen.queryByTestId('update-notification-card')).toBeNull();
   });
 
   it('renders a bottom-right notification card for auto-update availability without a dialog', async () => {

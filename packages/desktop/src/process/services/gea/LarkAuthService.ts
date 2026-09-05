@@ -180,7 +180,7 @@ export async function initializeSharedPersonalModelGateway(
 export async function initializeSharedLarkAuthSession(sessionStore?: GeaLarkAuthSessionStore): Promise<void> {
   stopGeaClientPresence();
   await getSharedLarkAuthService().initializeSession(sessionStore);
-  await startGeaClientPresence(getSharedLarkAuthService(), logoutSharedLarkAuthSession);
+  void startGeaClientPresence(getSharedLarkAuthService(), logoutSharedLarkAuthSession);
 }
 
 export function getSharedLarkAuthSessionStore(): ElectronLarkAuthSessionStore | undefined {
@@ -208,15 +208,18 @@ async function pollSharedLarkAuthSessionWithIdentity(qrcodeId: string) {
   const result = verified.result;
   if (result.status !== 'authenticated' || !result.user) return verified;
   stopGeaClientPresence();
-  await startGeaClientPresence(service, logoutSharedLarkAuthSession);
   await syncSharedGeaSessionToBackend({ replaceInvalidated: true });
-  if (!personalModelGateway) return verified;
+  if (!personalModelGateway) {
+    void startGeaClientPresence(service, logoutSharedLarkAuthSession);
+    return verified;
+  }
   let personalModelSync: PersonalModelSyncResult;
   try {
     personalModelSync = await syncSharedPersonalModels();
   } catch {
     personalModelSync = { configured: 0, failed: 1, skipped: 0, status: 'partial' };
   }
+  void startGeaClientPresence(service, logoutSharedLarkAuthSession);
   return { ...verified, result: { ...result, personalModelSync } };
 }
 
