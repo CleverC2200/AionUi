@@ -25,7 +25,11 @@
 
 在 GitHub 仓库的 Settings → Secrets and variables → Actions 中配置以下 Secrets：
 
-### macOS 应用签名 (可选，用于发布到 Mac App Store)
+### macOS 应用签名（可分发安装包必需）
+
+macOS 构建必须使用稳定的 Developer ID 签名。缺少以下配置时，发布工作流会拒绝上传 ad-hoc 签名的 DMG；ad-hoc 签名只用于本地测试。
+
+例外：经负责人明确同意的内部测试，可在 Manual Build 中启用 `internal_test_build`（默认关闭）。该产物只能发布为 GitHub Prerelease，必须说明非 Developer ID 签名、首次打开可能受 Gatekeeper 限制，以及 Mac 登录和个人模型凭据仅保存在进程内、退出后需要重新登录。正式发布流程仍要求稳定签名。手动 Mac 构建只生成 DMG，不生成自动更新 ZIP。
 
 ```
 APPLE_ID=你的苹果开发者账号邮箱

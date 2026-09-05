@@ -46,6 +46,7 @@
     },
     "errors": {
       "networkError": "无法连接 GEA，请重试",
+      "secureStorageUnavailable": "无法访问系统安全凭据存储。请允许 GEAUi 访问后重试。",
       "serverError": "GEA 登录服务暂不可用",
       "invalidResponse": "GEA 返回的登录数据格式异常"
     }

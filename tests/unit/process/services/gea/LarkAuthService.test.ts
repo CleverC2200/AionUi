@@ -10,7 +10,6 @@ import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LarkAuthServiceError } from '@/process/services/gea/LarkAuthService';
 import {
   configureSharedPersonalModelGateway,
   createSharedWebHostLarkAuth,
@@ -19,6 +18,7 @@ import {
   getSharedLarkAuthService,
   initializeSharedPersonalModelGateway,
   LarkAuthService,
+  LarkAuthServiceError,
   type LarkAuthSafeStorageAdapter,
   pollSharedLarkAuthSession,
   resetSharedLarkAuthServiceForTests,
@@ -514,10 +514,10 @@ describe('LarkAuthService', () => {
     expect(storedSession).toBeNull();
   });
 
-  it('does not report login success when the authenticated session cannot be persisted', async () => {
+  it('keeps the authenticated session in memory when secure persistence is unavailable', async () => {
     const sessionStore = {
       load: vi.fn().mockResolvedValue(null),
-      save: vi.fn().mockRejectedValue(new Error('secure storage unavailable')),
+      save: vi.fn().mockRejectedValue(new LarkAuthServiceError('secureStorageUnavailable')),
       clear: vi.fn(),
     };
     const fetchImpl = vi
@@ -531,8 +531,11 @@ describe('LarkAuthService', () => {
       );
     const service = new LarkAuthService({ fetchImpl, sessionStore });
 
-    await expect(service.pollQrSession('QRCODELOGIN:1')).rejects.toThrow('secure storage unavailable');
-    expect(service.getStatus()).toEqual({ authenticated: false });
+    await expect(service.pollQrSession('QRCODELOGIN:1')).resolves.toMatchObject({
+      status: 'authenticated',
+      user: { id: '10086' },
+    });
+    expect(service.getStatus()).toMatchObject({ authenticated: true, user: { id: '10086' } });
   });
 
   it('clears a persisted session when GEA rejects the token', async () => {
@@ -643,6 +646,32 @@ describe('LarkAuthService', () => {
     }
   });
 
+  it('preserves a persisted desktop session when secure storage denies decryption', async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), 'aionui-lark-auth-denied-'));
+    const filePath = path.join(tempDir, 'lark-auth-session.bin');
+    const encrypted = Buffer.from('encrypted-session');
+    const storage: LarkAuthSafeStorageAdapter = {
+      isEncryptionAvailable: () => true,
+      getSelectedStorageBackend: () => 'keychain',
+      encryptString: vi.fn(),
+      decryptString: () => {
+        throw new Error('keychain authorization denied');
+      },
+    };
+
+    try {
+      await writeFile(filePath, encrypted);
+      const store = new ElectronLarkAuthSessionStore(filePath, storage);
+
+      await expect(store.load()).rejects.toMatchObject<LarkAuthServiceError>({
+        code: 'secureStorageUnavailable',
+      });
+      await expect(readFile(filePath)).resolves.toEqual(encrypted);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it('rejects desktop session persistence when secure storage is unavailable', async () => {
     const storage: LarkAuthSafeStorageAdapter = {
       isEncryptionAvailable: () => false,
@@ -652,7 +681,9 @@ describe('LarkAuthService', () => {
     };
     const store = new ElectronLarkAuthSessionStore('/tmp/aionui-unavailable-session.bin', storage);
 
-    await expect(store.save({ accessToken: 'sensitive-token' })).rejects.toThrow('secure storage unavailable');
+    await expect(store.save({ accessToken: 'sensitive-token' })).rejects.toMatchObject<LarkAuthServiceError>({
+      code: 'secureStorageUnavailable',
+    });
   });
 
   it('rejects an invalid GEA response without accepting an empty token', async () => {

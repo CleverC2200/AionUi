@@ -16,6 +16,7 @@ import {
   type PersonalModelSecretRecord,
   type PersonalModelSecretVault,
 } from './PersonalModelGatewayService';
+import { shouldUsePersistentCredentialStorage } from './CredentialStoragePolicy';
 import { getGeaEnvironment } from './GeaEnvironmentService';
 
 const VAULT_FILE_NAME = 'personal-model-vault.bin';
@@ -32,18 +33,24 @@ export type SafeStorageAdapter = Pick<
 
 export class ElectronSafeStorageVault implements PersonalModelSecretVault {
   private mutation: Promise<void> = Promise.resolve();
+  private persistentStorageAvailable: boolean | undefined;
+  private readonly volatileEntries = new Map<string, PersonalModelSecretRecord>();
 
   constructor(
     private readonly filePath: string,
-    private readonly storage: SafeStorageAdapter = safeStorage
+    private readonly storage: SafeStorageAdapter = safeStorage,
+    private readonly enabled = true
   ) {}
 
   isAvailable(): boolean {
-    if (!this.storage.isEncryptionAvailable()) return false;
-    return process.platform !== 'linux' || this.storage.getSelectedStorageBackend() !== 'basic_text';
+    // Secrets can always remain process-local when encrypted persistence is unavailable.
+    return true;
   }
 
   async get(environmentId: string, userId: string, credentialId: string): Promise<PersonalModelSecretRecord | null> {
+    if (!this.canPersist()) {
+      return this.volatileEntries.get(vaultKey(environmentId, userId, credentialId)) ?? null;
+    }
     await this.mutation;
     const contents = await this.readContents();
     const record = contents.entries[vaultKey(environmentId, userId, credentialId)] ?? null;
@@ -53,6 +60,10 @@ export class ElectronSafeStorageVault implements PersonalModelSecretVault {
   }
 
   put(record: PersonalModelSecretRecord): Promise<void> {
+    if (!this.canPersist()) {
+      this.volatileEntries.set(vaultKey(record.environmentId, record.userId, record.credentialId), record);
+      return Promise.resolve();
+    }
     return this.enqueueMutation(async () => {
       const contents = await this.readContents();
       contents.entries[vaultKey(record.environmentId, record.userId, record.credentialId)] = record;
@@ -61,11 +72,28 @@ export class ElectronSafeStorageVault implements PersonalModelSecretVault {
   }
 
   delete(environmentId: string, userId: string, credentialId: string): Promise<void> {
+    if (!this.canPersist()) {
+      this.volatileEntries.delete(vaultKey(environmentId, userId, credentialId));
+      return Promise.resolve();
+    }
     return this.enqueueMutation(async () => {
       const contents = await this.readContents();
       delete contents.entries[vaultKey(environmentId, userId, credentialId)];
       await this.writeContents(contents);
     });
+  }
+
+  private canPersist(): boolean {
+    if (!this.enabled) return false;
+    if (this.persistentStorageAvailable !== undefined) return this.persistentStorageAvailable;
+    try {
+      this.persistentStorageAvailable =
+        this.storage.isEncryptionAvailable() &&
+        (process.platform !== 'linux' || this.storage.getSelectedStorageBackend() !== 'basic_text');
+    } catch {
+      this.persistentStorageAvailable = false;
+    }
+    return this.persistentStorageAvailable;
   }
 
   private enqueueMutation(operation: () => Promise<void>): Promise<void> {
@@ -126,7 +154,11 @@ let runtime: PersonalModelGatewayService | null = null;
 
 export function getPersonalModelGatewayRuntime(): PersonalModelGatewayService {
   runtime ??= new PersonalModelGatewayService(
-    new ElectronSafeStorageVault(path.join(app.getPath('userData'), VAULT_FILE_NAME)),
+    new ElectronSafeStorageVault(
+      path.join(app.getPath('userData'), VAULT_FILE_NAME),
+      safeStorage,
+      shouldUsePersistentCredentialStorage()
+    ),
     new AionCoreProviderStore(),
     getGeaEnvironment().environmentId
   );

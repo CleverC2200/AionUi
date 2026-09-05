@@ -17,8 +17,6 @@ import type { GeaClaimedPersonalModelCredential, GeaPersonalModelCredential } fr
 
 const GEA_PERSONAL_LOGIN_REQUIRED = 'GEA_PERSONAL_LOGIN_REQUIRED';
 
-class PersonalModelCredentialRecoveryRequiredError extends Error {}
-
 export type PersonalModelSecretRecord = {
   accessKeyId: string;
   agentCode: string;
@@ -180,10 +178,7 @@ export class PersonalModelGatewayService {
         await this.providerStore.save(provider, Boolean(existing));
         providersById.set(providerId, provider);
         configured += 1;
-      } catch (error) {
-        if (error instanceof PersonalModelCredentialRecoveryRequiredError) {
-          failureReason = 'credentialRecoveryRequired';
-        }
+      } catch {
         failed += 1;
         reason ??= failureReason;
       }
@@ -218,8 +213,7 @@ export class PersonalModelGatewayService {
   ): Promise<PersonalModelSecretRecord> {
     if (credential.status === 'ENABLED') {
       const record = await this.vault.get(this.environmentId, userId, credential.credentialId);
-      if (!record) throw new PersonalModelCredentialRecoveryRequiredError();
-      return record;
+      if (record) return record;
     }
 
     const claimed = await authClient.claimPersonalModelCredential(credential.credentialId, credential.tenantId);

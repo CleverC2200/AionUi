@@ -391,6 +391,11 @@ const getBuiltinMcpScriptPath = (scriptName: string): string => {
   return path.resolve(getBuiltinMcpBaseDir(), `${scriptName}.js`);
 };
 
+/** Resolve the unpacked, bundled chrome-devtools-mcp entry for an external Node process. */
+const getBundledChromeDevtoolsMcpPath = (): string => {
+  return path.resolve(getBuiltinMcpBaseDir(), '../../node_modules/chrome-devtools-mcp/build/src/index.js');
+};
+
 const initStorage = async () => {
   const t0 = performance.now();
   const mark = (label: string) => console.log(`[AionUi:init] ${label} +${Math.round(performance.now() - t0)}ms`);
@@ -479,6 +484,13 @@ export const getSystemDir = () => {
  * 获取助手规则目录路径（供其他模块使用）
  * Get assistant rules directory path (for use by other modules)
  */
-export { getAssistantsDir, getSkillsDir, getCronSkillsDir, BUILTIN_IMAGE_GEN_ID, getBuiltinMcpScriptPath };
+export {
+  getAssistantsDir,
+  getSkillsDir,
+  getCronSkillsDir,
+  BUILTIN_IMAGE_GEN_ID,
+  getBuiltinMcpScriptPath,
+  getBundledChromeDevtoolsMcpPath,
+};
 
 export default initStorage;

@@ -86,21 +86,17 @@ describe('resolveBridgeToken', () => {
  * imported by a unit test), which is how the defect reached main. The command assembly is now a
  * pure function and can be pinned directly.
  */
-describe('buildMcpSpawnCommand — issue #3883', () => {
-  const version = '0.16.0';
+describe('buildMcpSpawnCommand', () => {
   const browserUrl = 'http://127.0.0.1:61622';
+  const entryPath =
+    '/Applications/GEAUi.app/Contents/Resources/app.asar.unpacked/node_modules/chrome-devtools-mcp/build/src/index.js';
+  const nodeExecutable = '/managed/node';
 
-  it('never spawns npx.cmd directly on Windows (that is the EINVAL form)', () => {
-    const { command } = buildMcpSpawnCommand({ platform: 'win32', version, browserUrl });
-    expect(command).not.toBe('npx.cmd');
-    expect(command).toBe('cmd.exe');
-  });
-
-  it('routes through cmd.exe /c on Windows with npx as an argument', () => {
-    const { command, args } = buildMcpSpawnCommand({ platform: 'win32', version, browserUrl });
-    expect(command).toBe('cmd.exe');
-    expect(args.slice(0, 2)).toEqual(['/c', 'npx']);
-    expect(args).toContain(`chrome-devtools-mcp@${version}`);
+  it('runs the packaged MCP entry with the current Node executable', () => {
+    expect(buildMcpSpawnCommand({ browserUrl, entryPath, nodeExecutable })).toEqual({
+      command: nodeExecutable,
+      args: [entryPath, '--browser-url', browserUrl],
+    });
   });
 
   it('passes --browser-url as its own argv entry, never concatenated into one string', () => {
@@ -113,35 +109,16 @@ describe('buildMcpSpawnCommand — issue #3883', () => {
      * the whole command into one string for cmd.exe to parse, at which point `&`, `|` and `^`
      * inside browserUrl become metacharacters. The array form keeps each argument escaped.
      */
-    for (const platform of ['win32', 'darwin', 'linux']) {
-      const { args } = buildMcpSpawnCommand({ platform, version, browserUrl });
-      const flagIndex = args.indexOf('--browser-url');
-      expect(flagIndex).toBeGreaterThanOrEqual(0);
-      expect(args[flagIndex + 1]).toBe(browserUrl);
-      expect(args.some((a) => a.includes(`--browser-url=`))).toBe(false);
-    }
+    const { args } = buildMcpSpawnCommand({ browserUrl, entryPath, nodeExecutable });
+    const flagIndex = args.indexOf('--browser-url');
+    expect(flagIndex).toBeGreaterThanOrEqual(0);
+    expect(args[flagIndex + 1]).toBe(browserUrl);
+    expect(args.some((a) => a.includes(`--browser-url=`))).toBe(false);
   });
 
-  it('keeps the plain npx invocation on POSIX platforms', () => {
-    for (const platform of ['darwin', 'linux']) {
-      const { command, args } = buildMcpSpawnCommand({ platform, version, browserUrl });
-      expect(command).toBe('npx');
-      expect(args[0]).toBe('-y');
-      expect(args).not.toContain('/c');
-    }
-  });
-
-  it('pins the MCP version rather than resolving @latest at launch', () => {
-    /**
-     * @latest 每次首启都要联网解析（离线直接失败），也意味着上游可以随时换掉驱动浏览器
-     * 的代码 —— 而那个浏览器里有用户的登录态。
-     *
-     * @latest re-resolves over the network on first launch (hard failure offline) and lets an
-     * uncontrolled upstream swap out the code driving a browser that holds the user's live
-     * sign-in cookies.
-     */
-    const { args } = buildMcpSpawnCommand({ platform: 'win32', version, browserUrl });
-    expect(args).not.toContain('chrome-devtools-mcp@latest');
-    expect(args).toContain(`chrome-devtools-mcp@${version}`);
+  it('does not invoke npx or resolve a package at runtime', () => {
+    const { command, args } = buildMcpSpawnCommand({ browserUrl, entryPath, nodeExecutable });
+    expect(command).not.toMatch(/npx/i);
+    expect(args.join(' ')).not.toContain('chrome-devtools-mcp@');
   });
 });
