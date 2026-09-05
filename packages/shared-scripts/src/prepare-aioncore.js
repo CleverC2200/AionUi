@@ -30,6 +30,8 @@ const DEFAULT_RELEASE_REPOSITORY = 'iOfficeAI/AionCore';
 const DEFAULT_ACTIONS_REPOSITORY = 'CleverC2200/AionCore';
 const VERIFIED_ACTIONS_POLICY = 'verified-actions';
 
+const { restoreDownload, saveDownload } = require('./build-cache');
+
 const MANAGED_NODE_TARGETS = {
   'darwin-arm64': { folderSuffix: 'darwin-arm64', archiveExt: 'tar.gz', executable: 'bin/node' },
   'darwin-x64': { folderSuffix: 'darwin-x64', archiveExt: 'tar.gz', executable: 'bin/node' },
@@ -228,7 +230,17 @@ function getActionsArtifactMissingMessage({ runId, platform, arch, expectedArtif
   ].join(' ');
 }
 
-function prepareCrossTargetManagedResources(binaryPath, targetDir, platform, arch) {
+function prepareCrossTargetManagedResources(
+  binaryPath,
+  targetDir,
+  platform,
+  arch,
+  {
+    download = downloadFile,
+    extract = extractArchive,
+    cacheDir = path.join(os.homedir(), '.cache', 'aionui-build', 'node-v1'),
+  } = {}
+) {
   const runtimeKey = `${platform}-${arch}`;
   const target = MANAGED_NODE_TARGETS[runtimeKey];
   if (!target) throw new Error(`Unsupported managed Node target: ${runtimeKey}`);
@@ -244,20 +256,22 @@ function prepareCrossTargetManagedResources(binaryPath, targetDir, platform, arc
   const bundleOut = path.join(targetDir, 'managed-resources');
   const nodeDirName = `node-v${version}-${target.folderSuffix}`;
   const archiveName = `${nodeDirName}.${target.archiveExt}`;
-  const tempDir = path.join(os.tmpdir(), 'aioncore-managed-node', runtimeKey, version);
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aioncore-managed-node-'));
   const archivePath = path.join(tempDir, archiveName);
   const checksumsPath = path.join(tempDir, 'SHASUMS256.txt');
 
   removeDirectorySafe(bundleOut);
-  removeDirectorySafe(tempDir);
   ensureDirectory(path.join(bundleOut, 'node'));
   ensureDirectory(tempDir);
 
   try {
     const releaseUrl = `https://nodejs.org/dist/v${version}`;
     console.log(`  Preparing ${runtimeKey} managed Node ${version} from nodejs.org`);
-    downloadFile(`${releaseUrl}/${archiveName}`, archivePath);
-    downloadFile(`${releaseUrl}/SHASUMS256.txt`, checksumsPath);
+    const checksumsUrl = `${releaseUrl}/SHASUMS256.txt`;
+    const cachedChecksums = restoreDownload(cacheDir, checksumsUrl, checksumsPath);
+    if (!cachedChecksums) {
+      download(checksumsUrl, checksumsPath);
+    }
     const checksumLine = fs
       .readFileSync(checksumsPath, 'utf8')
       .split(/\r?\n/)
@@ -265,13 +279,21 @@ function prepareCrossTargetManagedResources(binaryPath, targetDir, platform, arc
     if (!checksumLine || !/^[a-f0-9]{64}  /.test(checksumLine)) {
       throw new Error(`Node checksum missing for ${archiveName}`);
     }
-    verifyFileSha256(archivePath, checksumLine.slice(0, 64), archiveName);
-    extractArchive(archivePath, path.join(bundleOut, 'node'), platform);
+    const expected = checksumLine.slice(0, 64);
+    const archiveUrl = `${releaseUrl}/${archiveName}`;
+    const source = `${archiveUrl}#sha256=${expected}`;
+    const cached = restoreDownload(cacheDir, source, archivePath, expected);
+    if (!cached) download(archiveUrl, archivePath);
+    verifyFileSha256(archivePath, expected, archiveName);
+    console.log(`[node-cache] ${cached ? 'hit' : 'miss'}: ${runtimeKey} ${version}`);
+    extract(archivePath, path.join(bundleOut, 'node'), platform);
 
     const nodeRoot = path.join(bundleOut, 'node', nodeDirName);
     if (!fs.existsSync(path.join(nodeRoot, ...target.executable.split('/')))) {
       throw new Error(`Managed Node executable missing after extracting ${archiveName}`);
     }
+    if (!cached) saveDownload(cacheDir, source, archivePath);
+    if (!cachedChecksums) saveDownload(cacheDir, checksumsUrl, checksumsPath);
     writeJson(path.join(bundleOut, 'manifest.json'), {
       schemaVersion: 2,
       runtimeKey,
@@ -915,6 +937,7 @@ function prepareAioncore(options) {
 }
 
 module.exports = {
+  prepareCrossTargetManagedResources,
   downloadAndExtractActionsArtifact,
   downloadFileWithAuth,
   extractArchive,

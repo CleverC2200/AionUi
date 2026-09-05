@@ -178,6 +178,20 @@ jobs:
         if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         run: bunx vitest run
 
+      - name: Record completed full unit suite
+        id: unit-record
+        if: matrix.os == 'ubuntu-latest'
+        continue-on-error: true
+        run: node scripts/quality-evidence.js record "${{ runner.temp }}/unit-evidence.json"
+
+      - name: Upload full unit evidence
+        if: matrix.os == 'ubuntu-latest' && steps.unit-record.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-evidence-ubuntu
+          path: ${{ runner.temp }}/unit-evidence.json
+          retention-days: 7
+
       - name: Record lightweight platform pass
         if: matrix.os != 'ubuntu-latest' && needs.classify-changes.outputs.cross_platform_tests != 'true'
         run: echo "No platform-sensitive paths changed; Linux unit coverage is authoritative for this PR."

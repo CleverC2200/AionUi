@@ -24,7 +24,7 @@ on:
         type: boolean
         default: false
       upload_installers_only:
-        description: 'Only upload primary installers (exe/msi/dmg/deb), skip zip/yml/blockmap'
+        description: 'Only upload primary installers (exe/dmg), skip updater metadata/blockmap'
         type: boolean
         default: false
       aioncore_run_id:
@@ -74,6 +74,12 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Probe verified full unit evidence
+        id: unit-evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/quality-evidence.js probe
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -90,7 +96,22 @@ jobs:
         run: bunx tsc --noEmit
 
       - name: Run unit tests
+        if: steps.unit-evidence.outputs.reused != 'true'
         run: bunx vitest run
+
+      - name: Record completed full unit suite
+        id: unit-record
+        if: steps.unit-evidence.outputs.reused != 'true'
+        continue-on-error: true
+        run: node scripts/quality-evidence.js record "${{ runner.temp }}/unit-evidence.json"
+
+      - name: Upload full unit evidence
+        if: steps.unit-record.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-evidence-ubuntu
+          path: ${{ runner.temp }}/unit-evidence.json
+          retention-days: 7
 
   build:
     name: Build ${{ matrix.platform }}
@@ -152,6 +173,17 @@ jobs:
 
       - name: Cache status
         run: echo "electron-cache-hit=${{ steps.electron-cache.outputs.cache-hit }}"
+
+      # Only reusable downloads; prepared binaries and signed outputs are verified afresh.
+      - name: Cache verified resource downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/aionui-build/node-v1
+            ~/.cache/aionui-build/hub-v1
+          key: resource-downloads-v1-${{ matrix.platform }}-${{ hashFiles('package.json', '.github/workflows/_build-reusable.yml', 'scripts/prepareHubResources.js', 'packages/shared-scripts/src/prepare-aioncore.js', 'packages/shared-scripts/src/build-cache.js') }}
+          restore-keys: |
+            resource-downloads-v1-${{ matrix.platform }}-
 
       - name: Install dependencies
         uses: nick-fields/retry@v3
@@ -239,16 +271,16 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${{ matrix.platform }}" == "linux-x64" ]]; then
+          if [[ "${{ matrix.platform }}" == "macos-arm64" ]]; then
             echo "SENTRY_UPLOAD_SOURCE_MAPS=true" >> "$GITHUB_ENV"
-            echo "Sentry source maps will be uploaded by linux-x64"
+            echo "Sentry source maps will be uploaded by macos-arm64"
           else
             echo "SENTRY_UPLOAD_SOURCE_MAPS=false" >> "$GITHUB_ENV"
             echo "Sentry source map upload skipped for ${{ matrix.platform }}"
           fi
 
       - name: Validate Sentry source map upload configuration
-        if: matrix.platform == 'linux-x64'
+        if: matrix.platform == 'macos-arm64'
         shell: bash
         run: |
           set -euo pipefail
@@ -652,11 +684,12 @@ jobs:
           set -euo pipefail
           ASAR=$(find out -type f -name 'app.asar' -not -path '*node_modules*' | head -n 1 || true)
           if [ -z "$ASAR" ]; then
-            echo "::notice::No app.asar found for ${{ matrix.platform }}, skipping isolation check"
-            exit 0
+            echo "::error::No app.asar found for ${{ matrix.platform }}"
+            exit 1
           fi
           echo "Inspecting $ASAR for web-cli leakage..."
-          LEAK_COUNT=$(bunx @electron/asar list "$ASAR" 2>/dev/null | grep -cE '^/packages/web-cli(/|$)' || true)
+          ASAR_LIST=$(bunx @electron/asar list "$ASAR")
+          LEAK_COUNT=$(printf '%s\n' "$ASAR_LIST" | grep -cE '^/packages/web-cli(/|$)' || true)
           if [ "$LEAK_COUNT" != "0" ]; then
             echo "::error::Desktop asar contains $LEAK_COUNT web-cli entries:"
             bunx @electron/asar list "$ASAR" | grep -E '^/packages/web-cli(/|$)' | head -20
@@ -683,6 +716,17 @@ jobs:
           echo "Remaining artifacts:"
           ls -lh out/ || true
 
+      - name: Record installer provenance
+        if: >-
+          success() &&
+          (!startsWith(matrix.platform, 'windows') || steps.windows-build.outputs.result == 'success')
+        env:
+          BUILD_PLATFORM: ${{ matrix.platform }}
+          CORE_RUN_ID: ${{ inputs.aioncore_run_id }}
+          CORE_REPOSITORY: ${{ inputs.aioncore_repository }}
+          CORE_HEAD_SHA: ${{ inputs.aioncore_expected_head_sha }}
+        run: node scripts/stage-release-draft.js record
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
         if: >-
@@ -692,11 +736,9 @@ jobs:
           name: ${{ inputs.append_commit_hash && format('{0}-{1}', matrix.artifact-name, steps.commit.outputs.short) || matrix.artifact-name }}
           path: |
             out/*.exe
-            out/*.msi
             out/*.dmg
-            out/*.deb
-            out/GEAUi-*-mac-*.zip
-            out/*.yml
+            out/latest.yml
+            out/package-evidence.json
           if-no-files-found: warn
           retention-days: 7
 

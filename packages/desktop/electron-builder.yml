@@ -134,7 +134,6 @@ nsis:
 mac:
   target:
     - dmg
-    - zip
   icon: resources/app.icns
   artifactName: ${productName}-${version}-${os}-${arch}.${ext}
   category: public.app-category.productivity

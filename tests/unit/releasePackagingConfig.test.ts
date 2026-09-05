@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import { runInNewContext } from 'node:vm';
 
 const { parseMacCodeSignature } = require('../../scripts/afterSign');
 
@@ -69,12 +70,12 @@ describe('release packaging configuration', () => {
     );
   });
 
-  it('keeps mac zip artifacts enabled', () => {
+  it('builds only DMG installers for macOS', () => {
     const config = readProjectFile('packages/desktop/electron-builder.yml');
     const macBlock = yamlBlock(config, 'mac');
 
     expect(macBlock).toContain('    - dmg');
-    expect(macBlock).toContain('    - zip');
+    expect(macBlock).not.toContain('    - zip');
   });
 
   it('does not build Windows zip artifacts', () => {
@@ -105,10 +106,13 @@ describe('release packaging configuration', () => {
     expect(updateVerify).toContain('AIONUI_VERIFY_REQUIRED_FILE "$INSTDIR\\${AIONUI_APP_EXECUTABLE_FILENAME}"');
   });
 
-  it('uploads mac zip artifacts without a stale Windows zip glob', () => {
+  it('uploads only supported desktop installers', () => {
     const workflow = readProjectFile('.github/workflows/_build-reusable.yml');
 
-    expect(workflow).toContain('out/GEAUi-*-mac-*.zip');
+    expect(workflow).not.toContain('out/GEAUi-*-mac-*.zip');
+    expect(workflow).not.toContain('out/*.deb');
+    expect(workflow).toContain('out/*.dmg');
+    expect(workflow).toContain('out/*.exe');
     expect(workflow).not.toContain('out/GEAUi-*-win32-*.zip');
   });
 
@@ -117,9 +121,9 @@ describe('release packaging configuration', () => {
     const reusableWorkflow = readProjectFile('.github/workflows/_build-reusable.yml');
     const webWorkflow = readProjectFile('.github/workflows/pack-web-cli.yml');
 
-    expect(releaseWorkflow.match(/aioncore_repository: 'CleverC2200\/AionCore'/g)).toHaveLength(2);
-    expect(releaseWorkflow.match(/aioncore_run_id: \$\{\{ vars\.AIONCORE_STABLE_RUN_ID \}\}/g)).toHaveLength(2);
-    expect(releaseWorkflow.match(/aioncore_source_policy: 'verified-actions'/g)).toHaveLength(2);
+    expect(releaseWorkflow.match(/aioncore_repository: 'CleverC2200\/AionCore'/g)).toHaveLength(1);
+    expect(releaseWorkflow.match(/aioncore_run_id: \$\{\{ vars\.AIONCORE_STABLE_RUN_ID \}\}/g)).toHaveLength(1);
+    expect(releaseWorkflow.match(/aioncore_source_policy: 'verified-actions'/g)).toHaveLength(1);
     expect(releaseWorkflow).not.toContain('AIONCORE_STABLE_HEAD_SHA');
     expect(releaseWorkflow).not.toContain('AIONCORE_STABLE_SHA256S');
 
@@ -136,13 +140,25 @@ describe('release packaging configuration', () => {
     expect(webWorkflow).toContain("AIONUI_BACKEND_SOURCE_POLICY: ${{ inputs.aioncore_source_policy || 'default' }}");
   });
 
-  it('retries mac prepackaged builds with both dmg and zip targets', () => {
+  it.each(['--mac dmg --arm64', '--mac dmg --x64'])('preserves retry targets for %s', (args) => {
     const script = readProjectFile('scripts/build-with-builder.js');
-
-    expect(script).toMatch(/--mac\s+dmg\s+zip\s+--\$\{targetArch\}\s+--prepackaged/);
+    const helper = script.slice(
+      script.indexOf('function createMacArtifactsWithPrepackaged('),
+      script.indexOf('function buildWithDmgRetry(')
+    );
+    const commands: string[] = [];
+    const command = `bunx electron-builder ${args} --publish=never`;
+    runInNewContext(`${helper}; createMacArtifactsWithPrepackaged('/tmp/output', command);`, {
+      fs: { readdirSync: () => ['GEAUi.app'] },
+      path: { join: (...parts: string[]) => parts.join('/') },
+      execSync: (value: string) => commands.push(value),
+      process: { platform: 'darwin' },
+      command,
+    });
+    expect(commands).toEqual([`${command} --prepackaged "/tmp/output/GEAUi.app"`]);
   });
 
-  itWithBash('fails release asset preparation when a mac zip is missing', () => {
+  itWithBash('publishes only DMG and EXE even when legacy artifacts are present', () => {
     const tempDir = mkdtempSync(resolve(tmpdir(), 'aionui-release-assets-'));
     const artifactsDir = resolve(tempDir, 'build-artifacts');
     const outputDir = resolve(tempDir, 'release-assets');
@@ -164,8 +180,36 @@ describe('release packaging configuration', () => {
         encoding: 'utf8',
       });
 
-      expect(prepareResult.status).not.toBe(0);
-      expect(`${prepareResult.stdout}\n${prepareResult.stderr}`).toContain('Missing macOS zip artifact');
+      expect(prepareResult.status, prepareResult.stderr).toBe(0);
+      expect(readdirSync(outputDir).toSorted()).toEqual([
+        'GEAUi-1.0.0-mac-arm64.dmg',
+        'GEAUi-1.0.0-mac-x64.dmg',
+        'GEAUi-1.0.0-win-arm64.exe',
+        'GEAUi-1.0.0-win-x64.exe',
+        'SHA256SUMS.txt',
+        'latest-win-arm64.yml',
+        'latest.yml',
+      ]);
+      const verify = spawnSync('bash', ['scripts/verify-release-assets.sh', outputDir], {
+        cwd: projectRoot,
+        encoding: 'utf8',
+      });
+      expect(verify.status, verify.stdout + verify.stderr).toBe(0);
+      writeFileSync(resolve(outputDir, 'GEAUi-1.0.0-mac-arm64.dmg'), 'tampered');
+      const corrupted = spawnSync('bash', ['scripts/verify-release-assets.sh', outputDir], {
+        cwd: projectRoot,
+        encoding: 'utf8',
+      });
+      expect(corrupted.status).not.toBe(0);
+      expect(corrupted.stdout).toContain('FAIL: release checksums');
+      rmSync(resolve(artifactsDir, 'macos-build-arm64', 'GEAUi-1.0.0-mac-arm64.dmg'));
+      const missing = spawnSync('bash', ['scripts/prepare-release-assets.sh', artifactsDir, outputDir], {
+        cwd: projectRoot,
+        env,
+        encoding: 'utf8',
+      });
+      expect(missing.status).not.toBe(0);
+      expect(missing.stdout).toContain('Missing desktop installer');
     } finally {
       rmSync(tempDir, { force: true, recursive: true });
     }
