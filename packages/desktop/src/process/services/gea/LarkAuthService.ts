@@ -26,6 +26,7 @@ import type {
 import type { PersonalModelAuthClient } from './PersonalModelGatewayService';
 import { shouldUsePersistentCredentialStorage } from './CredentialStoragePolicy';
 import { getGeaEnvironment } from './GeaEnvironmentService';
+import { startGeaClientPresence, stopGeaClientPresence } from './GeaClientRuntime';
 
 export { GeaLarkAuthService as LarkAuthService, GeaLarkAuthServiceError as LarkAuthServiceError };
 
@@ -176,8 +177,10 @@ export async function initializeSharedPersonalModelGateway(
   return syncSharedPersonalModels();
 }
 
-export function initializeSharedLarkAuthSession(sessionStore?: GeaLarkAuthSessionStore): Promise<void> {
-  return getSharedLarkAuthService().initializeSession(sessionStore);
+export async function initializeSharedLarkAuthSession(sessionStore?: GeaLarkAuthSessionStore): Promise<void> {
+  stopGeaClientPresence();
+  await getSharedLarkAuthService().initializeSession(sessionStore);
+  await startGeaClientPresence(getSharedLarkAuthService(), logoutSharedLarkAuthSession);
 }
 
 export function getSharedLarkAuthSessionStore(): ElectronLarkAuthSessionStore | undefined {
@@ -204,6 +207,8 @@ async function pollSharedLarkAuthSessionWithIdentity(qrcodeId: string) {
   const verified = await service.pollQrSessionWithIdentity(qrcodeId);
   const result = verified.result;
   if (result.status !== 'authenticated' || !result.user) return verified;
+  stopGeaClientPresence();
+  await startGeaClientPresence(service, logoutSharedLarkAuthSession);
   await syncSharedGeaSessionToBackend({ replaceInvalidated: true });
   if (!personalModelGateway) return verified;
   let personalModelSync: PersonalModelSyncResult;
@@ -249,6 +254,7 @@ export async function ensureSharedPersonalModels(): Promise<void> {
 }
 
 export async function logoutSharedLarkAuthSession(): Promise<void> {
+  stopGeaClientPresence();
   await httpRequest<void>('DELETE', '/api/gea/auth/session').catch(() => {});
   await getSharedLarkAuthService().logout();
   await deactivateSharedPersonalModels();
@@ -323,12 +329,14 @@ export function createSharedWebHostLarkAuth(): WebHostLarkAuth {
 }
 
 export function resetSharedLarkAuthServiceForTests(): void {
+  stopGeaClientPresence();
   sharedLarkAuthService = null;
   sharedLarkAuthSessionStore = null;
   personalModelGatewayReady = false;
 }
 
 async function deactivateSharedPersonalModels(): Promise<void> {
+  stopGeaClientPresence();
   personalModelGatewayReady = false;
   await personalModelGateway?.deactivate().catch(() => {});
 }

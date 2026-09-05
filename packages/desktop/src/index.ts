@@ -17,6 +17,7 @@ import { shouldGrantPermissionRequest } from './process/utils/localFontPermissio
 
 import './process/utils/configureConsoleLog';
 import { app, BrowserWindow, ipcMain, nativeImage, net, powerMonitor, protocol, session } from 'electron';
+import { isGeaClientIntegrationEnabled, checkGeaClientRelease } from './process/services/gea/GeaClientRuntime';
 import fixPath from 'fix-path';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -643,6 +644,19 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
   attachWindowBoundsPersistence(mainWindow, (bounds) => ProcessConfig.set('window.bounds', bounds));
 
   // Initialize auto-updater service (skip when disabled via env, e.g. E2E / CI)
+  // GEA uses its own version-code contract, not the legacy CDN feed.
+  if (isGeaClientIntegrationEnabled() && process.env.AIONUI_DISABLE_AUTO_UPDATE !== '1') {
+    const checkTimer = setTimeout(() => {
+      void checkGeaClientRelease()
+        .then((result) => {
+          if (result.updateAvailable && !mainWindow.isDestroyed()) ipcBridge.update.open.emit({ source: 'menu' });
+        })
+        .catch(() => {
+          if (!mainWindow.isDestroyed()) ipcBridge.update.open.emit({ source: 'menu' });
+        });
+    }, 3000);
+    mainWindow.once('closed', () => clearTimeout(checkTimer));
+  }
   // 初始化自动更新服务（通过环境变量禁用时跳过，例如 E2E / CI 场景）
   const isCiRuntime = process.env.CI === 'true' || process.env.CI === '1' || process.env.GITHUB_ACTIONS === 'true';
   const disableAutoUpdater =

@@ -173,6 +173,8 @@ export default defineConfig(({ mode }) => {
         'process.env.env': JSON.stringify(process.env.env),
         'process.env.AIONUI_BUILD_CHANNEL': JSON.stringify(buildChannel),
         'process.env.AIONUI_BUILD_COMMIT': JSON.stringify(buildCommit),
+        // Release administrators assign this monotonic code; never derive it from SemVer.
+        'process.env.AIONUI_GEA_VERSION_CODE': JSON.stringify(process.env.AIONUI_GEA_VERSION_CODE ?? ''),
         'process.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN ?? ''),
       },
     },
