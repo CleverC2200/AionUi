@@ -46,6 +46,7 @@
     },
     "errors": {
       "networkError": "無法連線至 GEA，請重試",
+      "secureStorageUnavailable": "無法存取系統安全憑證儲存區。請允許 GEAUi 存取後重試。",
       "serverError": "GEA 登入服務暫時無法使用",
       "invalidResponse": "GEA 傳回的登入資料格式異常"
     }

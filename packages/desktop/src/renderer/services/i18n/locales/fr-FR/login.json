@@ -46,6 +46,7 @@
     },
     "errors": {
       "networkError": "Impossible de se connecter à GEA. Veuillez réessayer",
+      "secureStorageUnavailable": "Impossible d’accéder au stockage sécurisé des identifiants système. Autorisez GEAUi à y accéder, puis réessayez.",
       "serverError": "Le service de connexion GEA est temporairement indisponible",
       "invalidResponse": "GEA a renvoyé une réponse de connexion invalide"
     }

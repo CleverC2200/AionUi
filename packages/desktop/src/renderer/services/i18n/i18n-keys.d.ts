@@ -2138,6 +2138,7 @@ export type I18nKey =
   | 'login.lark.environment.saving'
   | 'login.lark.errors.invalidResponse'
   | 'login.lark.errors.networkError'
+  | 'login.lark.errors.secureStorageUnavailable'
   | 'login.lark.errors.serverError'
   | 'login.lark.expired'
   | 'login.lark.instruction'

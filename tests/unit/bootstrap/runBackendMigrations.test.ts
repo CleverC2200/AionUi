@@ -10,6 +10,7 @@ import {
 
 const {
   batchImportServersMock,
+  execFileMock,
   configFileGetMock,
   configFileSetMock,
   httpRequestMock,
@@ -19,6 +20,7 @@ const {
   updateServerMock,
 } = vi.hoisted(() => ({
   batchImportServersMock: vi.fn(),
+  execFileMock: vi.fn(),
   configFileGetMock: vi.fn(),
   configFileSetMock: vi.fn(),
   httpRequestMock: vi.fn(),
@@ -31,6 +33,8 @@ const {
 vi.mock('@/common/adapter/httpBridge', () => ({
   httpRequest: httpRequestMock,
 }));
+
+vi.mock('node:child_process', () => ({ execFile: execFileMock }));
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
   mcpService: {
@@ -50,6 +54,7 @@ vi.mock('@/common/config/configMigration', () => ({
 
 vi.mock('@/process/utils/initStorage', () => ({
   getBuiltinMcpScriptPath: (name: string) => `/mock/${name}.js`,
+  getBundledChromeDevtoolsMcpPath: () => '/mock/chrome-devtools-mcp/build/src/index.js',
 }));
 
 vi.mock('@/process/utils/migrateAssistants', () => ({
@@ -121,12 +126,60 @@ const legacyGeaServer = (): IMcpServer => ({
   original_json: '{}',
 });
 
+const legacyChromeDevtoolsServer = (packageVersion = 'chrome-devtools-mcp@latest'): IMcpServer => ({
+  id: 'chrome-devtools-id',
+  name: 'chrome-devtools',
+  description: 'Default MCP server: chrome-devtools',
+  enabled: false,
+  builtin: true,
+  last_test_status: 'error',
+  transport: {
+    type: 'stdio',
+    command: 'npx',
+    args: ['-y', packageVersion],
+  },
+  created_at: 1,
+  updated_at: 1,
+  original_json: JSON.stringify(
+    {
+      mcpServers: {
+        'chrome-devtools': {
+          command: 'npx',
+          args: ['-y', packageVersion],
+        },
+      },
+    },
+    null,
+    2
+  ),
+});
+
+const legacyBuiltinScriptServer = (
+  name: 'aionui-browser' | 'lark-cli',
+  lastTestStatus: IMcpServer['last_test_status'] = 'error'
+): IMcpServer => ({
+  id: `${name}-id`,
+  name,
+  enabled: name === 'aionui-browser',
+  builtin: true,
+  last_test_status: lastTestStatus,
+  transport: {
+    type: 'stdio',
+    command: 'node',
+    args: [`/mock/builtin-mcp-${name === 'aionui-browser' ? 'browser' : 'lark-cli'}.js`],
+  },
+  created_at: 1,
+  updated_at: 1,
+  original_json: '{}',
+});
+
 const configFile = {
   get: configFileGetMock,
   set: configFileSetMock,
 };
 
 beforeEach(() => {
+  execFileMock.mockImplementation((_command, _args, _options, callback) => callback(null));
   vi.clearAllMocks();
   configFileGetMock.mockResolvedValue(undefined);
   configFileSetMock.mockResolvedValue(undefined);
@@ -211,6 +264,158 @@ describe('ensureBuiltinGeaMcpServerAvailable', () => {
 });
 
 describe('runBackendMigrations', () => {
+  it('migrates the built-in chrome-devtools MCP away from the unbounded latest tag', async () => {
+    const migratedChromeDevtoolsServer: IMcpServer = {
+      ...legacyChromeDevtoolsServer(),
+      transport: {
+        type: 'stdio',
+        command: 'node',
+        args: ['/mock/chrome-devtools-mcp/build/src/index.js'],
+      },
+    };
+    listServersMock
+      .mockResolvedValueOnce([legacyChromeDevtoolsServer()])
+      .mockResolvedValueOnce([migratedChromeDevtoolsServer]);
+
+    await runBackendMigrations(configFile as never);
+
+    expect(updateServerMock).toHaveBeenCalledWith({
+      id: 'chrome-devtools-id',
+      data: {
+        builtin: true,
+        transport: {
+          type: 'stdio',
+          command: 'node',
+          args: ['/mock/chrome-devtools-mcp/build/src/index.js'],
+        },
+        original_json: JSON.stringify(
+          {
+            mcpServers: {
+              'chrome-devtools': {
+                command: 'node',
+                args: ['/mock/chrome-devtools-mcp/build/src/index.js'],
+              },
+            },
+          },
+          null,
+          2
+        ),
+      },
+    });
+    expect(testMcpConnectionMock).toHaveBeenCalledWith(migratedChromeDevtoolsServer);
+  });
+
+  it('uses the pinned chrome-devtools MCP version for a fresh bootstrap', async () => {
+    listServersMock.mockResolvedValue([]);
+
+    await runBackendMigrations(configFile as never);
+
+    expect(batchImportServersMock).toHaveBeenCalledWith({
+      servers: expect.arrayContaining([
+        expect.objectContaining({
+          name: 'chrome-devtools',
+          transport: {
+            type: 'stdio',
+            command: 'node',
+            args: ['/mock/chrome-devtools-mcp/build/src/index.js'],
+          },
+        }),
+      ]),
+    });
+  });
+
+  it('moves the transitional pinned npx config to the bundled MCP entry', async () => {
+    const transitionalServer = legacyChromeDevtoolsServer('chrome-devtools-mcp@0.16.0');
+    listServersMock.mockResolvedValue([transitionalServer]);
+
+    await runBackendMigrations(configFile as never);
+
+    expect(updateServerMock).toHaveBeenCalledWith({
+      id: 'chrome-devtools-id',
+      data: expect.objectContaining({
+        transport: {
+          type: 'stdio',
+          command: 'node',
+          args: ['/mock/chrome-devtools-mcp/build/src/index.js'],
+        },
+      }),
+    });
+  });
+
+  it('preserves a customized chrome-devtools MCP package version', async () => {
+    const customChromeDevtoolsServer: IMcpServer = {
+      ...legacyChromeDevtoolsServer(),
+      transport: {
+        type: 'stdio',
+        command: 'npx',
+        args: ['-y', 'chrome-devtools-mcp@1.7.0'],
+      },
+      last_test_status: 'connected',
+      original_json: JSON.stringify({
+        mcpServers: {
+          'chrome-devtools': {
+            command: 'npx',
+            args: ['-y', 'chrome-devtools-mcp@1.7.0'],
+          },
+        },
+      }),
+    };
+    listServersMock.mockResolvedValue([customChromeDevtoolsServer]);
+
+    await runBackendMigrations(configFile as never);
+
+    expect(updateServerMock).not.toHaveBeenCalled();
+    expect(testMcpConnectionMock).not.toHaveBeenCalled();
+  });
+
+  it('preflights a customized npx server when the local command is missing without changing its config', async () => {
+    const customServer = {
+      ...legacyChromeDevtoolsServer('chrome-devtools-mcp@1.7.0'),
+      last_test_status: 'connected' as const,
+    };
+    execFileMock.mockImplementation((_command, _args, _options, callback) =>
+      callback(Object.assign(new Error('missing command'), { code: 'ENOENT' }))
+    );
+    listServersMock.mockResolvedValue([customServer]);
+
+    await runBackendMigrations(configFile as never);
+
+    expect(updateServerMock).not.toHaveBeenCalled();
+    expect(testMcpConnectionMock).toHaveBeenCalledExactlyOnceWith(customServer);
+  });
+
+  it.each([
+    ['aionui-browser', 'error'],
+    ['aionui-browser', 'disconnected'],
+    ['lark-cli', 'error'],
+    ['lark-cli', 'disconnected'],
+  ] as const)(
+    'retests a %s server with stale status %s after upgrading its bundled launcher',
+    async (name, lastTestStatus) => {
+      const existingServer = legacyBuiltinScriptServer(name, lastTestStatus);
+      const updatedServer: IMcpServer = {
+        ...existingServer,
+        transport: {
+          ...existingServer.transport,
+          env: { AIONUI_BUNDLED_MCP_REVISION: '3' },
+        },
+      };
+      listServersMock.mockResolvedValue([existingServer]);
+      updateServerMock.mockResolvedValueOnce(updatedServer);
+      testMcpConnectionMock.mockResolvedValueOnce({ success: true, tools: [] });
+
+      await runBackendMigrations(configFile as never);
+
+      expect(updateServerMock).toHaveBeenCalledWith({
+        id: `${name}-id`,
+        data: expect.objectContaining({
+          transport: expect.objectContaining({ env: { AIONUI_BUNDLED_MCP_REVISION: '3' } }),
+        }),
+      });
+      expect(testMcpConnectionMock).toHaveBeenCalledWith(updatedServer);
+    }
+  );
+
   it('disables the obsolete GEA SSE entry when the managed gateway is bootstrapped', async () => {
     listServersMock.mockResolvedValue([legacyGeaServer()]);
 

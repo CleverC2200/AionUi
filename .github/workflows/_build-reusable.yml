@@ -15,6 +15,10 @@ on:
         description: 'Skip code quality checks (faster builds for debugging)'
         type: boolean
         default: false
+      internal_test_build:
+        description: 'Allow non-Developer-ID macOS signing for explicitly requested internal prereleases only'
+        type: boolean
+        default: false
       append_commit_hash:
         description: 'Append short commit hash to artifact names'
         type: boolean
@@ -475,8 +479,8 @@ jobs:
           rm -f /tmp/*.dmg 2>/dev/null || true
           echo "Cleanup complete"
 
-      # macOS: Build with notarization - DMG failure = CI failure, notarization failure = warning only
-      # macOS: 构建并公证 - DMG 失败 = CI 失败，公证失败 = 仅警告
+      # macOS: Require a stable Developer ID signature; notarization failure remains warning-only
+      # macOS: 强制稳定的 Developer ID 签名；仅公证失败仍按警告处理
       - name: Build with electron-builder (macOS)
         if: startsWith(matrix.platform, 'macos')
         id: macos-build
@@ -539,6 +543,7 @@ jobs:
           identity: ${{ secrets.IDENTITY }}
           CSC_NAME: ${{ secrets.IDENTITY }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          AIONUI_REQUIRE_STABLE_MAC_SIGNATURE: ${{ inputs.internal_test_build && 'false' || 'true' }}
           npm_config_cache: ${{ runner.temp }}/.npm
           ELECTRON_CACHE: ${{ runner.temp }}/.cache/electron
           ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/.cache/electron-builder

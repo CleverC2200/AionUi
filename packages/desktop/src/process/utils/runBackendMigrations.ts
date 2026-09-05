@@ -17,7 +17,11 @@ import {
 } from '@/common/config/imageGenerationMcpEnv';
 import { BUILTIN_IMAGE_GEN_NAME, type IMcpServer, type IProvider } from '@/common/config/storage';
 import { resolveBinaryPath } from '@process/backend';
-import { getBuiltinMcpScriptPath, type ProcessConfig as ProcessConfigType } from './initStorage';
+import {
+  getBuiltinMcpScriptPath,
+  getBundledChromeDevtoolsMcpPath,
+  type ProcessConfig as ProcessConfigType,
+} from './initStorage';
 import { migrateAssistantsToBackend } from './migrateAssistants';
 
 type ConfigFile = typeof ProcessConfigType;
@@ -25,6 +29,11 @@ type MigrationStepResult = boolean;
 type McpImportServer = Partial<IMcpServer> & Pick<IMcpServer, 'name' | 'transport'>;
 type BackendClientPreferences = Record<string, unknown>;
 const BUILTIN_CHROME_DEVTOOLS_NAME = 'chrome-devtools';
+const BUNDLED_MCP_REVISION_ENV = 'AIONUI_BUNDLED_MCP_REVISION';
+const BUNDLED_MCP_REVISION = '3';
+const CHROME_DEVTOOLS_MCP_VERSION = '0.16.0';
+const PINNED_CHROME_DEVTOOLS_PACKAGE = `chrome-devtools-mcp@${CHROME_DEVTOOLS_MCP_VERSION}`;
+const LEGACY_CHROME_DEVTOOLS_PACKAGES = new Set(['chrome-devtools-mcp@latest', PINNED_CHROME_DEVTOOLS_PACKAGE]);
 const BUILTIN_GEA_MCP_NAME = 'gea-gateway';
 const LEGACY_GEA_MCP_NAME = 'gea';
 const LEGACY_GEA_MCP_URL = 'https://gea.synear.cn/gea-boot/ai/gateway/mcp/proxy/sse';
@@ -184,6 +193,7 @@ function buildBuiltinBrowserServer(): McpImportServer {
   const serverConfig = {
     command: 'node',
     args: [scriptPath],
+    env: { [BUNDLED_MCP_REVISION_ENV]: BUNDLED_MCP_REVISION },
   };
 
   return {
@@ -199,6 +209,7 @@ function buildBuiltinBrowserServer(): McpImportServer {
       type: 'stdio',
       command: serverConfig.command,
       args: serverConfig.args,
+      env: serverConfig.env,
     },
     original_json: JSON.stringify({ mcpServers: { [BUILTIN_BROWSER_MCP_NAME]: serverConfig } }, null, 2),
   };
@@ -209,6 +220,7 @@ function buildBuiltinLarkCliServer(): McpImportServer {
   const serverConfig = {
     command: 'node',
     args: [scriptPath],
+    env: { [BUNDLED_MCP_REVISION_ENV]: BUNDLED_MCP_REVISION },
   };
 
   return {
@@ -224,6 +236,7 @@ function buildBuiltinLarkCliServer(): McpImportServer {
       type: 'stdio',
       command: serverConfig.command,
       args: serverConfig.args,
+      env: serverConfig.env,
     },
     original_json: JSON.stringify({ mcpServers: { [BUILTIN_LARK_CLI_MCP_NAME]: serverConfig } }, null, 2),
   };
@@ -265,8 +278,8 @@ export async function ensureBuiltinGeaMcpServerAvailable(): Promise<void> {
 
 function buildDefaultMcpServers(): McpImportServer[] {
   const chromeConfig = {
-    command: 'npx',
-    args: ['-y', 'chrome-devtools-mcp@latest'],
+    command: 'node',
+    args: [getBundledChromeDevtoolsMcpPath()],
   };
 
   return [
@@ -382,20 +395,41 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
   }
 
   const existingChromeDevtools = existingByName.get(BUILTIN_CHROME_DEVTOOLS_NAME);
+  const expectedChromeDevtools = defaultServers.find((server) => server.name === BUILTIN_CHROME_DEVTOOLS_NAME);
+  let shouldRetestMigratedChromeDevtools = false;
+  const usesLegacyChromeDevtoolsPackage =
+    existingChromeDevtools?.transport.type === 'stdio' &&
+    existingChromeDevtools.transport.command === 'npx' &&
+    existingChromeDevtools.transport.args?.length === 2 &&
+    existingChromeDevtools.transport.args[0] === '-y' &&
+    LEGACY_CHROME_DEVTOOLS_PACKAGES.has(existingChromeDevtools.transport.args[1]);
   if (
     existingChromeDevtools &&
-    (existingChromeDevtools.builtin !== true ||
+    expectedChromeDevtools &&
+    (usesLegacyChromeDevtoolsPackage ||
+      existingChromeDevtools.builtin !== true ||
       !existingChromeDevtools.original_json ||
       existingChromeDevtools.original_json.trim() === '' ||
       existingChromeDevtools.original_json.trim() === '{}')
   ) {
+    const nextChromeDevtools = usesLegacyChromeDevtoolsPackage ? expectedChromeDevtools : existingChromeDevtools;
+    const nextChromeDevtoolsOriginalJson =
+      nextChromeDevtools.original_json ||
+      buildOriginalJsonFromTransport({
+        name: nextChromeDevtools.name,
+        description: nextChromeDevtools.description,
+        transport: nextChromeDevtools.transport,
+      });
     await mcpService.updateServer.invoke({
       id: existingChromeDevtools.id,
       data: {
         builtin: true,
-        original_json: buildOriginalJsonFromTransport(existingChromeDevtools),
+        ...(usesLegacyChromeDevtoolsPackage ? { transport: expectedChromeDevtools.transport } : {}),
+        original_json: nextChromeDevtoolsOriginalJson,
       },
     });
+    shouldRetestMigratedChromeDevtools =
+      usesLegacyChromeDevtoolsPackage && existingChromeDevtools.last_test_status === 'error';
   }
 
   const existingGeaMcp = existingByName.get(BUILTIN_GEA_MCP_NAME);
@@ -433,7 +467,15 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
 
   const refreshedServers = await mcpService.listServers.invoke();
   const chromeDevtoolsServer = refreshedServers.find((server) => server.name === BUILTIN_CHROME_DEVTOOLS_NAME);
-  await ensureBuiltinChromeDevtoolsAvailability(chromeDevtoolsServer);
+  if (shouldRetestMigratedChromeDevtools && chromeDevtoolsServer) {
+    try {
+      await mcpService.testMcpConnection.invoke(chromeDevtoolsServer);
+    } catch (error) {
+      console.warn('[Migration] migrated chrome-devtools MCP connection test failed', error);
+    }
+  } else {
+    await ensureBuiltinChromeDevtoolsAvailability(chromeDevtoolsServer);
+  }
 
   if (
     imageEnvResolution.ok === true &&
@@ -521,7 +563,7 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
         browserTransportChanged ? 'yes' : 'no',
         browserJsonChanged ? 'yes' : 'no'
       );
-      await mcpService.updateServer.invoke({
+      const updatedBrowserServer = await mcpService.updateServer.invoke({
         id: existingBrowserServer.id,
         data: {
           transport: desiredBrowserServer.transport,
@@ -529,6 +571,11 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
         },
       });
       browserServerUpdated = true;
+      try {
+        await mcpService.testMcpConnection.invoke(updatedBrowserServer);
+      } catch (error) {
+        console.warn('[Migration] upgraded browser MCP connection test failed', error);
+      }
     }
   }
 
@@ -548,7 +595,7 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
         larkCliTransportChanged ? 'yes' : 'no',
         larkCliJsonChanged ? 'yes' : 'no'
       );
-      await mcpService.updateServer.invoke({
+      const updatedLarkCliServer = await mcpService.updateServer.invoke({
         id: existingLarkCliServer.id,
         data: {
           transport: desiredLarkCliServer.transport,
@@ -556,6 +603,11 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
         },
       });
       larkCliServerUpdated = true;
+      try {
+        await mcpService.testMcpConnection.invoke(updatedLarkCliServer);
+      } catch (error) {
+        console.warn('[Migration] upgraded lark-cli MCP connection test failed', error);
+      }
     }
   }
 

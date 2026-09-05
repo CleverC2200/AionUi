@@ -46,6 +46,7 @@
     },
     "errors": {
       "networkError": "GEA'ya bağlanılamıyor. Lütfen tekrar deneyin",
+      "secureStorageUnavailable": "Sistemin güvenli kimlik bilgisi deposuna erişilemedi. GEAUi erişimine izin verip tekrar deneyin.",
       "serverError": "GEA giriş hizmeti geçici olarak kullanılamıyor",
       "invalidResponse": "GEA geçersiz bir giriş yanıtı döndürdü"
     }

@@ -297,7 +297,7 @@ describe('PersonalModelGatewayService', () => {
     );
   });
 
-  it('reports that an enabled credential without its one-time local secret needs recovery', async () => {
+  it('reclaims an enabled credential when this installation has no local secret', async () => {
     const vault = new MemoryVault();
     const providerStore = new MemoryProviderStore();
     const proxy: PersonalModelProxy = {
@@ -308,15 +308,17 @@ describe('PersonalModelGatewayService', () => {
     const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, proxy);
 
     await expect(service.sync({ id: 'user-1', username: 'zhangsan', realname: '张三' }, authClient)).resolves.toEqual({
-      configured: 0,
-      failed: 1,
-      reason: 'credentialRecoveryRequired',
+      configured: 1,
+      failed: 0,
       skipped: 0,
-      status: 'partial',
+      status: 'completed',
     });
-    expect(authClient.claimPersonalModelCredential).not.toHaveBeenCalled();
-    expect(authClient.listPersonalModels).not.toHaveBeenCalled();
-    expect(providerStore.providers).toEqual([]);
+    expect(authClient.claimPersonalModelCredential).toHaveBeenCalledWith('credential-1', '1');
+    expect(authClient.listPersonalModels).toHaveBeenCalledWith(
+      'https://gea.example/gea-boot/ai/v1',
+      'sk-user-sensitive'
+    );
+    expect(providerStore.providers).toHaveLength(1);
   });
 
   it('disables and clears a managed provider when GEA no longer returns models', async () => {

@@ -79,6 +79,30 @@ describe('McpServerHeader — FeedbackButton wiring', () => {
     expect(screen.getByText('settings.oneClickFeedback')).toBeInTheDocument();
   });
 
+  it('does not misreport a chrome-devtools timeout as a missing local command', async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <ConfigProvider>
+        <McpServerHeader
+          server={{
+            ...buildServer('error'),
+            name: 'chrome-devtools',
+            builtin: true,
+            transport: { type: 'stdio', command: 'npx', args: ['-y', 'chrome-devtools-mcp@0.16.0'] },
+          }}
+          {...commonProps}
+        />
+      </ConfigProvider>
+    );
+
+    const statusIcon = container.querySelector('.i-icon-close-small')?.parentElement;
+    expect(statusIcon).toBeTruthy();
+    await user.hover(statusIcon!);
+
+    expect(await screen.findByText('settings.mcpInlineConfigHint')).toBeInTheDocument();
+    expect(screen.queryByText('settings.mcpInlineCommandHint')).not.toBeInTheDocument();
+  });
+
   it('click opens feedback with module=mcp-tools', async () => {
     const user = userEvent.setup();
     renderHeader('error');

@@ -170,11 +170,13 @@ const LarkQrLogin = () => {
         ? t('login.lark.environment.errors.loadFailed')
         : environmentError === 'saveFailed'
           ? t('login.lark.environment.errors.saveFailed')
-          : errorCode === 'invalidResponse'
-            ? t('login.lark.errors.invalidResponse')
-            : errorCode === 'serverError'
-              ? t('login.lark.errors.serverError')
-              : t('login.lark.errors.networkError');
+          : errorCode === 'secureStorageUnavailable'
+            ? t('login.lark.errors.secureStorageUnavailable')
+            : errorCode === 'invalidResponse'
+              ? t('login.lark.errors.invalidResponse')
+              : errorCode === 'serverError'
+                ? t('login.lark.errors.serverError')
+                : t('login.lark.errors.networkError');
 
   const environmentChanged = Boolean(environment?.editable && environmentAddress.trim() !== environment.baseUrl);
 

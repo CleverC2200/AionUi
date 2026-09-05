@@ -17,6 +17,7 @@ vi.mock('electron', () => ({
 vi.mock('@/common', () => ({ ipcBridge: { mode: {} } }));
 
 import { ElectronSafeStorageVault, type SafeStorageAdapter } from '@/process/services/gea/PersonalModelGatewayRuntime';
+import { PersonalModelGatewayService } from '@/process/services/gea/PersonalModelGatewayService';
 
 const xor = (value: Buffer): Buffer => Buffer.from(value.map((byte) => byte ^ 0xa5));
 
@@ -56,7 +57,7 @@ describe('ElectronSafeStorageVault', () => {
     await expect(vault.get(record.environmentId, record.userId, record.credentialId)).resolves.toEqual(record);
   });
 
-  it('refuses to claim credentials when encryption is unavailable', () => {
+  it('falls back to process memory when encryption is unavailable', async () => {
     const storage: SafeStorageAdapter = {
       isEncryptionAvailable: () => false,
       getSelectedStorageBackend: () => 'unknown',
@@ -64,8 +65,101 @@ describe('ElectronSafeStorageVault', () => {
       decryptString: vi.fn(),
     };
     const vault = new ElectronSafeStorageVault('/unused', storage);
+    const record = {
+      environmentId: 'gea-env-a',
+      userId: 'user-1',
+      credentialId: 'credential-1',
+      accessKeyId: 'uk-gea-1',
+      agentCode: 'sales-forecast',
+      baseUrl: 'https://gea.example/v1',
+      proxyKey: 'local-proxy-key',
+      secret: 'sk-user-sensitive',
+    };
 
-    expect(vault.isAvailable()).toBe(false);
+    expect(vault.isAvailable()).toBe(true);
+    await vault.put(record);
+    await expect(vault.get(record.environmentId, record.userId, record.credentialId)).resolves.toEqual(record);
+    expect(storage.encryptString).not.toHaveBeenCalled();
+    expect(storage.decryptString).not.toHaveBeenCalled();
+  });
+
+  it('still claims and configures personal models when encrypted persistence is unavailable', async () => {
+    const vault = new ElectronSafeStorageVault('/unused', {
+      isEncryptionAvailable: () => false,
+      getSelectedStorageBackend: () => 'unknown',
+      encryptString: vi.fn(),
+      decryptString: vi.fn(),
+    });
+    const providers: Array<Record<string, unknown>> = [];
+    const authClient = {
+      listPersonalModelCredentials: vi.fn().mockResolvedValue([
+        {
+          credentialId: 'credential-1',
+          accessKeyId: 'uk-gea-1',
+          agentCode: 'sales-forecast',
+          status: 'PENDING_CLAIM',
+          tenantId: '1',
+        },
+      ]),
+      claimPersonalModelCredential: vi.fn().mockResolvedValue({
+        credentialId: 'credential-1',
+        accessKeyId: 'uk-gea-1',
+        agentCode: 'sales-forecast',
+        baseUrl: 'https://gea.example/v1',
+        secret: 'sk-user-sensitive',
+      }),
+      listPersonalModels: vi.fn().mockResolvedValue(['deepseek-chat']),
+    };
+    const service = new PersonalModelGatewayService(
+      vault,
+      {
+        list: vi.fn().mockResolvedValue(providers),
+        save: vi.fn(async (provider) => {
+          providers.push(provider);
+        }),
+      },
+      'gea-env-a',
+      {
+        deactivate: vi.fn().mockResolvedValue(undefined),
+        register: vi.fn().mockResolvedValue({ apiKey: 'local-key', baseUrl: 'http://127.0.0.1:1/personal/p' }),
+      }
+    );
+
+    await expect(
+      service.sync({ id: 'user-1', username: 'zhangsan', realname: '张三' }, authClient)
+    ).resolves.toMatchObject({ configured: 1, failed: 0, status: 'completed' });
+    expect(authClient.claimPersonalModelCredential).toHaveBeenCalledOnce();
+    expect(authClient.listPersonalModels).toHaveBeenCalledWith('https://gea.example/v1', 'sk-user-sensitive');
+  });
+
+  it('keeps credentials in memory without probing secure storage when persistence is disabled', async () => {
+    const storage: SafeStorageAdapter = {
+      isEncryptionAvailable: vi.fn(() => true),
+      getSelectedStorageBackend: vi.fn(() => 'keychain'),
+      encryptString: vi.fn(),
+      decryptString: vi.fn(),
+    };
+    const vault = new ElectronSafeStorageVault('/unused', storage, false);
+    const record = {
+      environmentId: 'gea-env-a',
+      userId: 'user-1',
+      credentialId: 'credential-1',
+      accessKeyId: 'uk-gea-1',
+      agentCode: 'sales-forecast',
+      baseUrl: 'https://gea.example/v1',
+      proxyKey: 'local-proxy-key',
+      secret: 'sk-user-sensitive',
+    };
+
+    expect(vault.isAvailable()).toBe(true);
+    await vault.put(record);
+    await expect(vault.get(record.environmentId, record.userId, record.credentialId)).resolves.toEqual(record);
+    await vault.delete(record.environmentId, record.userId, record.credentialId);
+    await expect(vault.get(record.environmentId, record.userId, record.credentialId)).resolves.toBeNull();
+    expect(storage.isEncryptionAvailable).not.toHaveBeenCalled();
+    expect(storage.getSelectedStorageBackend).not.toHaveBeenCalled();
+    expect(storage.encryptString).not.toHaveBeenCalled();
+    expect(storage.decryptString).not.toHaveBeenCalled();
   });
 
   it('does not reuse legacy vault records that lack a GEA environment identity', async () => {

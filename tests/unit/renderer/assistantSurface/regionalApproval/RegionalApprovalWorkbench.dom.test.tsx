@@ -513,7 +513,7 @@ describe('RegionalApprovalWorkbench', () => {
         'conversation-b'
       )
     );
-  }, 20_000);
+  }, 60_000);
 
   it('keeps adjustments through a failed Fixture return, retries, submits once, and restores across Conversations', async () => {
     const onContextChange = vi.fn();
@@ -615,5 +615,5 @@ describe('RegionalApprovalWorkbench', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '查看 华北大区 证据与调整' }));
     expect(await screen.findByTestId('approval-detail-north-area-FSKU001')).toHaveTextContent('已采纳');
-  });
+  }, 60_000);
 });

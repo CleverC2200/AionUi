@@ -46,6 +46,7 @@
     },
     "errors": {
       "networkError": "No se puede conectar con GEA. Inténtalo de nuevo",
+      "secureStorageUnavailable": "No se pudo acceder al almacén seguro de credenciales del sistema. Permite que GEAUi acceda e inténtalo de nuevo.",
       "serverError": "El servicio de inicio de sesión de GEA no está disponible temporalmente",
       "invalidResponse": "GEA devolvió una respuesta de inicio de sesión no válida"
     }

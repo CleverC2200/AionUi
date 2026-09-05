@@ -64,7 +64,7 @@ export type WebHostLarkExternalIdentity = {
 
 export type WebHostLarkAuthResult<T> =
   | { success: true; data: T }
-  | { success: false; code: 'invalidResponse' | 'networkError' | 'serverError' };
+  | { success: false; code: 'invalidResponse' | 'networkError' | 'secureStorageUnavailable' | 'serverError' };
 
 export type WebHostLarkAuthPoll = {
   identity?: WebHostLarkExternalIdentity;

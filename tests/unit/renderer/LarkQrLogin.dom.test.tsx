@@ -142,4 +142,20 @@ describe('LarkQrLogin', () => {
     });
     expect(authMocks.pollLarkQrLogin).toHaveBeenCalledTimes(1);
   });
+
+  it('reports secure credential storage failures without blaming the GEA service', async () => {
+    authMocks.pollLarkQrLogin.mockResolvedValueOnce({ success: false, code: 'secureStorageUnavailable' });
+    render(<LarkQrLogin />);
+    await act(async () => Promise.resolve());
+    fireEvent.click(screen.getByText('login.lark.environment.continue'));
+    await act(async () => Promise.resolve());
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+
+    expect(screen.getByText('login.lark.errors.secureStorageUnavailable')).toBeInTheDocument();
+    expect(screen.queryByText('login.lark.errors.serverError')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('login.lark.qrCodeLabel')).toBeInTheDocument();
+  });
 });

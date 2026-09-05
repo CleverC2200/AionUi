@@ -70,7 +70,7 @@ export type LarkAuthStatus = {
   user?: LarkAuthUser;
 };
 
-export type LarkAuthErrorCode = 'invalidResponse' | 'networkError' | 'serverError';
+export type LarkAuthErrorCode = 'invalidResponse' | 'networkError' | 'secureStorageUnavailable' | 'serverError';
 
 export type LarkAuthResult<T> =
   | {

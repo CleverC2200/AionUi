@@ -29,7 +29,7 @@ const PERSONAL_CREDENTIAL_PAGE_SIZE = 100;
 const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type FetchLike = typeof fetch;
-type LarkAuthErrorCode = 'invalidResponse' | 'networkError' | 'serverError';
+type LarkAuthErrorCode = 'invalidResponse' | 'networkError' | 'secureStorageUnavailable' | 'serverError';
 
 export type GeaLarkAuthSession = {
   accessToken: string;
@@ -386,7 +386,11 @@ export class GeaLarkAuthService {
       throw new GeaLarkAuthServiceError('invalidResponse');
     }
     const acceptedTenantId = tenantId ?? DEFAULT_GEA_TENANT_ID;
-    await this.sessionStore?.save({ accessToken: token });
+    try {
+      await this.sessionStore?.save({ accessToken: token });
+    } catch (error) {
+      if (!(error instanceof GeaLarkAuthServiceError) || error.code !== 'secureStorageUnavailable') throw error;
+    }
     this.acceptAuthenticatedSession(token, acceptedTenantId, user);
     return {
       ...(requireVerifiedTenant

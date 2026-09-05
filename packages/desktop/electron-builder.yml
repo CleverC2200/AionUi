@@ -33,6 +33,8 @@ files:
   - node_modules/prebuild-install/**/*
   - node_modules/node-gyp-build/**/*
   - node_modules/bindings/**/*
+  # Bundled browser MCP avoids first-run npx downloads and offline startup failures
+  - node_modules/chrome-devtools-mcp/**/*
   # CLI dependencies (needed by nested jackspeak/glob)
   - node_modules/@isaacs/cliui/**/*
   - node_modules/ansi-regex/**/*
@@ -194,6 +196,7 @@ asarUnpack:
   - '**/node_modules/prebuild-install/**/*'
   - '**/node_modules/node-gyp-build/**/*'
   - '**/node_modules/bindings/**/*'
+  - '**/node_modules/chrome-devtools-mcp/**/*'
   # open library and dependencies - needed for Windows asar compatibility
   - '**/node_modules/open/**/*'
   - '**/node_modules/default-browser/**/*'
@@ -206,6 +209,7 @@ asarUnpack:
   # Builtin MCP server scripts must be unpacked so external node processes can execute them
   - 'out/main/builtin-mcp-image-gen.js'
   - 'out/main/builtin-mcp-browser.js'
+  - 'out/main/builtin-mcp-lark-cli.js'
   - 'out/main/team-mcp-stdio.js'
 
 # Compression level: normal for faster builds, maximum for smallest size

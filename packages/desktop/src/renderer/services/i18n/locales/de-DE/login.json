@@ -46,6 +46,7 @@
     },
     "errors": {
       "networkError": "Verbindung zu GEA fehlgeschlagen. Bitte erneut versuchen",
+      "secureStorageUnavailable": "Auf den sicheren Anmeldedatenspeicher des Systems kann nicht zugegriffen werden. Erlauben Sie GEAUi den Zugriff und versuchen Sie es erneut.",
       "serverError": "Der GEA-Anmeldedienst ist vorübergehend nicht verfügbar",
       "invalidResponse": "GEA hat eine ungültige Anmeldeantwort zurückgegeben"
     }

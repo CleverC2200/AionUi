@@ -24,6 +24,7 @@ import type {
   PersonalModelSyncResult,
 } from '@/common/types/platform/larkAuth';
 import type { PersonalModelAuthClient } from './PersonalModelGatewayService';
+import { shouldUsePersistentCredentialStorage } from './CredentialStoragePolicy';
 import { getGeaEnvironment } from './GeaEnvironmentService';
 
 export { GeaLarkAuthService as LarkAuthService, GeaLarkAuthServiceError as LarkAuthServiceError };
@@ -76,10 +77,17 @@ export class ElectronLarkAuthSessionStore implements GeaLarkAuthSessionStore {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
       throw error;
     }
-    if (!this.isAvailable()) return null;
+    this.requireAvailable();
+
+    let decrypted: string;
+    try {
+      decrypted = this.storage.decryptString(encrypted);
+    } catch {
+      throw new GeaLarkAuthServiceError('secureStorageUnavailable');
+    }
 
     try {
-      const parsed = JSON.parse(this.storage.decryptString(encrypted)) as unknown;
+      const parsed = JSON.parse(decrypted) as unknown;
       return isStoredLarkAuthSession(parsed) ? { accessToken: parsed.accessToken } : await this.clearInvalidSession();
     } catch {
       return this.clearInvalidSession();
@@ -87,10 +95,19 @@ export class ElectronLarkAuthSessionStore implements GeaLarkAuthSessionStore {
   }
 
   save(session: GeaLarkAuthSession): Promise<void> {
-    if (!this.isAvailable()) return Promise.reject(new Error('secure storage unavailable'));
+    try {
+      this.requireAvailable();
+    } catch (error) {
+      return Promise.reject(error);
+    }
     return this.enqueueMutation(async () => {
       const contents: StoredLarkAuthSession = { version: 1, accessToken: session.accessToken };
-      const encrypted = this.storage.encryptString(JSON.stringify(contents));
+      let encrypted: Buffer;
+      try {
+        encrypted = this.storage.encryptString(JSON.stringify(contents));
+      } catch {
+        throw new GeaLarkAuthServiceError('secureStorageUnavailable');
+      }
       const tempPath = `${this.filePath}.${process.pid}.tmp`;
       await mkdir(path.dirname(this.filePath), { recursive: true });
       try {
@@ -110,9 +127,16 @@ export class ElectronLarkAuthSessionStore implements GeaLarkAuthSessionStore {
     });
   }
 
-  private isAvailable(): boolean {
-    if (!this.storage.isEncryptionAvailable()) return false;
-    return process.platform !== 'linux' || this.storage.getSelectedStorageBackend() !== 'basic_text';
+  private requireAvailable(): void {
+    let available = false;
+    try {
+      available =
+        this.storage.isEncryptionAvailable() &&
+        (process.platform !== 'linux' || this.storage.getSelectedStorageBackend() !== 'basic_text');
+    } catch {
+      // Normalize platform-specific credential-store failures below.
+    }
+    if (!available) throw new GeaLarkAuthServiceError('secureStorageUnavailable');
   }
 
   private enqueueMutation(operation: () => Promise<void>): Promise<void> {
@@ -152,11 +176,12 @@ export async function initializeSharedPersonalModelGateway(
   return syncSharedPersonalModels();
 }
 
-export function initializeSharedLarkAuthSession(sessionStore: GeaLarkAuthSessionStore): Promise<void> {
+export function initializeSharedLarkAuthSession(sessionStore?: GeaLarkAuthSessionStore): Promise<void> {
   return getSharedLarkAuthService().initializeSession(sessionStore);
 }
 
-export function getSharedLarkAuthSessionStore(): ElectronLarkAuthSessionStore {
+export function getSharedLarkAuthSessionStore(): ElectronLarkAuthSessionStore | undefined {
+  if (!shouldUsePersistentCredentialStorage()) return undefined;
   sharedLarkAuthSessionStore ??= new ElectronLarkAuthSessionStore(
     path.join(app.getPath('userData'), resolveLarkAuthSessionFileName(getGeaEnvironment().baseUrl))
   );

@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 
+const { parseMacCodeSignature } = require('../../scripts/afterSign');
+
 const projectRoot = resolve(__dirname, '../..');
 const itWithBash = spawnSync('bash', ['--version'], { encoding: 'utf8' }).status === 0 ? it : it.skip;
 
@@ -22,6 +24,51 @@ function yamlBlock(content: string, key: string): string {
 }
 
 describe('release packaging configuration', () => {
+  it('distinguishes stable Developer ID signatures from ad-hoc signatures', () => {
+    expect(parseMacCodeSignature('Signature=adhoc\nTeamIdentifier=not set\n')).toEqual({
+      authority: null,
+      certificateSigned: false,
+      signature: 'adhoc',
+      stable: false,
+      teamIdentifier: null,
+    });
+    expect(
+      parseMacCodeSignature(
+        'Authority=Developer ID Application: Example Corp (TEAM123456)\nSignature size=8978\nTeamIdentifier=TEAM123456\n'
+      )
+    ).toEqual({
+      authority: 'Developer ID Application: Example Corp (TEAM123456)',
+      certificateSigned: true,
+      signature: 'signed',
+      stable: true,
+      teamIdentifier: 'TEAM123456',
+    });
+    expect(
+      parseMacCodeSignature('Authority=GEAUi Local Code Signing\nSignature size=2048\nTeamIdentifier=not set\n')
+    ).toEqual({
+      authority: 'GEAUi Local Code Signing',
+      certificateSigned: true,
+      signature: 'signed',
+      stable: false,
+      teamIdentifier: null,
+    });
+  });
+
+  it('requires stable macOS signing in distributable CI builds', () => {
+    const workflow = readProjectFile('.github/workflows/_build-reusable.yml');
+
+    expect(workflow).toContain(
+      "AIONUI_REQUIRE_STABLE_MAC_SIGNATURE: ${{ inputs.internal_test_build && 'false' || 'true' }}"
+    );
+    expect(workflow).toMatch(/internal_test_build:\n\s+description:.*\n\s+type: boolean\n\s+default: false/);
+    const manualWorkflow = readProjectFile('.github/workflows/build-manual.yml');
+    expect(manualWorkflow).toContain('internal_test_build: ${{ inputs.internal_test_build }}');
+    expect(manualWorkflow).toContain('--mac dmg --arm64');
+    expect(manualWorkflow).toContain(
+      "aioncore_source_policy: ${{ inputs.aioncore_run_id != '' && 'verified-actions' || 'default' }}"
+    );
+  });
+
   it('keeps mac zip artifacts enabled', () => {
     const config = readProjectFile('packages/desktop/electron-builder.yml');
     const macBlock = yamlBlock(config, 'mac');
@@ -36,6 +83,14 @@ describe('release packaging configuration', () => {
 
     expect(winBlock).toContain('    - nsis');
     expect(winBlock).not.toContain('    - zip');
+  });
+
+  it('unpacks every external Node MCP entry used by the packaged app', () => {
+    const config = readProjectFile('packages/desktop/electron-builder.yml');
+
+    expect(config).toContain("- 'out/main/builtin-mcp-browser.js'");
+    expect(config).toContain("- 'out/main/builtin-mcp-lark-cli.js'");
+    expect(config).toContain("- '**/node_modules/chrome-devtools-mcp/**/*'");
   });
 
   it('keeps Windows installer executable checks aligned with electron-builder', () => {
