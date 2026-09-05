@@ -17,6 +17,7 @@ import {
 } from '@/common/adapter/geaClient';
 import type { UpdateCheckResult } from '@/common/update/updateTypes';
 import { getGeaEnvironment } from './GeaEnvironmentService';
+import { MandatoryUpdatePolicyStore, type MandatoryUpdateRequirement } from './MandatoryUpdatePolicy';
 
 /** Temporary, explicit development admission. Packaged builds remain disabled until acceptance. */
 export function isGeaClientIntegrationEnabled(): boolean {
@@ -51,37 +52,102 @@ export function getCheckedGeaRelease(url: string): GeaClientRelease {
     throw new GeaClientError('CLIENT_RELEASE_UNCHECKED');
   return checkedRelease;
 }
+
+const mapRelease = (version: ClientVersion, release: GeaClientRelease): UpdateCheckResult => {
+  const asset =
+    release.distributionType === 'UPLOAD' && release.sha256 && release.fileSize && release.downloadUrl
+      ? { name: `GEAUi-${release.versionCode}`, url: release.downloadUrl, size: release.fileSize }
+      : undefined;
+  return {
+    currentVersion: version.versionName,
+    currentVersionCode: version.versionCode,
+    updateAvailable: release.upgradeAvailable,
+    ...(release.upgradeAvailable
+      ? {
+          latest: {
+            tagName: release.versionName!,
+            version: release.versionName!,
+            versionCode: release.versionCode!,
+            mandatory: release.mandatory,
+            body: release.releaseNotes ?? '',
+            htmlUrl: '',
+            prerelease: false,
+            draft: false,
+            assets: asset ? [asset] : [],
+            recommendedAsset: asset,
+          },
+        }
+      : {}),
+  };
+};
+
+const mapPersistedRequirement = (
+  version: ClientVersion,
+  requirement: MandatoryUpdateRequirement
+): UpdateCheckResult => ({
+  currentVersion: version.versionName,
+  currentVersionCode: version.versionCode,
+  updateAvailable: true,
+  latest: {
+    tagName: requirement.versionName,
+    version: requirement.versionName,
+    versionCode: requirement.versionCode,
+    mandatory: true,
+    body: requirement.releaseNotes,
+    htmlUrl: '',
+    prerelease: false,
+    draft: false,
+    assets: [],
+  },
+});
+
 export async function checkGeaClientRelease(): Promise<UpdateCheckResult> {
   if (checking) return checking;
   checking = (async () => {
     const version = getGeaClientVersion();
-    const release = await createGeaClientAdapter().check(version);
+    const environment = getGeaEnvironment();
+    const policy = new MandatoryUpdatePolicyStore(app.getPath('userData'), environment.environmentId);
+    let requirement: MandatoryUpdateRequirement | null = null;
+    try {
+      requirement = await policy.load();
+      if (requirement && version.versionCode >= requirement.versionCode) {
+        requirement = null;
+        await policy.clear();
+      }
+    } catch {
+      console.warn('[GEA] Mandatory update requirement could not be read');
+    }
+
+    let release: GeaClientRelease;
+    try {
+      release = await createGeaClientAdapter().check(version);
+    } catch (error) {
+      checkedRelease = undefined;
+      if (requirement) return mapPersistedRequirement(version, requirement);
+      throw error;
+    }
+    const confirmedRequirement = release.mandatory
+      ? {
+          versionCode: release.versionCode!,
+          versionName: release.versionName!,
+          releaseNotes: release.releaseNotes ?? '',
+        }
+      : null;
+    if (confirmedRequirement && requirement && requirement.versionCode > confirmedRequirement.versionCode) {
+      checkedRelease = undefined;
+      return mapPersistedRequirement(version, requirement);
+    }
     checkedRelease = release;
-    const asset =
-      release.distributionType === 'UPLOAD' && release.sha256 && release.fileSize && release.downloadUrl
-        ? { name: `GEAUi-${release.versionCode}`, url: release.downloadUrl, size: release.fileSize }
-        : undefined;
-    return {
-      currentVersion: version.versionName,
-      currentVersionCode: version.versionCode,
-      updateAvailable: release.upgradeAvailable,
-      ...(release.upgradeAvailable
-        ? {
-            latest: {
-              tagName: release.versionName!,
-              version: release.versionName!,
-              versionCode: release.versionCode!,
-              mandatory: release.mandatory,
-              body: release.releaseNotes ?? '',
-              htmlUrl: '',
-              prerelease: false,
-              draft: false,
-              assets: asset ? [asset] : [],
-              recommendedAsset: asset,
-            },
-          }
-        : {}),
-    };
+    try {
+      if (confirmedRequirement) {
+        await policy.save(confirmedRequirement);
+      } else {
+        await policy.clear();
+      }
+    } catch {
+      console.warn('[GEA] Mandatory update requirement could not be persisted');
+    }
+    return mapRelease(version, release);
   })();
   try {
     return await checking;

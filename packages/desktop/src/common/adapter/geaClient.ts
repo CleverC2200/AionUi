@@ -50,12 +50,13 @@ export class GeaClientAdapter {
     if (!result.success) throw new GeaClientError('CLIENT_RESPONSE_INVALID');
     const release = result.data;
     if (
-      release.upgradeAvailable &&
-      (release.versionCode === null ||
-        release.versionCode <= version.versionCode ||
-        !release.versionName ||
-        !release.downloadUrl ||
-        !release.distributionType)
+      (release.mandatory && !release.upgradeAvailable) ||
+      (release.upgradeAvailable &&
+        (release.versionCode === null ||
+          release.versionCode <= version.versionCode ||
+          !release.versionName ||
+          !release.downloadUrl ||
+          !release.distributionType))
     ) {
       throw new GeaClientError('CLIENT_RESPONSE_INVALID');
     }
