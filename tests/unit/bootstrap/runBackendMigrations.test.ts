@@ -10,6 +10,7 @@ import {
 
 const {
   batchImportServersMock,
+  execFileMock,
   configFileGetMock,
   configFileSetMock,
   httpRequestMock,
@@ -19,6 +20,7 @@ const {
   updateServerMock,
 } = vi.hoisted(() => ({
   batchImportServersMock: vi.fn(),
+  execFileMock: vi.fn(),
   configFileGetMock: vi.fn(),
   configFileSetMock: vi.fn(),
   httpRequestMock: vi.fn(),
@@ -31,6 +33,8 @@ const {
 vi.mock('@/common/adapter/httpBridge', () => ({
   httpRequest: httpRequestMock,
 }));
+
+vi.mock('node:child_process', () => ({ execFile: execFileMock }));
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
   mcpService: {
@@ -175,6 +179,7 @@ const configFile = {
 };
 
 beforeEach(() => {
+  execFileMock.mockImplementation((_command, _args, _options, callback) => callback(null));
   vi.clearAllMocks();
   configFileGetMock.mockResolvedValue(undefined);
   configFileSetMock.mockResolvedValue(undefined);
@@ -361,6 +366,22 @@ describe('runBackendMigrations', () => {
 
     expect(updateServerMock).not.toHaveBeenCalled();
     expect(testMcpConnectionMock).not.toHaveBeenCalled();
+  });
+
+  it('preflights a customized npx server when the local command is missing without changing its config', async () => {
+    const customServer = {
+      ...legacyChromeDevtoolsServer('chrome-devtools-mcp@1.7.0'),
+      last_test_status: 'connected' as const,
+    };
+    execFileMock.mockImplementation((_command, _args, _options, callback) =>
+      callback(Object.assign(new Error('missing command'), { code: 'ENOENT' }))
+    );
+    listServersMock.mockResolvedValue([customServer]);
+
+    await runBackendMigrations(configFile as never);
+
+    expect(updateServerMock).not.toHaveBeenCalled();
+    expect(testMcpConnectionMock).toHaveBeenCalledExactlyOnceWith(customServer);
   });
 
   it.each([

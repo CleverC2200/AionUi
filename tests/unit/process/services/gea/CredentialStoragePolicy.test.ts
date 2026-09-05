@@ -5,6 +5,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
+import path from 'node:path';
 
 vi.mock('electron', () => ({
   app: { isPackaged: true },
@@ -24,7 +25,7 @@ describe('CredentialStoragePolicy', () => {
         resourcesPath: '/Applications/GEAUi.app/Contents/Resources',
       })
     ).toBe(false);
-    expect(inspect).toHaveBeenCalledWith('/Applications/GEAUi.app');
+    expect(inspect).toHaveBeenCalledWith(path.resolve('/Applications/GEAUi.app'));
   });
 
   it('allows persistent credentials for a stable signed packaged macOS app', () => {
