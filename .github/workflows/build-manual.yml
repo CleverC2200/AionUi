@@ -1,5 +1,5 @@
 name: '🔨 Manual Build'
-run-name: 'Manual Build · ${{ inputs.platform }} · ${{ inputs.branch }} · Core ${{ inputs.aioncore_run_id }}.${{ inputs.aioncore_run_attempt }}'
+run-name: "${{ inputs.release_draft != '' && 'Draft aggregation' || 'Manual Build' }} · ${{ inputs.platform }} · ${{ inputs.branch }} · Core ${{ inputs.aioncore_run_id }}.${{ inputs.aioncore_run_attempt }}"
 
 permissions:
   contents: write
@@ -9,10 +9,15 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to build from'
+        description: 'Branch to build from, or exact AionUi SHA for draft aggregation'
         required: true
         default: 'main'
         type: string
+      release_draft:
+        description: 'Optional draft-only JSON {"tag":"v...","macRunId":"...","windowsRunId":"..."}; skips builds and verifies existing artifacts'
+        required: false
+        type: string
+        default: ''
       platform:
         description: 'Platform to build'
         required: true
@@ -76,6 +81,7 @@ env:
 
 jobs:
   prepare-matrix:
+    if: inputs.release_draft == ''
     name: Prepare Build Matrix
     runs-on: ubuntu-latest
     outputs:
@@ -140,3 +146,12 @@ jobs:
       append_commit_hash: true
       upload_installers_only: true
     secrets: inherit
+
+  stage-draft:
+    if: inputs.release_draft != ''
+    uses: ./.github/workflows/stage-release-draft.yml
+    with:
+      tag: ${{ fromJSON(inputs.release_draft || '{}').tag }}
+      sha: ${{ inputs.branch }}
+      mac_run_id: ${{ fromJSON(inputs.release_draft || '{}').macRunId }}
+      windows_run_id: ${{ fromJSON(inputs.release_draft || '{}').windowsRunId }}

@@ -1,5 +1,19 @@
 name: Stage verified installer draft
 on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+      mac_run_id:
+        required: true
+        type: string
+      windows_run_id:
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       tag:
