@@ -207,6 +207,9 @@ jobs:
             resource-downloads-v1-${{ matrix.platform }}-
 
       - name: Cache build dependency downloads
+        # Windows restores measured 95-123 s before install, slower than direct install.
+        # Keep the smaller effective platform caches; frozen dependency installation remains mandatory.
+        if: ${{ !startsWith(matrix.platform, 'windows') }}
         id: bun-cache
         uses: actions/cache@v4
         with:
@@ -800,7 +803,7 @@ jobs:
         if: always()
         env:
           BUILD_PLATFORM: ${{ matrix.platform }}
-          BUN_CACHE_HIT: ${{ steps.bun-cache.outputs.cache-hit }}
+          BUN_CACHE_HIT: ${{ startsWith(matrix.platform, 'windows') && 'disabled-after-cost-measurement' || steps.bun-cache.outputs.cache-hit }}
           ELECTRON_CACHE_HIT: ${{ steps.electron-cache.outputs.cache-hit }}
           RESOURCE_CACHE_HIT: ${{ steps.resource-cache.outputs.cache-hit }}
           COMPILATION_CACHE_HIT: ${{ steps.compilation-cache.outputs.cache-hit }}
