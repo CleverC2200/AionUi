@@ -81,6 +81,60 @@ afterEach(async () => {
 });
 
 describe('GEA update bridge policy', () => {
+  it('keeps the GEA release check disabled for an ordinary packaged build', async () => {
+    desktop.isPackaged = true;
+    vi.stubEnv('AIONUI_GEA_CLIENT_INTEGRATION', '1');
+    vi.stubEnv('AIONUI_GEA_VERSION_CODE', '1001');
+    initializeGeaEnvironment({ isPackaged: true });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    initUpdateBridge();
+
+    const startup = vi.mocked(ipcBridge.update.getStartupCheckEnabled.provider).mock.calls.at(-1)![0];
+    await expect(startup()).resolves.toBe(false);
+    const check = vi.mocked(ipcBridge.update.check.provider).mock.calls.at(-1)![0];
+    await expect(check({})).resolves.toMatchObject({ success: false });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('enables the GEA release check only for an explicitly marked packaged acceptance build', async () => {
+    desktop.isPackaged = true;
+    vi.stubEnv('AIONUI_GEA_CLIENT_INTEGRATION', '1');
+    vi.stubEnv('AIONUI_GEA_PACKAGED_ACCEPTANCE', '1');
+    vi.stubEnv('AIONUI_GEA_VERSION_CODE', '1001');
+    initializeGeaEnvironment({ isPackaged: true });
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          result: {
+            upgradeAvailable: false,
+            mandatory: false,
+            versionName: null,
+            versionCode: null,
+            releaseNotes: null,
+            downloadUrl: null,
+            distributionType: null,
+            fileSize: null,
+            sha256: null,
+          },
+          errorCode: null,
+        })
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    initUpdateBridge();
+
+    const startup = vi.mocked(ipcBridge.update.getStartupCheckEnabled.provider).mock.calls.at(-1)![0];
+    await expect(startup()).resolves.toBe(true);
+    const check = vi.mocked(ipcBridge.update.check.provider).mock.calls.at(-1)![0];
+    await expect(check({})).resolves.toMatchObject({
+      success: true,
+      data: { updateAvailable: false, currentVersionCode: 1001 },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('shows GEA release metadata through the existing check entry point in explicit development mode', async () => {
     desktop.isPackaged = false;
     vi.stubEnv('AIONUI_GEA_CLIENT_INTEGRATION', '1');

@@ -159,7 +159,7 @@ export class GeaClientAdapter {
       .object({
         success: z.boolean(),
         code: z.number().optional(),
-        errorCode: z.string().optional(),
+        errorCode: z.string().nullish(),
         result: z.unknown(),
       })
       .safeParse(value);

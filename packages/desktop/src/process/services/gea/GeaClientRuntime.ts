@@ -19,9 +19,12 @@ import type { UpdateCheckResult } from '@/common/update/updateTypes';
 import { getGeaEnvironment } from './GeaEnvironmentService';
 import { MandatoryUpdatePolicyStore, type MandatoryUpdateRequirement } from './MandatoryUpdatePolicy';
 
-/** Temporary, explicit development admission. Packaged builds remain disabled until acceptance. */
+/** Explicit admission for development or a separately marked packaged acceptance build. */
 export function isGeaClientIntegrationEnabled(): boolean {
-  return process.env.AIONUI_GEA_CLIENT_INTEGRATION === '1' && !app.isPackaged;
+  return (
+    process.env.AIONUI_GEA_CLIENT_INTEGRATION === '1' &&
+    (!app.isPackaged || process.env.AIONUI_GEA_PACKAGED_ACCEPTANCE === '1')
+  );
 }
 
 export function getGeaClientVersion(): ClientVersion {
