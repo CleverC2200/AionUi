@@ -11,6 +11,23 @@ function fixture(t) {
   return root;
 }
 
+test('packaged dependency smoke rejects checkout fallback when an ASAR entry is missing', (t) => {
+  const root = fixture(t);
+  fs.symlinkSync(path.resolve(__dirname, '../../../node_modules'), path.join(root, 'node_modules'), 'dir');
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.resolve(__dirname, '../../../scripts/packaging/dependency-smoke.cjs'),
+      path.join(root, 'missing.asar'),
+      path.join(root, 'receipt.json'),
+    ],
+    { encoding: 'utf8' }
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Dependency escaped target ASAR/);
+  assert.equal(fs.existsSync(path.join(root, 'receipt.json')), false);
+});
+
 test('Core recovery preserves the exact successful platform source and distinguishes expiry from mismatch', () => {
   const { inspectCoreSource } = require('../../../scripts/packaging/core-source');
   const sha = 'a'.repeat(40);

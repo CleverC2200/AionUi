@@ -63,6 +63,8 @@ files:
   - '!**/node_modules/tree-sitter-*/**/*.cc'
   - '!**/node_modules/tree-sitter-*/**/*.c'
   # Exclude dev/test files
+  # Zod runtime exports are retained; its nested TypeScript test sources are not runtime inputs.
+  - '!**/node_modules/zod/src/**/tests/**'
   - '!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}'
   - '!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}'
   - '!**/node_modules/*/{*.test.js,*.spec.js,*.test.ts,*.spec.ts}'
