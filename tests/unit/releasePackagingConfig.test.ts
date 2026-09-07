@@ -133,11 +133,90 @@ describe('release packaging configuration', () => {
     ).toHaveLength(4);
     expect(reusableWorkflow.match(/AIONUI_BACKEND_SHA256S: \$\{\{ inputs\.aioncore_sha256s \}\}/g)).toHaveLength(4);
     expect(
-      reusableWorkflow.match(/AIONUI_BACKEND_SOURCE_POLICY: \$\{\{ inputs\.aioncore_source_policy \}\}/g)
+      reusableWorkflow.match(
+        /AIONUI_BACKEND_SOURCE_POLICY: \$\{\{ matrix\.core-run-id != '' && 'verified-actions' \|\| inputs\.aioncore_source_policy \}\}/g
+      )
     ).toHaveLength(4);
     expect(webWorkflow).toContain('AIONUI_BACKEND_SHA256S: ${{ inputs.aioncore_sha256s }}');
     expect(webWorkflow).toContain('AIONUI_BACKEND_EXPECTED_HEAD_SHA: ${{ inputs.aioncore_expected_head_sha }}');
     expect(webWorkflow).toContain("AIONUI_BACKEND_SOURCE_POLICY: ${{ inputs.aioncore_source_policy || 'default' }}");
+  });
+
+  itWithBash('builds the desktop pair in one matrix with platform-specific Core sources', () => {
+    const manual = readProjectFile('.github/workflows/build-manual.yml');
+    const script = manual
+      .split('        run: |\n')[1]
+      .split('\n  build-pipeline:')[0]
+      .replace(/^          /gm, '');
+    const dir = mkdtempSync(resolve(tmpdir(), 'desktop-matrix-'));
+    try {
+      const output = resolve(dir, 'output');
+      const result = spawnSync('bash', ['-c', script.replaceAll('${{ inputs.platform }}', 'desktop')], {
+        encoding: 'utf8',
+        env: { ...process.env, GITHUB_OUTPUT: output, CORE_RUN_IDS: '{"macos-arm64":"123","windows-x64":"456"}' },
+      });
+      expect(result.status, result.stderr).toBe(0);
+      const matrix = JSON.parse(readFileSync(output, 'utf8').trim().slice('matrix='.length));
+      expect(matrix.include.map((entry: Record<string, string>) => [entry.platform, entry['core-run-id']])).toEqual([
+        ['macos-arm64', '123'],
+        ['windows-x64', '456'],
+      ]);
+      expect(matrix.include[0].command).toContain('--mac dmg --arm64');
+      expect(matrix.include[1].command).toContain('--win --x64');
+      for (const runs of ['[]', '{"macos-arm64":"invalid"}']) {
+        const invalid = spawnSync('bash', ['-c', script.replaceAll('${{ inputs.platform }}', 'desktop')], {
+          encoding: 'utf8',
+          env: { ...process.env, GITHUB_OUTPUT: output, CORE_RUN_IDS: runs },
+        });
+        expect(invalid.status).not.toBe(0);
+      }
+      const reusable = readProjectFile('.github/workflows/_build-reusable.yml');
+      expect(reusable).toContain('fail-fast: false');
+      expect(reusable).not.toContain('max-parallel: 1');
+      expect(
+        reusable.match(/AIONUI_BACKEND_RUN_ID: \$\{\{ matrix\.core-run-id \|\| inputs\.aioncore_run_id \}\}/g)
+      ).toHaveLength(4);
+      expect(reusable).toContain('CORE_RUN_ID: ${{ matrix.core-run-id || inputs.aioncore_run_id }}');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  itWithBash('skips Sentry uploads only for explicit internal test builds', () => {
+    const workflow = readProjectFile('.github/workflows/_build-reusable.yml');
+    const script = workflow
+      .split('- name: Configure Sentry source map upload owner')[1]
+      .split('        run: |\n')[1]
+      .split('\n      - name: Validate Sentry')[0]
+      .replace(/^          /gm, '');
+    const dir = mkdtempSync(resolve(tmpdir(), 'sentry-upload-'));
+    try {
+      for (const [platform, internal, expected] of [
+        ['macos-arm64', 'true', 'false'],
+        ['macos-arm64', 'false', 'true'],
+        ['windows-x64', 'false', 'false'],
+      ]) {
+        const output = resolve(dir, `${platform}-${internal}`);
+        const result = spawnSync(
+          'bash',
+          [
+            '-c',
+            script
+              .replaceAll('${{ matrix.platform }}', platform)
+              .replaceAll('${{ inputs.internal_test_build }}', internal),
+          ],
+          {
+            encoding: 'utf8',
+            env: { ...process.env, GITHUB_ENV: output },
+          }
+        );
+        expect(result.status, result.stderr).toBe(0);
+        expect(readFileSync(output, 'utf8').trim()).toBe(`SENTRY_UPLOAD_SOURCE_MAPS=${expected}`);
+      }
+      expect(workflow).toContain("if: matrix.platform == 'macos-arm64' && !inputs.internal_test_build");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it.each(['--mac dmg --arm64', '--mac dmg --x64'])('preserves retry targets for %s', (args) => {

@@ -18,6 +18,7 @@ on:
         required: true
         type: choice
         options:
+          - desktop
           - macos-arm64
           - macos-x64
           - windows-x64
@@ -30,7 +31,7 @@ on:
         type: boolean
         default: false
       internal_test_build:
-        description: 'Internal test only: allow non-Developer-ID macOS signing; publish only as a prerelease'
+        description: 'Internal test only: allow non-Developer-ID macOS signing and skip Sentry uploads'
         required: false
         type: boolean
         default: false
@@ -44,6 +45,11 @@ on:
         required: false
         type: string
         default: ''
+      aioncore_run_ids:
+        description: 'Optional JSON map of platform to verified Core run id (overrides aioncore_run_id)'
+        required: false
+        type: string
+        default: '{}'
       aioncore_repository:
         description: 'Repository that owns the optional AionCore workflow run'
         required: false
@@ -74,7 +80,10 @@ jobs:
       - name: Generate build matrix
         id: set-matrix
         shell: bash
+        env:
+          CORE_RUN_IDS: ${{ inputs.aioncore_run_ids }}
         run: |
+          set -euo pipefail
           PLATFORM="${{ inputs.platform }}"
 
           MACOS_ARM64='{"platform":"macos-arm64","os":"macos-14","command":"node scripts/build-with-builder.js arm64 --mac dmg --arm64","artifact-name":"macos-build-arm64","arch":"arm64"}'
@@ -82,7 +91,9 @@ jobs:
           WINDOWS_X64='{"platform":"windows-x64","os":"windows-2022","command":"node scripts/build-with-builder.js x64 --win --x64","artifact-name":"windows-build-x64","arch":"x64"}'
           WINDOWS_ARM64='{"platform":"windows-arm64","os":"windows-11-arm","command":"node scripts/build-with-builder.js arm64 --win --arm64","artifact-name":"windows-build-arm64","arch":"arm64"}'
 
-          if [ "$PLATFORM" = "all" ]; then
+          if [ "$PLATFORM" = "desktop" ]; then
+            MATRIX="{\"include\":[$MACOS_ARM64,$WINDOWS_X64]}"
+          elif [ "$PLATFORM" = "all" ]; then
             MATRIX="{\"include\":[$MACOS_ARM64,$MACOS_X64,$WINDOWS_X64,$WINDOWS_ARM64]}"
           elif [ "$PLATFORM" = "macos-arm64" ]; then
             MATRIX="{\"include\":[$MACOS_ARM64]}"
@@ -92,7 +103,16 @@ jobs:
             MATRIX="{\"include\":[$WINDOWS_X64]}"
           elif [ "$PLATFORM" = "windows-arm64" ]; then
             MATRIX="{\"include\":[$WINDOWS_ARM64]}"
+          else
+            echo "Unsupported platform: $PLATFORM" >&2
+            exit 1
           fi
+
+          MATRIX=$(jq -ce --argjson runs "$CORE_RUN_IDS" '
+            if ($runs | type) != "object" then error("Core run ids must be an object")
+            elif any($runs[]; type != "string" or (test("^[1-9][0-9]*$") | not)) then error("Core run ids must be numeric strings")
+            else .include |= map(. + {"core-run-id": ($runs[.platform] // "")}) end
+          ' <<< "$MATRIX")
 
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           echo "Generated matrix for platform '$PLATFORM':"

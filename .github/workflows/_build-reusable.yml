@@ -16,7 +16,7 @@ on:
         type: boolean
         default: false
       internal_test_build:
-        description: 'Allow non-Developer-ID macOS signing for explicitly requested internal prereleases only'
+        description: 'Allow non-Developer-ID macOS signing and skip Sentry uploads for internal tests only'
         type: boolean
         default: false
       append_commit_hash:
@@ -271,7 +271,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${{ matrix.platform }}" == "macos-arm64" ]]; then
+          if [[ "${{ matrix.platform }}" == "macos-arm64" && "${{ inputs.internal_test_build }}" != "true" ]]; then
             echo "SENTRY_UPLOAD_SOURCE_MAPS=true" >> "$GITHUB_ENV"
             echo "Sentry source maps will be uploaded by macos-arm64"
           else
@@ -280,7 +280,7 @@ jobs:
           fi
 
       - name: Validate Sentry source map upload configuration
-        if: matrix.platform == 'macos-arm64'
+        if: matrix.platform == 'macos-arm64' && !inputs.internal_test_build
         shell: bash
         run: |
           set -euo pipefail
@@ -420,11 +420,11 @@ jobs:
         env:
           # Version is pinned in repo-root package.json (aioncoreVersion).
           # Set AIONUI_BACKEND_VERSION here only to override for ad-hoc builds.
-          AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          AIONUI_BACKEND_RUN_ID: ${{ matrix.core-run-id || inputs.aioncore_run_id }}
           AIONUI_BACKEND_ACTIONS_REPOSITORY: ${{ inputs.aioncore_repository }}
           AIONUI_BACKEND_EXPECTED_HEAD_SHA: ${{ inputs.aioncore_expected_head_sha }}
           AIONUI_BACKEND_SHA256S: ${{ inputs.aioncore_sha256s }}
-          AIONUI_BACKEND_SOURCE_POLICY: ${{ inputs.aioncore_source_policy }}
+          AIONUI_BACKEND_SOURCE_POLICY: ${{ matrix.core-run-id != '' && 'verified-actions' || inputs.aioncore_source_policy }}
           AIONUI_BACKEND_ARCH: ${{ matrix.arch }}
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -455,11 +455,11 @@ jobs:
           }
         env:
           WINDOWS_BUILD_COMMAND: ${{ matrix.command }}
-          AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          AIONUI_BACKEND_RUN_ID: ${{ matrix.core-run-id || inputs.aioncore_run_id }}
           AIONUI_BACKEND_ACTIONS_REPOSITORY: ${{ inputs.aioncore_repository }}
           AIONUI_BACKEND_EXPECTED_HEAD_SHA: ${{ inputs.aioncore_expected_head_sha }}
           AIONUI_BACKEND_SHA256S: ${{ inputs.aioncore_sha256s }}
-          AIONUI_BACKEND_SOURCE_POLICY: ${{ inputs.aioncore_source_policy }}
+          AIONUI_BACKEND_SOURCE_POLICY: ${{ matrix.core-run-id != '' && 'verified-actions' || inputs.aioncore_source_policy }}
           # Node.js memory limit for vite bundling (prevents OOM during build)
           # Node.js 内存限制，防止 vite 打包时内存不足
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -562,11 +562,11 @@ jobs:
           exit 1
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
-          AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          AIONUI_BACKEND_RUN_ID: ${{ matrix.core-run-id || inputs.aioncore_run_id }}
           AIONUI_BACKEND_ACTIONS_REPOSITORY: ${{ inputs.aioncore_repository }}
           AIONUI_BACKEND_EXPECTED_HEAD_SHA: ${{ inputs.aioncore_expected_head_sha }}
           AIONUI_BACKEND_SHA256S: ${{ inputs.aioncore_sha256s }}
-          AIONUI_BACKEND_SOURCE_POLICY: ${{ inputs.aioncore_source_policy }}
+          AIONUI_BACKEND_SOURCE_POLICY: ${{ matrix.core-run-id != '' && 'verified-actions' || inputs.aioncore_source_policy }}
           npm_config_arch: ${{ matrix.arch }}
           APP_ID: ${{ secrets.APP_ID }}
           appleId: ${{ secrets.APPLE_ID }}
@@ -605,11 +605,11 @@ jobs:
           command: ${{ matrix.command }}
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
-          AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          AIONUI_BACKEND_RUN_ID: ${{ matrix.core-run-id || inputs.aioncore_run_id }}
           AIONUI_BACKEND_ACTIONS_REPOSITORY: ${{ inputs.aioncore_repository }}
           AIONUI_BACKEND_EXPECTED_HEAD_SHA: ${{ inputs.aioncore_expected_head_sha }}
           AIONUI_BACKEND_SHA256S: ${{ inputs.aioncore_sha256s }}
-          AIONUI_BACKEND_SOURCE_POLICY: ${{ inputs.aioncore_source_policy }}
+          AIONUI_BACKEND_SOURCE_POLICY: ${{ matrix.core-run-id != '' && 'verified-actions' || inputs.aioncore_source_policy }}
           npm_config_arch: ${{ matrix.arch }}
           npm_config_cache: ${{ runner.temp }}/.npm
           ELECTRON_CACHE: ${{ runner.temp }}/.cache/electron
@@ -722,7 +722,7 @@ jobs:
           (!startsWith(matrix.platform, 'windows') || steps.windows-build.outputs.result == 'success')
         env:
           BUILD_PLATFORM: ${{ matrix.platform }}
-          CORE_RUN_ID: ${{ inputs.aioncore_run_id }}
+          CORE_RUN_ID: ${{ matrix.core-run-id || inputs.aioncore_run_id }}
           CORE_REPOSITORY: ${{ inputs.aioncore_repository }}
           CORE_HEAD_SHA: ${{ inputs.aioncore_expected_head_sha }}
         run: node scripts/stage-release-draft.js record
