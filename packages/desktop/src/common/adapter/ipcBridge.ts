@@ -583,7 +583,7 @@ export type GeaSalesPlanSubmitParams = {
   requestId: string;
 };
 
-export type GeaSalesPlanAction = 'APPROVE' | 'REJECT';
+export type GeaSalesPlanAction = 'APPROVE' | 'REJECT' | 'SAVE';
 
 export type GeaSalesPlanSkuAdjustment = {
   skuCode: GeaSalesPlanId;
@@ -592,6 +592,7 @@ export type GeaSalesPlanSkuAdjustment = {
 };
 
 export type GeaSalesPlanActionRequest = {
+  expectedSnapshot?: string;
   action: GeaSalesPlanAction;
   expectedStatus: number;
   remark?: string;

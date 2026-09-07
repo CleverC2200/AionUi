@@ -29,15 +29,23 @@ const receipt = {
 };
 
 describe('sales plan action model', () => {
-  it('rejects any accidental remote SAVE before calling GEA', async () => {
-    const invoke = vi.fn();
-    const action = new SalesPlanActionAttempt({ action: { invoke } });
+  it('saves category corrections in place only with a bound snapshot', () => {
     for (const status of [5, 10]) {
-      const save = { ...input, request: { action: 'SAVE', expectedStatus: status } } as unknown as SalesPlanActionInput;
-      expect(salesPlanActionTargetStatus(save.request.action, status)).toBeUndefined();
-      expect(() => action.submit(save)).toThrow(SalesPlanActionError);
+      const save = {
+        ...input,
+        request: {
+          action: 'SAVE' as const,
+          expectedStatus: status,
+          expectedSnapshot: 'a'.repeat(64),
+          adjustments: [{ skuCode: '100', adjustQty: '2.125' }],
+        },
+      };
+      expect(salesPlanActionTargetStatus('SAVE', status)).toBe(status);
+      expect(() => validateSalesPlanActionInput(save)).not.toThrow();
+      expect(() =>
+        validateSalesPlanActionInput({ ...save, request: { ...save.request, expectedSnapshot: undefined } })
+      ).toThrow();
     }
-    expect(invoke).not.toHaveBeenCalled();
   });
 
   it('shares one in-flight action for double clicks and caches the authoritative receipt', async () => {

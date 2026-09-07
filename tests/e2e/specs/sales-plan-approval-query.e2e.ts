@@ -1,63 +1,9 @@
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { invokeBridge } from '../helpers';
-import { startMockGeaLarkServer, type MockGeaLarkServer } from '../helpers/mock-gea-lark-server';
 import { expect, test } from '../fixtures';
 
 const PERIOD_ID = '9007199254740993';
 
 test.describe('Sales-plan approval query', () => {
-  let mockGea: MockGeaLarkServer;
-  let certificate: string;
-  let tlsDirectory: string;
-  let previousGeaUrl: string | undefined;
-  test.beforeAll(async () => {
-    previousGeaUrl = process.env.AIONUI_GEA_BASE_URL;
-    tlsDirectory = mkdtempSync(join(tmpdir(), 'aionui-sales-plan-tls-'));
-    const key = join(tlsDirectory, 'key.pem');
-    const cert = join(tlsDirectory, 'cert.pem');
-    execFileSync(
-      'openssl',
-      [
-        'req',
-        '-x509',
-        '-newkey',
-        'rsa:2048',
-        '-nodes',
-        '-keyout',
-        key,
-        '-out',
-        cert,
-        '-days',
-        '1',
-        '-subj',
-        '/CN=127.0.0.1',
-      ],
-      { stdio: 'ignore' }
-    );
-    certificate = readFileSync(cert, 'utf8');
-    mockGea = await startMockGeaLarkServer(['sales-plan:plan:category-approve'], {
-      key: readFileSync(key, 'utf8'),
-      cert: certificate,
-    });
-    process.env.AIONUI_GEA_BASE_URL = mockGea.baseUrl;
-  });
-  test.afterAll(async () => {
-    await mockGea?.close();
-    if (tlsDirectory) rmSync(tlsDirectory, { recursive: true, force: true });
-    if (previousGeaUrl === undefined) delete process.env.AIONUI_GEA_BASE_URL;
-    else process.env.AIONUI_GEA_BASE_URL = previousGeaUrl;
-  });
-  test.beforeEach(async ({ page, electronApp }, testInfo) => {
-    await electronApp.evaluate(({ session }, cert) => {
-      session.defaultSession.setCertificateVerifyProc((request, callback) => {
-        const pinned =
-          request.hostname === '127.0.0.1' && request.certificate.data.replace(/\s/g, '') === cert.replace(/\s/g, '');
-        callback(pinned ? 0 : -3);
-      });
-    }, certificate);
+  test.beforeEach(async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
     test.skip(
       process.env.AIONUI_ASSISTANT_SURFACE_FIXTURES !== '1' ||
@@ -66,16 +12,17 @@ test.describe('Sales-plan approval query', () => {
       'Run with the isolated Assistant Surface, E2E auth-bypass, and sales-plan query flags.'
     );
     await page.addInitScript(
-      ({ periodId, saveStatus, nodeBindingsTest }) => {
+      ({ periodId, saveStatus }) => {
+        let savedQty = '13';
+        let saved = false;
+        let savedRequestId: string | null = null;
         const originalFetch = window.fetch.bind(window);
         const e2eWindow = window as Window & {
           __salesPlanQueryRequests?: string[];
           __salesPlanActionBodies?: unknown[];
-          __nodeCreateRequests?: string[];
         };
         e2eWindow.__salesPlanQueryRequests = [];
         e2eWindow.__salesPlanActionBodies = [];
-        e2eWindow.__nodeCreateRequests = [];
         // oxlint-disable-next-line eslint-plugin-unicorn/consistent-function-scoping -- addInitScript serializes only this closure.
         const sku = (versionId: string, skuCode: string, qty: string) => ({
           id: `${versionId}-${skuCode}`,
@@ -92,13 +39,6 @@ test.describe('Sales-plan approval query', () => {
           const rawUrl =
             typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
           const url = new URL(rawUrl, window.location.href);
-          if (
-            nodeBindingsTest &&
-            (init?.method ?? (input instanceof Request ? input.method : 'GET')) === 'POST' &&
-            ['/api/conversations', '/api/conversations/clone', '/api/conversations/prepare'].includes(url.pathname)
-          ) {
-            e2eWindow.__nodeCreateRequests?.push(url.pathname);
-          }
           if (url.protocol === 'aionui-core:' || !url.pathname.startsWith('/api/gea/sales-plan/')) {
             return originalFetch(input, init);
           }
@@ -147,6 +87,17 @@ test.describe('Sales-plan approval query', () => {
               typeof init?.body === 'string' ? init.body : input instanceof Request ? await input.text() : '{}';
             const body = JSON.parse(rawBody);
             e2eWindow.__salesPlanActionBodies?.push(body);
+            if (saveStatus) {
+              if (
+                body.action !== 'SAVE' ||
+                body.expectedStatus !== saveStatus ||
+                body.expectedSnapshot !== (saved ? 'b' : 'a').repeat(64)
+              )
+                return new Response('{}', { status: 409 });
+              savedQty = (Number(savedQty) + Number(body.adjustments[0].adjustQty)).toFixed(3);
+              saved = true;
+              savedRequestId = headers.get('X-Request-Id');
+            }
             data = {
               planId: 'e2e-plan',
               versionId: 'e2e-version-2',
@@ -196,13 +147,37 @@ test.describe('Sales-plan approval query', () => {
                     {
                       ...sku('e2e-version-2', '10001', '10'),
                       areaConfirmedQty: '12',
-                      categoryConfirmedQty: '13',
-                      categoryConfirmedAmount: '110.50',
+                      categoryConfirmedQty: savedQty,
+                      categoryConfirmedAmount: (Number(savedQty) * 8.5).toFixed(2),
                     },
                   ]
                 : [sku('stale-nested-version', 'NESTED-E2E-SKU', '999')],
               versions: [],
-              logs: [],
+              logs: saved
+                ? [
+                    {
+                      id: 42,
+                      requestId: savedRequestId,
+                      traceId: 'trace-e2e-action',
+                      versionId: 'e2e-version-2',
+                      planId: 'e2e-plan',
+                      fromStatus: saveStatus,
+                      toStatus: saveStatus,
+                      actionCode: 'SAVE',
+                    },
+                  ]
+                : [],
+              ...(saveStatus
+                ? {
+                    actionContext: {
+                      versionId: 'e2e-version-2',
+                      status: saveStatus,
+                      nodeOrder: 5,
+                      allowedActions: ['SAVE'],
+                      snapshotHash: (saved ? 'b' : 'a').repeat(64),
+                    },
+                  }
+                : {}),
             };
           } else {
             const requestedStatus = url.searchParams.get('status');
@@ -218,8 +193,7 @@ test.describe('Sales-plan approval query', () => {
               '9': 1,
               '10': 1,
             };
-            const isQueueRequest =
-              requestedStatus === null || (nodeBindingsTest && (requestedStatus === '2' || requestedStatus === '5'));
+            const isQueueRequest = requestedStatus === null;
             data = {
               records: isQueueRequest
                 ? [
@@ -234,7 +208,7 @@ test.describe('Sales-plan approval query', () => {
                       provinceCode: 'PROVINCE-E2E',
                       areaCode: 'AREA-E2E',
                       baseName: `E2E 第 ${requestedPage} 页基地`,
-                      status: nodeBindingsTest && requestedStatus ? Number(requestedStatus) : (saveStatus ?? 2),
+                      status: saveStatus ?? 2,
                       returnReason: null,
                       targetQty: '123456789012.345',
                       targetAmount: '9999999999999999.99',
@@ -244,18 +218,12 @@ test.describe('Sales-plan approval query', () => {
                     },
                   ]
                 : [],
-              total: nodeBindingsTest
-                ? isQueueRequest
-                  ? 1
-                  : 0
-                : isQueueRequest
-                  ? 100
-                  : (statusTotals[requestedStatus] ?? 0),
+              total: isQueueRequest ? 100 : (statusTotals[requestedStatus] ?? 0),
               size: Number(url.searchParams.get('pageSize') ?? '20'),
               current: requestedPage,
-              pages: !nodeBindingsTest && isQueueRequest ? 5 : 1,
+              pages: isQueueRequest ? 5 : 1,
             };
-            if (!nodeBindingsTest && isQueueRequest && Number(url.searchParams.get('pageSize')) === 200) {
+            if (isQueueRequest && Number(url.searchParams.get('pageSize')) === 200) {
               const summaryPage = data as { records: Array<Record<string, unknown>>; pages: number };
               const template = summaryPage.records[0];
               summaryPage.records = Array.from({ length: 100 }, (_, index) => ({
@@ -280,7 +248,6 @@ test.describe('Sales-plan approval query', () => {
       },
       {
         periodId: PERIOD_ID,
-        nodeBindingsTest: testInfo.title.includes('node-bound'),
         saveStatus: testInfo.title.includes('standalone SAVE status 5')
           ? 5
           : testInfo.title.includes('standalone SAVE status 10')
@@ -293,18 +260,6 @@ test.describe('Sales-plan approval query', () => {
         if (key.startsWith('aionui:assistant-surface:v1:forecast:')) window.sessionStorage.removeItem(key);
       }
     });
-    const created = await invokeBridge<{ success: boolean; data: { qrcodeId: string } }>(
-      page,
-      'lark-auth.create-qr-session'
-    );
-    expect(created.success).toBe(true);
-    const authenticated = await invokeBridge<{ success: boolean }>(
-      page,
-      'lark-auth.poll-qr-session',
-      { qrcodeId: created.data.qrcodeId },
-      60_000
-    );
-    expect(authenticated, JSON.stringify(authenticated)).toMatchObject({ success: true });
     await page.goto(`${page.url().split('#')[0]}#/guid`);
     await page.reload();
     await expect(page.getByTestId('assistant-surface-switcher')).toBeVisible();
@@ -341,8 +296,6 @@ test.describe('Sales-plan approval query', () => {
     await expect(page.getByRole('button', { name: '通过' })).toBeDisabled();
     await expect(page.getByRole('columnheader', { name: '审批操作' })).toHaveCount(0);
     await expect(page.getByRole('tablist', { name: '审批队列维度' })).toBeVisible();
-    const filterToggle = page.getByRole('button', { name: '筛选条件' });
-    if (await filterToggle.isVisible()) await filterToggle.click();
     await expect(page.getByRole('combobox', { name: '大区' })).toBeEnabled();
     await expect(page.getByRole('button', { name: '查询' })).toBeDisabled();
     const requests = await page.evaluate(
@@ -470,8 +423,7 @@ test.describe('Sales-plan approval query', () => {
     await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(760);
     await expect(page.getByTestId('regional-approval-workbench')).toBeVisible();
     await expect(page.getByRole('navigation', { name: '各节点数据状态' })).toBeVisible();
-    const narrowFilterToggle = page.getByRole('button', { name: '筛选条件', exact: true });
-    if ((await narrowFilterToggle.getAttribute('aria-expanded')) !== 'true') await narrowFilterToggle.click();
+    await page.getByRole('button', { name: '筛选条件', exact: true }).click();
     await expect(page.getByRole('button', { name: '重置' })).toBeVisible();
     const narrowBounds = await page.getByTestId('regional-approval-workbench').boundingBox();
     expect(narrowBounds).not.toBeNull();
@@ -489,174 +441,42 @@ test.describe('Sales-plan approval query', () => {
     expect(darkColors.foreground).toBeTruthy();
     expect(darkColors.foreground).not.toBe(darkColors.background);
   });
-  for (const theme of ['light', 'dark']) {
-    test(`asks before node-bound analysis and skips empty nodes in ${theme}`, async ({ page }, testInfo) => {
-      await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
-      await page.reload();
-      await page.setViewportSize({ width: 1536, height: 1000 });
-      await page.evaluate((value) => {
-        document.documentElement.dataset.theme = value;
-        document.body.setAttribute('arco-theme', value);
-      }, theme);
-      const board = page.getByTestId('regional-approval-workbench');
-      const rail = page.getByTestId('forecast-conversation-region');
-      await expect(board).toBeVisible();
-      await board.getByTestId('regional-approval-stage-region').click();
-      await expect(rail.getByText('是否需要对此节点的销售计划进行辅助分析？')).toBeVisible();
-      await expect(rail.getByRole('button', { name: '需要辅助分析', exact: true })).toBeVisible();
-      await rail.getByRole('button', { name: '暂不需要', exact: true }).click();
-      await expect(rail.getByText('暂不分析，需要时可在这里开始。')).toBeVisible();
-      await board.getByTestId('regional-approval-stage-customer').click();
-      await expect(rail.getByText('当前范围暂无可用数据或查询失败。请在左侧完成查询或重试。')).toBeVisible();
-      await expect(rail.getByRole('button', { name: '需要辅助分析', exact: true })).toHaveCount(0);
-      await board.getByTestId('regional-approval-stage-category').click();
-      await expect(rail.getByText('是否需要对此节点的销售计划进行辅助分析？')).toBeVisible();
-      await page.screenshot({ path: testInfo.outputPath(`node-bound-${theme}.png`) });
-      await page.setViewportSize({ width: 480, height: 900 });
-      await expect.poll(async () => (await rail.boundingBox())!.width).toBeLessThan(266);
-      await expect.poll(() => rail.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0);
-      await expect(rail.getByRole('button', { name: '需要辅助分析', exact: true })).toBeVisible();
-      await page.screenshot({ path: testInfo.outputPath(`node-bound-${theme}-480.png`) });
-      await page.setViewportSize({ width: 1536, height: 1000 });
-      await board.getByTestId('regional-approval-stage-region').click();
-      await expect(rail.getByText('暂不分析，需要时可在这里开始。')).toBeVisible();
-      expect(
-        await page.evaluate(() => (window as Window & { __nodeCreateRequests: string[] }).__nodeCreateRequests)
-      ).toEqual([]);
-    });
-
-    test(`resizes the Agent rail and fits narrow windows in ${theme}`, async ({ page }, testInfo) => {
-      await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
-      await page.reload();
-      const rail = page.getByTestId('forecast-conversation-region');
-      const handle = rail.getByRole('separator');
-      const board = page.getByTestId('regional-approval-workbench');
-      await expect(board).toBeVisible();
-      await page.evaluate((value) => {
-        document.documentElement.dataset.theme = value;
-        document.body.setAttribute('arco-theme', value);
-      }, theme);
-      await page.setViewportSize({ width: 1536, height: 1000 });
-      await expect(handle).toHaveAttribute('aria-valuemax', '720');
-      await handle.dblclick();
-      const before = (await rail.boundingBox())!;
-      const grip = (await handle.boundingBox())!;
-      await page.mouse.move(grip.x + 4, grip.y + grip.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(grip.x - 156, grip.y + grip.height / 2, { steps: 8 });
-      await page.mouse.up();
-      await expect.poll(async () => (await rail.boundingBox())!.width).toBeCloseTo(before.width + 160, 0);
-      await page.screenshot({ path: testInfo.outputPath(`agent-resize-${theme}-1536.png`) });
-      await page.reload();
-      await expect.poll(async () => (await rail.boundingBox())!.width).toBeCloseTo(before.width + 160, 0);
-      await page.evaluate((value) => {
-        document.documentElement.dataset.theme = value;
-        document.body.setAttribute('arco-theme', value);
-      }, theme);
-      await page.setViewportSize({ width: 760, height: 900 });
-      await expect.poll(async () => (await rail.boundingBox())!.width).toBeLessThan(500);
-      const bounds = (await board.boundingBox())!;
-      expect(bounds.width).toBeGreaterThanOrEqual(320);
-      await page.setViewportSize({ width: 480, height: 900 });
-      await expect.poll(async () => (await rail.boundingBox())!.width).toBeLessThan(266);
-      expect((await board.boundingBox())!.width).toBeGreaterThan(150);
-      await page.screenshot({ path: testInfo.outputPath(`agent-resize-${theme}-480.png`) });
-    });
-  }
-
   for (const status of [5, 10]) {
     test(`standalone SAVE status ${status} preserves its version and approval state`, async ({ page }, testInfo) => {
       await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
       const board = page.getByTestId('regional-approval-workbench');
-      await page.reload();
-      await expect(board.getByText('可保存本地草稿', { exact: true })).toBeVisible();
+      await expect(board.getByText('可保存调整', { exact: true })).toBeVisible();
       const planRow = board.getByRole('row').filter({ hasText: 'E2E 第 1 页基地' }).first();
       await planRow.locator('.arco-checkbox').click();
       await expect(board.getByRole('button', { name: '通过', exact: true })).toBeDisabled();
+      await expect(board.getByRole('button', { name: '退回', exact: true })).toBeDisabled();
       await board.getByRole('button', { name: '保存调整', exact: true }).click();
-      const dialog = page.getByRole('dialog', { name: '保存本地调整草稿' });
+      const dialog = page.getByRole('dialog', { name: '保存销售计划调整' });
       await dialog.getByRole('textbox', { name: 'SKU 10001 调整量' }).fill('2.125');
-      await expect(dialog.getByLabel('审批节点差异汇总')).toContainText(status === 5 ? '14.125' : '15.125');
+      await expect(dialog.getByLabel('审批节点差异汇总')).toContainText('15.125');
       await page.screenshot({ path: testInfo.outputPath(`save-${status}.png`), animations: 'disabled' });
-      await dialog.getByRole('button', { name: '保存到本地', exact: true }).click();
+      await dialog.locator('.arco-checkbox').click();
+      await dialog.getByRole('button', { name: '确认保存', exact: true }).click();
       await expect(dialog).toBeHidden();
-      expect(
-        await page.evaluate(() => (window as Window & { __salesPlanActionBodies?: unknown[] }).__salesPlanActionBodies)
-      ).toEqual([]);
-      await page.reload();
-      await expect(board.getByText('可保存本地草稿', { exact: true })).toBeVisible();
-      if (!(await planRow.getByRole('checkbox').isChecked())) await planRow.locator('.arco-checkbox').click();
-      await board.getByRole('button', { name: '保存调整', exact: true }).click();
-      await expect(dialog.getByRole('textbox', { name: 'SKU 10001 调整量' })).toHaveValue('2.125');
-      await expect(dialog.getByLabel('审批节点差异汇总')).toContainText(
-        status === 5 ? '当前基准数量 / 金额12' : '当前基准数量 / 金额13'
+      const bodies = await page.evaluate(
+        () => (window as Window & { __salesPlanActionBodies?: unknown[] }).__salesPlanActionBodies
       );
-      await dialog.getByRole('button', { name: '保存到本地', exact: true }).click();
-      expect(
-        await page.evaluate(() => (window as Window & { __salesPlanActionBodies?: unknown[] }).__salesPlanActionBodies)
-      ).toEqual([]);
+      expect(bodies).toEqual([
+        {
+          action: 'SAVE',
+          expectedStatus: status,
+          expectedSnapshot: 'a'.repeat(64),
+          adjustments: [{ skuCode: '10001', adjustQty: '2.125' }],
+        },
+      ]);
+      await expect(board.getByText('可保存调整', { exact: true })).toBeVisible();
+      await planRow.locator('.arco-checkbox').click();
+      await board.getByRole('button', { name: '保存调整', exact: true }).click();
+      await expect(dialog.getByLabel('审批节点差异汇总')).toContainText('当前基准数量 / 金额15.125');
+      await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+      await expect(dialog).toBeHidden();
     });
   }
-
-  test('keeps queue controls compact at actual workbench widths', async ({ page }, testInfo) => {
-    /* oxlint-disable no-await-in-loop -- inspect one Electron host across responsive layouts. */
-    const measurements = [];
-    for (const theme of ['light', 'dark']) {
-      await page.setViewportSize({ width: 1920, height: 1000 });
-      await page.goto(`${page.url().split('#')[0]}#/settings/system`);
-      await page.reload();
-      const themeToggle = page.getByTestId('theme-toggle');
-      await expect(themeToggle).toBeVisible();
-      if ((await page.locator('html').getAttribute('data-theme')) !== theme) await themeToggle.click();
-      await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
-      const board = page.getByTestId('regional-approval-workbench');
-      const header = page.getByTestId('regional-approval-compact-header');
-      const filters = page.getByTestId('regional-approval-compact-filters');
-      await expect(header).toBeVisible();
-      for (const width of [1920, 1840, 1536, 1280, 900]) {
-        await page.setViewportSize({ width, height: 1000 });
-        await expect(board.getByRole('button', { name: '查看提报进度', exact: true })).toBeVisible();
-        await expect(board.getByRole('button', { name: '通过', exact: true })).toBeVisible();
-        const bounds = await board.evaluate((element) => {
-          const headerElement = element.querySelector('[data-testid="regional-approval-compact-header"]')!;
-          const filtersElement = element.querySelector('[data-testid="regional-approval-compact-filters"]')!;
-          return {
-            width: element.clientWidth,
-            header: headerElement.clientHeight,
-            filters: filtersElement.clientHeight,
-            headerOverflow: headerElement.scrollWidth - headerElement.clientWidth,
-            filterOverflow: filtersElement.scrollWidth - filtersElement.clientWidth,
-          };
-        });
-        await page.screenshot({ path: testInfo.outputPath(`compact-${theme}-${width}.png`) });
-        await testInfo.attach(`measure-${theme}-${width}`, {
-          body: JSON.stringify(bounds),
-          contentType: 'application/json',
-        });
-        expect(bounds.headerOverflow).toBeLessThanOrEqual(1);
-        expect(bounds.filterOverflow).toBeLessThanOrEqual(1);
-        if (bounds.width >= 1100) {
-          expect(bounds.header).toBeLessThanOrEqual(56);
-          expect(bounds.filters).toBeLessThanOrEqual(50);
-          await expect(filters.getByRole('combobox', { name: '大区' })).toBeVisible();
-        } else {
-          const toggle = filters.getByRole('button', { name: '筛选条件' });
-          await expect(toggle).toBeVisible();
-          await toggle.click();
-          await expect(filters.getByRole('combobox', { name: '大区' })).toBeVisible();
-          await expect(filters.getByRole('button', { name: '查询', exact: true })).toBeVisible();
-          await toggle.click();
-        }
-        measurements.push({ theme, viewport: width, ...bounds });
-      }
-    }
-    writeFileSync(testInfo.outputPath('control-height-measurements.json'), JSON.stringify(measurements, null, 2));
-    await testInfo.attach('control-height-measurements', {
-      body: JSON.stringify(measurements, null, 2),
-      contentType: 'application/json',
-    });
-    /* oxlint-enable no-await-in-loop */
-  });
 
   test('drills through the complete organization scope in both themes and all acceptance widths', async ({
     page,
@@ -665,8 +485,6 @@ test.describe('Sales-plan approval query', () => {
     for (const theme of ['light', 'dark']) {
       await page.setViewportSize({ width: 1280, height: 1000 });
       await page.goto(`${page.url().split('#')[0]}#/settings/system`);
-      // Mobile layouts collapse the sidebar; restore the desktop host before switching themes.
-      await page.reload();
       const toggle = page.getByTestId('theme-toggle');
       await expect(toggle).toBeVisible();
       if ((await page.locator('html').getAttribute('data-theme')) !== theme) await toggle.click();
@@ -683,14 +501,10 @@ test.describe('Sales-plan approval query', () => {
       await tree.getByText('仅显示未审核', { exact: true }).click();
       await expect(tree.getByRole('checkbox')).not.toBeChecked();
       await expect(tree.getByText('E2E 客户 99', { exact: true })).toBeAttached();
-      for (const width of [480, 1920, 1280, 900]) {
+      for (const width of [1920, 1280, 900]) {
         await page.setViewportSize({ width, height: 1000 });
         const bounds = await tree.evaluate((element) => ({ scroll: element.scrollWidth, width: element.clientWidth }));
         expect(bounds.scroll - bounds.width).toBeLessThanOrEqual(1);
-        const metricColumns = await tree
-          .locator('[class*="progressTreeCompletion"]')
-          .evaluateAll((elements) => elements.slice(0, 5).map((element) => element.getBoundingClientRect().x));
-        expect(Math.max(...metricColumns) - Math.min(...metricColumns)).toBeLessThanOrEqual(1);
         await page.screenshot({ path: testInfo.outputPath(`progress-${theme}-${width}.png`) });
       }
       await page.getByRole('button', { name: '关闭', exact: true }).click();

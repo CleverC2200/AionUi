@@ -1,5 +1,4 @@
-import { salesPlanDraftSnapshot } from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/models/salesPlanLocalDraftModel';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { GeaSalesPlanDetail, GeaSalesPlanSku } from '@/common/adapter/ipcBridge';
 import type { TFunction } from 'i18next';
 import React from 'react';
@@ -52,6 +51,13 @@ const evidenceFor = (status = row.status, skus: GeaSalesPlanSku[] = []): GeaSale
     skus,
     versions: [],
     logs: [],
+    actionContext: {
+      versionId: row.versionId,
+      status,
+      nodeOrder: status === 10 ? 5 : status,
+      allowedActions: status === 10 ? ['SAVE'] : status === 5 ? ['SAVE', 'APPROVE'] : ['APPROVE', 'REJECT'],
+      snapshotHash: 'a'.repeat(64),
+    },
   }) as GeaSalesPlanDetail;
 
 const cases = [
@@ -63,7 +69,7 @@ const cases = [
 ] as const;
 
 describe('RegionalApprovalLiveActionDialog', () => {
-  it.each([5, 10])('saves status %s as a local draft without a GEA action request', async (status) => {
+  it.each([5, 10])('saves status %s on the same version and only rereads after a received receipt', async (status) => {
     const sku = {
       id: 's',
       versionId: row.versionId,
@@ -73,204 +79,60 @@ describe('RegionalApprovalLiveActionDialog', () => {
       areaConfirmedQty: '12',
       categoryConfirmedQty: '13',
     } as GeaSalesPlanSku;
-    const invoke = vi.fn();
-    const onSaveDraft = vi.fn();
-    const onSucceeded = vi.fn();
-    const detail = { ...evidenceFor(status, [sku]), actionContext: undefined };
+    const invoke = vi.fn().mockImplementation(async (params) => ({
+      planId: row.planId,
+      versionId: row.versionId,
+      fromStatus: status,
+      toStatus: status,
+      replayed: false,
+      requestId: params.requestId,
+      traceId: 't',
+      auditId: 'log',
+    }));
+    const onSucceeded = vi.fn().mockRejectedValueOnce(new Error('readback unavailable')).mockResolvedValue(undefined);
     render(
       <RegionalApprovalLiveActionDialog
         visible
         row={{ ...row, status }}
         approvalStage='category'
         initialAction='SAVE'
-        evidence={detail}
-        permissionCodes={['sales-plan:plan:category-approve']}
+        evidence={evidenceFor(status, [sku])}
         t={t}
         client={{ action: { invoke } }}
-        onSaveDraft={onSaveDraft}
         onPermissionDenied={vi.fn()}
         onSucceeded={onSucceeded}
         onRefresh={vi.fn()}
         onClose={vi.fn()}
       />
     );
-    const dialog = screen.getByRole('dialog');
+    const dialog = screen.getByRole('dialog', { name: '保存销售计划调整' });
     expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument();
-    fireEvent.change(await within(dialog).findByRole('textbox', { name: 'SKU 10001 调整量' }), {
-      target: { value: '2.125' },
-    });
-    fireEvent.click(within(dialog).getByRole('button', { name: '保存到本地' }));
-    await waitFor(() =>
-      expect(onSaveDraft).toHaveBeenCalledWith(
-        expect.objectContaining({
-          planId: row.planId,
-          versionId: row.versionId,
-          status,
+    expect(within(dialog).getByRole('button', { name: '确认保存' })).toBeDisabled();
+    const summary = within(dialog).getByLabelText('审批节点差异汇总');
+    expect(summary).toHaveTextContent('当前基准数量 / 金额13 · ¥26.00');
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'SKU 10001 调整量' }), { target: { value: '2.125' } });
+    expect(summary).toHaveTextContent('本节点确认数量 / 金额15.125 · ¥30.25');
+    fireEvent.click(within(dialog).getByRole('checkbox'));
+    fireEvent.click(within(dialog).getByRole('button', { name: '确认保存' }));
+    const verify = await within(dialog).findByRole('button', { name: '重新核验保存结果' });
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledWith(
+      expect.objectContaining({
+        versionId: row.versionId,
+        request: {
+          action: 'SAVE',
+          expectedStatus: status,
+          expectedSnapshot: 'a'.repeat(64),
           adjustments: [{ skuCode: '10001', adjustQty: '2.125' }],
-        })
-      )
+        },
+      })
     );
-    expect(invoke).not.toHaveBeenCalled();
-    expect(onSucceeded).not.toHaveBeenCalled();
+    fireEvent.click(verify);
+    await waitFor(() => expect(onSucceeded).toHaveBeenCalledTimes(2));
+    expect(invoke).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps a draft open and reports a failed local storage write without calling GEA', async () => {
-    const sku = {
-      id: 's',
-      versionId: row.versionId,
-      skuCode: '10001',
-      price: '2',
-      areaConfirmedQty: '12',
-    } as GeaSalesPlanSku;
-    const invoke = vi.fn();
-    const onClose = vi.fn();
-    render(
-      <RegionalApprovalLiveActionDialog
-        visible
-        row={{ ...row, status: 5 }}
-        approvalStage='category'
-        initialAction='SAVE'
-        evidence={evidenceFor(5, [sku])}
-        permissionCodes={['sales-plan:plan:category-approve']}
-        t={t}
-        client={{ action: { invoke } }}
-        onSaveDraft={() => {
-          throw new DOMException('Quota', 'QuotaExceededError');
-        }}
-        onPermissionDenied={vi.fn()}
-        onSucceeded={vi.fn()}
-        onRefresh={vi.fn()}
-        onClose={onClose}
-      />
-    );
-    fireEvent.change(await screen.findByRole('textbox', { name: 'SKU 10001 调整量' }), { target: { value: '2' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存到本地' }));
-    expect(await screen.findByText('本地存储写入失败，草稿尚未保存。请保留当前页面并重试。')).toBeVisible();
-    expect(screen.getByRole('textbox', { name: 'SKU 10001 调整量' })).toHaveValue('2');
-    expect(onClose).not.toHaveBeenCalled();
-    expect(invoke).not.toHaveBeenCalled();
-  });
-
-  it('blocks approval of a saved draft when the same version upstream quantity changes', async () => {
-    const sku = {
-      id: 's',
-      versionId: row.versionId,
-      skuCode: '10001',
-      price: '2',
-      areaConfirmedQty: '12',
-    } as GeaSalesPlanSku;
-    const current = { ...row, status: 5 };
-    const before = evidenceFor(5, [sku]);
-    const initialDraft = {
-      planId: row.planId,
-      versionId: row.versionId,
-      status: 5,
-      sourceSnapshot: salesPlanDraftSnapshot(current, before)!,
-      adjustments: [{ skuCode: '10001', adjustQty: '2' }],
-      remark: '',
-    };
-    const invoke = vi.fn();
-    render(
-      <RegionalApprovalLiveActionDialog
-        visible
-        row={current}
-        approvalStage='category'
-        evidence={evidenceFor(5, [{ ...sku, areaConfirmedQty: '13' }])}
-        initialDraft={initialDraft}
-        permissionCodes={['sales-plan:plan:category-approve', 'sales-plan:plan:approve']}
-        t={t}
-        client={{ action: { invoke } }}
-        onPermissionDenied={vi.fn()}
-        onSucceeded={vi.fn()}
-        onRefresh={vi.fn()}
-        onClose={vi.fn()}
-      />
-    );
-    expect(await screen.findByText('计划内容已变化，旧草稿不能直接提交。请重新编辑并保存本地草稿。')).toBeVisible();
-    fireEvent.click(screen.getByRole('checkbox'));
-    expect(screen.getByRole('button', { name: '确认通过' })).toBeDisabled();
-    expect(invoke).not.toHaveBeenCalled();
-  });
-
-  it('rechecks fresh detail at submission and never approves cached adjustments after a remote change', async () => {
-    const sku = {
-      id: 's',
-      versionId: row.versionId,
-      skuCode: '10001',
-      price: '2',
-      areaConfirmedQty: '12',
-    } as GeaSalesPlanSku;
-    const invoke = vi.fn();
-    const readCurrentDetail = vi.fn().mockResolvedValue(evidenceFor(5, [{ ...sku, categoryConfirmedQty: '14' }]));
-    render(
-      <RegionalApprovalLiveActionDialog
-        visible
-        row={{ ...row, status: 5 }}
-        approvalStage='category'
-        evidence={evidenceFor(5, [sku])}
-        readCurrentDetail={readCurrentDetail}
-        permissionCodes={['sales-plan:plan:category-approve', 'sales-plan:plan:approve']}
-        t={t}
-        client={{ action: { invoke } }}
-        onPermissionDenied={vi.fn()}
-        onSucceeded={vi.fn()}
-        onRefresh={vi.fn()}
-        onClose={vi.fn()}
-      />
-    );
-    fireEvent.change(await screen.findByRole('textbox', { name: 'SKU 10001 调整量' }), { target: { value: '2' } });
-    fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: '确认通过' }));
-    expect(await screen.findByText('计划内容已变化，旧草稿不能直接提交。请重新编辑并保存本地草稿。')).toBeVisible();
-    expect(readCurrentDetail).toHaveBeenCalledTimes(1);
-    expect(invoke).not.toHaveBeenCalled();
-  });
-
-  it('does not submit an old draft after unmount while the fresh detail read is pending', async () => {
-    const sku = {
-      id: 's',
-      versionId: row.versionId,
-      skuCode: '10001',
-      price: '2',
-      areaConfirmedQty: '12',
-    } as GeaSalesPlanSku;
-    const evidence = evidenceFor(5, [sku]);
-    let resolve!: (value: GeaSalesPlanDetail) => void;
-    const readCurrentDetail = vi.fn(
-      () =>
-        new Promise<GeaSalesPlanDetail>((done) => {
-          resolve = done;
-        })
-    );
-    const invoke = vi.fn();
-    const view = render(
-      <RegionalApprovalLiveActionDialog
-        visible
-        row={{ ...row, status: 5 }}
-        approvalStage='category'
-        evidence={evidence}
-        readCurrentDetail={readCurrentDetail}
-        permissionCodes={['sales-plan:plan:category-approve', 'sales-plan:plan:approve']}
-        t={t}
-        client={{ action: { invoke } }}
-        onPermissionDenied={vi.fn()}
-        onSucceeded={vi.fn()}
-        onRefresh={vi.fn()}
-        onClose={vi.fn()}
-      />
-    );
-    fireEvent.change(await screen.findByRole('textbox', { name: 'SKU 10001 调整量' }), { target: { value: '2' } });
-    fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: '确认通过' }));
-    expect(readCurrentDetail).toHaveBeenCalledTimes(1);
-    view.unmount();
-    await act(async () => {
-      resolve(evidence);
-    });
-    expect(invoke).not.toHaveBeenCalled();
-  });
-
-  it('keeps SAVE disabled without role permission and draft storage even for a readable completed plan', () => {
+  it('keeps SAVE disabled without server authority even for a readable completed plan', () => {
     const invoke = vi.fn();
     render(
       <RegionalApprovalLiveActionDialog
@@ -286,7 +148,8 @@ describe('RegionalApprovalLiveActionDialog', () => {
         onClose={vi.fn()}
       />
     );
-    expect(screen.getByRole('button', { name: '保存到本地' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.getByRole('button', { name: '确认保存' })).toBeDisabled();
     expect(invoke).not.toHaveBeenCalled();
   });
 
@@ -295,14 +158,6 @@ describe('RegionalApprovalLiveActionDialog', () => {
     render(
       <RegionalApprovalLiveActionDialog
         visible
-        permissionCodes={[
-          'sales-confirm',
-          'region-approve',
-          'province-approve',
-          'area-approve',
-          'category-approve',
-          'approve',
-        ].map((code) => `sales-plan:plan:${code}`)}
         evidence={evidenceFor(1)}
         row={{ ...row, status: 1 }}
         approvalStage='region'
@@ -362,14 +217,6 @@ describe('RegionalApprovalLiveActionDialog', () => {
     render(
       <RegionalApprovalLiveActionDialog
         visible
-        permissionCodes={[
-          'sales-confirm',
-          'region-approve',
-          'province-approve',
-          'area-approve',
-          'category-approve',
-          'approve',
-        ].map((code) => `sales-plan:plan:${code}`)}
         evidence={evidenceFor(row.status, await versionSkus())}
         row={row}
         approvalStage='area'
@@ -429,14 +276,6 @@ describe('RegionalApprovalLiveActionDialog', () => {
     render(
       <RegionalApprovalLiveActionDialog
         visible
-        permissionCodes={[
-          'sales-confirm',
-          'region-approve',
-          'province-approve',
-          'area-approve',
-          'category-approve',
-          'approve',
-        ].map((code) => `sales-plan:plan:${code}`)}
         evidence={evidenceFor(row.status, await versionSkus())}
         row={row}
         approvalStage='area'
@@ -472,14 +311,6 @@ describe('RegionalApprovalLiveActionDialog', () => {
     render(
       <RegionalApprovalLiveActionDialog
         visible
-        permissionCodes={[
-          'sales-confirm',
-          'region-approve',
-          'province-approve',
-          'area-approve',
-          'category-approve',
-          'approve',
-        ].map((code) => `sales-plan:plan:${code}`)}
         evidence={evidenceFor(row.status, await versionSkus())}
         row={row}
         approvalStage='area'
@@ -515,14 +346,6 @@ describe('RegionalApprovalLiveActionDialog', () => {
     render(
       <RegionalApprovalLiveActionDialog
         visible
-        permissionCodes={[
-          'sales-confirm',
-          'region-approve',
-          'province-approve',
-          'area-approve',
-          'category-approve',
-          'approve',
-        ].map((code) => `sales-plan:plan:${code}`)}
         evidence={evidenceFor()}
         row={row}
         approvalStage='area'
@@ -552,14 +375,6 @@ describe('RegionalApprovalLiveActionDialog', () => {
     render(
       <RegionalApprovalLiveActionDialog
         visible
-        permissionCodes={[
-          'sales-confirm',
-          'region-approve',
-          'province-approve',
-          'area-approve',
-          'category-approve',
-          'approve',
-        ].map((code) => `sales-plan:plan:${code}`)}
         evidence={evidenceFor()}
         row={row}
         approvalStage='area'
@@ -590,14 +405,6 @@ describe('RegionalApprovalLiveActionDialog', () => {
     render(
       <RegionalApprovalLiveActionDialog
         visible
-        permissionCodes={[
-          'sales-confirm',
-          'region-approve',
-          'province-approve',
-          'area-approve',
-          'category-approve',
-          'approve',
-        ].map((code) => `sales-plan:plan:${code}`)}
         evidence={evidenceFor()}
         row={{
           ...row,
@@ -626,14 +433,6 @@ describe('RegionalApprovalLiveActionDialog', () => {
     render(
       <RegionalApprovalLiveActionDialog
         visible
-        permissionCodes={[
-          'sales-confirm',
-          'region-approve',
-          'province-approve',
-          'area-approve',
-          'category-approve',
-          'approve',
-        ].map((code) => `sales-plan:plan:${code}`)}
         evidence={evidenceFor(5)}
         row={{ ...row, status: 5 }}
         approvalStage='category'
@@ -656,14 +455,6 @@ describe('RegionalApprovalLiveActionDialog', () => {
     render(
       <RegionalApprovalLiveActionDialog
         visible
-        permissionCodes={[
-          'sales-confirm',
-          'region-approve',
-          'province-approve',
-          'area-approve',
-          'category-approve',
-          'approve',
-        ].map((code) => `sales-plan:plan:${code}`)}
         evidence={evidenceFor(10)}
         row={{ ...row, status: 10 }}
         approvalStage='category'

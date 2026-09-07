@@ -1,78 +1,106 @@
 import { describe, expect, it } from 'vitest';
-import { salesPlanAccessForRow } from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/models/salesPlanAccessModel';
 import {
-  salesPlanDraftMatches,
-  salesPlanDraftSnapshot,
-} from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/models/salesPlanLocalDraftModel';
-import type { GeaSalesPlanDetail, GeaSalesPlanListItem, GeaSalesPlanSku } from '@/common/adapter/ipcBridge';
+  salesPlanAccessForRow,
+  verifySavedSalesPlan,
+} from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/models/salesPlanAccessModel';
+import type {
+  GeaSalesPlanActionReceipt,
+  GeaSalesPlanActionRequest,
+  GeaSalesPlanDetail,
+  GeaSalesPlanListItem,
+  GeaSalesPlanSku,
+} from '@/common/adapter/ipcBridge';
 
-const row = { planId: 'p', versionId: 'v', status: 5 } as GeaSalesPlanListItem;
-const sku = { id: 's', versionId: 'v', skuCode: '10001', price: '2', areaConfirmedQty: '12' } as GeaSalesPlanSku;
+const row = { planId: 'p', versionId: 'v', status: 10 } as GeaSalesPlanListItem;
 const detail = {
-  currentVersion: { id: 'v', planId: 'p', status: 5, effective: true },
-  skus: [sku],
+  currentVersion: { id: 'v', planId: 'p', status: 10, effective: true },
+  skus: [],
   versions: [],
   logs: [],
+  actionContext: { versionId: 'v', status: 10, nodeOrder: 5, allowedActions: ['SAVE'], snapshotHash: 'a'.repeat(64) },
 } as GeaSalesPlanDetail;
-const permission = ['sales-plan:plan:category-approve'];
 
-describe('role and status action projection', () => {
-  it('allows local saving with the node permission, and requires generic permission for approval', () => {
-    expect(salesPlanAccessForRow(row, detail, permission)?.allowedActions).toEqual(['SAVE']);
-    expect(salesPlanAccessForRow(row, detail, [...permission, 'sales-plan:plan:approve'])?.allowedActions).toEqual([
-      'SAVE',
-      'APPROVE',
-    ]);
-    expect(salesPlanAccessForRow(row, detail, ['sales-plan:plan:approve'])).toBeUndefined();
-    expect(salesPlanAccessForRow(row, detail)).toBeUndefined();
-    expect(
-      salesPlanAccessForRow(
-        { ...row, status: 10 },
-        { ...detail, currentVersion: { ...detail.currentVersion, status: 10 } },
-        permission
-      )?.allowedActions
-    ).toEqual(['SAVE']);
+describe('sales plan authoritative action projection', () => {
+  it('allows standalone category saving without inferring approval from readability', () => {
+    expect(salesPlanAccessForRow(row, detail)?.allowedActions).toEqual(['SAVE']);
+    expect(salesPlanAccessForRow(row, { ...detail, actionContext: undefined })).toBeUndefined();
   });
-  it('rejects another version, changed status and historical detail', () => {
-    expect(salesPlanAccessForRow({ ...row, versionId: 'other' }, detail, permission)).toBeUndefined();
-    expect(salesPlanAccessForRow({ ...row, status: 4 }, detail, permission)).toBeUndefined();
+  it('rejects mismatched versions, status changes and malformed action metadata', () => {
+    expect(salesPlanAccessForRow({ ...row, versionId: 'other' }, detail)).toBeUndefined();
+    expect(salesPlanAccessForRow({ ...row, status: 5 }, detail)).toBeUndefined();
     expect(
-      salesPlanAccessForRow(
-        row,
-        { ...detail, currentVersion: { ...detail.currentVersion, effective: false } },
-        permission
-      )
+      salesPlanAccessForRow(row, { ...detail, actionContext: { ...detail.actionContext!, snapshotHash: '' } })
     ).toBeUndefined();
   });
 });
 
-describe('local draft freshness', () => {
-  const draft = {
-    planId: 'p',
-    versionId: 'v',
-    status: 5,
-    sourceSnapshot: salesPlanDraftSnapshot(row, detail)!,
-    adjustments: [{ skuCode: '10001', adjustQty: '2.125' }],
-    remark: '',
-  };
-  it('restores only a matching plan, version, status and upstream quantity/price snapshot', () => {
-    expect(salesPlanDraftMatches(draft, row, detail)).toBe(true);
-    expect(salesPlanDraftMatches(draft, { ...row, planId: 'other' }, detail)).toBe(false);
-    expect(salesPlanDraftMatches(draft, { ...row, status: 10 }, detail)).toBe(false);
-    expect(salesPlanDraftMatches(draft, row, { ...detail, skus: [{ ...sku, areaConfirmedQty: '13' }] })).toBe(false);
-    expect(salesPlanDraftMatches(draft, row, { ...detail, skus: [{ ...sku, price: '3' }] })).toBe(false);
-    expect(salesPlanDraftMatches(draft, row, { ...detail, skus: [{ ...sku, categoryConfirmedQty: '14' }] })).toBe(
-      false
-    );
-  });
-  it('rejects malformed, duplicate, unknown and negative-result adjustments', () => {
-    for (const adjustments of [
-      [{ skuCode: 'other', adjustQty: '1' }],
-      [{ skuCode: '10001', adjustQty: '-13' }],
-      [{ skuCode: '10001', adjustQty: 'NaN' }],
-      [...draft.adjustments, ...draft.adjustments],
-    ]) {
-      expect(salesPlanDraftMatches({ ...draft, adjustments }, row, detail)).toBe(false);
-    }
+describe('same-version SAVE readback', () => {
+  it('verifies saved decimals and audit receipt, rejecting stale quantities, lost edits and state advancement', () => {
+    const sku = {
+      id: 's',
+      versionId: 'v',
+      skuCode: '10001',
+      price: '2',
+      areaConfirmedQty: '12',
+      categoryConfirmedQty: '13',
+    } as GeaSalesPlanSku;
+    const before = { ...detail, skus: [sku] };
+    const receipt = {
+      planId: 'p',
+      versionId: 'v',
+      fromStatus: 10,
+      toStatus: 10,
+      auditId: 'sales-plan-log:42',
+      requestId: 'request',
+      traceId: 'trace',
+    } as GeaSalesPlanActionReceipt;
+    const request: GeaSalesPlanActionRequest = {
+      action: 'SAVE',
+      expectedStatus: 10,
+      adjustments: [{ skuCode: '10001', adjustQty: '2.125' }],
+    };
+    const after = {
+      ...before,
+      skus: [{ ...sku, categoryConfirmedQty: '15.125', categoryConfirmedAmount: '30.25' }],
+      logs: [
+        {
+          id: '42',
+          planId: 'p',
+          requestId: 'request',
+          traceId: 'trace',
+          versionId: 'v',
+          fromStatus: 10,
+          toStatus: 10,
+          actionCode: 'SAVE',
+        },
+      ],
+    } as GeaSalesPlanDetail;
+    expect(verifySavedSalesPlan(before, after, request, receipt)).toBe(true);
+    expect(
+      verifySavedSalesPlan(
+        before,
+        { ...after, skus: [{ ...after.skus[0], categoryConfirmedAmount: '26' }] },
+        request,
+        receipt
+      )
+    ).toBe(false);
+    expect(verifySavedSalesPlan(before, { ...after, skus: [sku] }, request, receipt)).toBe(false);
+    expect(verifySavedSalesPlan(before, { ...after, logs: [] }, request, receipt)).toBe(false);
+    expect(
+      verifySavedSalesPlan(
+        before,
+        { ...after, currentVersion: { ...after.currentVersion, id: 'new' } },
+        request,
+        receipt
+      )
+    ).toBe(false);
+    expect(
+      verifySavedSalesPlan(
+        before,
+        { ...after, currentVersion: { ...after.currentVersion, status: 5 } },
+        request,
+        receipt
+      )
+    ).toBe(false);
   });
 });
