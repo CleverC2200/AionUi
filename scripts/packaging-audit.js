@@ -16,6 +16,7 @@ function inventory(archive, resources) {
     fs.closeSync(fd);
   }
   const packages = {};
+  const files = [];
   let packedLogicalBytes = 0,
     unpackedLogicalBytes = 0;
   function visit(node, name = '') {
@@ -23,6 +24,7 @@ function inventory(archive, resources) {
       const filename = name ? `${name}/${key}` : key;
       if (value.files) visit(value, filename);
       else if (Number.isSafeInteger(value.size)) {
+        files.push({ path: filename, bytes: value.size, unpacked: !!value.unpacked });
         if (value.unpacked) unpackedLogicalBytes += value.size;
         else packedLogicalBytes += value.size;
         const match = filename.match(/^node_modules\/((?:@[^/]+\/)?[^/]+)\//);
@@ -52,6 +54,18 @@ function inventory(archive, resources) {
     archiveBytes: fs.statSync(archive).size,
     packedLogicalBytes,
     unpackedLogicalBytes,
+    largestFiles: files.toSorted((a, b) => b.bytes - a.bytes).slice(0, 40),
+    developmentCandidates: files
+      .filter((file) =>
+        /(?:\.d\.ts$|\/(?:tests?|__tests__|examples?|docs)\/|\/(?:README|CHANGELOG)(?:\.|$))/i.test(file.path)
+      )
+      .toSorted((a, b) => b.bytes - a.bytes)
+      .slice(0, 100),
+    developmentCandidateLogicalBytes: files
+      .filter((file) =>
+        /(?:\.d\.ts$|\/(?:tests?|__tests__|examples?|docs)\/|\/(?:README|CHANGELOG)(?:\.|$))/i.test(file.path)
+      )
+      .reduce((sum, file) => sum + file.bytes, 0),
     largestPackages: Object.fromEntries(
       Object.entries(packages)
         .toSorted((a, b) => b[1] - a[1])

@@ -878,6 +878,15 @@ try {
     }
   }
 
+  if (process.env.PROFILE_WINDOWS_COMPRESSION === 'true' && process.platform === 'win32' && targetArch === 'x64') {
+    const { compareCompression } = require('./packaging/compression-profile');
+    const report = compareCompression({
+      prepackaged: path.join(outDir, 'win-unpacked'),
+      destination: fs.mkdtempSync(path.join(outDir, 'compression-profile-')),
+      command: builderCommand,
+    });
+    fs.writeFileSync(path.join(outDir, 'compression-profile.json'), JSON.stringify(report, null, 2));
+  }
   console.log('✅ Build completed!');
 } catch (error) {
   buildFailed = true;

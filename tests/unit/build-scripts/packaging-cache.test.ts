@@ -12,6 +12,7 @@ it('passes the packaging cache regression suite', () => {
       resolve(__dirname, 'packaging-cache.test.cjs'),
       resolve(__dirname, 'packaging-entry.test.cjs'),
       resolve(__dirname, 'release-evidence.test.cjs'),
+      resolve(__dirname, 'cloud-delivery.test.cjs'),
     ],
     {
       encoding: 'utf8',

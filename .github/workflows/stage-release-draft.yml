@@ -11,11 +11,11 @@ on:
         required: true
         type: string
       mac_run_id:
-        description: Successful macOS ARM64 manual build run
+        description: Completed manual run with successful macOS ARM64 job (may be a partially failed matrix)
         required: true
         type: string
       windows_run_id:
-        description: Successful Windows x64 manual build run
+        description: Completed manual run with successful Windows x64 job (may be a replacement run)
         required: true
         type: string
 permissions:
@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '22.23.2'
       - name: Verify and upload draft installers
         env:
           GH_TOKEN: ${{ github.token }}

@@ -547,6 +547,7 @@ function getActionsRunProvenance(runId, repository, expectedHeadSha = null) {
   return {
     repository: sourceRepository,
     runId,
+    runAttempt: Number(run.run_attempt),
     runUrl: String(run.html_url || `https://github.com/${repository}/actions/runs/${runId}`),
     workflowName: String(run.name || ''),
     workflowPath,
@@ -628,6 +629,40 @@ function validateActionsArtifactMetadata(artifact, runId, expectedArtifactName, 
   return artifact.digest ? normalizeSha256(artifact.digest, `artifact ${expectedArtifactName}`) : null;
 }
 
+function validateActionsBuildManifest(record, provenance, artifactName, archiveName, archiveSha256) {
+  const targets = {
+    'macos-arm64': 'aarch64-apple-darwin',
+    'macos-x64': 'x86_64-apple-darwin',
+    'windows-x64': 'x86_64-pc-windows-msvc',
+    'windows-arm64': 'aarch64-pc-windows-msvc',
+    'linux-x64': 'x86_64-unknown-linux-gnu',
+    'linux-arm64': 'aarch64-unknown-linux-gnu',
+  };
+  if (
+    record.schema !== 1 ||
+    record.repository !== provenance.repository ||
+    String(record.runId) !== provenance.runId ||
+    record.attempt !== provenance.runAttempt ||
+    record.headSha !== provenance.actualHeadSha ||
+    record.artifact !== artifactName ||
+    `aioncore-manual-${record.platform}` !== artifactName ||
+    record.target !== targets[record.platform] ||
+    record.archive !== archiveName ||
+    record.sha256 !== archiveSha256
+  )
+    throw new Error('Core build manifest source or archive mismatch');
+  if (
+    record.build &&
+    (record.build.profile !== 'release' ||
+      !record.build.rustc?.startsWith('rustc ') ||
+      !['cargoLockSha256', 'toolchainSha256', 'workflowSha256'].every((key) =>
+        /^[a-f0-9]{64}$/.test(record.build[key])
+      ))
+  )
+    throw new Error('Core build manifest has incomplete toolchain identity');
+  return record;
+}
+
 function downloadAndExtractActionsArtifact(platform, arch, runId, { verifiedActions = false } = {}) {
   const expectedArtifactName = getActionsArtifactName(platform, arch);
   if (!expectedArtifactName) {
@@ -682,6 +717,19 @@ function downloadAndExtractActionsArtifact(platform, arch, runId, { verifiedActi
     ? verifyFileSha256(archivePath, expectedArchiveSha256, `AionCore archive from ${expectedArtifactName}`)
     : sha256File(archivePath);
 
+  // Legacy pinned builds may predate this sidecar. When present, it must agree
+  // with independently verified run metadata and archive content.
+  const manifestPath = path.join(artifactExtractDir, 'aioncore-manifest.json');
+  const buildManifest = fs.existsSync(manifestPath)
+    ? validateActionsBuildManifest(
+        JSON.parse(fs.readFileSync(manifestPath, 'utf8')),
+        runProvenance,
+        expectedArtifactName,
+        path.basename(archivePath),
+        archiveSha256
+      )
+    : null;
+
   extractArchive(archivePath, binaryExtractDir, platform);
 
   const binaryName = getBinaryName(platform);
@@ -703,6 +751,7 @@ function downloadAndExtractActionsArtifact(platform, arch, runId, { verifiedActi
     artifactDigest,
     artifactZipSha256,
     provenance: runProvenance,
+    buildManifest,
   };
 }
 
@@ -861,6 +910,7 @@ function prepareAioncore(options) {
       expectedHeadSha: result.provenance.expectedHeadSha,
       actualHeadSha: result.provenance.actualHeadSha,
       provenance: result.provenance,
+      buildManifest: result.buildManifest,
       url: result.url,
     };
     console.log(`  Downloaded from GitHub Actions artifact`);
@@ -952,6 +1002,7 @@ module.exports = {
   prepareManagedResources,
   prepareAioncore,
   validateActionsArtifactMetadata,
+  validateActionsBuildManifest,
   verifyFileSha256,
   verifyPreparedAioncoreBundle,
 };

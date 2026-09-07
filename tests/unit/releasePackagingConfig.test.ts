@@ -25,6 +25,15 @@ function yamlBlock(content: string, key: string): string {
 }
 
 describe('release packaging configuration', () => {
+  it('defaults to the desktop pair and reports Windows packaging failure truthfully', () => {
+    const manual = readProjectFile('.github/workflows/build-manual.yml');
+    expect(manual.split('      platform:')[1].split('      skip_code_quality:')[0]).toContain('default: desktop');
+    const workflow = readProjectFile('.github/workflows/_build-reusable.yml');
+    const windows = workflow.split('- name: Build with electron-builder (Windows)')[1].split('        env:')[0];
+    expect(windows).toContain('if ($LASTEXITCODE -ne 0)');
+    expect(windows).toContain('exit 1');
+  });
+
   it('distinguishes stable Developer ID signatures from ad-hoc signatures', () => {
     expect(parseMacCodeSignature('Signature=adhoc\nTeamIdentifier=not set\n')).toEqual({
       authority: null,

@@ -19,6 +19,46 @@ function write(file, value) {
   fs.writeFileSync(file, value);
 }
 
+test('output manifests survive a different runner checkout and reject tampering', (t) => {
+  const source = fixture(t);
+  const target = fixture(t);
+  const manifest = path.join(source, 'out/.mcp-build-cache.json');
+  const output = path.join(source, 'out/main/server.js');
+  write(output, 'verified bundle');
+  cache.saveOutputs(manifest, 'input-key', [output]);
+  fs.cpSync(path.join(source, 'out'), path.join(target, 'out'), { recursive: true });
+  const restored = path.join(target, 'out/main/server.js');
+  const restoredManifest = path.join(target, 'out/.mcp-build-cache.json');
+  assert.equal(cache.outputsMatch(restoredManifest, 'input-key', [restored]), true);
+  assert.equal(cache.outputsMatch(restoredManifest, 'changed-key', [restored]), false);
+  write(restored, 'tampered bundle');
+  assert.equal(cache.outputsMatch(restoredManifest, 'input-key', [restored]), false);
+});
+
+test('stage evidence records failed operations without hiding the original failure', (t) => {
+  const root = fixture(t);
+  const destination = path.join(root, 'stages.jsonl');
+  const previous = process.env.BUILD_STAGE_REPORT;
+  process.env.BUILD_STAGE_REPORT = destination;
+  try {
+    assert.throws(
+      () =>
+        cache.timed('compile', () => {
+          throw new Error('compile failed');
+        }),
+      /compile failed/
+    );
+    const record = JSON.parse(fs.readFileSync(destination, 'utf8'));
+    assert.equal(record.stage, 'compile');
+    assert.equal(record.status, 'failed');
+    assert.equal(typeof record.startedAt, 'string');
+    assert.ok(record.elapsedMs >= 0);
+  } finally {
+    if (previous === undefined) delete process.env.BUILD_STAGE_REPORT;
+    else process.env.BUILD_STAGE_REPORT = previous;
+  }
+});
+
 test('content hashes ignore mtime and detect same-size edits, additions and removals', (t) => {
   const root = fixture(t);
   const file = path.join(root, 'packages/a.ts');

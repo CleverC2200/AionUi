@@ -102,12 +102,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.23.2'
 
       - name: Setup bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: '1.4.2'
           cache: true
 
       - name: Install dependencies
@@ -149,13 +149,13 @@ jobs:
         if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.23.2'
 
       - name: Setup bun
         if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: '1.4.2'
           cache: true
 
       - name: Disable Windows Defender (Windows only)
@@ -216,12 +216,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.23.2'
 
       - name: Setup bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: '1.4.2'
           cache: true
 
       - name: Install dependencies
@@ -302,12 +302,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.23.2'
 
       - name: Setup bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: '1.4.2'
           cache: true
 
       - name: Install dependencies
@@ -387,13 +387,13 @@ jobs:
         if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.23.2'
 
       - name: Setup bun
         if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: '1.4.2'
           cache: true
 
       - name: Setup Python

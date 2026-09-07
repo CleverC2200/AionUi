@@ -23,7 +23,7 @@ function selectArtifact({ run, jobs, artifacts, repository, sha, platform }) {
     run.path !== '.github/workflows/build-manual.yml' ||
     run.event !== 'workflow_dispatch' ||
     run.status !== 'completed' ||
-    run.conclusion !== 'success'
+    !['success', 'failure'].includes(run.conclusion)
   )
     throw new Error('Untrusted or incomplete build run');
   const quality = jobs.some(
@@ -58,9 +58,22 @@ function selectArtifact({ run, jobs, artifacts, repository, sha, platform }) {
 function recordPackage() {
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-  const core = process.env.CORE_RUN_ID
-    ? { repository: process.env.CORE_REPOSITORY, head: process.env.CORE_HEAD_SHA }
-    : { repository: pkg.aioncoreRepository, release: pkg.aioncoreVersion };
+  let core = { repository: pkg.aioncoreRepository, release: pkg.aioncoreVersion };
+  if (process.env.CORE_RUN_ID) {
+    const runtime = process.env.BUILD_PLATFORM?.replace(/^macos-/, 'darwin-').replace(/^windows-/, 'win32-');
+    if (!/^(darwin|win32|linux)-(x64|arm64)$/.test(runtime || '')) throw new Error('Unsupported bundle platform');
+    const bundle = JSON.parse(fs.readFileSync(`resources/bundled-aioncore/${runtime}/manifest.json`, 'utf8'));
+    const source = bundle.source;
+    if (
+      bundle.sourceType !== 'actions-artifact' ||
+      source?.repository !== process.env.CORE_REPOSITORY ||
+      String(source?.runId) !== process.env.CORE_RUN_ID ||
+      !/^[a-f0-9]{40}$/.test(source?.actualHeadSha || '') ||
+      (process.env.CORE_HEAD_SHA && source.actualHeadSha !== process.env.CORE_HEAD_SHA)
+    )
+      throw new Error('Prepared Core bundle does not match the requested source');
+    core = { repository: source.repository, head: source.actualHeadSha };
+  }
   fs.writeFileSync(
     'out/package-evidence.json',
     JSON.stringify({
@@ -149,6 +162,22 @@ function stage() {
       }
       if (!fs.statSync(output).size) throw new Error('Empty installer');
       hashes[filename] = digest(fs.readFileSync(output));
+      if (platform === 'windows-x64') {
+        // Derive metadata from the verified installer, never an unbound latest.yml.
+        const hash = crypto.createHash('sha512').update(fs.readFileSync(output)).digest('base64');
+        const metadata = [
+          `version: ${JSON.stringify(tag.slice(1))}`,
+          'files:',
+          `  - url: ${JSON.stringify(filename)}`,
+          `    sha512: ${hash}`,
+          `    size: ${fs.statSync(output).size}`,
+          `path: ${JSON.stringify(filename)}`,
+          `sha512: ${hash}`,
+          '',
+        ].join('\n');
+        fs.writeFileSync(path.join(temp, 'latest.yml'), metadata);
+        hashes['latest.yml'] = digest(metadata);
+      }
     }
     const sums = Object.entries(hashes)
       .toSorted(([a], [b]) => a.localeCompare(b))
@@ -189,7 +218,7 @@ function stage() {
       gh(['release', 'upload', tag, path.join(temp, name), '--repo', repository]);
     const final = api(`repos/${repository}/releases/${release.id}`);
     if (missingAssets(final, hashes).length) throw new Error('Release upload is incomplete');
-    console.log(`Verified draft ${tag}: two installers and SHA256SUMS.txt; not published`);
+    console.log(`Verified draft ${tag}: two installers, Windows update metadata and SHA256SUMS.txt; not published`);
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
   }

@@ -24,7 +24,7 @@ on:
           - windows-x64
           - windows-arm64
           - all
-        default: 'macos-arm64'
+        default: desktop
       skip_code_quality:
         description: 'Skip code quality checks (faster builds for debugging)'
         required: false
@@ -32,6 +32,11 @@ on:
         default: false
       internal_test_build:
         description: 'Internal test only: allow non-Developer-ID macOS signing and skip Sentry uploads'
+        required: false
+        type: boolean
+        default: false
+      profile_windows_compression:
+        description: 'Compare NSIS compression levels 7 and 9 using the same prepackaged x64 app (adds build time)'
         required: false
         type: boolean
         default: false
@@ -126,6 +131,7 @@ jobs:
       ref: ${{ inputs.branch }}
       skip_code_quality: ${{ inputs.skip_code_quality }}
       internal_test_build: ${{ inputs.internal_test_build }}
+      profile_windows_compression: ${{ inputs.profile_windows_compression }}
       aioncore_run_id: ${{ inputs.aioncore_run_id }}
       aioncore_repository: ${{ inputs.aioncore_repository }}
       aioncore_expected_head_sha: ${{ inputs.aioncore_expected_head_sha }}

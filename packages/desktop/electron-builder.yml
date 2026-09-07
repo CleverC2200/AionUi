@@ -162,6 +162,8 @@ dmg:
       path: /Applications
 
 afterPack: scripts/afterPack.js
+artifactBuildStarted: scripts/packaging/builder-events.js
+artifactBuildCompleted: scripts/packaging/builder-events.js
 afterSign: scripts/afterSign.js
 
 linux:

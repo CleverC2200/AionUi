@@ -32,14 +32,26 @@ function inputHash(root, inputs, context = {}) {
 function outputsMatch(manifestPath, key, outputs) {
   try {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    return manifest.key === key && outputs.every((file) => manifest.outputs[file] === sha256(file));
+    return (
+      manifest.schema === 2 &&
+      manifest.key === key &&
+      outputs.every(
+        (file) => manifest.outputs[path.relative(path.dirname(manifestPath), file).replace(/\\/g, '/')] === sha256(file)
+      )
+    );
   } catch {
     return false;
   }
 }
 
 function saveOutputs(manifestPath, key, outputs) {
-  const manifest = { key, outputs: Object.fromEntries(outputs.map((file) => [file, sha256(file)])) };
+  const manifest = {
+    schema: 2,
+    key,
+    outputs: Object.fromEntries(
+      outputs.map((file) => [path.relative(path.dirname(manifestPath), file).replace(/\\/g, '/'), sha256(file)])
+    ),
+  };
   fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
   const temporary = `${manifestPath}.${crypto.randomUUID()}.tmp`;
   try {
@@ -104,15 +116,28 @@ function saveDownload(cacheDir, source, file, maxBytes = 512 * 1024 * 1024) {
 
 function timed(stage, action, details = {}) {
   const start = performance.now();
+  const startedAt = new Date().toISOString();
   let status = 'failed';
   try {
     const result = action();
     status = 'ok';
     return result;
   } finally {
-    console.log(
-      `[build-stage] ${JSON.stringify({ stage, status, elapsedMs: Math.round(performance.now() - start), ...details })}`
-    );
+    const record = JSON.stringify({
+      stage,
+      status,
+      startedAt,
+      elapsedMs: Math.round(performance.now() - start),
+      ...details,
+    });
+    console.log(`[build-stage] ${record}`);
+    if (process.env.BUILD_STAGE_REPORT) {
+      try {
+        fs.appendFileSync(process.env.BUILD_STAGE_REPORT, `${record}\n`);
+      } catch {
+        console.warn('[build-stage] Could not persist stage evidence; console evidence is still available');
+      }
+    }
   }
 }
 

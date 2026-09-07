@@ -120,6 +120,14 @@ function draftFixture() {
     ],
   };
 }
+test('draft retains a successful platform from a failed matrix but rejects its failed platform', () => {
+  const f = draftFixture();
+  f.run.conclusion = 'failure';
+  assert.equal(selectArtifact(f).name, f.artifacts[0].name);
+  f.jobs[1].conclusion = 'failure';
+  assert.throws(() => selectArtifact(f), /gate missing/);
+});
+
 test('draft accepts only matching successful source and built commit', () => {
   const initial = draftFixture();
   assert.equal(selectArtifact(initial).name, initial.artifacts[0].name);
@@ -172,6 +180,49 @@ test('package evidence binds attempt, platform and common Core identity', () => 
   assert.throws(() => validatePackage({ ...record, attempt: 2 }, f));
   assert.throws(() => validatePackage({ ...record, platform: 'macos-x64' }, f));
   assert.throws(() => validatePackage(record, f, { ...record.core, head: 'b'.repeat(40) }));
+});
+
+test('package recorder takes Core identity from the verified bundle instead of an optional hint', (t) => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { execFileSync, spawnSync } = require('node:child_process');
+  const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'package-record-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, 'out'));
+  fs.mkdirSync(path.join(root, 'resources/bundled-aioncore/win32-x64'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'package.json'), '{}');
+  fs.writeFileSync(
+    path.join(root, 'resources/bundled-aioncore/win32-x64/manifest.json'),
+    JSON.stringify({
+      sourceType: 'actions-artifact',
+      source: { repository: 'owner/core', runId: '12', actualHeadSha: sha },
+    })
+  );
+  execFileSync('git', ['init', '-q', root]);
+  execFileSync('git', ['add', 'package.json'], { cwd: root });
+  execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'fixture'], {
+    cwd: root,
+  });
+  const result = spawnSync(
+    process.execPath,
+    [path.resolve(__dirname, '../../../scripts/stage-release-draft.js'), 'record'],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        CORE_RUN_ID: '12',
+        CORE_REPOSITORY: 'owner/core',
+        CORE_HEAD_SHA: '',
+        BUILD_PLATFORM: 'windows-x64',
+      },
+    }
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'out/package-evidence.json'))).core, {
+    repository: 'owner/core',
+    head: sha,
+  });
 });
 
 // The draft workflow runs on Ubuntu and invokes Unix zip/unzip tools.
@@ -237,13 +288,15 @@ if(args[0]==='api') {
 } else if(args[0]==='release' && args[1]==='create') {
   fs.writeFileSync(stateFile,JSON.stringify({id:99,tag_name:args[2],draft:true,prerelease:true,target_commitish:args[args.indexOf('--target')+1],assets:[]}));
 } else if(args[0]==='release' && args[1]==='upload') {
+  if(process.env.MOCK_FAIL_UPLOAD===path.basename(args[3]))process.exit(4);
+  fs.copyFileSync(args[3],path.join(root,'uploaded-'+path.basename(args[3])));
   state.assets.push({name:path.basename(args[3]),digest:'sha256:'+crypto.createHash('sha256').update(fs.readFileSync(args[3])).digest('hex')});
   fs.writeFileSync(stateFile,JSON.stringify(state));
 } else process.exit(3);
 `,
         { mode: 0o755 }
       );
-      const run = () =>
+      const run = (changes = {}) =>
         spawnSync(process.execPath, [path.resolve(__dirname, '../../../scripts/stage-release-draft.js')], {
           env: {
             ...process.env,
@@ -254,6 +307,7 @@ if(args[0]==='api') {
             RELEASE_TAG: 'v1.0.0-test',
             MAC_RUN_ID: '12',
             WINDOWS_RUN_ID: '13',
+            ...changes,
           },
           encoding: 'utf8',
           timeout: 15000,
@@ -262,14 +316,29 @@ if(args[0]==='api') {
       assert.equal(result.status, 0, result.stderr);
       const release = JSON.parse(fs.readFileSync(path.join(temp, 'state.json')));
       assert.equal(release.draft, true);
-      assert.equal(release.assets.length, 3);
+      assert.equal(release.assets.length, 4);
+      assert.ok(release.assets.some((asset) => asset.name === 'latest.yml'));
+      const metadata = fs.readFileSync(path.join(temp, 'uploaded-latest.yml'), 'utf8');
+      assert.match(metadata, /version: "1.0.0-test"/);
+      assert.match(metadata, /url: "GEAUi-1.0.0-test-win-x64.exe"/);
       result = run();
       assert.equal(result.status, 0, result.stderr);
       const calls = fs.readFileSync(path.join(temp, 'calls.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
-      assert.equal(calls.filter((args) => args[0] === 'release' && args[1] === 'upload').length, 3);
+      assert.equal(calls.filter((args) => args[0] === 'release' && args[1] === 'upload').length, 4);
+      fs.unlinkSync(path.join(temp, 'state.json'));
+      fs.writeFileSync(path.join(temp, 'calls.jsonl'), '');
+      result = run({ MOCK_FAIL_UPLOAD: 'latest.yml' });
+      assert.notEqual(result.status, 0);
+      assert.equal(JSON.parse(fs.readFileSync(path.join(temp, 'state.json'))).assets.length, 2);
+      result = run();
+      assert.equal(result.status, 0, result.stderr);
+      const recoveryCalls = fs.readFileSync(path.join(temp, 'calls.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+      assert.equal(recoveryCalls.filter((args) => args[1] === 'create').length, 1);
+      assert.equal(recoveryCalls.filter((args) => args[1] === 'upload' && /\.(exe|dmg)$/.test(args[3])).length, 2);
       fs.unlinkSync(path.join(temp, 'state.json'));
       fs.writeFileSync(path.join(temp, 'calls.jsonl'), '');
       fixtures[`repos/${repository}/actions/runs/13`].conclusion = 'failure';
+      fixtures[`repos/${repository}/actions/runs/13/attempts/1/jobs?per_page=100`].jobs[1].conclusion = 'failure';
       fs.writeFileSync(path.join(temp, 'fixtures.json'), JSON.stringify(fixtures));
       result = run();
       assert.notEqual(result.status, 0);

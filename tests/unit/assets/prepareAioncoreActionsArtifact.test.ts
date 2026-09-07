@@ -17,10 +17,54 @@ const {
   prepareManagedResources,
   prepareAioncore,
   validateActionsArtifactMetadata,
+  validateActionsBuildManifest,
 } = require('../../../packages/shared-scripts/src/prepare-aioncore');
 
 const ARCHIVE_SHA256 = '0eb3e36bfb24dcd9bb1d1bece1531216b59539a8fde17ee80224af0653c92aa3';
 const HEAD_SHA = 'ace375767d0b2ece67edf4128f09401f1de2ba8f';
+
+it('binds Core build metadata to the verified archive, platform and workflow attempt', () => {
+  const expected = { repository: 'owner/core', runId: '12', runAttempt: 1, actualHeadSha: HEAD_SHA };
+  const record = {
+    schema: 1,
+    repository: 'owner/core',
+    runId: 12,
+    attempt: 1,
+    headSha: HEAD_SHA,
+    platform: 'windows-x64',
+    target: 'x86_64-pc-windows-msvc',
+    artifact: 'aioncore-manual-windows-x64',
+    archive: 'core.zip',
+    sha256: ARCHIVE_SHA256,
+    build: {
+      profile: 'release',
+      rustc: 'rustc 1.95.0',
+      cargoLockSha256: 'a'.repeat(64),
+      toolchainSha256: 'b'.repeat(64),
+      workflowSha256: 'c'.repeat(64),
+      rustflags: '-C target-feature=+crt-static',
+    },
+  };
+  expect(
+    validateActionsBuildManifest(record, expected, 'aioncore-manual-windows-x64', 'core.zip', ARCHIVE_SHA256)
+  ).toEqual(record);
+  for (const patch of [
+    { attempt: 2 },
+    { headSha: 'b'.repeat(40) },
+    { sha256: 'b'.repeat(64) },
+    { target: 'aarch64-apple-darwin' },
+  ]) {
+    expect(() =>
+      validateActionsBuildManifest(
+        { ...record, ...patch },
+        expected,
+        'aioncore-manual-windows-x64',
+        'core.zip',
+        ARCHIVE_SHA256
+      )
+    ).toThrow(/manifest/);
+  }
+});
 
 const posixFakeToolchainIt = process.platform === 'win32' ? it.skip : it;
 
