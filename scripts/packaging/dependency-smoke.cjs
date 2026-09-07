@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createRequire } = require('node:module');
+const crypto = require('node:crypto');
 
 const archive = path.resolve(process.argv[2]);
 const output = path.resolve(process.argv[3]);
@@ -39,6 +40,17 @@ function verifyNoTests(directory) {
   }
 }
 verifyNoTests(source);
+const hub = path.join(path.dirname(archive), 'hub');
+const hubManifest = JSON.parse(fs.readFileSync(path.join(hub, 'manifest.json'), 'utf8'));
+const hubIndex = JSON.parse(fs.readFileSync(path.join(hub, 'index.json'), 'utf8'));
+assert.equal(hubManifest.complete, true, 'Packaged Hub resource set is incomplete');
+assert.ok(hubManifest.extensions.length > 0, 'Packaged Hub has no offline extensions');
+assert.deepEqual(hubManifest.extensions.map((entry) => entry.name).sort(), Object.keys(hubIndex.extensions).sort());
+for (const entry of hubManifest.extensions) {
+  assert.equal(path.basename(entry.file), entry.file, 'Hub archive must be inside its resource directory');
+  const bytes = fs.readFileSync(path.join(hub, entry.file));
+  assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), entry.sha256);
+}
 // Also reject transitive CommonJS dependencies resolved outside the packaged app.
 for (const file of Object.keys(require.cache)) if (!priorModules.has(file)) assertPackaged(file);
 fs.writeFileSync(
@@ -49,7 +61,12 @@ fs.writeFileSync(
       status: 'passed',
       platform: process.platform,
       electron: process.versions.electron,
-      assertions: ['zod-v3-v4-valid-and-invalid-input', 'mcp-call-tool-request', 'zod-test-sources-absent'],
+      assertions: [
+        'zod-v3-v4-valid-and-invalid-input',
+        'mcp-call-tool-request',
+        'zod-test-sources-absent',
+        'hub-index-and-archives-complete',
+      ],
       boundary: 'Packaged dependency execution in Electron Node mode; installer and full UI acceptance are separate.',
     },
     null,

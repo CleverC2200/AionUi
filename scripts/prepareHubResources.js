@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const os = require('os');
+const crypto = require('node:crypto');
 const { pipeline } = require('stream');
 const { sha256, restoreDownload, saveDownload } = require('../packages/shared-scripts/src/build-cache');
 
@@ -34,6 +35,19 @@ function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
+}
+
+function parseIntegrity(value) {
+  if (!value) return null;
+  // Keep the legacy hex form and support the SHA512 SRI used by the published Hub index.
+  if (/^sha256-[a-fA-F0-9]{64}$/.test(value)) return { algorithm: 'sha256', hex: value.slice(7).toLowerCase() };
+  const match = /^(sha256|sha512)-([A-Za-z0-9+/]+={0,2})$/.exec(value);
+  if (match) {
+    const bytes = Buffer.from(match[2], 'base64');
+    if (bytes.length === (match[1] === 'sha256' ? 32 : 64) && bytes.toString('base64') === match[2])
+      return { algorithm: match[1], hex: bytes.toString('hex') };
+  }
+  throw new Error('Unsupported Hub integrity format');
 }
 
 /**
@@ -133,16 +147,21 @@ async function prepareHubResources({
       filenames.add(filename);
       const zipPath = path.join(staging, filename);
       const integrity = ext.dist?.integrity || '';
-      const expected = /^sha256-[a-fA-F0-9]{64}$/.test(integrity) ? integrity.slice(7).toLowerCase() : null;
       // No checksum means no reuse: a mutable tag or URL alone is not a content identity.
-      const source = `${indexSource}#${tarball}#${expected}`;
+      const source = `${indexSource}#${tarball}#${integrity}`;
       try {
-        const cached = expected && restoreDownload(cacheDir, source, zipPath, expected);
+        const expected = parseIntegrity(integrity);
+        const cached =
+          expected &&
+          restoreDownload(cacheDir, source, zipPath, expected.algorithm === 'sha256' ? expected.hex : undefined);
         if (offline && !cached) throw new Error('Incomplete offline Hub cache');
         const url = cached ? new URL(tarball, indexSource).toString() : await download(tarball, zipPath);
-        if (integrity && !expected) throw new Error('Unsupported Hub integrity format');
         const digest = sha256(zipPath);
-        if (expected && digest !== expected) throw new Error('Hub archive SHA256 mismatch');
+        if (
+          expected &&
+          crypto.createHash(expected.algorithm).update(fs.readFileSync(zipPath)).digest('hex') !== expected.hex
+        )
+          throw new Error('Hub archive integrity mismatch');
         if (expected && !cached) saveDownload(cacheDir, source, zipPath);
         results.push({ name, file: filename, size: fs.statSync(zipPath).size, url, sha256: digest });
         console.log(`[hub-cache] ${cached ? 'hit' : 'miss'}: ${name}`);

@@ -182,6 +182,52 @@ test('Hub refresh fetches index but reuses checksum verified archives; complete 
   assert.equal((await prepareHubResources(offline)).complete, true);
 });
 
+test('Hub supports published SHA512 SRI and verifies cached bytes against it', async (t) => {
+  const data = hubFixture(t);
+  const crypto = require('node:crypto');
+  data.index.extensions.one.dist.integrity = `sha512-${crypto.createHash('sha512').update(fs.readFileSync(data.archive)).digest('base64')}`;
+  assert.equal((await prepareHubResources(data)).complete, true);
+  data.calls.length = 0;
+  assert.equal((await prepareHubResources(data)).complete, true);
+  assert.deepEqual(data.calls, ['index.json']);
+  data.index.extensions.one.dist.integrity = `sha512-${Buffer.alloc(64).toString('base64')}`;
+  assert.equal((await prepareHubResources(data)).complete, false);
+});
+
+test('Hub accepts SHA256 SRI and refuses malformed integrity without trusting an archive', async (t) => {
+  const data = hubFixture(t);
+  data.index.extensions.one.dist.integrity = `sha256-${Buffer.from(cache.sha256(data.archive), 'hex').toString('base64')}`;
+  assert.equal((await prepareHubResources(data)).complete, true);
+  data.index.extensions.one.dist.integrity = 'sha512-not-a-digest';
+  assert.equal((await prepareHubResources(data)).complete, false);
+});
+
+test('Hub published SRI rejects a cached archive even when its local checksum is forged', async (t) => {
+  const data = hubFixture(t);
+  const crypto = require('node:crypto');
+  data.index.extensions.one.dist.integrity = `sha512-${crypto.createHash('sha512').update(fs.readFileSync(data.archive)).digest('base64')}`;
+  await prepareHubResources(data);
+  for (const entry of fs.readdirSync(data.cacheDir)) {
+    const directory = path.join(data.cacheDir, entry);
+    const file = path.join(directory, 'manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!manifest.source.includes('one.zip')) continue;
+    write(path.join(directory, 'content'), 'forged');
+    manifest.sha256 = cache.sha256(path.join(directory, 'content'));
+    write(file, JSON.stringify(manifest));
+  }
+  await assert.rejects(
+    prepareHubResources({
+      ...data,
+      download: async () => {
+        throw new Error('offline');
+      },
+    }),
+    /Hub archive integrity mismatch/
+  );
+  assert.equal(fs.readFileSync(path.join(data.root, 'resources/hub/one.zip'), 'utf8'), 'extension');
+});
+
 test('Hub index content change invalidates archive and partial failure preserves previous resources', async (t) => {
   const data = hubFixture(t);
   await prepareHubResources(data);
