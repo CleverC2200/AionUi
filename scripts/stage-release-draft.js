@@ -191,26 +191,35 @@ function stage() {
     ).flat();
     let release = releases.find((r) => r.tag_name === tag);
     if (!release) {
-      gh([
-        'release',
-        'create',
-        tag,
-        '--repo',
-        repository,
-        '--draft',
-        '--prerelease',
-        '--latest=false',
-        '--target',
-        sha,
-        '--title',
-        tag,
-        '--notes',
-        'Verified CI installers. Draft only: real macOS and Windows acceptance is still required before publication.',
-      ]);
-      release = JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${repository}/releases?per_page=100`]))
-        .flat()
-        .find((r) => r.tag_name === tag);
-      if (!release) throw new Error('Created draft cannot be verified; inspect before retrying');
+      // Release listings can lag behind a successful creation. Bind readback to
+      // the creation response ID, never create again because a list is stale.
+      const created = JSON.parse(
+        gh([
+          'api',
+          '--method',
+          'POST',
+          '-f',
+          `tag_name=${tag}`,
+          '-f',
+          `target_commitish=${sha}`,
+          '-F',
+          'draft=true',
+          '-F',
+          'prerelease=true',
+          '-f',
+          'make_latest=false',
+          '-f',
+          `name=${tag}`,
+          '-f',
+          'body=Verified CI installers. Draft only: real macOS and Windows acceptance is still required before publication.',
+          `repos/${repository}/releases`,
+        ])
+      );
+      if (!Number.isSafeInteger(created.id) || created.id <= 0 || created.tag_name !== tag)
+        throw new Error('Created draft identity cannot be verified; inspect before retrying');
+      release = api(`repos/${repository}/releases/${created.id}`);
+      if (release.id !== created.id || release.tag_name !== tag)
+        throw new Error('Created draft readback identity mismatch');
     }
     if (!release.prerelease || release.target_commitish !== sha)
       throw new Error('Draft release target or channel mismatch');

@@ -294,12 +294,15 @@ const state=fs.existsSync(stateFile)?JSON.parse(fs.readFileSync(stateFile)):null
 fs.appendFileSync(path.join(root,'calls.jsonl'),JSON.stringify(args)+'\\n');
 const endpoint=args.at(-1);
 if(args[0]==='api') {
-  if(endpoint.endsWith('/zip')) process.stdout.write(fs.readFileSync(path.join(root,endpoint.split('/').at(-2)+'.zip')));
-  else if(endpoint.includes('/releases?')) console.log(JSON.stringify([state?[state]:[]]));
+  if(args.includes('POST') && endpoint.endsWith('/releases')) {
+    const field=name=>args.find(value=>value.startsWith(name+'=')).slice(name.length+1);
+    const created={id:99,tag_name:field('tag_name'),draft:field('draft')==='true',prerelease:field('prerelease')==='true',target_commitish:field('target_commitish'),assets:[]};
+    fs.writeFileSync(stateFile,JSON.stringify(created));console.log(JSON.stringify(created));
+  }
+  else if(endpoint.endsWith('/zip')) process.stdout.write(fs.readFileSync(path.join(root,endpoint.split('/').at(-2)+'.zip')));
+  else if(endpoint.includes('/releases?')) console.log(JSON.stringify([state && !process.env.MOCK_STALE_RELEASE_LIST?[state]:[]]));
   else if(endpoint.endsWith('/releases/99')) console.log(JSON.stringify(state));
   else { const f=JSON.parse(fs.readFileSync(path.join(root,'fixtures.json'))); if(!f[endpoint])process.exit(2); console.log(JSON.stringify(f[endpoint])); }
-} else if(args[0]==='release' && args[1]==='create') {
-  fs.writeFileSync(stateFile,JSON.stringify({id:99,tag_name:args[2],draft:true,prerelease:true,target_commitish:args[args.indexOf('--target')+1],assets:[]}));
 } else if(args[0]==='release' && args[1]==='upload') {
   if(process.env.MOCK_FAIL_UPLOAD===path.basename(args[3]))process.exit(4);
   fs.copyFileSync(args[3],path.join(root,'uploaded-'+path.basename(args[3])));
@@ -346,8 +349,16 @@ if(args[0]==='api') {
       result = run();
       assert.equal(result.status, 0, result.stderr);
       const recoveryCalls = fs.readFileSync(path.join(temp, 'calls.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
-      assert.equal(recoveryCalls.filter((args) => args[1] === 'create').length, 1);
+      assert.equal(recoveryCalls.filter((args) => args[0] === 'api' && args.includes('POST')).length, 1);
       assert.equal(recoveryCalls.filter((args) => args[1] === 'upload' && /\.(exe|dmg)$/.test(args[3])).length, 2);
+      fs.unlinkSync(path.join(temp, 'state.json'));
+      result = run({ MOCK_STALE_RELEASE_LIST: '1' });
+      assert.equal(
+        result.status,
+        0,
+        'A stale release list after creation must not prevent ID-bound verification: ' + result.stderr
+      );
+      assert.equal(JSON.parse(fs.readFileSync(path.join(temp, 'state.json'))).assets.length, 4);
       fs.unlinkSync(path.join(temp, 'state.json'));
       fs.writeFileSync(path.join(temp, 'calls.jsonl'), '');
       fixtures[`repos/${repository}/actions/runs/13`].conclusion = 'failure';
