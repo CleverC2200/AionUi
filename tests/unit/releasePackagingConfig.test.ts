@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -103,6 +103,40 @@ describe('release packaging configuration', () => {
 
     expect(macBlock).toContain('    - dmg');
     expect(macBlock).not.toContain('    - zip');
+  });
+
+  itWithBash('accepts the macOS DMG and metadata in the PR artifact gate without legacy ZIPs', () => {
+    const workflow = readProjectFile('.github/workflows/pr-checks.yml');
+    const script = workflow
+      .split('- name: Verify build artifacts exist')[1]
+      .split('- name: Silent install smoke test')[0]
+      .split('run: |')[1]
+      .replaceAll('${{ matrix.platform }}', 'macos-arm64');
+    const root = mkdtempSync(resolve(tmpdir(), 'pr-mac-artifacts-'));
+    try {
+      mkdirSync(resolve(root, 'out'));
+      const dmg = resolve(root, 'out/GEAUi-test-mac-arm64.dmg');
+      writeFileSync(dmg, 'fixture installer');
+      writeFileSync(resolve(root, 'out/latest-mac.yml'), 'version: test');
+      const run = () => spawnSync('bash', ['-e', '-o', 'pipefail', '-c', script], { cwd: root, encoding: 'utf8' });
+      const complete = run();
+      expect(complete.status, complete.stderr).toBe(0);
+      rmSync(dmg);
+      expect(run().status).not.toBe(0);
+      writeFileSync(dmg, 'fixture installer');
+      rmSync(resolve(root, 'out/latest-mac.yml'));
+      expect(run().status).not.toBe(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('pins PR packaging to the same verified Hub resource version as release packaging', () => {
+    const release = readProjectFile('.github/workflows/_build-reusable.yml');
+    const prBuild = readProjectFile('.github/workflows/pr-checks.yml').split('  build-test:')[1];
+    const pin = release.match(/AIONUI_HUB_TAG: '[^']+'/)?.[0];
+    expect(pin).toBeTruthy();
+    expect(prBuild).toContain(pin);
   });
 
   it('does not build Windows zip artifacts', () => {

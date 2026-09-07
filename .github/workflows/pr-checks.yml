@@ -344,6 +344,8 @@ jobs:
   # Job 4: Build test across representative PR platforms (parallel with code-quality and unit-tests)
   build-test:
     name: Build Test (${{ matrix.platform }})
+    env:
+      AIONUI_HUB_TAG: 'dist-ebc6a2b'
     needs: classify-changes
     if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)) && inputs.skip_build_test != true && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ${{ matrix.os }}
@@ -527,7 +529,7 @@ jobs:
               ls out/*.exe out/*latest*.yml >/dev/null
               ;;
             macos-*)
-              ls out/*.dmg out/*.zip out/*latest*.yml >/dev/null
+              ls out/*.dmg out/*latest*.yml >/dev/null
               ;;
             linux-x64)
               ls out/*.deb out/*latest*.yml >/dev/null
