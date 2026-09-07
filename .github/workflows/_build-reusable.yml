@@ -132,8 +132,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: code-quality
     if: ${{ always() && (inputs.skip_code_quality || needs.code-quality.result == 'success') }}
-    env:
-      BUILD_STAGE_REPORT: ${{ runner.temp }}/build-stages.jsonl
 
     outputs:
       commit-short: ${{ steps.commit.outputs.short }}
@@ -143,6 +141,10 @@ jobs:
       matrix: ${{ fromJSON(inputs.matrix) }}
 
     steps:
+      - name: Configure build timing report
+        shell: bash
+        run: echo "BUILD_STAGE_REPORT=${RUNNER_TEMP}/build-stages.jsonl" >> "$GITHUB_ENV"
+
       - name: Checkout code
         uses: actions/checkout@v6
         with:
