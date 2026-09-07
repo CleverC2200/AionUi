@@ -13,6 +13,17 @@ const WORKFLOWS = new Set([
 function command(executable, args, timeout = 30000) {
   return execFileSync(executable, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout }).trim();
 }
+function environmentIdentity(env = process.env) {
+  const fixed = ['CI', 'NODE_OPTIONS', 'NODE_ENV', 'TZ', 'LANG', 'BUN_INSTALL_REGISTRY'];
+  const names = new Set([
+    ...fixed,
+    ...Object.keys(env).filter((name) => /^(AIONUI_|VITE_|MAIN_VITE_|PRELOAD_VITE_|RENDERER_VITE_|SENTRY_)/.test(name)),
+  ]);
+  return crypto
+    .createHash('sha256')
+    .update(JSON.stringify([...names].sort().map((name) => [name, env[name] || ''])))
+    .digest('hex');
+}
 function identity() {
   if (command('git', ['status', '--porcelain', '--untracked-files=normal'])) throw new Error('dirty-checkout');
   if (process.platform !== 'linux' || process.env.CI !== 'true') throw new Error('unsupported-environment');
@@ -25,18 +36,7 @@ function identity() {
     arch: process.arch,
     image: process.env.ImageVersion || '',
     os: process.env.ImageOS || '',
-    environment: crypto
-      .createHash('sha256')
-      .update(
-        JSON.stringify([
-          process.env.CI,
-          process.env.NODE_OPTIONS || '',
-          process.env.TZ || '',
-          process.env.LANG || '',
-          process.env.BUN_INSTALL_REGISTRY || '',
-        ])
-      )
-      .digest('hex'),
+    environment: environmentIdentity(),
   };
 }
 function validate(record, current, { repository, run, artifact, jobs, commit }) {
@@ -159,4 +159,4 @@ if (require.main === module) {
   else if (process.argv[2] === 'record') writeRecord(process.argv[3]);
   else throw new Error('Expected probe or record <destination>');
 }
-module.exports = { validate, identity };
+module.exports = { validate, identity, environmentIdentity };

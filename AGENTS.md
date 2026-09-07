@@ -18,10 +18,11 @@
 ## 条件资料
 
 - 创建、移动或拆分文件/模块时，阅读 [文件与目录结构](docs/contributing/file-structure.zh-CN.md)。
-- 新增或修改 Electron E2E，或需要真实客户端运行态复现、验收 UI、IPC、启动缺陷时，阅读 [E2E 测试指南](tests/e2e/README.zh-CN.md) 中相关部分。
-- 修改开发、构建、发布或 PR 流程时，阅读 [贡献指南](CONTRIBUTING.zh.md)。
+- 运行 Electron E2E 时读 [E2E 测试指南](tests/e2e/README.zh-CN.md) 的“快速开始”；编写测试读“编写测试”，运行态缺陷复现按症状查“故障排除”。UI、IPC、启动验收保留本次所需的真实客户端证据。
+- 修改开发脚本、构建/发布链或 PR 规则时，阅读 [贡献指南](CONTRIBUTING.zh.md) 的对应章节；普通业务修改不因此预读整份指南。
 - 修改 WebUI、AionCore 启动或本地后端配置时，阅读 [开发指南](docs/contributing/development.zh-CN.md)。
-- 管理 Issue、标签、依赖或 PR 关闭关系时，阅读 [Issue tracker](docs/agents/issue-tracker.md) 和 [Triage labels](docs/agents/triage-labels.md)。
+- 管理 Issue、依赖或 PR 关闭关系时，按 [Issue tracker](docs/agents/issue-tracker.md) 读取对应章节；Wayfinding 操作仅在处理地图与决策票时读取。
+- 分类或管理标签时，按 [Triage labels](docs/agents/triage-labels.md) 使用既有角色映射。
 - 新增或修改领域术语、状态权威、跨模块契约或 ADR 时，阅读 [Domain docs](docs/agents/domain.md)。
 
 ## 验证与交付

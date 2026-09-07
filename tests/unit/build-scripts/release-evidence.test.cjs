@@ -1,6 +1,19 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { validate } = require('../../../scripts/quality-evidence');
+
+test('unit evidence identity changes with GEA acceptance and other build environment flags', () => {
+  const { environmentIdentity } = require('../../../scripts/quality-evidence');
+  const baseline = { CI: 'true', AIONUI_GEA_PACKAGED_ACCEPTANCE: '', AIONUI_GEA_VERSION_CODE: '' };
+  for (const change of [
+    { AIONUI_GEA_PACKAGED_ACCEPTANCE: '1' },
+    { AIONUI_GEA_VERSION_CODE: '20260907' },
+    { MAIN_VITE_API_URL: 'https://example.test' },
+    { NODE_ENV: 'production' },
+  ])
+    assert.notEqual(environmentIdentity(baseline), environmentIdentity({ ...baseline, ...change }));
+  assert.equal(environmentIdentity(baseline), environmentIdentity({ GITHUB_RUN_ID: '42', ...baseline }));
+});
 const { selectArtifact, missingAssets, validatePackage } = require('../../../scripts/stage-release-draft');
 const sha = 'a'.repeat(40),
   tree = 'b'.repeat(40),
