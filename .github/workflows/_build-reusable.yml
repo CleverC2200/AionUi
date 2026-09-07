@@ -69,11 +69,13 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Setup Node.js
+        id: node-runtime
         uses: actions/setup-node@v4
         with:
           node-version: '22.23.2'
 
       - name: Setup bun
+        id: bun-runtime
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.2'
@@ -88,7 +90,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: bun-downloads-v1-${{ runner.os }}-${{ runner.arch }}-1.4.2-${{ hashFiles('bun.lock') }}
+          key: bun-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.bun-runtime.outputs.bun-version }}-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
         # This is a download cache, never a replacement for a frozen install.
@@ -155,11 +157,13 @@ jobs:
           echo "Commit: $SHORT"
 
       - name: Setup Node.js
+        id: node-runtime
         uses: actions/setup-node@v4
         with:
           node-version: '22.23.2'
 
       - name: Setup bun
+        id: bun-runtime
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.2'
@@ -205,7 +209,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: bun-downloads-v1-${{ runner.os }}-${{ runner.arch }}-1.4.2-${{ hashFiles('bun.lock') }}
+          key: bun-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.bun-runtime.outputs.bun-version }}-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
         uses: nick-fields/retry@v3
@@ -470,7 +474,7 @@ jobs:
             out/renderer
             out/.vite-build-cache.json
             out/.mcp-build-cache.json
-          key: compilation-v2-${{ matrix.platform }}-${{ steps.compilation-identity.outputs.image }}-22.23.2-1.4.2-${{ inputs.internal_test_build }}-${{ steps.compilation-identity.outputs.sha }}
+          key: compilation-v2-${{ matrix.platform }}-${{ steps.compilation-identity.outputs.image }}-${{ steps.node-runtime.outputs.node-version }}-${{ steps.bun-runtime.outputs.bun-version }}-${{ inputs.internal_test_build }}-${{ steps.compilation-identity.outputs.sha }}
 
       - name: Build with electron-builder (Windows)
         if: startsWith(matrix.platform, 'windows')

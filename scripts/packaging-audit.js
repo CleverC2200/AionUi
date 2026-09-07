@@ -33,6 +33,9 @@ function inventory(archive, resources) {
     }
   }
   visit(header);
+  const developmentCandidates = files.filter((file) =>
+    /(?:\.d\.ts$|\/(?:tests?|__tests__|examples?|docs)\/|\/(?:README|CHANGELOG)(?:\.|$))/i.test(file.path)
+  );
   function size(directory) {
     const stat = fs.lstatSync(directory);
     if (stat.isSymbolicLink()) return { logicalBytes: 0, allocatedBytes: 0 };
@@ -55,17 +58,8 @@ function inventory(archive, resources) {
     packedLogicalBytes,
     unpackedLogicalBytes,
     largestFiles: files.toSorted((a, b) => b.bytes - a.bytes).slice(0, 40),
-    developmentCandidates: files
-      .filter((file) =>
-        /(?:\.d\.ts$|\/(?:tests?|__tests__|examples?|docs)\/|\/(?:README|CHANGELOG)(?:\.|$))/i.test(file.path)
-      )
-      .toSorted((a, b) => b.bytes - a.bytes)
-      .slice(0, 100),
-    developmentCandidateLogicalBytes: files
-      .filter((file) =>
-        /(?:\.d\.ts$|\/(?:tests?|__tests__|examples?|docs)\/|\/(?:README|CHANGELOG)(?:\.|$))/i.test(file.path)
-      )
-      .reduce((sum, file) => sum + file.bytes, 0),
+    developmentCandidates: developmentCandidates.toSorted((a, b) => b.bytes - a.bytes).slice(0, 100),
+    developmentCandidateLogicalBytes: developmentCandidates.reduce((sum, file) => sum + file.bytes, 0),
     largestPackages: Object.fromEntries(
       Object.entries(packages)
         .toSorted((a, b) => b[1] - a[1])

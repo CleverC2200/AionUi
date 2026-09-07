@@ -629,6 +629,15 @@ function validateActionsArtifactMetadata(artifact, runId, expectedArtifactName, 
   return artifact.digest ? normalizeSha256(artifact.digest, `artifact ${expectedArtifactName}`) : null;
 }
 
+function isLegacyActionsSource(provenance) {
+  // Explicitly retained, previously verified baseline. No date-based exemption
+  // or arbitrary old run can bypass the new build identity requirement.
+  return (
+    provenance.repository === 'CleverC2200/AionCore' &&
+    provenance.actualHeadSha === '6fc8ddf5fb6b55ec75c6d59647910439db69d727'
+  );
+}
+
 function validateActionsBuildManifest(record, provenance, artifactName, archiveName, archiveSha256) {
   const targets = {
     'macos-arm64': 'aarch64-apple-darwin',
@@ -652,12 +661,13 @@ function validateActionsBuildManifest(record, provenance, artifactName, archiveN
   )
     throw new Error('Core build manifest source or archive mismatch');
   if (
-    record.build &&
-    (record.build.profile !== 'release' ||
-      !record.build.rustc?.startsWith('rustc ') ||
-      !['cargoLockSha256', 'toolchainSha256', 'workflowSha256'].every((key) =>
-        /^[a-f0-9]{64}$/.test(record.build[key])
-      ))
+    (!record.build && !isLegacyActionsSource(provenance)) ||
+    (record.build &&
+      (record.build.profile !== 'release' ||
+        !record.build.rustc?.startsWith('rustc ') ||
+        !['cargoLockSha256', 'toolchainSha256', 'workflowSha256'].every((key) =>
+          /^[a-f0-9]{64}$/.test(record.build[key])
+        )))
   )
     throw new Error('Core build manifest has incomplete toolchain identity');
   return record;
@@ -720,6 +730,10 @@ function downloadAndExtractActionsArtifact(platform, arch, runId, { verifiedActi
   // Legacy pinned builds may predate this sidecar. When present, it must agree
   // with independently verified run metadata and archive content.
   const manifestPath = path.join(artifactExtractDir, 'aioncore-manifest.json');
+  if (verifiedActions && !fs.existsSync(manifestPath) && !isLegacyActionsSource(runProvenance))
+    throw new Error(
+      'Core build manifest required for this source; rebuild the exact trusted source with build identity'
+    );
   const buildManifest = fs.existsSync(manifestPath)
     ? validateActionsBuildManifest(
         JSON.parse(fs.readFileSync(manifestPath, 'utf8')),

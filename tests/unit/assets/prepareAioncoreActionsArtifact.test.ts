@@ -48,6 +48,15 @@ it('binds Core build metadata to the verified archive, platform and workflow att
   expect(
     validateActionsBuildManifest(record, expected, 'aioncore-manual-windows-x64', 'core.zip', ARCHIVE_SHA256)
   ).toEqual(record);
+  expect(() =>
+    validateActionsBuildManifest(
+      { ...record, build: undefined },
+      expected,
+      'aioncore-manual-windows-x64',
+      'core.zip',
+      ARCHIVE_SHA256
+    )
+  ).toThrow(/toolchain identity/);
   for (const patch of [
     { attempt: 2 },
     { headSha: 'b'.repeat(40) },
@@ -121,7 +130,7 @@ JSON
     ;;
   *"/actions/runs/123"*)
     cat <<'JSON'
-{"id":123,"name":"🔨 Manual Build","path":".github/workflows/build-manual.yml","event":"workflow_dispatch","status":"completed","conclusion":"success","head_sha":"ace375767d0b2ece67edf4128f09401f1de2ba8f","head_branch":"main","html_url":"https://github.com/CleverC2200/AionCore/actions/runs/123","created_at":"2026-08-22T00:00:00Z","updated_at":"2026-08-22T00:10:00Z","repository":{"full_name":"CleverC2200/AionCore"}}
+{"id":123,"run_attempt":1,"name":"🔨 Manual Build","path":".github/workflows/build-manual.yml","event":"workflow_dispatch","status":"completed","conclusion":"success","head_sha":"ace375767d0b2ece67edf4128f09401f1de2ba8f","head_branch":"main","html_url":"https://github.com/CleverC2200/AionCore/actions/runs/123","created_at":"2026-08-22T00:00:00Z","updated_at":"2026-08-22T00:10:00Z","repository":{"full_name":"CleverC2200/AionCore"}}
 JSON
     ;;
   *)
@@ -149,6 +158,9 @@ if [[ "$args" == *"node-v24.11.0-win-x64.zip"* ]]; then
   printf 'node' > "$out/node-v24.11.0-win-x64/node.exe"
 else
   printf 'archive' > "$out/aioncore-v0.1.46-x86_64-unknown-linux-gnu.tar.gz"
+  cat > "$out/aioncore-manifest.json" <<'JSON'
+{"schema":1,"repository":"CleverC2200/AionCore","runId":123,"attempt":1,"headSha":"${HEAD_SHA}","platform":"linux-x64","target":"x86_64-unknown-linux-gnu","artifact":"aioncore-manual-linux-x64","archive":"aioncore-v0.1.46-x86_64-unknown-linux-gnu.tar.gz","sha256":"${ARCHIVE_SHA256}","build":{"profile":"release","rustc":"rustc 1.95.0","cargoLockSha256":"${'a'.repeat(64)}","toolchainSha256":"${'b'.repeat(64)}","workflowSha256":"${'c'.repeat(64)}","rustflags":""}}
+JSON
 fi
 `
   );

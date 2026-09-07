@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cloud-delivery-'));
@@ -14,11 +15,13 @@ test('Core recovery preserves the exact successful platform source and distingui
   const { inspectCoreSource } = require('../../../scripts/packaging/core-source');
   const sha = 'a'.repeat(40);
   const sample = {
+    now: Date.parse('2026-09-07T00:00:00Z'),
     repository: 'owner/core',
     sha,
     platform: 'windows-x64',
     run: {
       id: 12,
+      created_at: '2026-09-01T00:00:00Z',
       run_attempt: 1,
       head_sha: sha,
       status: 'completed',
@@ -50,6 +53,11 @@ test('Core recovery preserves the exact successful platform source and distingui
   const expired = inspectCoreSource(sample);
   assert.equal(expired.state, 'expired');
   assert.deepEqual(expired.recoveryArguments, ['run', 'rerun', '12', '--repo', 'owner/core', '--job', '42']);
+  sample.run.created_at = '2026-07-01T00:00:00Z';
+  const old = inspectCoreSource(sample);
+  assert.equal(old.recoveryMode, 'dispatch-exact-source');
+  assert.ok(old.recoveryArguments.includes(`branch=${sha}`));
+  assert.ok(old.recoveryArguments.includes('platform=windows-x64'));
   sample.artifacts[0].expired = false;
   assert.equal(inspectCoreSource(sample).state, 'available');
   sample.run.head_sha = 'c'.repeat(40);
@@ -92,6 +100,47 @@ test('compression comparison holds packaged input fixed and reports each install
   assert.equal(result.recommendation, 'measure-before-changing-default');
 });
 
+test('old Core recovery creates only an exact source ref and reconciles repeated dispatches', () => {
+  const { requestCoreRecovery } = require('../../../scripts/packaging/core-source');
+  const sha = 'a'.repeat(40);
+  const report = {
+    repository: 'owner/core',
+    sha,
+    recoveryMode: 'dispatch-exact-source',
+    recoveryRef: 'codex/recovery-test',
+    recoveryArguments: ['workflow', 'run', 'build-manual.yml', '-f', `branch=${sha}`],
+  };
+  const writes = [];
+  const first = requestCoreRecovery(report, {
+    api: () => [],
+    gh: (args) => {
+      writes.push(args);
+      return args[0] === 'api' ? JSON.stringify({ object: { sha } }) : '';
+    },
+  });
+  assert.equal(first.state, 'recovery-requested');
+  assert.ok(writes[0].includes(`sha=${sha}`));
+  assert.deepEqual(writes[1], report.recoveryArguments);
+  const ref = [{ ref: 'refs/heads/codex/recovery-test', object: { sha } }];
+  const existing = requestCoreRecovery(report, {
+    api: (endpoint) =>
+      endpoint.includes('matching-refs') ? ref : { workflow_runs: [{ id: 99, head_sha: sha, status: 'in_progress' }] },
+    gh: () => {
+      throw new Error('must not dispatch twice');
+    },
+  });
+  assert.equal(existing.state, 'recovery-exists');
+  assert.equal(existing.recoveryRun, 99);
+  assert.throws(
+    () =>
+      requestCoreRecovery(report, {
+        api: (endpoint) => (endpoint.includes('matching-refs') ? ref : { workflow_runs: [] }),
+        gh: () => {},
+      }),
+    /outcome is unknown/
+  );
+});
+
 test('builder artifact events record installer assembly separately from the overall build', (t) => {
   const record = require('../../../scripts/packaging/builder-events');
   const root = fixture(t);
@@ -109,6 +158,37 @@ test('builder artifact events record installer assembly separately from the over
     else process.env.BUILD_STAGE_REPORT = previous;
   }
 });
+
+test(
+  'builder process timing records real compression exits without command or credential contents',
+  { skip: process.platform === 'win32' },
+  (t) => {
+    const root = fixture(t);
+    const executable = path.join(root, '7za');
+    fs.writeFileSync(executable, '#!/bin/sh\nexit 3\n', { mode: 0o755 });
+    const report = path.join(root, 'processes.jsonl');
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--require',
+        path.resolve(__dirname, '../../../scripts/packaging/process-timings.js'),
+        '-e',
+        `require('node:child_process').execFile(${JSON.stringify(executable)}, ['a', 'credential-that-must-not-be-recorded'], () => {})`,
+      ],
+      {
+        env: { ...process.env, BUILDER_PROCESS_TIMINGS: 'true', BUILD_STAGE_REPORT: report },
+        encoding: 'utf8',
+      }
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const text = fs.readFileSync(report, 'utf8');
+    const record = JSON.parse(text);
+    assert.equal(record.stage, 'archive-compression');
+    assert.equal(record.status, 'failed');
+    assert.equal(record.exitCode, 3);
+    assert.equal(text.includes('credential-that-must-not-be-recorded'), false);
+  }
+);
 
 test('cloud report separates installer size from installed content and preserves failed stages', (t) => {
   const { buildReport } = require('../../../scripts/packaging/cloud-report');

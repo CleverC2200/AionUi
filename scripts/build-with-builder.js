@@ -832,6 +832,11 @@ try {
   }
 
   const builderCommand = `bunx electron-builder --config packages/desktop/electron-builder.yml ${builderArgs} ${archFlag} ${nsisInclude} ${publishArg}`;
+  if (isWindowsBuild && process.env.BUILD_STAGE_REPORT) {
+    const preload = path.join(__dirname, 'packaging/process-timings.js');
+    process.env.NODE_OPTIONS = `${process.env.NODE_OPTIONS || ''} --require=${JSON.stringify(preload)}`.trim();
+    process.env.BUILDER_PROCESS_TIMINGS = 'true';
+  }
   try {
     timed('builder-including-signing-and-retries', () => buildWithDmgRetry(builderCommand), { target: buildTarget });
   } catch (error) {
