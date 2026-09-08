@@ -4,7 +4,7 @@ import { Node, Project, SyntaxKind, type CallExpression } from 'ts-morph';
 import { bindCall, declaration, functionOf, property, resultOf, textValue, type Bindings } from './expressions';
 import { schema, type Schema } from './schema';
 import { scanWebSocket, type WebSocketEntry } from './websocket';
-import { sourceLocation, type Source } from './source';
+import { loadProductionSources, sourceLocation, type Source } from './source';
 export type { Schema } from './schema';
 export type { Source } from './source';
 export type HttpEntry = {
@@ -230,15 +230,10 @@ export function scanClient(root: string): ScanReport {
     compilerOptions: { strictNullChecks: true },
   });
   const scope = sourceRoots.filter((dir) => existsSync(path.join(root, dir)));
-  for (const dir of scope) project.addSourceFilesAtPaths(path.join(root, dir, '**/*.{ts,tsx}'));
-  const files = project
-    .getSourceFiles()
-    .filter(
-      (f) =>
-        scope.some((dir) => f.getFilePath().startsWith(path.join(root, dir) + '/')) &&
-        !/\.(?:d|test|spec)\.tsx?$/.test(f.getFilePath()) &&
-        !/\/(?:__tests__|fixtures)\//.test(f.getFilePath())
-    );
+  const files = loadProductionSources(
+    project,
+    scope.map((dir) => path.join(root, dir))
+  );
   const entries: HttpEntry[] = [];
   for (const file of files) {
     if (file.getFilePath().endsWith('/common/adapter/httpBridge.ts')) continue;

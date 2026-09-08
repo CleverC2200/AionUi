@@ -2,6 +2,8 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
+import { Project } from 'ts-morph';
+import { loadProductionSources } from '../../../scripts/api-docs/source';
 import { generateApiDocs } from '../../../scripts/api-docs/index';
 
 const roots: string[] = [];
@@ -32,7 +34,7 @@ it('generates a local reference with source evidence and explicitly client-side 
     method: 'GET',
     path: '/api/users',
     target: 'aioncore',
-    sources: [{ line: 3 }],
+    sources: [{ file: 'packages/desktop/src/common/adapter/sample.ts', line: 3 }],
   });
   const spec = JSON.parse(await readFile(path.join(out, 'openapi.json'), 'utf8'));
   expect(spec.paths['/api/users'].get.responses.default.description).toContain('客户端');
@@ -303,3 +305,34 @@ function unrelated(deps:{fetch:(id:number)=>Promise<Response>}) {deps.fetch(1)};
   expect(report.http.find((e) => e.path === '/api/submit')).toMatchObject({ method: 'POST', status: 'partial' });
   expect(report.http.every((e) => e.diagnostics.includes('injected-fetch-contract'))).toBe(true);
 });
+
+it.each([
+  ['POSIX', '/repo/packages/desktop/src'],
+  ['Windows', String.raw`C:\repo\packages\desktop\src`],
+])(
+  'loads production sources with %s directory paths and excludes neighboring or test files',
+  (_platform, directory) => {
+    const filesystem = new Project({ useInMemoryFileSystem: true }).getFileSystem();
+    const writer = new Project({ fileSystem: filesystem });
+    const normalized = directory.replaceAll('\\', '/');
+    for (const name of [
+      'api.ts',
+      'view.tsx',
+      'api.test.ts',
+      'api.spec.tsx',
+      'types.d.ts',
+      '__tests__/unit.ts',
+      'fixtures/sample.ts',
+    ]) {
+      writer.createSourceFile(`${normalized}/${name}`, '').saveSync();
+    }
+    writer.createSourceFile(`${normalized}-other/foreign.ts`, '').saveSync();
+    const project = new Project({ fileSystem: filesystem });
+    project.addSourceFileAtPath(`${normalized}-other/foreign.ts`);
+    const files = loadProductionSources(project, [directory]);
+    expect(files.map((file) => file.getFilePath()).toSorted()).toEqual([
+      `${normalized}/api.ts`,
+      `${normalized}/view.tsx`,
+    ]);
+  }
+);
