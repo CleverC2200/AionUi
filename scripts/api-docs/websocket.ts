@@ -1,4 +1,4 @@
-import { Node, type SourceFile } from 'ts-morph';
+import { Node, SyntaxKind, type SourceFile } from 'ts-morph';
 import { declaration, property, textValue } from './expressions';
 import { schema, type Schema } from './schema';
 import { sourceLocation, type Source } from './source';
@@ -13,13 +13,29 @@ export type WebSocketEntry = {
   diagnostics: string[];
   sources: Source[];
 };
-function socketOf(node: Node): { url?: string } | undefined {
+function socketOf(node: Node): { url?: string; diagnostics?: string[] } | undefined {
   const socketType = node.getType().getNonNullableType().getSymbol();
   if (
     socketType?.getName() !== 'WebSocket' ||
     !socketType.getDeclarations().some((d) => d.getSourceFile().isDeclarationFile())
-  )
-    return undefined;
+  ) {
+    const type = node.getType().getNonNullableType();
+    const memberType = (name: string) => type.getProperty(name)?.getTypeAtLocation(node).getNonNullableType();
+    const event = memberType('onmessage')?.getCallSignatures()[0]?.getParameters()[0]?.getTypeAtLocation(node);
+    const eventSymbol = event?.getSymbol();
+    if (
+      !memberType('readyState')?.isNumber() ||
+      !memberType('binaryType') ||
+      !['send', 'close', 'onopen', 'onclose', 'onerror'].every(
+        (name) => memberType(name)?.getCallSignatures().length
+      ) ||
+      eventSymbol?.getName() !== 'MessageEvent' ||
+      !eventSymbol.getDeclarations().some((d) => d.getSourceFile().isDeclarationFile())
+    )
+      return undefined;
+    // An injectable structural contract is a candidate, not proof of its runtime transport.
+    return { diagnostics: ['injected-websocket-contract'] };
+  }
   const decl = declaration(node);
   const init = decl && Node.isVariableDeclaration(decl) ? decl.getInitializer() : undefined;
   if (init && Node.isNewExpression(init) && init.getExpression().getText() === 'WebSocket') {
@@ -46,6 +62,25 @@ export function scanWebSocket(files: SourceFile[], root: string): WebSocketEntry
           diagnostics: value && !value.dynamic ? [] : ['dynamic-connection-url'],
           sources: [sourceLocation(node, root)],
         });
+      }
+      if (Node.isBinaryExpression(node) && node.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
+        const left = node.getLeft();
+        if (
+          Node.isPropertyAccessExpression(left) &&
+          left.getName() === 'onmessage' &&
+          node.getRight().getType().getNonNullableType().getCallSignatures().length
+        ) {
+          const socket = socketOf(left.getExpression());
+          if (socket)
+            entries.push({
+              direction: 'receive',
+              url: socket.url,
+              expression: node.getText(),
+              status: 'partial',
+              diagnostics: [...(socket.diagnostics ?? []), 'transport-message-handler-business-events-not-inferred'],
+              sources: [sourceLocation(node, root)],
+            });
+        }
       }
       if (!Node.isCallExpression(node)) continue;
       const expr = node.getExpression();
@@ -92,8 +127,12 @@ export function scanWebSocket(files: SourceFile[], root: string): WebSocketEntry
           event,
           payload: data ? schema(data.getType(), node) : undefined,
           expression: message?.getText() ?? '',
-          status: event && url ? 'resolved' : 'partial',
-          diagnostics: [...(event ? [] : ['unparsed-wire-message']), ...(url ? [] : ['unresolved-connection-url'])],
+          status: event && url && !socket.diagnostics?.length ? 'resolved' : 'partial',
+          diagnostics: [
+            ...(socket.diagnostics ?? []),
+            ...(event ? [] : ['unparsed-wire-message']),
+            ...(url ? [] : ['unresolved-connection-url']),
+          ],
           sources: [sourceLocation(node, root)],
         });
       }
@@ -103,7 +142,7 @@ export function scanWebSocket(files: SourceFile[], root: string): WebSocketEntry
           url,
           expression: node.getText(),
           status: 'partial',
-          diagnostics: ['transport-message-handler-business-events-not-inferred'],
+          diagnostics: [...(socket.diagnostics ?? []), 'transport-message-handler-business-events-not-inferred'],
           sources: [sourceLocation(node, root)],
         });
       }

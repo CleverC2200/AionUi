@@ -39,6 +39,10 @@ bun run api:docs --serve --port 8088
 - WebSocket Bridge 订阅和已识别类型的 socket 发送独立于 HTTP。映射后载荷标注为客户端投影；动态事件名和连接归属保留未知。消息处理器单独列示，不从任意处理逻辑中猜测业务事件；排除本地 stub emitter。
 - 扫描产物可能包含源码表达式和接口结构，未经明确授权保持本地。已有冻结 OpenAPI 契约保持不变。
 
+Electron fetch 支持导入别名和 `require('electron')` 绑定。显式 URL 输入、`Promise<Response>` 输出的注入函数作为 fetch 契约候选，并标记 `injected-fetch-contract`，不证明实际网络执行。数值加法与字符串拼接按类型区分；对象存在别名、逃逸或不支持的写入时，路径保守留为未知。归并后的状态按完整诊断重新计算。
+
+WebSocket 接收入口同时识别 `addEventListener('message', ...)` 与 `onmessage` 处理器赋值，排除清理时赋空值。具备完整处理器、发送和关闭方法的结构化 WebSocket 契约标记为 `injected-websocket-contract` 候选，不推断实际注入实现。移动端 Axios 与专用 Bridge 封装尚未覆盖；扫描目录不等于支持其中全部传输形态。
+
 ## 验证
 
 ```sh

@@ -39,6 +39,10 @@ The reference disables request execution buttons, persistence, telemetry, AI ass
 - WebSocket bridge subscriptions and typed socket sends are separate from HTTP. Mapped payloads are marked as client projections; dynamic event names and connection associations remain unknown. Message handlers are listed without inventing business events from arbitrary handler logic. Local stub emitters are excluded.
 - Scan outputs can contain source expressions and interface structure. Keep them local unless their publication is explicitly authorized. Existing frozen OpenAPI contracts remain unchanged.
 
+Electron fetch supports imported aliases and `require('electron')` bindings. Injected functions with URL-like input and `Promise<Response>` output are recorded as fetch-contract candidates with `injected-fetch-contract`; this does not prove network execution. Numeric addition and string concatenation retain their distinct semantics. Object aliases, escapes, and unsupported writes make paths unknown. Merged status is recalculated from the combined diagnostics.
+
+WebSocket receivers include both `addEventListener('message', ...)` and `onmessage` handler assignments, excluding null cleanup assignments. Structural WebSocket contracts with the full handler, send, and close surface carry `injected-websocket-contract`; the injected runtime implementation is not inferred. Mobile Axios and its dedicated Bridge wrappers remain unsupported; including a directory does not imply support for every transport form in it.
+
 ## Verification
 
 ```sh

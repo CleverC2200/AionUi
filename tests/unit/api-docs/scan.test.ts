@@ -178,3 +178,128 @@ const enable=httpPost<void,{config:Record<string,unknown>}>('/api/enable');`);
   });
   expect(await readFile(path.join(out, 'inventory.md'), 'utf8')).toContain('已解析：2');
 });
+
+it('preserves numeric addition versus string concatenation when resolving URLs', async () => {
+  const root = await fixture(`fetch('https://example.test/api/' + (1 + 2));
+fetch('https://example.test/concat/' + ('1' + '2'));
+fetch('https://example.test/mixed/' + (1 + '2'));
+const dynamic = (count:number) => fetch('https://example.test/api/' + (count + 2));`);
+  const out = path.join(root, 'output');
+  const report = await generateApiDocs({ root, out });
+  expect(report.http.map((e) => e.path)).toEqual(expect.arrayContaining(['/api/3', '/concat/12', '/mixed/12']));
+  expect(report.http.some((e) => e.path === '/api/12')).toBe(false);
+  expect(report.http.find((e) => e.expression.includes('count + 2'))?.status).toBe('unknown');
+  const spec = JSON.parse(await readFile(path.join(out, 'openapi-1.json'), 'utf8'));
+  expect(spec.paths['/api/3']).toBeDefined();
+  expect(spec.paths['/api/12']).toBeUndefined();
+});
+
+it('keeps escaped or mutated object paths unknown instead of exporting stale initializers', async () => {
+  const root = await fixture(`const config={path:'/api/old'};
+const alias=config;alias.path='/api/new';fetch(config.path);
+const passed={path:'/api/passed-old'};
+function rewrite(value:{path:string}) {value.path='/api/passed-new'}
+rewrite(passed);fetch(passed.path);
+const indexed={path:'/api/indexed-old'};indexed['path']='/api/indexed-new';fetch(indexed.path);
+const stable={path:'/api/stable'};fetch(stable.path);`);
+  const out = path.join(root, 'output');
+  const report = await generateApiDocs({ root, out });
+  for (const expression of ['config.path', 'passed.path', 'indexed.path']) {
+    expect(report.http.find((e) => e.expression === expression)).toMatchObject({ status: 'unknown' });
+  }
+  expect(report.http.find((e) => e.path === '/api/stable')).toBeDefined();
+  const spec = JSON.parse(await readFile(path.join(out, 'openapi-1.json'), 'utf8'));
+  expect(Object.keys(spec.paths)).toEqual(['/api/stable']);
+});
+
+it('marks merged entries partial in either source order when a caller lacks response evidence', async () => {
+  for (const calls of [
+    `httpGet<void>('/api/same');httpGet('/api/same');`,
+    `httpGet('/api/same');httpGet<void>('/api/same');`,
+  ]) {
+    const root = await fixture(`import {httpGet} from './httpBridge';\n${calls}`);
+    const out = path.join(root, 'output');
+    const report = await generateApiDocs({ root, out });
+    expect(report.http).toHaveLength(1);
+    expect(report.http[0]).toMatchObject({ status: 'partial', diagnostics: ['untyped-client-response'] });
+    const spec = JSON.parse(await readFile(path.join(out, 'openapi.json'), 'utf8'));
+    expect(spec.paths['/api/same'].get['x-scan-status']).toBe('partial');
+  }
+});
+
+it('records WebSocket onmessage handlers but excludes cleanup and local message ports', async () => {
+  const root = await fixture(`const socket = new WebSocket('ws://localhost/speech');
+socket.onmessage = (event:MessageEvent) => {};
+socket.onmessage = null;
+const port: {onmessage:((event:unknown)=>void)|null}={onmessage:null};
+port.onmessage = () => {};`);
+  const out = path.join(root, 'output');
+  const report = await generateApiDocs({ root, out });
+  const receives = report.webSocket.filter((e) => e.direction === 'receive');
+  expect(receives).toHaveLength(1);
+  expect(receives[0]).toMatchObject({ url: 'ws://localhost/speech', status: 'partial', sources: [{ line: 2 }] });
+  expect(await readFile(path.join(out, 'websocket.md'), 'utf8')).toContain('socket.onmessage');
+});
+
+it('retains structural WebSocket factory handlers as diagnosed candidates', async () => {
+  const root = await fixture(`type SocketLike = {
+readyState:number; binaryType:BinaryType; send(data:string|ArrayBuffer):void; close():void;
+onopen:((e:Event)=>void)|null; onmessage:((e:MessageEvent)=>void)|null;
+onclose:((e:CloseEvent)=>void)|null; onerror:((e:Event)=>void)|null;
+};
+const factory=(url:string):SocketLike=>new WebSocket(url);
+function connect(options:{createSocket?:(url:string)=>SocketLike}) {
+let socket:SocketLike;
+socket=(options.createSocket ?? factory)('ws://localhost/speech');
+socket.onmessage=(event)=>{};
+socket.onmessage=null;
+}`);
+  const report = await generateApiDocs({ root, out: path.join(root, 'output') });
+  const receives = report.webSocket.filter((e) => e.direction === 'receive');
+  expect(receives).toHaveLength(1);
+  expect(receives[0]).toMatchObject({
+    status: 'partial',
+    diagnostics: expect.arrayContaining(['injected-websocket-contract']),
+    sources: [{ line: 10 }],
+  });
+});
+
+it('discovers Electron fetch through imported aliases and typed require bindings', async () => {
+  const root = await fixture(`import {net as chromiumNet} from 'electron';
+chromiumNet.fetch('/api/electron-import');
+const {net} = require('electron') as typeof import('electron');
+net.fetch('/api/electron-require', {method:'POST'});
+const unrelated={fetch:(url:string)=>42};unrelated.fetch('/api/local');`);
+  const electron = path.join(root, 'node_modules/electron');
+  await mkdir(electron, { recursive: true });
+  await writeFile(path.join(electron, 'package.json'), JSON.stringify({ name: 'electron', types: 'index.d.ts' }));
+  await writeFile(path.join(electron, 'index.d.ts'), 'export declare const net: {fetch: typeof fetch};');
+  await writeFile(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { moduleResolution: 'node' } }));
+  const out = path.join(root, 'output');
+  const report = await generateApiDocs({ root, out });
+  expect(report.http).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ method: 'GET', path: '/api/electron-import' }),
+      expect.objectContaining({ method: 'POST', path: '/api/electron-require' }),
+    ])
+  );
+  expect(report.http.some((e) => e.path === '/api/local')).toBe(false);
+});
+
+it('records explicitly typed injected fetch contracts without treating local helpers as HTTP', async () => {
+  const root = await fixture(`function read(deps:{fetch:typeof fetch}) {
+  deps.fetch('/api/status');
+  deps.fetch('/api/reset',{method:'POST'});
+}
+function forward(params:{fetchFromMain:(input:string,init:RequestInit)=>Promise<Response>}) {
+  const {fetchFromMain}=params;
+  fetchFromMain('/api/submit',{method:'POST'});
+}
+const local={fetch:(url:string)=>Promise.resolve(new Response())};local.fetch('/api/local-response');
+function unrelated(deps:{fetch:(id:number)=>Promise<Response>}) {deps.fetch(1)};`);
+  const out = path.join(root, 'output');
+  const report = await generateApiDocs({ root, out });
+  expect(report.http.map((e) => e.path).toSorted()).toEqual(['/api/reset', '/api/status', '/api/submit']);
+  expect(report.http.find((e) => e.path === '/api/submit')).toMatchObject({ method: 'POST', status: 'partial' });
+  expect(report.http.every((e) => e.diagnostics.includes('injected-fetch-contract'))).toBe(true);
+});

@@ -47,12 +47,63 @@ function terminal(call: CallExpression): { kind: 'bridge' | 'fetch'; name: strin
   if (Node.isIdentifier(expr) && expr.getText() === 'fetch' && (!decl || decl.getSourceFile().isDeclarationFile()))
     return { kind: 'fetch', name: 'fetch' };
   if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'fetch') {
-    const base = declaration(expr.getExpression());
+    // Keep the import declaration: resolving its alias first yields electron's
+    // exported VariableDeclaration and loses the module provenance.
+    const base = expr.getExpression().getSymbol()?.getDeclarations()[0];
+    let requiredElectron = false;
+    if (base && Node.isBindingElement(base) && (base.getPropertyNameNode()?.getText() ?? base.getName()) === 'net') {
+      let value = base.getFirstAncestorByKind(SyntaxKind.VariableDeclaration)?.getInitializer();
+      while (value && (Node.isAsExpression(value) || Node.isParenthesizedExpression(value)))
+        value = value.getExpression();
+      requiredElectron = !!(
+        value &&
+        Node.isCallExpression(value) &&
+        value.getExpression().getText() === 'require' &&
+        textValue(value.getArguments()[0])?.text === 'electron'
+      );
+    }
     if (
-      (base && Node.isImportSpecifier(base) && base.getImportDeclaration().getModuleSpecifierValue() === 'electron') ||
+      (base &&
+        Node.isImportSpecifier(base) &&
+        base.getName() === 'net' &&
+        base.getImportDeclaration().getModuleSpecifierValue() === 'electron') ||
+      requiredElectron ||
       ['window', 'globalThis'].includes(expr.getExpression().getText())
     )
       return { kind: 'fetch', name: 'fetch' };
+  }
+  // An injected transport is evidence of a fetch-shaped contract, not proof of
+  // network execution. Only accept declarations without an implementation and
+  // URL-like input / native Response output; ordinary local helpers stay out.
+  if (decl && (Node.isParameterDeclaration(decl) || Node.isPropertySignature(decl) || Node.isBindingElement(decl))) {
+    const fetchContract = expr
+      .getType()
+      .getCallSignatures()
+      .some((signature) => {
+        const input = signature.getParameters()[0]?.getTypeAtLocation(expr);
+        const inputs = input?.isUnion() ? input.getUnionTypes() : input ? [input] : [];
+        const urlInput = inputs.some(
+          (type) =>
+            type.isString() ||
+            type.isStringLiteral() ||
+            (['URL', 'Request'].includes(type.getSymbol()?.getName() ?? '') &&
+              type
+                .getSymbol()
+                ?.getDeclarations()
+                .some((d) => d.getSourceFile().isDeclarationFile()))
+        );
+        const output = signature.getReturnType();
+        const response = output.getSymbol()?.getName() === 'Promise' ? output.getTypeArguments()[0] : undefined;
+        return (
+          urlInput &&
+          response?.getSymbol()?.getName() === 'Response' &&
+          response
+            .getSymbol()
+            ?.getDeclarations()
+            .some((d) => d.getSourceFile().isDeclarationFile())
+        );
+      });
+    if (fetchContract) return { kind: 'fetch', name: 'injected-fetch' };
   }
   return undefined;
 }
@@ -129,6 +180,7 @@ function parseCall(
       ? schema(paramsType.getType(), call)
       : undefined;
   const diagnostics: string[] = [];
+  if (transport.name === 'injected-fetch') diagnostics.push('injected-fetch-contract');
   if (!method) diagnostics.push('unresolved-method');
   if (!route) diagnostics.push('unresolved-target-or-path');
   if (!responseNode) diagnostics.push('untyped-client-response');
@@ -207,7 +259,6 @@ export function scanClient(root: string): ScanReport {
       JSON.stringify([previous.body, previous.bodyContentType, previous.response]) !==
       JSON.stringify([e.body, e.bodyContentType, e.response])
     ) {
-      previous.status = 'partial';
       previous.diagnostics.push('conflicting-client-types');
       previous.body = undefined;
       previous.response = undefined;
@@ -217,6 +268,12 @@ export function scanClient(root: string): ScanReport {
       if (!previous.sources.some((p) => p.file === s.file && p.line === s.line && p.caller === s.caller))
         previous.sources.push(s);
     previous.diagnostics = [...new Set([...previous.diagnostics, ...e.diagnostics])].toSorted();
+    previous.status =
+      !previous.method || !previous.path || !previous.target
+        ? 'unknown'
+        : previous.diagnostics.length
+          ? 'partial'
+          : 'resolved';
   }
   return {
     version: 1,

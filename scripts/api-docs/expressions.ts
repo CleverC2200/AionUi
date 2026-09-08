@@ -55,18 +55,25 @@ export function property(node: Node | undefined, name: string, bindings: Binding
   const value = decl && bindings.get(decl);
   if (value && value !== node) return property(value, name, bindings, depth + 1);
   if (decl && Node.isVariableDeclaration(decl)) {
-    const mutated = decl.findReferencesAsNodes().some((ref) => {
+    const unsafe = decl.findReferencesAsNodes().some((ref) => {
+      if (ref === node) return false;
       const access = ref.getParent();
+      // Aliases, element access, argument passing and other escapes can mutate the
+      // object without a direct assignment through this binding. Do not use its initializer.
+      if (!access || !Node.isPropertyAccessExpression(access) || access.getExpression() !== ref) return true;
       const assignment = access?.getParent();
       return (
-        access &&
-        Node.isPropertyAccessExpression(access) &&
-        assignment &&
-        Node.isBinaryExpression(assignment) &&
-        assignment.getLeft() === access
+        !assignment ||
+        Node.isCallExpression(assignment) ||
+        Node.isDeleteExpression(assignment) ||
+        Node.isPrefixUnaryExpression(assignment) ||
+        Node.isPostfixUnaryExpression(assignment) ||
+        Node.isPropertyAccessExpression(assignment) ||
+        Node.isElementAccessExpression(assignment) ||
+        (Node.isBinaryExpression(assignment) && assignment.getLeft() === access)
       );
     });
-    if (mutated || decl.getVariableStatement()?.getDeclarationKind() !== 'const') return undefined;
+    if (unsafe || decl.getVariableStatement()?.getDeclarationKind() !== 'const') return undefined;
     return property(decl.getInitializer(), name, bindings, depth + 1);
   }
   return undefined;
@@ -122,7 +129,15 @@ export function textValue(node: Node | undefined, bindings: Bindings = new Map()
   if (Node.isBinaryExpression(node) && node.getOperatorToken().getKind() === SyntaxKind.PlusToken) {
     const left = textValue(node.getLeft(), bindings, depth + 1);
     const right = textValue(node.getRight(), bindings, depth + 1);
-    return left && right ? { text: left.text + right.text, dynamic: left.dynamic || right.dynamic } : undefined;
+    if (!left || !right) return undefined;
+    const type = node.getType();
+    if (type.isNumber() || type.isNumberLiteral()) {
+      if (left.dynamic || right.dynamic) return undefined;
+      const sum = Number(left.text) + Number(right.text);
+      return Number.isFinite(sum) ? { text: String(sum), dynamic: false } : undefined;
+    }
+    if (!type.isString() && !type.isStringLiteral()) return undefined;
+    return { text: left.text + right.text, dynamic: left.dynamic || right.dynamic };
   }
   if (Node.isCallExpression(node)) {
     if (node.getExpression().getText() === 'encodeURIComponent') {
