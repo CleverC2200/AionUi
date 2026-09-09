@@ -3499,6 +3499,7 @@ export type I18nKey =
   | 'settings.pdfToPptAssistantName'
   | 'settings.pending'
   | 'settings.personalAuth'
+  | 'settings.personalModelCredentialContractMismatch'
   | 'settings.personalModelCredentialRecoveryRequired'
   | 'settings.personalModelFetchFailed'
   | 'settings.personalModelFetchFromGea'

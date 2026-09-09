@@ -1445,5 +1445,6 @@
   "crossSessionMessageDesc": "Разрешить агентам отправлять сообщения в ваши другие беседы. При отключении также отключается упоминание @@ в поле ввода.",
   "crossSessionMessageDisabledBanner": "Сообщения между беседами отключены, упоминание @@ недоступно.",
   "crossSessionMessageResume": "Включить снова",
-  "crossSessionMessageUpdateFailed": "Не удалось обновить настройку сообщений между беседами"
+  "crossSessionMessageUpdateFailed": "Не удалось обновить настройку сообщений между беседами",
+  "personalModelCredentialContractMismatch": "This GEA environment uses a different personal authorization version. Check the sign-in address or contact your administrator."
 }

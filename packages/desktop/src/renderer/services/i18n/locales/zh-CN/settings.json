@@ -1535,5 +1535,6 @@
   "crossSessionMessageDesc": "允许 Agent 向你的其他会话发送消息。关闭后，输入框的 @@ 会话提及与投递能力同时停用。",
   "crossSessionMessageDisabledBanner": "跨会话消息已关闭，输入框的 @@ 会话提及不可用。",
   "crossSessionMessageResume": "重新开启",
-  "crossSessionMessageUpdateFailed": "跨会话消息设置更新失败"
+  "crossSessionMessageUpdateFailed": "跨会话消息设置更新失败",
+  "personalModelCredentialContractMismatch": "当前 GEA 环境的个人授权版本与客户端不匹配，请检查登录地址或联系管理员。"
 }
