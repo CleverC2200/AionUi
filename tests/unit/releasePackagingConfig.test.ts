@@ -25,25 +25,14 @@ function yamlBlock(content: string, key: string): string {
 }
 
 describe('release packaging configuration', () => {
-  itWithBash('finds branded Linux executables without selecting the installation directory', () => {
-    const smoke = readProjectFile('.github/workflows/pr-checks.yml').split('- name: Install smoke test (Linux)')[1];
-    const pattern = smoke.match(/grep -Ei '([^']+)'/)?.[1];
-    expect(pattern).toBeDefined();
-    const result = spawnSync('bash', ['-c', 'grep -Ei "$1"', '--', pattern!], {
-      encoding: 'utf8',
-      input: [
-        '/opt/GEA',
-        '/opt/GEA/GEA',
-        '/opt/GEA/GEA Helper',
-        '/opt/GEA/resources/gea.json',
-        '/usr/bin/aionui',
-        '/opt/GEAUi/GEAUi',
-      ].join('\n'),
-    });
-    expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout.trim().split('\n')).toEqual(['/opt/GEA/GEA', '/usr/bin/aionui', '/opt/GEAUi/GEAUi']);
-    expect(smoke).toContain('test -f "$INSTALLED_BIN"');
-    expect(smoke).toContain('test -x "$INSTALLED_BIN"');
+  it('limits PR installer validation to macOS and Windows', () => {
+    const workflow = readProjectFile('.github/workflows/pr-checks.yml');
+    const build = workflow.split('  build-test:')[1].split('    steps:')[0];
+    expect(build).toContain("platform: 'macos-arm64'");
+    expect(build).toContain("platform: 'windows-x64'");
+    expect(build).not.toContain("platform: 'linux-x64'");
+    expect(workflow).toContain('Silent install smoke test (Windows x64)');
+    expect(workflow).toContain('Install smoke test (macOS arm64)');
   });
 
   it('defaults to the desktop pair and reports Windows packaging failure truthfully', () => {

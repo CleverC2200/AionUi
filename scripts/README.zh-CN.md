@@ -228,3 +228,9 @@ Core 默认使用规范化工作树路径下的 `target/`，通过显式 `--targ
 清理仅接受审计中可再生的 `out/main`、`out/preload`、`out/renderer` 和 Core `target/debug`。安装包、运行资源、依赖、共享缓存、日志、源码、业务数据与 unknown 不进入删除范围。清理要求生成清单的完整输出摘要仍匹配（Core 在成功 focused 后记录），新增或修改 ignored 文件也会阻止删除。清理拒绝符号链接、Git 跟踪或非忽略文件、活动构建/客户端、打开文件、无法可靠完成的进程检查。macOS/Linux 支持清理，其他平台拒绝执行；安全检查可能保守阻止被其他工作树进程占用的系统。
 
 同一工作树的编排与清理共用互斥锁：UI 使用 `.workspace/local-build/active.json`，Core 使用 `target/.aionui-local-build/active.json`，输出证明也保存在相邻目录。Core 记账文件不会污染源码摘要。异常退出留下锁时，先核实其中 PID 和相关子进程均已结束，再仅删除该锁后重试；不会自动按锁的时间判断过期。直接调用旧构建命令不参与新锁，清理仍执行现场进程和打开文件检查；不要同时在同一工作树启动外部构建与清理。
+
+## PR 验证范围
+
+非纯文档 PR 至少运行 macOS 完整单测与客户端构建。平台相关改动追加 Windows 单测；安装包相关改动运行双平台 DMG/NSIS 构建与冒烟。覆盖率保留手动运行，Linux 不再作为 PR 构建目标。仓库 Ruleset 只要求 Code Quality、macOS/Windows 单测和构建、Release Script Test；旧 Linux/Coverage 状态应移除，不能用虚假成功代替。
+
+只编辑标题或正文不会运行验证，也不会取消正在运行的验证。变更目标分支、重新打开或推送新提交仍验证 PR 差异。分类依据整个 PR，因此每次推送仍会重跑适用检查。Lark Core 边界验证保留现有路径过滤。

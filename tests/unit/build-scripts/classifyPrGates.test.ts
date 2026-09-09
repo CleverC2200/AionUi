@@ -13,7 +13,7 @@ describe('classifyPrGates', () => {
     });
   });
 
-  it('runs Linux checks without cross-platform installers for renderer-only changes', () => {
+  it('runs the macOS baseline without cross-platform installers for renderer-only changes', () => {
     expect(classifyPrGates(['packages/desktop/src/renderer/pages/conversation/index.tsx'])).toEqual({
       docs_only: false,
       cross_platform_tests: false,
@@ -67,7 +67,7 @@ describe('PR gate workflow', () => {
   it('keeps required check names while routing low-risk changes to lightweight jobs', () => {
     expect(workflow).toContain('name: Unit Tests (${{ matrix.os }})');
     expect(workflow).toContain('name: Build Test (${{ matrix.platform }})');
-    expect(workflow).toContain('Fast renderer package test (Linux)');
+    expect(workflow).toContain('Fast client build (macOS)');
     expect(workflow).toContain('Record lightweight platform pass');
     expect(workflow).toContain('Record lightweight build pass');
   });
@@ -76,5 +76,26 @@ describe('PR gate workflow', () => {
     const i18nSection = workflow.split('\n  i18n-check:')[1].split('\n  # Job 4:')[0];
 
     expect(i18nSection).not.toContain('matrix.platform');
+  });
+});
+
+describe('desktop PR optimization safeguards', () => {
+  const workflow = readFileSync('.github/workflows/pr-checks.yml', 'utf8');
+  it('keeps real baseline tests when Windows-specific coverage is not needed', () => {
+    const unit = workflow.split('\n  unit-tests:')[1].split('\n  # Job 3:')[0];
+    expect(unit).toContain('os: [macos-14, windows-2022]');
+    expect(unit).toContain("matrix.os == 'macos-14' || needs.classify-changes.outputs.cross_platform_tests == 'true'");
+    expect(unit).not.toContain('unit-evidence-ubuntu');
+  });
+  it('preserves base-change validation without cancelling checks on text edits', () => {
+    expect(workflow).toContain("github.event.action != 'edited' || github.event.changes.base");
+    expect(workflow).toContain("github.event.action == 'edited' && !github.event.changes.base && github.run_id");
+    expect(workflow).toContain('reopened');
+  });
+  it('keeps a client compile when installers are not applicable', () => {
+    expect(workflow).toContain(
+      "needs.classify-changes.outputs.installer_smoke != 'true' && matrix.platform == 'macos-arm64'"
+    );
+    expect(workflow).not.toContain("platform: 'linux-x64'");
   });
 });
