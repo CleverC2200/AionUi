@@ -15,7 +15,10 @@ function writeJson(file, value) {
 function worktree(root) {
   const canonical = fs.realpathSync(root);
   const top = fs.realpathSync(command(canonical, 'git', ['rev-parse', '--show-toplevel']));
-  if (top !== canonical) throw new Error('Expected a worktree root');
+  const equivalent = process.platform === 'win32'
+    ? top.toLowerCase() === canonical.toLowerCase()
+    : top === canonical;
+  if (!equivalent) throw new Error('Expected a worktree root');
   return canonical;
 }
 function coreTarget(root) {
