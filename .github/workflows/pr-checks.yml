@@ -13,13 +13,12 @@ on:
         required: false
         default: false
   pull_request:
-    # Keep `edited`: changing the PR base also emits this action and must
-    # reclassify the diff and rerun checks against the new base.
-    types: [opened, synchronize, edited, reopened, closed, ready_for_review]
+    # Base changes are dispatched by pr-base-changed.yml; text edits do not start checks.
+    types: [opened, synchronize, reopened, closed, ready_for_review]
     branches: [main, dev]
 
 concurrency:
-  group: pr-checks-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.event.action == 'edited' && !github.event.changes.base && github.run_id || 'validation' }}
+  group: pr-checks-${{ github.event.pull_request.number || inputs.pr_number }}
   cancel-in-progress: true
 
 permissions:
@@ -45,7 +44,7 @@ jobs:
   # code/docs PRs from receiving duplicate check names from separate workflows.
   classify-changes:
     name: Classify Changes
-    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false && (github.event.action != 'edited' || github.event.changes.base))
+    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     outputs:
       docs_only: ${{ steps.classify.outputs.docs_only }}
@@ -84,7 +83,7 @@ jobs:
   code-quality:
     name: Code Quality
     needs: classify-changes
-    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false && (github.event.action != 'edited' || github.event.changes.base))
+    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -126,7 +125,7 @@ jobs:
   unit-tests:
     name: Unit Tests (${{ matrix.os }})
     needs: classify-changes
-    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false && (github.event.action != 'edited' || github.event.changes.base))) && needs.classify-changes.outputs.docs_only != 'true'
+    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)) && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -278,7 +277,7 @@ jobs:
   i18n-check:
     name: I18n Check
     needs: classify-changes
-    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false && (github.event.action != 'edited' || github.event.changes.base))) && needs.classify-changes.outputs.docs_only != 'true'
+    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)) && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -333,7 +332,7 @@ jobs:
     env:
       AIONUI_HUB_TAG: 'dist-ebc6a2b'
     needs: classify-changes
-    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false && (github.event.action != 'edited' || github.event.changes.base))) && inputs.skip_build_test != true && needs.classify-changes.outputs.docs_only != 'true'
+    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)) && inputs.skip_build_test != true && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -566,7 +565,7 @@ jobs:
   release-script-test:
     name: Release Script Test
     needs: classify-changes
-    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false && (github.event.action != 'edited' || github.event.changes.base))) && needs.classify-changes.outputs.docs_only != 'true'
+    if: (github.event_name == 'workflow_dispatch' || (github.event.action != 'closed' && github.event.pull_request.draft == false)) && needs.classify-changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

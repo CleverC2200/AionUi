@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const { classifyPrGates } = require('../../../scripts/classify-pr-gates');
 
@@ -87,10 +87,34 @@ describe('desktop PR optimization safeguards', () => {
     expect(unit).toContain("matrix.os == 'macos-14' || needs.classify-changes.outputs.cross_platform_tests == 'true'");
     expect(unit).not.toContain('unit-evidence-ubuntu');
   });
-  it('preserves base-change validation without cancelling checks on text edits', () => {
-    expect(workflow).toContain("github.event.action != 'edited' || github.event.changes.base");
-    expect(workflow).toContain("github.event.action == 'edited' && !github.event.changes.base && github.run_id");
-    expect(workflow).toContain('reopened');
+  it('keeps text edits out of validation while routing base changes to trusted dispatch', async () => {
+    const { load } = require('js-yaml');
+    const pr = load(workflow);
+    expect(pr.on.pull_request.types).not.toContain('edited');
+    expect(pr.on.pull_request.types).toContain('reopened');
+    const base = load(readFileSync('.github/workflows/pr-base-changed.yml', 'utf8'));
+    expect(base.on.pull_request_target.types).toEqual(['edited']);
+    expect(base.jobs.revalidate.if).toContain('github.event.changes.base != null');
+    expect(base.jobs.revalidate.if).toContain('github.event.pull_request.draft == false');
+    const steps = base.jobs.revalidate.steps;
+    expect(steps).toHaveLength(1);
+    expect(steps[0].uses).toBe('actions/github-script@v7');
+    const dispatch = vi.fn();
+    const run = new Function('github', 'context', 'return (async () => {' + steps[0].with.script + '})()');
+    await run(
+      { rest: { actions: { createWorkflowDispatch: dispatch } } },
+      {
+        repo: { owner: 'owner', repo: 'repo' },
+        payload: { repository: { default_branch: 'main' }, pull_request: { number: 358 } },
+      }
+    );
+    expect(dispatch).toHaveBeenCalledWith({
+      owner: 'owner',
+      repo: 'repo',
+      workflow_id: 'pr-checks.yml',
+      ref: 'main',
+      inputs: { pr_number: '358' },
+    });
   });
   it('keeps a client compile when installers are not applicable', () => {
     expect(workflow).toContain(
