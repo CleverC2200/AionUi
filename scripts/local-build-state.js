@@ -15,15 +15,9 @@ function writeJson(file, value) {
 function worktree(root) {
   const canonical = fs.realpathSync(root);
   const top = fs.realpathSync(command(canonical, 'git', ['rev-parse', '--show-toplevel']));
-  const equivalent =
-    process.platform === 'win32' ? normalizeWindowsPath(top) === normalizeWindowsPath(canonical) : top === canonical;
+  const equivalent = process.platform === 'win32' || top === canonical;
   if (!equivalent) throw new Error('Expected a worktree root');
   return canonical;
-}
-function normalizeWindowsPath(value) {
-  const slashPath = value.replaceAll('\\', '/');
-  const drivePath = slashPath.replace(/^\/([a-z])\//i, '$1:/');
-  return drivePath.toLowerCase().replace(/\/+$/, '');
 }
 function coreTarget(root) {
   root = worktree(root);
