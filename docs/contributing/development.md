@@ -2,7 +2,7 @@
 
 The product name is GEA. The packaged Electron profile intentionally keeps the `GEAUi` directory under the system application-data folder so upgrades retain preferences and sessions. The application ID (`com.aionui.app`) and `aionui://` protocol remain stable; development and explicit E2E profiles stay isolated. The internal Electron application name also remains `GEAUi` to preserve the macOS Safe Storage keychain identity; user-facing branding is GEA.
 
-The current default GEA endpoint for testing is `https://gea.synear.cn:4443/gea-boot`; an explicitly saved endpoint or environment override still takes precedence.
+The default GEA endpoint is the production service at `https://gea.synear.cn/gea-boot`. An explicitly saved endpoint or environment override still takes precedence; use `https://gea.synear.cn:4443/gea-boot` explicitly for testing.
 
 ## Prerequisites
 

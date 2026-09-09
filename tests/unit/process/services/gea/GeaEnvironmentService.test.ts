@@ -29,9 +29,9 @@ beforeEach(() => {
 });
 
 describe('resolveGeaEnvironment', () => {
-  it('uses the selected GEA test environment by default', () => {
+  it('uses the production GEA environment by default', () => {
     expect(resolveGeaEnvironment({ env: {}, isPackaged: true })).toMatchObject({
-      baseUrl: 'https://gea.synear.cn:4443/gea-boot',
+      baseUrl: 'https://gea.synear.cn/gea-boot',
       editable: true,
       source: 'default',
     });

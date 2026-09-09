@@ -2,7 +2,7 @@
 
 产品名称为 GEA。正式版 Electron 配置仍使用系统应用数据目录下的 `GEAUi` 文件夹，以保留升级前的配置与会话。应用 ID（`com.aionui.app`）和 `aionui://` 协议保持稳定；开发环境与显式 E2E 配置继续隔离。 Electron 内部应用名也保留 `GEAUi`，以沿用 macOS Safe Storage 钥匙串身份；对外显示名称为 GEA。
 
-当前测试默认连接 `https://gea.synear.cn:4443/gea-boot`；已保存的地址与显式环境变量仍优先。
+默认连接正式 GEA：`https://gea.synear.cn/gea-boot`。已保存的地址与显式环境变量仍优先；测试时请显式配置 `https://gea.synear.cn:4443/gea-boot`。
 
 ## 前置条件
 

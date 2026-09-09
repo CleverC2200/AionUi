@@ -11,8 +11,8 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 }
 
 describe('GeaLarkAuthService MCP Resources', () => {
-  it('uses the selected 4443 GEA test environment by default', () => {
-    expect(DEFAULT_GEA_BASE_URL).toBe('https://gea.synear.cn:4443/gea-boot');
+  it('uses the production GEA environment by default', () => {
+    expect(DEFAULT_GEA_BASE_URL).toBe('https://gea.synear.cn/gea-boot');
   });
 
   it('uses Streamable HTTP and keeps resource contents behind resources/read', async () => {
