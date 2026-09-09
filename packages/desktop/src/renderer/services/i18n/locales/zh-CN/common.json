@@ -726,7 +726,8 @@
           "discard": "放弃调整",
           "keepEditing": "继续编辑",
           "placeholder": "+增加 / -减少",
-          "inputLabel": "SKU {{sku}} 调整量"
+          "inputLabel": "SKU {{sku}} 调整量",
+          "empty": "本节点无 SKU 调整"
         },
         "confirmation": "我已核对当前计划、版本和状态，并确认以当前登录用户执行本次审批。",
         "required": "请确认操作范围和调整内容；退回时必须填写原因。",

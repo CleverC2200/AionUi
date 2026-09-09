@@ -726,7 +726,8 @@
           "discard": "Discard changes",
           "keepEditing": "Keep editing",
           "placeholder": "+ increase / - decrease",
-          "inputLabel": "SKU {{sku}} quantity adjustment"
+          "inputLabel": "SKU {{sku}} quantity adjustment",
+          "empty": "No SKU adjustments at this node"
         },
         "confirmation": "I reviewed the plan, version, and status and confirm this action will run as the signed-in user.",
         "required": "Confirm the action scope and adjustments. A reject action also requires a reason.",
