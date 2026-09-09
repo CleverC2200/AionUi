@@ -234,3 +234,5 @@ Orchestration and cleanup share locks: UI uses `.workspace/local-build/active.js
 PRs run the full macOS unit suite and a macOS client build as the non-documentation baseline. Platform-sensitive changes add Windows tests; installer-sensitive changes build and smoke-test DMG/NSIS on both desktop platforms. Coverage remains manual. Linux is not a PR build target. The repository ruleset must require only Code Quality, the macOS/Windows unit and build contexts, and Release Script Test; obsolete Linux/Coverage contexts must be removed instead of returning fake passes.
 
 Title/body edits do not run validation or cancel active validation. Changing the base branch, reopening, or pushing new commits still validates the PR diff. Classification uses the complete PR diff, so all applicable checks rerun after a push. Lark Core boundary validation keeps its existing path filters.
+
+Base-change dispatch uses the same-repository PR branch so checks attach to its head commit. For a cross-repository PR, push a new commit after retargeting; the dispatcher refuses to validate the wrong repository/ref.

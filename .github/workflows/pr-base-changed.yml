@@ -19,10 +19,14 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const pr = context.payload.pull_request;
+            if (pr.head.repo?.full_name !== context.payload.repository.full_name) {
+              throw new Error('For a fork PR, push a new commit after changing its base to rerun validation.');
+            }
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'pr-checks.yml',
-              ref: context.payload.repository.default_branch,
+              ref: pr.head.ref,
               inputs: { pr_number: String(context.payload.pull_request.number) }
             });

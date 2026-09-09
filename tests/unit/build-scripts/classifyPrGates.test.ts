@@ -105,16 +105,29 @@ describe('desktop PR optimization safeguards', () => {
       { rest: { actions: { createWorkflowDispatch: dispatch } } },
       {
         repo: { owner: 'owner', repo: 'repo' },
-        payload: { repository: { default_branch: 'main' }, pull_request: { number: 358 } },
+        payload: { repository: { full_name: 'owner/repo' }, pull_request: { number: 358 } },
       }
     );
     expect(dispatch).toHaveBeenCalledWith({
       owner: 'owner',
       repo: 'repo',
       workflow_id: 'pr-checks.yml',
-      ref: 'main',
+      ref: 'codex/ci-scope',
       inputs: { pr_number: '358' },
     });
+    await expect(
+      run(
+        { rest: { actions: { createWorkflowDispatch: dispatch } } },
+        {
+          repo: { owner: 'owner', repo: 'repo' },
+          payload: {
+            repository: { full_name: 'owner/repo' },
+            pull_request: { number: 358, head: { ref: 'main', repo: { full_name: 'other/repo' } } },
+          },
+        }
+      )
+    ).rejects.toThrow('For a fork PR');
+    expect(dispatch).toHaveBeenCalledTimes(1);
   });
   it('keeps a client compile when installers are not applicable', () => {
     expect(workflow).toContain(
