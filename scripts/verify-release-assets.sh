@@ -63,7 +63,7 @@ for f in latest-win-arm64.yml; do
   fi
 done
 
-for f in GEAUi-1.0.0-win-x64.exe GEAUi-1.0.0-win-arm64.exe GEAUi-1.0.0-mac-x64.dmg GEAUi-1.0.0-mac-arm64.dmg; do
+for f in GEA-1.0.0-win-x64.exe GEA-1.0.0-win-arm64.exe GEA-1.0.0-mac-x64.dmg GEA-1.0.0-mac-arm64.dmg; do
   if [ ! -f "$OUTPUT_DIR/$f" ]; then
     echo "FAIL: missing distributable: $f"
     ERRORS=$((ERRORS + 1))

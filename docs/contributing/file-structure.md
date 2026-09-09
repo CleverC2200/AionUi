@@ -22,7 +22,7 @@ Rules for organizing files and directories across the entire Electron project.
 
 ## Project Layout (`src/`)
 
-GEAUi is a multi-process Electron app with three core layers: **renderer**, **main process**, and **preload/shared**.
+GEA is a multi-process Electron app with three core layers: **renderer**, **main process**, and **preload/shared**.
 
 ### Target Structure
 

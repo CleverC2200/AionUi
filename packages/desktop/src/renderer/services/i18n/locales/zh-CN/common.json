@@ -1,4 +1,14 @@
 {
+  "channelConflict": {
+    "owner": "OpenClaw 正在处理 {{platformName}} 消息，而非 GEA。",
+    "switching": "✗ 在 GEA 中切换助手不会生效",
+    "useChannels": "要使用 GEA 渠道并切换助手：",
+    "restart": "然后重启 OpenClaw 和 GEA。",
+    "newBot": "为 GEA 创建使用不同凭据的新 {{platformName}} 机器人。",
+    "disable": "在 GEA 渠道中禁用 {{platformName}}，继续使用 OpenClaw 集成。"
+  },
+  "componentShowcaseTitle": "GEA 自定义组件样式展示",
+  "appName": "GEA",
   "send": "发送",
   "cancel": "取消",
   "save": "保存",
@@ -169,9 +179,13 @@
       }
     },
     "general": {
-      "name": "GEAUi",
+      "name": "GEA",
       "description": "通用会话、文件、项目和任务。",
-      "capabilities": { "chat": "通用会话", "files": "文件处理", "tasks": "定时任务" }
+      "capabilities": {
+        "chat": "通用会话",
+        "files": "文件处理",
+        "tasks": "定时任务"
+      }
     },
     "business": {
       "name": "GEA 业务版",
@@ -180,7 +194,11 @@
     "forecast": {
       "name": "需求预测 Agent",
       "description": "按月份核对经销商与 SKU，形成销售计划。",
-      "capabilities": { "dealer": "经销商核对", "sku": "SKU 计划", "approval": "提报流程" }
+      "capabilities": {
+        "dealer": "经销商核对",
+        "sku": "SKU 计划",
+        "approval": "提报流程"
+      }
     },
     "forecastWorkbench": {
       "scopeDescription": "核对 AI 建议、确认结果与证据差异",
@@ -433,16 +451,28 @@
         "retainAndContinue": "保留草稿并继续",
         "discardAndContinue": "丢弃并继续",
         "cancelTransition": "取消",
-        "tabs": { "adjustment": "计划调整", "customers": "客户证据", "evidence": "版本证据" },
+        "tabs": {
+          "adjustment": "计划调整",
+          "customers": "客户证据",
+          "evidence": "版本证据"
+        },
         "customerEvidence": "客户提报证据为只读样例；选择客户维度可返回看板核对客户编号、名称与进度。",
         "versionEvidence": "当前页固定展示所选组织和版本的本地样例证据，不连接生产版本服务。",
-        "products": { "dumpling": "经典水饺", "wonton": "鲜肉馄饨", "rice-ball": "黑芝麻汤圆" },
+        "products": {
+          "dumpling": "经典水饺",
+          "wonton": "鲜肉馄饨",
+          "rice-ball": "黑芝麻汤圆"
+        },
         "evidence": {
           "seasonal": "样例节庆销量与近八周趋势建议调整为 {{quantity}} 件。",
           "inventory": "样例库存周转与在途量建议调整为 {{quantity}} 件。",
           "policy": "样例促销政策与高偏差规则建议调整为 {{quantity}} 件。"
         },
-        "suggestionState": { "pending": "待处理", "accepted": "已采纳", "ignored": "已忽略" }
+        "suggestionState": {
+          "pending": "待处理",
+          "accepted": "已采纳",
+          "ignored": "已忽略"
+        }
       },
       "liveDetail": {
         "title": "销售计划详情与版本证据",
@@ -466,7 +496,12 @@
         "emptyLogs": "该计划没有审批日志。",
         "emptyCompare": "两个版本没有 SKU 差异。",
         "sameVersion": "基准版本与目标版本相同，不产生差异或退回原因。",
-        "tabs": { "skus": "版本 SKU", "versions": "历史版本", "logs": "审批日志", "compare": "版本比较" },
+        "tabs": {
+          "skus": "版本 SKU",
+          "versions": "历史版本",
+          "logs": "审批日志",
+          "compare": "版本比较"
+        },
         "columns": {
           "sku": "SKU",
           "category": "产品品类",
@@ -491,7 +526,11 @@
           "priceComparison": "价格对比",
           "amountDelta": "金额差异"
         },
-        "change": { "ADDED": "新增", "DELETED": "删除", "UPDATED": "更新" },
+        "change": {
+          "ADDED": "新增",
+          "DELETED": "删除",
+          "UPDATED": "更新"
+        },
         "errors": {
           "permission": "当前账号没有读取该销售计划详情的权限。",
           "expired": "GEA 用户会话已过期，请重新登录后重试。",
@@ -515,7 +554,13 @@
         "noAdvice": "暂无真实 AI 建议",
         "editQty": "{{sku}} 新计划量",
         "editAmount": "{{sku}} 新计划金额",
-        "dimensions": { "area": "大区", "province": "省区", "region": "区域", "base": "基地", "customer": "客户" },
+        "dimensions": {
+          "area": "大区",
+          "province": "省区",
+          "region": "区域",
+          "base": "基地",
+          "customer": "客户"
+        },
         "columns": {
           "sku": "SKU 编码 / 品类",
           "baseQty": "原计划量",
@@ -537,7 +582,10 @@
         "open": "重提",
         "openFor": "重提 {{plan}}",
         "queueMode": "队列类型",
-        "queueModes": { "approval": "待审批", "resubmit": "退回重提" },
+        "queueModes": {
+          "approval": "待审批",
+          "resubmit": "退回重提"
+        },
         "firstSubmit": "首次提报",
         "firstSubmitUnavailable": "首次提报暂不可用：当前接口没有真实的新计划草稿、经销商和 SKU 明细来源；客户端不会用样例组织、AI 建议或本地编辑伪造提交。",
         "boundary": "重提仅复用 GEA 当前有效版本的真实 SKU、OPEN 周期和当前用户；服务身份与重试由 AionCore 受信边界处理，Renderer 不接触凭证。",
@@ -700,7 +748,10 @@
         "version": "当前版本",
         "savedAdjustments": "已保存调整",
         "batchOrganizations": "本次选择 {{count}} 个组织",
-        "tabs": { "return": "退回", "submit": "提交审批" },
+        "tabs": {
+          "return": "退回",
+          "submit": "提交审批"
+        },
         "returnTarget": "退回目标（必填）",
         "returnTargetPlaceholder": "选择退回目标",
         "returnTargets": {
@@ -732,7 +783,10 @@
           "cancelled": "本地样例操作已取消；晚到结果将被忽略。",
           "batch": "批量操作完成：成功 {{success}} 个，失败 {{failed}} 个。"
         },
-        "rowStatus": { "return": "已退回 · 本地样例", "submit": "已提交 · 本地样例" }
+        "rowStatus": {
+          "return": "已退回 · 本地样例",
+          "submit": "已提交 · 本地样例"
+        }
       },
       "progressDialog": {
         "organization": "组织",
@@ -819,8 +873,15 @@
         "frozen-pastry": "速冻面点",
         "rice-noodle": "米面制品"
       },
-      "levels": { "area": "大区", "province": "省区" },
-      "health": { "healthy": "健康", "attention": "关注", "warning": "预警" },
+      "levels": {
+        "area": "大区",
+        "province": "省区"
+      },
+      "health": {
+        "healthy": "健康",
+        "attention": "关注",
+        "warning": "预警"
+      },
       "healthFilter": "按{{health}}筛选",
       "opinions": {
         "north": "3 家客户未提报；2 个 SKU 偏离历史销量",
@@ -829,7 +890,11 @@
         "southwest": "省区审批尚未完成，大区暂不可处理",
         "hebei": "省区已完成，汇总至华北大区"
       },
-      "status": { "pending": "待审批", "approved": "已审批", "future": "未到节点" },
+      "status": {
+        "pending": "待审批",
+        "approved": "已审批",
+        "future": "未到节点"
+      },
       "organizations": {
         "north": "华北大区",
         "east": "华东大区",
@@ -953,8 +1018,17 @@
     "contract": {
       "name": "合同审查 Agent",
       "description": "同屏定位合同原文、风险依据和审阅意见。",
-      "capabilities": { "reading": "原文定位", "risk": "风险识别", "review": "审阅意见" },
-      "workflow": { "source": "合同原文读取", "risk": "AI 风险识别", "review": "业务审阅", "opinion": "形成审阅意见" }
+      "capabilities": {
+        "reading": "原文定位",
+        "risk": "风险识别",
+        "review": "审阅意见"
+      },
+      "workflow": {
+        "source": "合同原文读取",
+        "risk": "AI 风险识别",
+        "review": "业务审阅",
+        "opinion": "形成审阅意见"
+      }
     },
     "contractWorkbench": {
       "title": "合同条款审查",
@@ -1015,7 +1089,7 @@
       },
       "mode": {
         "general": {
-          "name": "GEAUi",
+          "name": "GEA",
           "summary": "通用会话、文件、项目和任务。"
         },
         "business": {
@@ -1032,7 +1106,10 @@
         "monthlyPlan": "月初计划",
         "correctionPlan": "纠偏计划",
         "currentDealer": "北辰食品商贸（样例）",
-        "month": { "september": "2026 年 9 月", "august": "2026 年 8 月" },
+        "month": {
+          "september": "2026 年 9 月",
+          "august": "2026 年 8 月"
+        },
         "fixtureState": "Fixture 数据状态",
         "stateReady": "完整数据",
         "stateLoading": "加载中",
@@ -1125,10 +1202,10 @@
       "retry": "重试"
     }
   },
-  "tray.showWindow": "显示 GEAUi",
+  "tray.showWindow": "显示 GEA",
   "tray.newChat": "新建对话",
   "tray.closeToTray": "隐藏到托盘",
-  "tray.about": "关于 GEAUi",
+  "tray.about": "关于 GEA",
   "tray.restart": "重启应用",
   "tray.quit": "退出",
   "tray.runningTasks": "运行中的任务",
@@ -1139,26 +1216,26 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "当前系统不支持内置后端",
-      "description": "GEAUi 已打开，但本地 GEACore 后端无法在当前 Linux 版本上运行。请升级到受支持的 Linux 发行版后重启 GEAUi。",
+      "description": "GEA 已打开，但本地 GEACore 后端无法在当前 Linux 版本上运行。请升级到受支持的 Linux 发行版后重启 GEA。",
       "requiredVersions": "需要的运行时符号：{{versions}}"
     },
     "incompleteInstallation": {
-      "title": "GEAUi 安装不完整",
-      "description": "当前安装缺少必要的本地资源，GEACore 无法启动。请下载并重新安装最新版 GEAUi；如果重新安装后仍然出现，请检查系统安全软件或杀毒软件是否隔离了 GEACore。",
+      "title": "GEA 安装不完整",
+      "description": "当前安装缺少必要的本地资源，GEACore 无法启动。请下载并重新安装最新版 GEA；如果重新安装后仍然出现，请检查系统安全软件或杀毒软件是否隔离了 GEACore。",
       "downloadLatest": "下载最新版",
       "sendDiagnostics": "发送诊断报告",
       "diagnosticsSent": "诊断报告已发送",
       "diagnosticsReportSuccess": "诊断报告已发送",
       "diagnosticsReportFailed": "诊断报告发送失败",
-      "runtimeComponentDescription": "当前安装缺少必要的内置运行组件，{{resource}} 无法启动。请重新安装最新版 GEAUi；如果重新安装后仍然出现，请检查系统安全软件或杀毒软件是否隔离了 GEAUi 组件。"
+      "runtimeComponentDescription": "当前安装缺少必要的内置运行组件，{{resource}} 无法启动。请重新安装最新版 GEA；如果重新安装后仍然出现，请检查系统安全软件或杀毒软件是否隔离了 GEA 组件。"
     },
     "packageArchitectureMismatch": {
-      "title": "GEAUi 安装包架构不匹配",
-      "description": "当前 GEAUi 安装包是 {{packageArch}}，但这台 Mac 是 {{deviceArch}}。你可能下载了错误的安装包，请重新下载并安装 {{expectedArch}} 版本。"
+      "title": "GEA 安装包架构不匹配",
+      "description": "当前 GEA 安装包是 {{packageArch}}，但这台 Mac 是 {{deviceArch}}。你可能下载了错误的安装包，请重新下载并安装 {{expectedArch}} 版本。"
     },
     "dataMigration": {
       "title": "本地数据迁移失败",
-      "description": "GEAUi 已打开，但 GEACore 在初始化本地数据时停止。重复安装 GEAUi 未必能解决此问题。请发送诊断报告或联系支持，以便检查本地数据库迁移状态。",
+      "description": "GEA 已打开，但 GEACore 在初始化本地数据时停止。重复安装 GEA 未必能解决此问题。请发送诊断报告或联系支持，以便检查本地数据库迁移状态。",
       "sendDiagnostics": "发送诊断报告",
       "diagnosticsSent": "诊断报告已发送",
       "diagnosticsReportSuccess": "诊断报告已发送",
@@ -1171,7 +1248,7 @@
     },
     "localDataRepair": {
       "title": "本地数据修复失败",
-      "description": "GEAUi 已打开，但 GEACore 在准备本地启动数据时停止，例如 assistant 或智能体记录。重新安装 GEAUi 可能无法解决此问题。请发送诊断报告或联系支持，以便检查本地数据库。",
+      "description": "GEA 已打开，但 GEACore 在准备本地启动数据时停止，例如 assistant 或智能体记录。重新安装 GEA 可能无法解决此问题。请发送诊断报告或联系支持，以便检查本地数据库。",
       "sendDiagnostics": "发送诊断",
       "diagnosticsSent": "诊断已发送",
       "diagnosticsReportSuccess": "诊断报告已发送",
@@ -1179,7 +1256,7 @@
     },
     "startupDirectory": {
       "title": "启动目录不可用",
-      "description": "GEAUi 已打开，但由于配置的工作目录或日志目录不存在、不可访问或权限受限，GEACore 无法启动。请确认这些目录存在且可写，然后重启 GEAUi。",
+      "description": "GEA 已打开，但由于配置的工作目录或日志目录不存在、不可访问或权限受限，GEACore 无法启动。请确认这些目录存在且可写，然后重启 GEA。",
       "sendDiagnostics": "发送诊断报告",
       "diagnosticsSent": "诊断报告已发送",
       "diagnosticsReportSuccess": "诊断报告已发送",
@@ -1187,8 +1264,7 @@
     },
     "recoverableDatabaseCorruption": {
       "title": "本地数据已损坏",
-      "description": "检测到本地数据库损坏，GEAUi 无法继续启动。确认后将备份旧数据库，并创建新的本地数据库继续启动。历史本地数据暂时不会显示，旧数据库会保留为备份。",
-
+      "description": "检测到本地数据库损坏，GEA 无法继续启动。确认后将备份旧数据库，并创建新的本地数据库继续启动。历史本地数据暂时不会显示，旧数据库会保留为备份。",
       "confirmRebuild": "备份旧库并重建新库",
       "sendDiagnostics": "发送诊断报告",
       "diagnosticsHint": "发送诊断报告不会修改本地数据库。",
@@ -1204,8 +1280,8 @@
       }
     },
     "transientConcurrentStartup": {
-      "title": "GEAUi 正在启动",
-      "description": "此窗口打开时，另一个 GEAUi 启动进程仍在使用本地数据。这是暂时的，您的数据是安全的——无需重新安装。请稍候片刻后重试，或重启 GEAUi。",
+      "title": "GEA 正在启动",
+      "description": "此窗口打开时，另一个 GEA 启动进程仍在使用本地数据。这是暂时的，您的数据是安全的——无需重新安装。请稍候片刻后重试，或重启 GEA。",
       "sendDiagnostics": "发送诊断",
       "diagnosticsSent": "诊断已发送",
       "diagnosticsReportSuccess": "诊断报告已发送",
@@ -1263,5 +1339,10 @@
   },
   "selectedCount": "已选 {{count}}",
   "selectedSkills": "已选技能",
-  "aiAssistant": "AI 助手"
+  "aiAssistant": "AI 助手",
+  "appMenu": {
+    "about": "关于 {{appName}}",
+    "hide": "隐藏 {{appName}}",
+    "quit": "退出 {{appName}}"
+  }
 }

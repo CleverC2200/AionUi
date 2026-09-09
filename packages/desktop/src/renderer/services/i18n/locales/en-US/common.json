@@ -1,4 +1,14 @@
 {
+  "channelConflict": {
+    "owner": "OpenClaw is handling {{platformName}} messages, not GEA.",
+    "switching": "✗ Switching agents in GEA will have no effect",
+    "useChannels": "To use GEA Channels and switch agents:",
+    "restart": "Then restart OpenClaw and GEA.",
+    "newBot": "Create a new {{platformName}} bot with different credentials for GEA.",
+    "disable": "Disable {{platformName}} in GEA Channels and continue using OpenClaw's integration."
+  },
+  "componentShowcaseTitle": "GEA custom component showcase",
+  "appName": "GEA",
   "send": "Send",
   "cancel": "Cancel",
   "save": "Save",
@@ -169,9 +179,13 @@
       }
     },
     "general": {
-      "name": "GEAUi",
+      "name": "GEA",
       "description": "General conversations, files, projects, and tasks.",
-      "capabilities": { "chat": "General chat", "files": "File handling", "tasks": "Scheduled tasks" }
+      "capabilities": {
+        "chat": "General chat",
+        "files": "File handling",
+        "tasks": "Scheduled tasks"
+      }
     },
     "business": {
       "name": "GEA Business",
@@ -180,7 +194,11 @@
     "forecast": {
       "name": "Demand Forecast Agent",
       "description": "Review dealers and SKUs by month to prepare a sales plan.",
-      "capabilities": { "dealer": "Dealer review", "sku": "SKU planning", "approval": "Submission flow" }
+      "capabilities": {
+        "dealer": "Dealer review",
+        "sku": "SKU planning",
+        "approval": "Submission flow"
+      }
     },
     "forecastWorkbench": {
       "scopeDescription": "Review AI recommendations, confirmed results, and evidence gaps",
@@ -433,16 +451,28 @@
         "retainAndContinue": "Retain draft and continue",
         "discardAndContinue": "Discard and continue",
         "cancelTransition": "Cancel",
-        "tabs": { "adjustment": "Plan adjustment", "customers": "Customer evidence", "evidence": "Version evidence" },
+        "tabs": {
+          "adjustment": "Plan adjustment",
+          "customers": "Customer evidence",
+          "evidence": "Version evidence"
+        },
         "customerEvidence": "Customer submission evidence is a read-only sample. Return to the board's customer dimension to verify customer codes, names, and progress.",
         "versionEvidence": "This page fixes local sample evidence to the selected organization and version; it is not connected to the production version service.",
-        "products": { "dumpling": "Classic dumplings", "wonton": "Pork wontons", "rice-ball": "Sesame rice balls" },
+        "products": {
+          "dumpling": "Classic dumplings",
+          "wonton": "Pork wontons",
+          "rice-ball": "Sesame rice balls"
+        },
         "evidence": {
           "seasonal": "Sample holiday sales and the eight-week trend suggest {{quantity}} units.",
           "inventory": "Sample inventory turnover and in-transit stock suggest {{quantity}} units.",
           "policy": "Sample promotion policy and the high-delta rule suggest {{quantity}} units."
         },
-        "suggestionState": { "pending": "Pending", "accepted": "Accepted", "ignored": "Ignored" }
+        "suggestionState": {
+          "pending": "Pending",
+          "accepted": "Accepted",
+          "ignored": "Ignored"
+        }
       },
       "liveDetail": {
         "title": "Sales plan details and version evidence",
@@ -496,7 +526,11 @@
           "priceComparison": "Price comparison",
           "amountDelta": "Amount delta"
         },
-        "change": { "ADDED": "Added", "DELETED": "Deleted", "UPDATED": "Updated" },
+        "change": {
+          "ADDED": "Added",
+          "DELETED": "Deleted",
+          "UPDATED": "Updated"
+        },
         "errors": {
           "permission": "This account cannot read the requested sales plan details.",
           "expired": "The GEA user session expired. Sign in again, then retry.",
@@ -548,7 +582,10 @@
         "open": "Resubmit",
         "openFor": "Resubmit {{plan}}",
         "queueMode": "Queue type",
-        "queueModes": { "approval": "Pending approval", "resubmit": "Returned for resubmission" },
+        "queueModes": {
+          "approval": "Pending approval",
+          "resubmit": "Returned for resubmission"
+        },
         "firstSubmit": "First submission",
         "firstSubmitUnavailable": "First submission is unavailable: no endpoint currently supplies a real new-plan draft, dealer, and SKU source. The client will not submit sample organization values, AI guidance, or local edits as real data.",
         "boundary": "Resubmission uses only the effective GEA version's real SKUs, an OPEN period, and the current user. AionCore's trusted boundary owns the service identity and retries; Renderer never receives credentials.",
@@ -711,7 +748,10 @@
         "version": "Current version",
         "savedAdjustments": "Saved adjustments",
         "batchOrganizations": "{{count}} organizations selected",
-        "tabs": { "return": "Return", "submit": "Submit approval" },
+        "tabs": {
+          "return": "Return",
+          "submit": "Submit approval"
+        },
         "returnTarget": "Return target (required)",
         "returnTargetPlaceholder": "Select return target",
         "returnTargets": {
@@ -743,7 +783,10 @@
           "cancelled": "The local sample action was cancelled; late results will be ignored.",
           "batch": "Batch completed: {{success}} succeeded and {{failed}} failed."
         },
-        "rowStatus": { "return": "Returned · local sample", "submit": "Submitted · local sample" }
+        "rowStatus": {
+          "return": "Returned · local sample",
+          "submit": "Submitted · local sample"
+        }
       },
       "progressDialog": {
         "organization": "Organization",
@@ -830,8 +873,15 @@
         "frozen-pastry": "Frozen pastry",
         "rice-noodle": "Rice and noodle"
       },
-      "levels": { "area": "Area", "province": "Province" },
-      "health": { "healthy": "Healthy", "attention": "Attention", "warning": "Warning" },
+      "levels": {
+        "area": "Area",
+        "province": "Province"
+      },
+      "health": {
+        "healthy": "Healthy",
+        "attention": "Attention",
+        "warning": "Warning"
+      },
       "healthFilter": "Filter by {{health}}",
       "opinions": {
         "north": "3 customers have not submitted; 2 SKUs deviate from historical sales",
@@ -840,7 +890,11 @@
         "southwest": "Province approval is incomplete; area action is not available",
         "hebei": "Province approval is complete and summarized into North Area"
       },
-      "status": { "pending": "Pending", "approved": "Approved", "future": "Not at node" },
+      "status": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "future": "Not at node"
+      },
       "organizations": {
         "north": "North China Area",
         "east": "East China Area",
@@ -964,7 +1018,11 @@
     "contract": {
       "name": "Contract Review Agent",
       "description": "Review contract text, evidence, risks, and recommendations side by side.",
-      "capabilities": { "reading": "Source text", "risk": "Risk detection", "review": "Review notes" },
+      "capabilities": {
+        "reading": "Source text",
+        "risk": "Risk detection",
+        "review": "Review notes"
+      },
       "workflow": {
         "source": "Read source contract",
         "risk": "AI risk detection",
@@ -1031,7 +1089,7 @@
       },
       "mode": {
         "general": {
-          "name": "GEAUi",
+          "name": "GEA",
           "summary": "General conversations, files, projects, and tasks."
         },
         "business": {
@@ -1048,7 +1106,10 @@
         "monthlyPlan": "Initial monthly plan",
         "correctionPlan": "Correction plan",
         "currentDealer": "Beichen Food Trading (Fixture)",
-        "month": { "september": "September 2026", "august": "August 2026" },
+        "month": {
+          "september": "September 2026",
+          "august": "August 2026"
+        },
         "fixtureState": "Fixture data state",
         "stateReady": "Complete data",
         "stateLoading": "Loading",
@@ -1141,10 +1202,10 @@
       "retry": "Retry"
     }
   },
-  "tray.showWindow": "Show GEAUi",
+  "tray.showWindow": "Show GEA",
   "tray.newChat": "New Chat",
   "tray.closeToTray": "Hide to Tray",
-  "tray.about": "About GEAUi",
+  "tray.about": "About GEA",
   "tray.restart": "Restart App",
   "tray.quit": "Quit",
   "tray.runningTasks": "Running Tasks",
@@ -1155,26 +1216,26 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "This system is not supported by the bundled backend",
-      "description": "GEAUi opened, but the local GEACore backend cannot run on this Linux version. Please upgrade to a supported Linux distribution and restart GEAUi.",
+      "description": "GEA opened, but the local GEACore backend cannot run on this Linux version. Please upgrade to a supported Linux distribution and restart GEA.",
       "requiredVersions": "Required runtime symbols: {{versions}}"
     },
     "incompleteInstallation": {
-      "title": "GEAUi installation is incomplete",
-      "description": "This installation is missing required local resources, so GEACore cannot start. Please download and reinstall the latest GEAUi. If the issue returns after reinstalling, check whether security or antivirus software quarantined GEACore.",
+      "title": "GEA installation is incomplete",
+      "description": "This installation is missing required local resources, so GEACore cannot start. Please download and reinstall the latest GEA. If the issue returns after reinstalling, check whether security or antivirus software quarantined GEACore.",
       "downloadLatest": "Download latest",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
       "diagnosticsReportFailed": "Failed to send diagnostics report",
-      "runtimeComponentDescription": "This installation is missing required bundled runtime components, so {{resource}} cannot start. Reinstall the latest GEAUi package. If it still happens after reinstalling, check whether security or antivirus software quarantined GEAUi components."
+      "runtimeComponentDescription": "This installation is missing required bundled runtime components, so {{resource}} cannot start. Reinstall the latest GEA package. If it still happens after reinstalling, check whether security or antivirus software quarantined GEA components."
     },
     "packageArchitectureMismatch": {
-      "title": "GEAUi package architecture mismatch",
-      "description": "This GEAUi package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
+      "title": "GEA package architecture mismatch",
+      "description": "This GEA package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
     },
     "dataMigration": {
       "title": "Local data migration failed",
-      "description": "GEAUi opened, but GEACore stopped while initializing local data. Reinstalling GEAUi may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
+      "description": "GEA opened, but GEACore stopped while initializing local data. Reinstalling GEA may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -1187,7 +1248,7 @@
     },
     "localDataRepair": {
       "title": "Local data repair failed",
-      "description": "GEAUi opened, but GEACore stopped while preparing local startup data such as assistant or agent records. Reinstalling GEAUi may not fix this. Send a diagnostics report or contact support so the local database can be inspected.",
+      "description": "GEA opened, but GEACore stopped while preparing local startup data such as assistant or agent records. Reinstalling GEA may not fix this. Send a diagnostics report or contact support so the local database can be inspected.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -1195,7 +1256,7 @@
     },
     "startupDirectory": {
       "title": "Startup directory is unavailable",
-      "description": "GEAUi opened, but GEACore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart GEAUi.",
+      "description": "GEA opened, but GEACore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart GEA.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -1203,8 +1264,7 @@
     },
     "recoverableDatabaseCorruption": {
       "title": "Local data is corrupted",
-      "description": "GEAUi detected that the local database is corrupted and cannot continue startup. After confirmation, GEAUi will back up the old database and create a new local database to continue startup. Historical local data will not be shown for now, and the old database will be kept as a backup.",
-
+      "description": "GEA detected that the local database is corrupted and cannot continue startup. After confirmation, GEA will back up the old database and create a new local database to continue startup. Historical local data will not be shown for now, and the old database will be kept as a backup.",
       "confirmRebuild": "Back up old DB and rebuild new DB",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsHint": "Sending diagnostics will not modify the local database.",
@@ -1220,8 +1280,8 @@
       }
     },
     "transientConcurrentStartup": {
-      "title": "GEAUi is starting up",
-      "description": "Another GEAUi startup was still using the local data when this window opened. This is temporary and your data is safe — no reinstall is needed. Please wait a moment and try again, or restart GEAUi.",
+      "title": "GEA is starting up",
+      "description": "Another GEA startup was still using the local data when this window opened. This is temporary and your data is safe — no reinstall is needed. Please wait a moment and try again, or restart GEA.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -1279,5 +1339,10 @@
   },
   "selectedCount": "Selected {{count}}",
   "selectedSkills": "Selected skills",
-  "aiAssistant": "AI Assistant"
+  "aiAssistant": "AI Assistant",
+  "appMenu": {
+    "about": "About {{appName}}",
+    "hide": "Hide {{appName}}",
+    "quit": "Quit {{appName}}"
+  }
 }

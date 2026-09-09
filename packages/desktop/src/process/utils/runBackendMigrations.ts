@@ -199,7 +199,7 @@ function buildBuiltinBrowserServer(): McpImportServer {
   return {
     name: BUILTIN_BROWSER_MCP_NAME,
     description:
-      "Control GEAUi's built-in browser (the side preview panel): open pages, click, type and read content. " +
+      "Control GEA's built-in browser (the side preview panel): open pages, click, type and read content. " +
       'Sign-in state is shared across tabs and preserved between sessions.',
     // 默认开启：用户装好即可用，无需任何配置
     // Enabled by default: works out of the box with zero configuration.
@@ -271,9 +271,17 @@ function buildBuiltinGeaMcpServer(): McpImportServer {
  */
 export async function ensureBuiltinGeaMcpServerAvailable(): Promise<void> {
   const existing = await mcpService.listServers.invoke();
-  if (existing.some((server) => server.name === BUILTIN_GEA_MCP_NAME)) return;
-
-  await mcpService.batchImportServers.invoke({ servers: [buildBuiltinGeaMcpServer()] });
+  const current = existing.find((server) => server.name === BUILTIN_GEA_MCP_NAME);
+  const expected = buildBuiltinGeaMcpServer();
+  if (!current) {
+    await mcpService.batchImportServers.invoke({ servers: [expected] });
+  } else if (current.builtin !== true || JSON.stringify(current.transport) !== JSON.stringify(expected.transport)) {
+    // 安装目录或产品名变化后，先刷新内置入口，避免首页读取到旧 Core 路径。
+    await mcpService.updateServer.invoke({
+      id: current.id,
+      data: { builtin: true, transport: expected.transport, original_json: expected.original_json },
+    });
+  }
 }
 
 function buildDefaultMcpServers(): McpImportServer[] {

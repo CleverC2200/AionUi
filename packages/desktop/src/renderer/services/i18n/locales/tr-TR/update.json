@@ -2,7 +2,7 @@
   "modalTitle": "Güncelleme hazır",
   "mandatory": {
     "title": "Güncelleme gerekli",
-    "description": "GEAUi'yi kullanmaya devam etmek için bu sürümü güncellemeniz gerekir.",
+    "description": "GEA'yi kullanmaya devam etmek için bu sürümü güncellemeniz gerekir.",
     "downloadUnavailable": "İndirme bilgileri kullanılamıyor. Ağ bağlantınızı kontrol edip tekrar deneyin."
   },
   "checking": "Güncellemeler kontrol ediliyor...",
@@ -35,7 +35,7 @@
   "errorTitle": "Güncelleme başarısız",
   "installerLastFailure": {
     "title": "Son güncelleme tamamlanmadı",
-    "description": "Önceki sessiz güncelleme sırasında GEAUi kapatılamadı. Güncellemeyi yeniden deneyebilir, kurulum günlüğünü görüntüleyebilir veya geri bildirim gönderebilirsiniz.",
+    "description": "Önceki sessiz güncelleme sırasında GEA kapatılamadı. Güncellemeyi yeniden deneyebilir, kurulum günlüğünü görüntüleyebilir veya geri bildirim gönderebilirsiniz.",
     "retryUpdate": "Güncellemeyi yeniden dene",
     "viewLog": "Günlüğü görüntüle"
   },

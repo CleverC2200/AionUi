@@ -76,7 +76,7 @@
       "outsideSandbox": "This file is outside the current project sandbox."
     },
     "serverInstall": {
-      "hint": "GEAUi is running on a server. Install the preview component on that server, then retry:",
+      "hint": "GEA is running on a server. Install the preview component on that server, then retry:",
       "icuNote": "If it still fails to start, install the ICU library on the server (Debian/Ubuntu: apt-get install -y libicu-dev)."
     }
   },

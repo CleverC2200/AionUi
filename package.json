@@ -5,7 +5,7 @@
   "keywords": [],
   "license": "Apache-2.0",
   "author": {
-    "name": "GEAUi",
+    "name": "GEA",
     "email": "service@aionui.com"
   },
   "workspaces": [
@@ -286,5 +286,5 @@
   "patchedDependencies": {
     "7zip-bin@5.2.0": "patches/7zip-bin@5.2.0.patch"
   },
-  "productName": "GEAUi"
+  "productName": "GEA"
 }

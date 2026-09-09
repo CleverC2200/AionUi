@@ -334,7 +334,7 @@ describe('usePresetAssistantInfo', () => {
     });
   });
 
-  it('uses the GEAUi brand for an explicit generated Aion CLI conversation', () => {
+  it('uses the GEA brand for an explicit generated Aion CLI conversation', () => {
     useSWRMock.mockImplementation((key: unknown) => {
       if (key === 'assistants.list') return { data: [], isLoading: false };
       if (key === 'extensions.acpAdapters') return { data: [], isLoading: false };

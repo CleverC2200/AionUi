@@ -7,6 +7,7 @@
 import { Alert, Button, Link, Space, Typography } from '@arco-design/web-react';
 import { IconExclamationCircle } from '@arco-design/web-react/icon';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const { Paragraph, Text } = Typography;
 
@@ -27,6 +28,7 @@ export const ChannelConflictWarning: React.FC<ChannelConflictWarningProps> = ({
   onIgnore,
 }) => {
   const platformName = platform === 'lark' ? 'Lark/Feishu' : 'Telegram';
+  const { t } = useTranslation();
   const channelKey = platform === 'lark' ? 'feishu' : 'telegram';
 
   return (
@@ -37,14 +39,14 @@ export const ChannelConflictWarning: React.FC<ChannelConflictWarningProps> = ({
       content={
         <Space direction='vertical' size='medium' style={{ width: '100%' }}>
           <Paragraph>
-            <Text bold>OpenClaw is handling {platformName} messages, not GEAUi.</Text>
+            <Text bold>{t('common.channelConflict.owner', { platformName })}</Text>
           </Paragraph>
 
           <Paragraph>
             Your {platformName} bot credentials are also configured in OpenClaw. This means:
             <ul>
               <li>
-                <Text type='error'>✗ Switching agents in GEAUi will have no effect</Text>
+                <Text type='error'>{t('common.channelConflict.switching')}</Text>
               </li>
               <li>
                 <Text type='error'>✗ Messages are processed by OpenClaw's agent</Text>
@@ -56,7 +58,7 @@ export const ChannelConflictWarning: React.FC<ChannelConflictWarningProps> = ({
           </Paragraph>
 
           <Paragraph>
-            <Text bold>To use GEAUi Channels and switch agents:</Text>
+            <Text bold>{t('common.channelConflict.useChannels')}</Text>
           </Paragraph>
 
           <Paragraph>
@@ -66,19 +68,19 @@ export const ChannelConflictWarning: React.FC<ChannelConflictWarningProps> = ({
             <br />
             Set: <Text code>{`channels.${channelKey}.enabled = false`}</Text>
             <br />
-            Then restart OpenClaw and GEAUi.
+            {t('common.channelConflict.restart')}
           </Paragraph>
 
           <Paragraph>
             <Text type='secondary'>Option 2: Use a different bot</Text>
             <br />
-            Create a new {platformName} bot with different credentials for GEAUi.
+            {t('common.channelConflict.newBot', { platformName })}
           </Paragraph>
 
           <Paragraph>
             <Text type='secondary'>Option 3: Keep using OpenClaw</Text>
             <br />
-            Disable {platformName} in GEAUi Channels and continue using OpenClaw's integration.
+            {t('common.channelConflict.disable', { platformName })}
           </Paragraph>
 
           <Space>

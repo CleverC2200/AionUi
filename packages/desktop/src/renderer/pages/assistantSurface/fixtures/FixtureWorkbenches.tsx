@@ -79,7 +79,7 @@ type WorkModeDefinition = {
 const workModes: WorkModeDefinition[] = [
   {
     id: 'general',
-    name: 'GEAUi',
+    name: 'GEA',
     summary: 'General conversations, files, projects, and tasks.',
   },
   {

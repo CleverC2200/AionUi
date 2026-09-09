@@ -48,7 +48,7 @@ describe('resolveAssistantAvatar', () => {
     });
   });
 
-  it('uses the GEAUi brand for the default generated Aion CLI assistant', () => {
+  it('uses the GEA brand for the default generated Aion CLI assistant', () => {
     expect(
       resolveAssistantDisplayAvatar('/api/assistants/bare-aionrs/avatar', {
         id: 'bare-aionrs',

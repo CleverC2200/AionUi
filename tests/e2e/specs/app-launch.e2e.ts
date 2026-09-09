@@ -8,9 +8,30 @@ import { test, expect } from '../fixtures';
 import { createErrorCollector, waitForSettle } from '../helpers';
 
 test.describe('App Launch', () => {
-  test('window opens and has a title', async ({ page }) => {
+  test('window opens with the GEA product identity', async ({ page, electronApp }) => {
     const title = await page.title();
-    expect(title).toBeTruthy();
+    expect(title).toBe('GEA');
+    expect(await electronApp.evaluate(({ app }) => app.getName())).toBe('GEA');
+    const profile = await electronApp.evaluate(({ app }) => ({
+      data: app.getPath('userData'),
+      session: app.getPath('sessionData'),
+      sandbox: process.env.AIONUI_E2E_USER_DATA_DIR,
+    }));
+    expect(profile.data).toBe(profile.sandbox);
+    expect(profile.session).toBe(profile.data);
+    if (process.platform === 'darwin') {
+      const menu = await electronApp.evaluate(({ Menu }) => {
+        const item = Menu.getApplicationMenu()?.items[0];
+        return { label: item?.label, children: item?.submenu?.items.map((child) => child.label) };
+      });
+      expect(menu.label).toBe('GEA');
+      expect(menu.children?.join(' ')).not.toContain('GEAUi');
+    }
+    await page.getByTestId('assistant-surface-switcher').click();
+    await page.getByTestId('assistant-surface-option-general').click();
+    await expect(page.getByTestId('assistant-surface-switcher')).toHaveText('GEA');
+    await expect(page).toHaveURL(/#\/guid$/);
+    await page.getByTestId('assistant-surface-switcher').screenshot({ path: 'tests/e2e/results/gea-brand-launch.png' });
   });
 
   test('renderer loads successfully', async ({ page }) => {

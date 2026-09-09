@@ -51,6 +51,7 @@ export type PersonalModelSyncResult = {
   reason?:
     | 'agentSelectionRequired'
     | 'credentialListFailed'
+    | 'credentialContractMismatch'
     | 'credentialClaimFailed'
     | 'credentialRecoveryRequired'
     | 'credentialSyncFailed'

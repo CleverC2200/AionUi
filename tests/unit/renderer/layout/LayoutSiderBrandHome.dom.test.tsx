@@ -11,7 +11,7 @@ import React from 'react';
 // Mirror the project convention: t() echoes the key so labels/tooltips are assertable.
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (k: string) => (k === 'login.brand' ? 'GEAUi' : k),
+    t: (k: string) => (k === 'login.brand' ? 'GEA' : k),
     i18n: { language: 'en' },
   }),
 }));

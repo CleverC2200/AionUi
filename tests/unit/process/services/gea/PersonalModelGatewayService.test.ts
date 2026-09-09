@@ -5,7 +5,7 @@
  */
 
 import http, { type Server } from 'node:http';
-import { GeaLarkAuthService } from '@aionui/web-host';
+import { GeaLarkAuthService, GeaPersonalModelError } from '@aionui/web-host';
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { IProvider } from '@/common/config/storage';
@@ -374,6 +374,45 @@ describe('PersonalModelGatewayService', () => {
       false
     );
   });
+
+  it.each(['credentialListFailed', 'secureStorageUnavailable', 'credentialContractMismatch'])(
+    'suspends a previous-process proxy before %s',
+    async (reason) => {
+      const vault = new MemoryVault();
+      const providerStore = new MemoryProviderStore();
+      const stale: IProvider = {
+        id: 'gea-personal-old-process',
+        platform: 'openai',
+        name: 'GEA',
+        base_url: 'http://127.0.0.1:60417/personal/gea-personal-old-process',
+        api_key: 'stale-local-key',
+        models: ['model-1'],
+        enabled: true,
+      };
+      const custom = { ...stale, id: 'custom-provider', base_url: 'https://example.test/v1' };
+      providerStore.providers.push(stale, custom);
+      const proxy: PersonalModelProxy = { deactivate: vi.fn().mockResolvedValue(undefined), register: vi.fn() };
+      const auth = createAuthClient();
+      if (reason === 'credentialListFailed')
+        auth.listPersonalModelCredentials.mockRejectedValue(new Error('unavailable'));
+      else if (reason === 'credentialContractMismatch')
+        auth.listPersonalModelCredentials.mockRejectedValue(
+          new GeaPersonalModelError('GEA_PERSONAL_CREDENTIAL_AGENT_BOUND')
+        );
+      else vault.available = false;
+      const service = new PersonalModelGatewayService(vault, providerStore, ENVIRONMENT_ID, proxy);
+      await expect(
+        service.sync({ id: 'user-1', username: 'user', realname: 'User' }, auth, ['sales_forecast'])
+      ).resolves.toMatchObject({ reason });
+      expect(providerStore.providers.find((p) => p.id === stale.id)).toMatchObject({
+        enabled: false,
+        model_health: { 'model-1': { error: 'GEA_PERSONAL_LOGIN_REQUIRED' } },
+      });
+      expect(providerStore.providers.find((p) => p.id === custom.id)).toEqual(custom);
+      expect(proxy.register).not.toHaveBeenCalled();
+      expect(auth.claimPersonalModelCredential).not.toHaveBeenCalled();
+    }
+  );
 
   it('requires reissuance instead of replaying claim when an ACTIVE secret is absent locally', async () => {
     const vault = new MemoryVault();

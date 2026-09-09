@@ -1,6 +1,6 @@
 {
-  "pageTitle": "GEAUi - Giriş Yap",
-  "brand": "GEAUi",
+  "pageTitle": "GEA - Giriş Yap",
+  "brand": "GEA",
   "subtitle": "Tekrar hoş geldiniz, lütfen hesabınıza giriş yapın",
   "username": "Kullanıcı Adı",
   "usernamePlaceholder": "Kullanıcı adınızı girin",
@@ -46,7 +46,7 @@
     },
     "errors": {
       "networkError": "GEA'ya bağlanılamıyor. Lütfen tekrar deneyin",
-      "secureStorageUnavailable": "Sistemin güvenli kimlik bilgisi deposuna erişilemedi. GEAUi erişimine izin verip tekrar deneyin.",
+      "secureStorageUnavailable": "Sistemin güvenli kimlik bilgisi deposuna erişilemedi. GEA erişimine izin verip tekrar deneyin.",
       "serverError": "GEA giriş hizmeti geçici olarak kullanılamıyor",
       "invalidResponse": "GEA geçersiz bir giriş yanıtı döndürdü"
     }

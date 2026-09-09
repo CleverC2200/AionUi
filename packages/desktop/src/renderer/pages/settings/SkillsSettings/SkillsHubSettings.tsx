@@ -970,7 +970,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
       <div data-testid='official-skills-section'>
         <p className='m-0 mb-12px text-12px leading-relaxed text-t-tertiary'>
           {t('settings.skillsHub.officialHint', {
-            defaultValue: 'Built-in skills maintained by GEAUi — read-only and updated with each release.',
+            defaultValue: 'Built-in skills maintained by GEA — read-only and updated with each release.',
           })}
         </p>
         {officialSkills.length > 0 ? (

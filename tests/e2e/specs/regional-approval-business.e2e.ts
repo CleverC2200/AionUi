@@ -30,7 +30,7 @@ const surfaceContextRevisionFromContent = (content: string): number => {
 
 const enterBusiness = async (page: Page): Promise<void> => {
   const switcher = page.getByTestId('assistant-surface-switcher');
-  await expect(switcher).toContainText('GEAUi');
+  await expect(switcher).toContainText('GEA');
   await switcher.click();
   const modeDialog = page.locator('.arco-drawer-wrapper:visible').last();
   await expect(modeDialog.getByTestId('assistant-surface-option-general')).toHaveAttribute('aria-pressed', 'true');
@@ -83,7 +83,7 @@ test.describe('Regional Approval Business', () => {
     await expect(initialGeneralInput).toBeVisible();
     await expect(initialGeneralInput).toBeEnabled();
     await expect(page.getByTestId('regional-approval-workbench')).toBeHidden();
-    await expect(page.getByTestId('assistant-surface-switcher')).toContainText('GEAUi');
+    await expect(page.getByTestId('assistant-surface-switcher')).toContainText('GEA');
 
     const wideConnectorWidths = new Map<number, number>();
 
@@ -232,7 +232,7 @@ test.describe('Regional Approval Business', () => {
       await expect(generalInput).toBeVisible();
       await expect(generalInput).toBeEnabled();
       await expect(page.getByTestId('regional-approval-workbench')).toBeHidden();
-      await expect(page.getByTestId('assistant-surface-switcher')).toContainText('GEAUi');
+      await expect(page.getByTestId('assistant-surface-switcher')).toContainText('GEA');
     }
     /* oxlint-enable no-await-in-loop */
     expect(wideConnectorWidths.get(1536)).toBeGreaterThan(wideConnectorWidths.get(1280)!);

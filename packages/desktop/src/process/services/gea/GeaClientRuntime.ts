@@ -71,7 +71,7 @@ export function getCheckedGeaRelease(url: string): GeaClientRelease {
 const mapRelease = (version: ClientVersion, release: GeaClientRelease): UpdateCheckResult => {
   const asset =
     release.distributionType === 'UPLOAD' && release.sha256 && release.fileSize && release.downloadUrl
-      ? { name: `GEAUi-${release.versionCode}`, url: release.downloadUrl, size: release.fileSize }
+      ? { name: `GEA-${release.versionCode}`, url: release.downloadUrl, size: release.fileSize }
       : undefined;
   return {
     currentVersion: version.versionName,

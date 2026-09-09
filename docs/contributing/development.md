@@ -1,5 +1,9 @@
 # Development Guide
 
+The product name is GEA. The packaged Electron profile intentionally keeps the `GEAUi` directory under the system application-data folder so upgrades retain preferences and sessions. The application ID (`com.aionui.app`) and `aionui://` protocol remain stable; development and explicit E2E profiles stay isolated. The internal Electron application name also remains `GEAUi` to preserve the macOS Safe Storage keychain identity; user-facing branding is GEA.
+
+The current default GEA endpoint for testing is `https://gea.synear.cn:4443/gea-boot`; an explicitly saved endpoint or environment override still takes precedence.
+
 ## Prerequisites
 
 - **Node.js** 22 or higher
@@ -12,10 +16,10 @@ On Windows, install the Rust MSVC toolchain. If Rust compilation fails because n
 
 ## Repository Layout
 
-GEAUi development uses two repositories:
+GEA development uses two repositories:
 
 - **GEACore** (`https://github.com/iOfficeAI/AionCore.git`) builds the local backend binary: `aioncore` on macOS/Linux and `aioncore.exe` on Windows.
-- **GEAUi** (`https://github.com/iOfficeAI/AionUi.git`) starts the Electron desktop app and launches the backend binary automatically.
+- **GEA** (`https://github.com/iOfficeAI/AionUi.git`) starts the Electron desktop app and launches the backend binary automatically.
 
 Keep the repositories side by side when possible:
 
@@ -25,7 +29,7 @@ workspace/
 `-- AionUi/
 ```
 
-The desktop development server resolves the backend from the `PATH` inherited by `bun run start`. Install GEACore first, verify the binary is discoverable in the same terminal, then start GEAUi.
+The desktop development server resolves the backend from the `PATH` inherited by `bun run start`. Install GEACore first, verify the binary is discoverable in the same terminal, then start GEA.
 
 ## Quick Start
 
@@ -76,7 +80,7 @@ aioncore --help
 
 If `where.exe aioncore` prints nothing, make sure `%USERPROFILE%\.cargo\bin` is in your user `Path`, open a new PowerShell window, and verify again.
 
-### 3. Start GEAUi
+### 3. Start GEA
 
 Run these commands from the `AionUi` repository in a terminal where `aioncore` is discoverable.
 
@@ -90,11 +94,11 @@ bun install
 bun run start
 ```
 
-During startup, GEAUi launches `aioncore` automatically and passes the backend port to the renderer. You do not need to start GEACore in a separate terminal.
+During startup, GEA launches `aioncore` automatically and passes the backend port to the renderer. You do not need to start GEACore in a separate terminal.
 
 ## Updating the Local Backend
 
-When you pull or change GEACore, reinstall the backend binary and restart GEAUi:
+When you pull or change GEACore, reinstall the backend binary and restart GEA:
 
 ```bash
 cd ../AionCore
@@ -110,9 +114,9 @@ Use `--force` when rebuilding local changes with the same GEACore package versio
 
 ### `Cannot find "aioncore" binary`
 
-GEAUi cannot find the backend from the `PATH` inherited by `bun run start`.
+GEA cannot find the backend from the `PATH` inherited by `bun run start`.
 
-Check from the same terminal where you start GEAUi:
+Check from the same terminal where you start GEA:
 
 ```bash
 # macOS / Linux
@@ -122,15 +126,15 @@ which aioncore
 where.exe aioncore
 ```
 
-If the command fails, add Cargo's binary directory to `PATH` and start GEAUi from a new terminal.
+If the command fails, add Cargo's binary directory to `PATH` and start GEA from a new terminal.
 
-### `aioncore` Works in a Terminal but GEAUi Still Cannot Find It
+### `aioncore` Works in a Terminal but GEA Still Cannot Find It
 
 Make sure you start `bun run start` from the same terminal environment that can run `aioncore --help`. IDE terminals and GUI-launched shells can inherit a different `PATH`; restart the IDE or launch it from a terminal after updating `PATH`.
 
 ### Backend Changes Do Not Show Up
 
-Quit GEAUi, reinstall GEACore with `cargo install --path crates/aionui-app --locked --force`, then start GEAUi again. The Electron app owns the backend subprocess during development, so a running GEAUi instance will not pick up a newly installed binary until it restarts.
+Quit GEA, reinstall GEACore with `cargo install --path crates/aionui-app --locked --force`, then start GEA again. The Electron app owns the backend subprocess during development, so a running GEA instance will not pick up a newly installed binary until it restarts.
 
 ### Windows Rust Build Errors
 
@@ -257,7 +261,7 @@ prek run --from-ref origin/main --to-ref HEAD
 
 ## Build System
 
-GEAUi uses **electron-vite** for fast bundling:
+GEA uses **electron-vite** for fast bundling:
 
 - **Main process**: bundled with Vite (ESM)
 - **Renderer process**: bundled with Vite (React + TypeScript)
