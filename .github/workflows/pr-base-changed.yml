@@ -1,0 +1,32 @@
+name: PR Base Change
+
+on:
+  pull_request_target:
+    types: [edited]
+    branches: [main, dev]
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  revalidate:
+    # No checkout or PR-supplied code runs with the write token.
+    if: github.event.changes.base != null && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Revalidate against the new base
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (pr.head.repo?.full_name !== context.payload.repository.full_name) {
+              throw new Error('For a fork PR, push a new commit after changing its base to rerun validation.');
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'pr-checks.yml',
+              ref: pr.head.ref,
+              inputs: { pr_number: String(context.payload.pull_request.number) }
+            });

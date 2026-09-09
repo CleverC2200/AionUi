@@ -13,9 +13,8 @@ on:
         required: false
         default: false
   pull_request:
-    # Keep `edited`: changing the PR base also emits this action and must
-    # reclassify the diff and rerun checks against the new base.
-    types: [opened, synchronize, edited, closed, ready_for_review]
+    # Base changes are dispatched by pr-base-changed.yml; text edits do not start checks.
+    types: [opened, synchronize, reopened, closed, ready_for_review]
     branches: [main, dev]
 
 concurrency:
@@ -122,7 +121,7 @@ jobs:
       - name: Run prek checks
         run: prek run --from-ref origin/${{ env.PR_BASE_REF }} --to-ref HEAD
 
-  # Job 2: Unit tests across all platforms
+  # Job 2: macOS baseline, Windows for platform-sensitive changes
   unit-tests:
     name: Unit Tests (${{ matrix.os }})
     needs: classify-changes
@@ -132,27 +131,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14, windows-2022]
+        os: [macos-14, windows-2022]
     steps:
       - name: Checkout code
-        if: matrix.os != 'ubuntu-latest' && needs.classify-changes.outputs.cross_platform_tests == 'true'
+        if: matrix.os == 'macos-14' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         uses: actions/checkout@v4
 
       - name: Resolve PR context
-        if: matrix.os != 'ubuntu-latest' && needs.classify-changes.outputs.cross_platform_tests == 'true'
+        if: matrix.os == 'macos-14' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         uses: ./.github/actions/checkout-pr
         with:
           pr_number: ${{ inputs.pr_number }}
           github_token: ${{ github.token }}
 
       - name: Setup Node.js
-        if: matrix.os != 'ubuntu-latest' && needs.classify-changes.outputs.cross_platform_tests == 'true'
+        if: matrix.os == 'macos-14' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22.23.2'
 
       - name: Setup bun
-        if: matrix.os != 'ubuntu-latest' && needs.classify-changes.outputs.cross_platform_tests == 'true'
+        if: matrix.os == 'macos-14' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.2'
@@ -167,34 +166,20 @@ jobs:
           try { Add-MpPreference -ExclusionPath "${{ github.workspace }}" } catch { Write-Host "::warning::Failed to add exclusion path: $_" }
 
       - name: Install dependencies
-        if: matrix.os != 'ubuntu-latest' && needs.classify-changes.outputs.cross_platform_tests == 'true'
+        if: matrix.os == 'macos-14' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         run: bun install --frozen-lockfile
 
       - name: Run postinstall
-        if: matrix.os != 'ubuntu-latest' && needs.classify-changes.outputs.cross_platform_tests == 'true'
+        if: matrix.os == 'macos-14' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         run: npm run postinstall || true
 
       - name: Run extension system tests
-        if: matrix.os != 'ubuntu-latest' && needs.classify-changes.outputs.cross_platform_tests == 'true'
+        if: matrix.os == 'macos-14' || needs.classify-changes.outputs.cross_platform_tests == 'true'
         run: bunx vitest run
 
-      - name: Record completed full unit suite
-        id: unit-record
-        if: matrix.os == 'ubuntu-latest'
-        continue-on-error: true
-        run: node scripts/quality-evidence.js record "${{ runner.temp }}/unit-evidence.json"
-
-      - name: Upload full unit evidence
-        if: matrix.os == 'ubuntu-latest' && steps.unit-record.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-evidence-ubuntu
-          path: ${{ runner.temp }}/unit-evidence.json
-          retention-days: 7
-
       - name: Record lightweight platform pass
-        if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests != 'true'
-        run: echo "No platform-sensitive paths changed; Linux unit coverage is authoritative for this PR."
+        if: matrix.os == 'windows-2022' && needs.classify-changes.outputs.cross_platform_tests != 'true'
+        run: echo "Windows suite not applicable; the full unit suite runs on macOS."
 
   # Job 3: Coverage test (Linux only)
   coverage-tests:
@@ -366,33 +351,27 @@ jobs:
             target: '--win'
             build_args: '--win --x64'
             unpacked_dir: 'win-unpacked'
-          - platform: 'linux-x64'
-            os: 'ubuntu-latest'
-            arch: 'x64'
-            target: '--linux'
-            build_args: '--linux --x64'
-            unpacked_dir: 'linux-unpacked'
 
     steps:
       - name: Checkout code
-        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
+        if: matrix.platform == 'macos-arm64' || needs.classify-changes.outputs.installer_smoke == 'true'
         uses: actions/checkout@v4
 
       - name: Resolve PR context
-        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
+        if: matrix.platform == 'macos-arm64' || needs.classify-changes.outputs.installer_smoke == 'true'
         uses: ./.github/actions/checkout-pr
         with:
           pr_number: ${{ inputs.pr_number }}
           github_token: ${{ github.token }}
 
       - name: Setup Node.js
-        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
+        if: matrix.platform == 'macos-arm64' || needs.classify-changes.outputs.installer_smoke == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22.23.2'
 
       - name: Setup bun
-        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
+        if: matrix.platform == 'macos-arm64' || needs.classify-changes.outputs.installer_smoke == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.2'
@@ -405,18 +384,12 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
+        if: matrix.platform == 'macos-arm64' || needs.classify-changes.outputs.installer_smoke == 'true'
         run: bun install --frozen-lockfile
 
       - name: Run postinstall
-        if: matrix.platform == 'linux-x64' || needs.classify-changes.outputs.installer_smoke == 'true'
+        if: matrix.platform == 'macos-arm64' || needs.classify-changes.outputs.installer_smoke == 'true'
         run: npm run postinstall || true
-
-      - name: Install Linux dependencies
-        if: matrix.platform == 'linux-x64' && needs.classify-changes.outputs.installer_smoke == 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential python3 python3-pip pkg-config libsqlite3-dev fakeroot dpkg-dev rpm libnss3-dev libatk-bridge2.0-dev libdrm2 libxkbcommon-dev libxss1 libatspi2.0-dev libgtk-3-dev libxrandr2 libasound2-dev
 
       - name: Get Electron version
         id: electron-version
@@ -504,16 +477,16 @@ jobs:
           CI: true
           GH_TOKEN: ${{ github.token }}
 
-      - name: Fast renderer package test (Linux)
-        if: needs.classify-changes.outputs.installer_smoke != 'true' && matrix.platform == 'linux-x64'
+      - name: Fast client build (macOS)
+        if: needs.classify-changes.outputs.installer_smoke != 'true' && matrix.platform == 'macos-arm64'
         run: bun run package
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           CI: true
 
       - name: Record lightweight build pass
-        if: needs.classify-changes.outputs.installer_smoke != 'true' && matrix.platform != 'linux-x64'
-        run: echo "No installer-sensitive paths changed; the Linux renderer package is authoritative for this PR."
+        if: needs.classify-changes.outputs.installer_smoke != 'true' && matrix.platform == 'windows-x64'
+        run: echo "No installer-sensitive paths changed; the macOS client build validates this PR."
 
       - name: Verify build artifacts exist
         if: needs.classify-changes.outputs.installer_smoke == 'true'
@@ -530,9 +503,6 @@ jobs:
               ;;
             macos-*)
               ls out/*.dmg out/*latest*.yml >/dev/null
-              ;;
-            linux-x64)
-              ls out/*.deb out/*latest*.yml >/dev/null
               ;;
           esac
 
@@ -591,30 +561,6 @@ jobs:
           test -x "$APP_BIN"
           "$APP_BIN" --version || true
 
-      - name: Install smoke test (Linux)
-        if: needs.classify-changes.outputs.installer_smoke == 'true' && matrix.platform == 'linux-x64'
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "=========================================="
-          echo "SMOKE INSTALL: linux-x64"
-          echo "=========================================="
-
-          DEB_FILE=$(ls out/*.deb | head -n 1)
-          PKG_NAME=$(dpkg-deb -f "$DEB_FILE" Package)
-          sudo dpkg -i "$DEB_FILE" || sudo apt-get install -f -y
-
-          INSTALLED_BIN=$(dpkg -L "$PKG_NAME" | grep -Ei '/(bin/|opt/[^/]+/)(aionui|geaui|gea)$' | head -n 1 || true)
-          if [ -z "$INSTALLED_BIN" ]; then
-            echo "Package files:"
-            dpkg -L "$PKG_NAME" | head -n 50
-            echo "No installed executable path matched expected pattern"
-            exit 1
-          fi
-
-          test -f "$INSTALLED_BIN"
-          test -x "$INSTALLED_BIN"
-
   # Job 5: Test release scripts (fast, no build required)
   release-script-test:
     name: Release Script Test
@@ -648,7 +594,7 @@ jobs:
         if: needs.classify-changes.outputs.release_scripts != 'true'
         run: echo "No release-script contract changed."
 
-  # The main ruleset requires these eight contexts. For docs-only PRs, publish
+  # The main ruleset requires these platform/release contexts. For docs-only PRs, publish
   # lightweight successes with the same names instead of leaving them Expected.
   docs-only-required-checks:
     name: ${{ matrix.context }}
@@ -659,13 +605,10 @@ jobs:
       fail-fast: false
       matrix:
         context:
-          - Unit Tests (ubuntu-latest)
           - Unit Tests (macos-14)
           - Unit Tests (windows-2022)
-          - Coverage Test
           - Release Script Test
           - Build Test (macos-arm64)
           - Build Test (windows-x64)
-          - Build Test (linux-x64)
     steps:
       - run: echo "Docs-only PR; Code Quality is the applicable gate."

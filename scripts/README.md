@@ -228,3 +228,11 @@ Each `.workspace/local-build/<id>/manifest.json` records source commit and dirty
 Cleanup accepts only reproducible `out/main`, `out/preload`, `out/renderer`, and Core `target/debug`. Installers, runtime resources, dependencies, shared caches, logs, source, business data and unknown paths are retained. Cleanup also requires the complete generated output digest to match (Core records it after successful focused verification), so new or modified ignored files block removal. Symlinks, tracked/nonignored files, active builds/clients, open files and inconclusive ownership checks block removal. Cleanup supports macOS/Linux and refuses other platforms; checks can conservatively block on processes in other worktrees.
 
 Orchestration and cleanup share locks: UI uses `.workspace/local-build/active.json`; Core uses `target/.aionui-local-build/active.json` with adjacent output receipts. Core bookkeeping does not pollute source identity. After interruption, prove the recorded PID and related children have exited before removing only the stale lock and retrying; age alone never expires locks. Legacy direct commands do not participate in these locks, so cleanup also checks live processes/open files. Do not concurrently launch an external build and cleanup in the same worktree.
+
+## Pull request validation scope
+
+PRs run the full macOS unit suite and a macOS client build as the non-documentation baseline. Platform-sensitive changes add Windows tests; installer-sensitive changes build and smoke-test DMG/NSIS on both desktop platforms. Coverage remains manual. Linux is not a PR build target. The repository ruleset must require only Code Quality, the macOS/Windows unit and build contexts, and Release Script Test; obsolete Linux/Coverage contexts must be removed instead of returning fake passes.
+
+Title/body edits do not run validation or cancel active validation. Changing the base branch, reopening, or pushing new commits still validates the PR diff. Classification uses the complete PR diff, so all applicable checks rerun after a push. Lark Core boundary validation keeps its existing path filters.
+
+Base-change dispatch uses the same-repository PR branch so checks attach to its head commit. For a cross-repository PR, push a new commit after retargeting; the dispatcher refuses to validate the wrong repository/ref.
