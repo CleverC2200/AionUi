@@ -137,7 +137,8 @@ describe('RegionalApprovalWorkbench', () => {
     expect(screen.getByRole('combobox', { name: '对比版本' })).toBeVisible();
     expect(screen.getByRole('combobox', { name: '计划月份' })).toBeVisible();
     expect(screen.getByRole('tablist', { name: '审批队列维度' })).toBeVisible();
-    expect(screen.getByRole('tab', { name: '按省区' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: '按大区' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: '按省区' })).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByRole('switch', { name: '品类维度' })).toBeVisible();
     expect(screen.getByRole('combobox', { name: '省区' })).toBeVisible();
     expect(screen.getByRole('combobox', { name: '区域' })).toBeVisible();
