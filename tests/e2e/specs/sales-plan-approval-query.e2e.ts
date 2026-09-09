@@ -281,7 +281,8 @@ test.describe('Sales-plan approval query', () => {
     await expect(page.getByText('GEA · 用户会话队列', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('combobox', { name: '销售计划周期' })).toHaveText('2026-09');
     await expect(page.getByText('E2E 第 1 页基地', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText(/9,999,999,999,999,999\.90/).first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: '目标预算', exact: true })).toBeVisible();
+    await expect(page.getByText(/9,999,999,999,999,999\.99/).first()).toBeVisible();
     await expect(page.getByText(/AI 建议和组织候选/)).toHaveCount(0);
     await expect(page.getByTestId('regional-approval-current-stage')).toHaveCount(0);
     await expect(page.getByText('审批操作已安全关闭')).toHaveCount(0);
@@ -296,6 +297,7 @@ test.describe('Sales-plan approval query', () => {
     await expect(page.getByRole('button', { name: '通过' })).toBeDisabled();
     await expect(page.getByRole('columnheader', { name: '审批操作' })).toHaveCount(0);
     await expect(page.getByRole('tablist', { name: '审批队列维度' })).toBeVisible();
+    await page.getByRole('button', { name: '筛选条件', exact: true }).click();
     await expect(page.getByRole('combobox', { name: '大区' })).toBeEnabled();
     await expect(page.getByRole('button', { name: '查询' })).toBeDisabled();
     const requests = await page.evaluate(
@@ -419,6 +421,7 @@ test.describe('Sales-plan approval query', () => {
     );
     expect(finalQueueRequest.searchParams.get('pageNo')).toBe('3');
 
+    await page.getByRole('button', { name: '筛选条件', exact: true }).click();
     await page.setViewportSize({ width: 760, height: 720 });
     await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(760);
     await expect(page.getByTestId('regional-approval-workbench')).toBeVisible();
@@ -445,8 +448,9 @@ test.describe('Sales-plan approval query', () => {
     test(`standalone SAVE status ${status} preserves its version and approval state`, async ({ page }, testInfo) => {
       await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
       const board = page.getByTestId('regional-approval-workbench');
-      await expect(board.getByText('可保存调整', { exact: true })).toBeVisible();
+      await expect(board.getByText('可保存调整', { exact: true })).toHaveCount(0);
       const planRow = board.getByRole('row').filter({ hasText: 'E2E 第 1 页基地' }).first();
+      await expect(planRow).toBeVisible();
       await planRow.locator('.arco-checkbox').click();
       await expect(board.getByRole('button', { name: '通过', exact: true })).toBeDisabled();
       await expect(board.getByRole('button', { name: '退回', exact: true })).toBeDisabled();
@@ -469,7 +473,8 @@ test.describe('Sales-plan approval query', () => {
           adjustments: [{ skuCode: '10001', adjustQty: '2.125' }],
         },
       ]);
-      await expect(board.getByText('可保存调整', { exact: true })).toBeVisible();
+      await expect(board.getByText('可保存调整', { exact: true })).toHaveCount(0);
+      await expect(planRow).toBeVisible();
       await planRow.locator('.arco-checkbox').click();
       await board.getByRole('button', { name: '保存调整', exact: true }).click();
       await expect(dialog.getByLabel('审批节点差异汇总')).toContainText('当前基准数量 / 金额15.125');
