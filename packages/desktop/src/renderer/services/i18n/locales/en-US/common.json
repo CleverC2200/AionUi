@@ -70,6 +70,7 @@
       "configureModel": "Configure model",
       "title": "Approval advice",
       "loading": "Preparing approval advice for the current scope…",
+      "selectNode": "Select an approval node before generating advice.",
       "failed": "Could not start approval advice. Please retry.",
       "unavailable": "No usable data is available, or the query failed. Complete or retry the query on the left.",
       "summary": "Applied filter scope summary",
