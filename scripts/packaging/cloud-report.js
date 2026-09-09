@@ -15,7 +15,7 @@ function buildReport({ root = process.cwd(), platform, stageFile, env = process.
   const out = path.join(root, 'out');
   const files = fs.existsSync(out) ? fs.readdirSync(out) : [];
   const installers = files
-    .filter((name) => /^GEAUi-.*\.(dmg|exe)$/.test(name))
+    .filter((name) => /^GEA-.*\.(dmg|exe)$/.test(name))
     .map((name) => ({
       name,
       bytes: fs.statSync(path.join(out, name)).size,

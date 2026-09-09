@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../../resources/aionui-banner-1.png" alt="GEAUi - Cowork with AI Agents" width="100%">
+  <img src="../../resources/aionui-banner-1.png" alt="GEA - Cowork with AI Agents" width="100%">
 </p>
 
 <p align="center">
@@ -41,12 +41,12 @@
 
 <p align="center">
   <a href="https://x.com/AionUi/status/2079493379914961069">
-    <img src="../../resources/kimi/contributor-bonus-black-blue.jpg" alt="GEAUi × Kimi 기여자 보너스" width="600">
+    <img src="../../resources/kimi/contributor-bonus-black-blue.jpg" alt="GEA × Kimi 기여자 보너스" width="600">
   </a>
 </p>
 
 <p align="center">
-  🎁 <strong>GEAUi × Kimi 전략적 파트너십</strong>: 기여자에게 <strong>Kimi "Allegretto" 플랜(월 $39 · ¥199 상당)을 무료 증정</strong>합니다!
+  🎁 <strong>GEA × Kimi 전략적 파트너십</strong>: 기여자에게 <strong>Kimi "Allegretto" 플랜(월 $39 · ¥199 상당)을 무료 증정</strong>합니다!
 </p>
 
 <h3 align="center">
@@ -54,7 +54,7 @@
 </h3>
 
 <p align="center">
-  <sub><strong>Kimi K3</strong> 출시 — GEAUi에서 바로 사용할 수 있습니다. <a href="https://www.kimi.com/code?aff=aionui" target="_blank">Kimi For Coding 플랜 구독</a> 또는 API 키 발급（<a href="https://platform.kimi.ai?track_id=track-32e04532b08d460fac729191744fa75c&aff=aionui" target="_blank">글로벌</a> / <a href="https://platform.kimi.com?track_id=track-98f92981df1c4c61b2c68930ba3ab658&aff=aionui" target="_blank">중국</a>）</sub>
+  <sub><strong>Kimi K3</strong> 출시 — GEA에서 바로 사용할 수 있습니다. <a href="https://www.kimi.com/code?aff=aionui" target="_blank">Kimi For Coding 플랜 구독</a> 또는 API 키 발급（<a href="https://platform.kimi.ai?track_id=track-32e04532b08d460fac729191744fa75c&aff=aionui" target="_blank">글로벌</a> / <a href="https://platform.kimi.com?track_id=track-98f92981df1c4c61b2c68930ba3ab658&aff=aionui" target="_blank">중국</a>）</sub>
 </p>
 
 ---
@@ -64,7 +64,7 @@
 <p align="center">
 
 [✨ Cowork 실연](#-cowork-실연) ·
-[🤔 왜 GEAUi를 선택해야 하나요?](#-왜-aionui를-claude-cowork보다-선택해야-하나요) ·
+[🤔 왜 GEA를 선택해야 하나요?](#-왜-aionui를-claude-cowork보다-선택해야-하나요) ·
 [🚀 빠른 시작](#-빠른-시작) ·
 [💬 커뮤니티](#-커뮤니티-및-지원)
 
@@ -74,9 +74,9 @@
 
 ## Cowork — AI Agents가 함께 작업합니다
 
-**GEAUi는 단순한 채팅 클라이언트가 아닙니다.** 컴퓨터에서 AI Agent가 함께 작업하는 Cowork 플랫폼입니다——파일 읽기, 코드 작성, 웹 브라우징, 작업 자동화. Agent의 모든 동작을 볼 수 있으며, 항상 제어권은 여러분에게 있습니다.
+**GEA는 단순한 채팅 클라이언트가 아닙니다.** 컴퓨터에서 AI Agent가 함께 작업하는 Cowork 플랫폼입니다——파일 읽기, 코드 작성, 웹 브라우징, 작업 자동화. Agent의 모든 동작을 볼 수 있으며, 항상 제어권은 여러분에게 있습니다.
 
-|                                   | 기존 AI 채팅 클라이언트 | **GEAUi (Cowork)**                                                                                                                     |
+|                                   | 기존 AI 채팅 클라이언트 | **GEA (Cowork)**                                                                                                                       |
 | :-------------------------------- | :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
 | AI가 파일을 조작할 수 있음        | 제한적 또는 불가        | **예 — 내장 Agent, 완전한 파일 접근**                                                                                                  |
 | AI가 다단계 작업을 실행할 수 있음 | 제한적                  | **예 — 자율 실행, 승인 필요**                                                                                                          |
@@ -86,14 +86,14 @@
 | 가격                              | 무료 / 유료             | **무료 및 오픈소스**                                                                                                                   |
 
 <p align="center">
-  <img src="../../resources/offica-ai BANNER-function.png" alt="GEAUi Cowork Platform" width="800">
+  <img src="../../resources/offica-ai BANNER-function.png" alt="GEA Cowork Platform" width="800">
 </p>
 
 ---
 
 ## 내장 Agent — 설치 즉시 사용, 제로 설정
 
-GEAUi는 완전한 AI Agent 엔진을 내장하고 있습니다. CLI Agent를 별도로 설치해야 하는 도구와 달리, **GEAUi는 설치하는 순간 바로 작동합니다**.
+GEA는 완전한 AI Agent 엔진을 내장하고 있습니다. CLI Agent를 별도로 설치해야 하는 도구와 달리, **GEA는 설치하는 순간 바로 작동합니다**.
 
 - **CLI 도구 설치 불필요** — Agent 엔진이 내장되어 있습니다
 - **복잡한 설정 불필요** — API 키를 붙여넣기만 하면 됩니다
@@ -159,7 +159,7 @@ Office 어시스턴트는 요청을 편집하고 재사용할 수 있는 파일�
 
 ## 멀티 Agent 모드 — 이미 CLI Agent가 있으신가요? 함께 가져오세요
 
-이미 Claude Code, Codex, Hermes Agent 또는 OpenClaw를 사용 중이라면, GEAUi가 자동으로 감지하여 모두와 Cowork할 수 있게 해줍니다——내장 Agent와 함께.
+이미 Claude Code, Codex, Hermes Agent 또는 OpenClaw를 사용 중이라면, GEA가 자동으로 감지하여 모두와 Cowork할 수 있게 해줍니다——내장 Agent와 함께.
 
 **지원되는 Agent:** 내장 Agent(내장 [aionrs](https://github.com/iOfficeAI/aionrs) Agent 엔진 기반) • Claude Code • Codex • Qwen Code • Gemini CLI • Goose • OpenClaw • Augment Code • CodeBuddy • Kimi CLI • OpenCode • Factory Droid • GitHub Copilot • Qoder • Mistral Vibe • Nanobot • Snow • Hermes • Cursor Agent • Pi • MiMo Code • omp • Antigravity 등
 
@@ -181,7 +181,7 @@ Office 어시스턴트는 요청을 편집하고 재사용할 수 있는 파일�
   <img src="../../resources/AionUi_team.gif" alt="Team Mode overview" width="800">
 </p>
 
-- **병렬 멀티 에이전트 실행** — Leader가 작업을 나누어 Teammate에게 병렬 위임하며, 외부 Agent는 ACP(Agent Client Protocol)로 연결되고 팀 조정은 GEAUi가 담당합니다
+- **병렬 멀티 에이전트 실행** — Leader가 작업을 나누어 Teammate에게 병렬 위임하며, 외부 Agent는 ACP(Agent Client Protocol)로 연결되고 팀 조정은 GEA가 담당합니다
 - **Leader 오케스트레이션** — Leader가 할당, 추적, 집계; 지원 백엔드: Claude Code, Codex, Hermes Agent, Gemini, Snow CLI, GEA CLI
 - **팀 격리 워크스페이스** — 모든 Agent가 같은 폴더 공유; 각 Agent에 독립적인 권한 확인 다이얼로그가 있으며 사이드바 배지로 승인 대기 표시
 
@@ -202,7 +202,7 @@ Office 어시스턴트는 요청을 편집하고 재사용할 수 있는 파일�
 
 ## 모든 API 키로 완전한 Cowork Agent 파워
 
-다른 AI 앱은 API 키가 있는 채팅박스를 제공합니다. **GEAUi는 완전한 Cowork Agent를 제공합니다.**
+다른 AI 앱은 API 키가 있는 채팅박스를 제공합니다. **GEA는 완전한 Cowork Agent를 제공합니다.**
 
 | 여러분의 API 키          | 얻을 수 있는 기능         |
 | :----------------------- | :------------------------ |
@@ -212,7 +212,7 @@ Office 어시스턴트는 요청을 편집하고 재사용할 수 있는 파일�
 | Ollama / LM Studio(로컬) | 로컬 모델 Cowork Agent    |
 | NewAPI 게이트웨이        | 20+ 모델에 대한 통합 접근 |
 
-어떤 모델로 구동하든 Agent의 기능은 동일합니다——파일 읽기/쓰기, 웹 검색, 이미지 생성, 도구 사용. GEAUi는 클라우드 서비스와 로컬 배포를 포함한 **30+ AI 플랫폼**을 지원합니다.
+어떤 모델로 구동하든 Agent의 기능은 동일합니다——파일 읽기/쓰기, 웹 검색, 이미지 생성, 도구 사용. GEA는 클라우드 서비스와 로컬 배포를 포함한 **30+ AI 플랫폼**을 지원합니다.
 
 <p align="center">
   <img src="../../resources/llm_newapi.png" alt="Multi-Model Support" width="800">
@@ -231,7 +231,7 @@ Office 어시스턴트는 요청을 편집하고 재사용할 수 있는 파일�
 - **국제 플랫폼** — DeepSeek, MiniMax, Novita, OpenRouter, SiliconFlow, xAI, Ark (Volcengine), Poe
 - **로컬 모델** — Ollama, LM Studio(로컬 API 엔드포인트가 있는 커스텀 플랫폼을 통해)
 
-GEAUi는 [NewAPI](https://github.com/QuantumNous/new-api) 게이트웨이 서비스도 지원합니다——다양한 LLM을 집계하고 배포하는 통합 AI 모델 허브입니다. 같은 인터페이스에서 다양한 모델을 유연하게 전환하여 다양한 작업 요구사항을 충족할 수 있습니다.
+GEA는 [NewAPI](https://github.com/QuantumNous/new-api) 게이트웨이 서비스도 지원합니다——다양한 LLM을 집계하고 배포하는 통합 AI 모델 허브입니다. 같은 인터페이스에서 다양한 모델을 유연하게 전환하여 다양한 작업 요구사항을 충족할 수 있습니다.
 
 </details>
 
@@ -242,7 +242,7 @@ GEAUi는 [NewAPI](https://github.com/QuantumNous/new-api) 게이트웨이 서비
 _21개의 내장 전문 어시스턴트와 3단계 스킬 시스템을 갖춘 확장 가능한 어시스턴트 시스템. 자신만의 어시스턴트와 스킬을 만들고 관리하세요._
 
 - **커스텀 어시스턴트 만들기** — 커스텀 규칙과 기능을 가진 자신만의 어시스턴트 정의
-- **3단계 스킬** — 내장 스킬(GEAUi 기본 제공), 커스텀 스킬(사용자 정의), Extension 스킬(서드파티 Extension 제공); 스킬 인디케이터로 대화별 활성화/비활성화
+- **3단계 스킬** — 내장 스킬(GEA 기본 제공), 커스텀 스킬(사용자 정의), Extension 스킬(서드파티 Extension 제공); 스킬 인디케이터로 대화별 활성화/비활성화
 - **대화 수준 제어** — 채팅 헤더의 스킬 인디케이터가 현재 대화의 활성 스킬 표시; 스킬 검색 및 제외 가능
 
 <p align="center">
@@ -254,7 +254,7 @@ _21개의 내장 전문 어시스턴트와 3단계 스킬 시스템을 갖춘 �
 
 <br>
 
-GEAUi는 사전 정의된 기능을 가진 **21개의 전문 어시스턴트**를 포함하며, 커스텀 스킬을 통해 확장 가능합니다:
+GEA는 사전 정의된 기능을 가진 **21개의 전문 어시스턴트**를 포함하며, 커스텀 스킬을 통해 확장 가능합니다:
 
 - **🤝 Cowork** — 자율 작업 실행(파일 작업, 문서 처리, 워크플로우 계획)
 - **📊 PPT Creator / Morph PPT / Morph PPT 3D** — Morph 전환으로 PPTX 프레젠테이션 생성 및 애니메이션
@@ -275,11 +275,11 @@ GEAUi는 사전 정의된 기능을 가진 **21개의 전문 어시스턴트**�
 - **🔧 OpenClaw 설정** — OpenClaw 통합을 위한 설정 및 구성 어시스턴트
 - **📖 스토리 롤플레이** — 캐릭터 카드와 세계 정보를 갖춘 몰입형 스토리 롤플레이(SillyTavern 호환)
 
-- **🧭 GEAUi Butler** — GEAUi 안에서 제품 안내, 설정 지원 및 문제 해결 제공
+- **🧭 GEA Butler** — GEA 안에서 제품 안내, 설정 지원 및 문제 해결 제공
 
 **커스텀 스킬**: **설정 → Skills**에서 스킬을 가져오거나 만들고 필요한 어시스턴트에 연결합니다. 스킬은 내장, 커스텀, Extension의 세 가지 소스에서 제공됩니다. 내장 스킬에는 `pptx`, `docx`, `pdf`, `xlsx`, `mermaid` 등이 포함됩니다.
 
-> 💡 내장 정의의 기준은 GEACore의 [어시스턴트 카탈로그](https://github.com/iOfficeAI/AionCore/blob/main/crates/aionui-app/assets/builtin-assistants/assistants.json)입니다. 규칙은 계속 Markdown을 사용하며 GEAUi에서 사용자 지정할 수 있습니다.
+> 💡 내장 정의의 기준은 GEACore의 [어시스턴트 카탈로그](https://github.com/iOfficeAI/AionCore/blob/main/crates/aionui-app/assets/builtin-assistants/assistants.json)입니다. 규칙은 계속 Markdown을 사용하며 GEA에서 사용자 지정할 수 있습니다.
 
 </details>
 
@@ -287,7 +287,7 @@ GEAUi는 사전 정의된 기능을 가진 **21개의 전문 어시스턴트**�
 
 ## 어디서나 Cowork
 
-_여러분의 24/7 AI 어시스턴트 — 어떤 기기, 어디서나 GEAUi에 접근하세요._
+_여러분의 24/7 AI 어시스턴트 — 어떤 기기, 어디서나 GEA에 접근하세요._
 
 - **WebUI 모드** — 스마트폰, 태블릿 또는 어떤 컴퓨터에서든 브라우저를 통해 접근. LAN, 크로스 네트워크 및 서버 배포를 지원. QR 코드 또는 비밀번호 로그인.
 
@@ -298,7 +298,7 @@ _여러분의 24/7 AI 어시스턴트 — 어떤 기기, 어디서나 GEAUi에 �
   - **WeChat** — 위챗 개인 계정 연동
   - **WeCom(企业微信)**, **Slack**, **Discord** 등 더 많은 플랫폼이 곧 출시됩니다
 
-> **설정:** GEAUi 설정 → WebUI 설정 → Channel, Bot Token을 구성하세요.
+> **설정:** GEA 설정 → WebUI 설정 → Channel, Bot Token을 구성하세요.
 
 <p align="center">
   <img src="../../resources/webui-remote.gif" alt="WebUI remote access demo" width="800">
@@ -344,7 +344,7 @@ _한 번만 설정하면, AI Agent가 스케줄에 따라 자동으로 실행됩
 - **대화 바인딩** — 각 스케줄 작업은 대화에 바인딩되어 컨텍스트와 기록을 유지합니다
 - **자동 실행** — 작업이 스케줄된 시간에 자동으로 실행되어 대화에 메시지를 보냅니다
 - **쉬운 관리** — 언제든지 스케줄 작업을 생성, 수정, 활성화/비활성화, 삭제 및 볼 수 있습니다
-- **절전 방지** — GEAUi가 작업 활성화 중 시스템 절전 자동 방지, 절전 해제 후 누락된 트리거 감지
+- **절전 방지** — GEA가 작업 활성화 중 시스템 절전 자동 방지, 절전 해제 후 누락된 트리거 감지
 - **고급 설정** — 각 작업에 고유한 모델, 워크스페이스 디렉토리, 추론 노력 설정 가능
 
 **실제 예시:**
@@ -522,16 +522,16 @@ _여러 대화를 열고, 작업이 섞이지 않으며, 독립적인 메모리,
 
 ---
 
-## 🤔 왜 GEAUi를 Claude Cowork보다 선택해야 하나요?
+## 🤔 왜 GEA를 Claude Cowork보다 선택해야 하나요?
 
 <details>
 <summary><strong>자세한 비교를 보려면 클릭하세요</strong></summary>
 
 <br>
 
-GEAUi는 **무료 오픈소스 Multi-AI Agent 데스크톱**입니다. macOS에서만 실행되고 Claude에 고정된 Claude Cowork과 비교하여, GEAUi는 전체 모델, 크로스 플랫폼 강화 버전입니다.
+GEA는 **무료 오픈소스 Multi-AI Agent 데스크톱**입니다. macOS에서만 실행되고 Claude에 고정된 Claude Cowork과 비교하여, GEA는 전체 모델, 크로스 플랫폼 강화 버전입니다.
 
-| 차원      | Claude Cowork | GEAUi                                             |
+| 차원      | Claude Cowork | GEA                                               |
 | :-------- | :------------ | :------------------------------------------------ |
 | OS        | macOS 전용    | macOS / Windows / Linux                           |
 | 모델 지원 | Claude 전용   | Gemini, Claude, DeepSeek, OpenAI, Ollama, ...     |
@@ -554,17 +554,17 @@ GEAUi는 **무료 오픈소스 Multi-AI Agent 데스크톱**입니다. macOS에�
 
 <details>
 <summary><strong>Q: 먼저 Gemini CLI나 Claude Code를 설치해야 하나요?</strong></summary>
-A: <strong>아니요.</strong> GEAUi는 설치 후 즉시 작동하는 내장 AI Agent가 있습니다. API 키를 입력하기만 하면 됩니다. Claude Code나 Gemini CLI와 같은 CLI 도구도 설치되어 있다면, GEAUi가 자동으로 감지하고 통합하여 더 많은 기능을 제공합니다.
+A: <strong>아니요.</strong> GEA는 설치 후 즉시 작동하는 내장 AI Agent가 있습니다. API 키를 입력하기만 하면 됩니다. Claude Code나 Gemini CLI와 같은 CLI 도구도 설치되어 있다면, GEA가 자동으로 감지하고 통합하여 더 많은 기능을 제공합니다.
 </details>
 
 <details>
-<summary><strong>Q: GEAUi로 무엇을 할 수 있나요?</strong></summary>
-A: GEAUi는 여러분의 <strong>프라이빗 Cowork 작업 공간</strong>입니다. 내장 Agent는 폴더를 일괄 정리하고, Excel 데이터를 처리하고, 문서를 생성하고, 웹을 검색하고, 이미지를 생성할 수 있습니다. 멀티 Agent 모드에서는 같은 인터페이스를 통해 Claude Code, Codex 및 기타 강력한 CLI Agent도 활용할 수 있습니다.
+<summary><strong>Q: GEA로 무엇을 할 수 있나요?</strong></summary>
+A: GEA는 여러분의 <strong>프라이빗 Cowork 작업 공간</strong>입니다. 내장 Agent는 폴더를 일괄 정리하고, Excel 데이터를 처리하고, 문서를 생성하고, 웹을 검색하고, 이미지를 생성할 수 있습니다. 멀티 Agent 모드에서는 같은 인터페이스를 통해 Claude Code, Codex 및 기타 강력한 CLI Agent도 활용할 수 있습니다.
 </details>
 
 <details>
 <summary><strong>Q: 무료인가요?</strong></summary>
-A: GEAUi는 완전히 무료이며 오픈소스입니다. 선택한 제공업체의 API 사용량에 대해서만 비용을 지불하며, 선호하는 제공업체의 API 키를 사용할 수 있습니다.
+A: GEA는 완전히 무료이며 오픈소스입니다. 선택한 제공업체의 API 사용량에 대해서만 비용을 지불하며, 선호하는 제공업체의 API 키를 사용할 수 있습니다.
 </details>
 
 <details>
@@ -574,7 +574,7 @@ A: 모든 데이터는 로컬 SQLite 데이터베이스에 저장됩니다. 어�
 
 ---
 
-## GEAUi 사용 사례 보기
+## GEA 사용 사례 보기
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=vWxE6VO9TKo" target="_blank">
@@ -608,7 +608,7 @@ A: 모든 데이터는 로컬 SQLite 데이터베이스에 저장됩니다. 어�
 - [일반인들이 APP처럼 Claude Code를 사용할 수 있게 하기](https://mp.weixin.qq.com/s/TsMojSbkUUFvsd-HQCazZg) — 게으른 고양이는 물고기를 좋아함
 - [5500 Stars: 오픈소스가 Anthropic의 AI 도구 방어막을 어떻게 깨는가](https://mp.weixin.qq.com/s/saEk49cYV6MqBgw19Lw6Gw) — AI 실리콘 모멘트
 
-> **GEAUi에 대한 동영상을 만들었나요?** [X에서 알려주세요](https://x.com/AionUi), 여기에 소개하겠습니다!
+> **GEA에 대한 동영상을 만들었나요?** [X에서 알려주세요](https://x.com/AionUi), 여기에 소개하겠습니다!
 
 ---
 
@@ -639,7 +639,7 @@ brew install aionui
 
 ### 3단계로 시작하기
 
-1. **설치** GEAUi
+1. **설치** GEA
 2. **입력** API 키를 입력하기만 하면 됩니다
 3. **Cowork 시작** — 내장 AI Agent가 준비되었습니다
 
@@ -702,7 +702,7 @@ PR을 열기 전에 [CONTRIBUTING.md](../../CONTRIBUTING.md)를 읽어주세요.
 
 ### 개발 환경 설정
 
-GEAUi 로컬 개발은 Electron 프런트엔드용 GEAUi와 로컬 백엔드용 GEACore 두 저장소를 사용합니다. macOS, Linux, Windows 전체 설정 절차는 [Development Guide](../contributing/development.md)를 참고하세요.
+GEA 로컬 개발은 Electron 프런트엔드용 GEA와 로컬 백엔드용 GEACore 두 저장소를 사용합니다. macOS, Linux, Windows 전체 설정 절차는 [Development Guide](../contributing/development.md)를 참고하세요.
 
 ---
 

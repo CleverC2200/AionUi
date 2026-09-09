@@ -1,6 +1,6 @@
-# GEAUi 开发指南
+# GEA 开发指南
 
-本仓库是 GEAUi 的桌面端、WebUI 与移动端工程。它负责界面、桌面原生能力和 GEACore 生命周期编排；实际的 Agent 运行时、业务 API 和主要数据存储由 GEACore 提供。
+本仓库是 GEA 的桌面端、WebUI 与移动端工程。它负责界面、桌面原生能力和 GEACore 生命周期编排；实际的 Agent 运行时、业务 API 和主要数据存储由 GEACore 提供。
 
 ## 产品介绍
 
@@ -41,7 +41,7 @@ bun install
 bun run start
 ```
 
-GEAUi 会自动启动 GEACore，并将后端端口传给渲染进程。无需单独启动后端服务。
+GEA 会自动启动 GEACore，并将后端端口传给渲染进程。无需单独启动后端服务。
 
 ## 常用命令
 

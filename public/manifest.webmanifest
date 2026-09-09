@@ -1,7 +1,7 @@
 {
-  "name": "GEAUi",
-  "short_name": "GEAUi",
-  "description": "GEAUi WebUI for mobile and desktop browsers.",
+  "name": "GEA",
+  "short_name": "GEA",
+  "description": "GEA WebUI for mobile and desktop browsers.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

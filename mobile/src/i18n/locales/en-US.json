@@ -16,11 +16,11 @@
   },
   "connect": {
     "scanTitle": "Scan QR Code",
-    "scanHint": "Open GEAUi desktop → Settings → WebUI → Show QR Code",
+    "scanHint": "Open GEA desktop → Settings → WebUI → Show QR Code",
     "cameraPermissionTitle": "Camera Access Required",
-    "cameraPermissionMessage": "GEAUi needs camera access to scan QR codes for quick server login.",
+    "cameraPermissionMessage": "GEA needs camera access to scan QR codes for quick server login.",
     "requestPermission": "Allow Camera",
-    "invalidQRCode": "Invalid QR code. Please scan the QR code from GEAUi desktop.",
+    "invalidQRCode": "Invalid QR code. Please scan the QR code from GEA desktop.",
     "verifying": "Verifying...",
     "connectionFailed": "Connection failed",
     "invalidToken": "Invalid or expired token",
@@ -29,7 +29,7 @@
     "pasteLinkHint": "Paste the QR code link from desktop",
     "urlPlaceholder": "Paste QR login URL here",
     "connect": "Connect",
-    "invalidURL": "Invalid URL. Please paste the QR login link from GEAUi desktop."
+    "invalidURL": "Invalid URL. Please paste the QR login link from GEA desktop."
   },
   "tabs": {
     "chat": "Chat",

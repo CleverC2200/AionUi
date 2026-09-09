@@ -72,7 +72,7 @@ describe('resolveConversationLeadingMark', () => {
     });
   });
 
-  it('uses the GEAUi brand for legacy Aion CLI conversations', () => {
+  it('uses the GEA brand for legacy Aion CLI conversations', () => {
     const result = resolveConversationLeadingMark(
       makeConversation({
         type: 'aionrs',

@@ -248,18 +248,55 @@ describe('ensureBuiltinGeaMcpServerAvailable', () => {
     });
   });
 
-  it('does not duplicate an existing global GEA gateway', async () => {
+  it('refreshes an old installation path before renderer reads without enabling a disabled gateway', async () => {
     listServersMock.mockResolvedValue([
       {
         id: 'gea-gateway',
         name: 'gea-gateway',
         builtin: true,
+        enabled: false,
+        transport: {
+          type: 'stdio',
+          command: '/Applications/GEAUi.app/Contents/Resources/aioncore',
+          args: ['mcp-gea-stdio'],
+        },
       },
     ]);
-
     await ensureBuiltinGeaMcpServerAvailable();
-
     expect(batchImportServersMock).not.toHaveBeenCalled();
+    expect(updateServerMock).toHaveBeenCalledWith({
+      id: 'gea-gateway',
+      data: {
+        builtin: true,
+        transport: {
+          type: 'stdio',
+          command: '/mock/aioncore',
+          args: ['mcp-gea-stdio'],
+          env: { AIONUI_GEA_AGENT_CODE: 'sales_forecast' },
+        },
+        original_json: expect.any(String),
+      },
+    });
+    expect(updateServerMock.mock.calls[0][0].data).not.toHaveProperty('enabled');
+  });
+
+  it('does not rewrite a current global GEA gateway', async () => {
+    listServersMock.mockResolvedValue([
+      {
+        id: 'gea-gateway',
+        name: 'gea-gateway',
+        builtin: true,
+        transport: {
+          type: 'stdio',
+          command: '/mock/aioncore',
+          args: ['mcp-gea-stdio'],
+          env: { AIONUI_GEA_AGENT_CODE: 'sales_forecast' },
+        },
+      },
+    ]);
+    await ensureBuiltinGeaMcpServerAvailable();
+    expect(batchImportServersMock).not.toHaveBeenCalled();
+    expect(updateServerMock).not.toHaveBeenCalled();
   });
 });
 

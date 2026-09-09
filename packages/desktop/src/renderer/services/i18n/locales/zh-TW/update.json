@@ -2,7 +2,7 @@
   "modalTitle": "發現新版本",
   "mandatory": {
     "title": "必須更新",
-    "description": "目前版本必須完成更新後才能繼續使用 GEAUi。",
+    "description": "目前版本必須完成更新後才能繼續使用 GEA。",
     "downloadUnavailable": "暫時無法取得下載資訊，請檢查網路後重試。"
   },
   "checking": "正在檢查更新...",
@@ -35,7 +35,7 @@
   "errorTitle": "更新失敗",
   "installerLastFailure": {
     "title": "上次更新未完成",
-    "description": "上次靜默更新時未能關閉 GEAUi。你可以重試更新、查看安裝日誌，或傳送回饋。",
+    "description": "上次靜默更新時未能關閉 GEA。你可以重試更新、查看安裝日誌，或傳送回饋。",
     "retryUpdate": "重試更新",
     "viewLog": "查看日誌"
   },

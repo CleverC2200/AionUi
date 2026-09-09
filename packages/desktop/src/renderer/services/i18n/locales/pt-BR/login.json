@@ -1,6 +1,6 @@
 {
-  "pageTitle": "GEAUi - Entrar",
-  "brand": "GEAUi",
+  "pageTitle": "GEA - Entrar",
+  "brand": "GEA",
   "subtitle": "Bem-vindo de volta, por favor entre na sua conta",
   "username": "Nome de usuário",
   "usernamePlaceholder": "Digite seu nome de usuário",
@@ -46,7 +46,7 @@
     },
     "errors": {
       "networkError": "Não foi possível conectar ao GEA. Tente novamente",
-      "secureStorageUnavailable": "Não foi possível acessar o armazenamento seguro de credenciais do sistema. Permita o acesso do GEAUi e tente novamente.",
+      "secureStorageUnavailable": "Não foi possível acessar o armazenamento seguro de credenciais do sistema. Permita o acesso do GEA e tente novamente.",
       "serverError": "O serviço de login do GEA está temporariamente indisponível",
       "invalidResponse": "O GEA retornou uma resposta de login inválida"
     }

@@ -66,9 +66,9 @@ const StandalonePrototypeFrame: React.FC<React.PropsWithChildren<{ teamActive?: 
       <aside className='hidden w-260px shrink-0 flex-col border-r border-border-2 bg-bg-1 p-10px md:flex'>
         <div className='flex h-52px items-center gap-10px px-10px text-18px font-650 text-t-primary'>
           <div className='flex size-26px items-center justify-center rounded-full bg-danger-6 text-10px font-700 text-white'>
-            GEA
+            {t('common.appName')}
           </div>
-          GEAUi
+          {t('common.appName')}
         </div>
         <div className='mt-4px flex flex-col gap-3px'>
           <PrototypeNavItem
@@ -101,7 +101,7 @@ const StandalonePrototypeFrame: React.FC<React.PropsWithChildren<{ teamActive?: 
       </aside>
       <div className='flex min-w-0 flex-1 flex-col'>
         <div className='flex h-48px shrink-0 items-center justify-center border-b border-border-2 bg-bg-1 text-16px font-650 text-t-primary md:hidden'>
-          GEAUi
+          {t('common.appName')}
         </div>
         <main className='min-h-0 flex-1'>{children}</main>
       </div>

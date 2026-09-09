@@ -1,7 +1,7 @@
 !ifndef AIONUI_INSTALLER_OBSERVABILITY_NSH
 !define AIONUI_INSTALLER_OBSERVABILITY_NSH
 
-!define AIONUI_APP_EXECUTABLE_FILENAME "GEAUi.exe"
+!define AIONUI_APP_EXECUTABLE_FILENAME "GEA.exe"
 !define AIONUI_FALLBACK_LOG "aionui-installer-${VERSION}-fallback-log.jsonl"
 
 !pragma warning disable 6001

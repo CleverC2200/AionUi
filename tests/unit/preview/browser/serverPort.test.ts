@@ -89,7 +89,7 @@ describe('resolveBridgeToken', () => {
 describe('buildMcpSpawnCommand', () => {
   const browserUrl = 'http://127.0.0.1:61622';
   const entryPath =
-    '/Applications/GEAUi.app/Contents/Resources/app.asar.unpacked/node_modules/chrome-devtools-mcp/build/src/index.js';
+    '/Applications/GEA.app/Contents/Resources/app.asar.unpacked/node_modules/chrome-devtools-mcp/build/src/index.js';
   const nodeExecutable = '/managed/node';
 
   it('runs the packaged MCP entry with the current Node executable', () => {

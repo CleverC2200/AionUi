@@ -154,19 +154,21 @@ function resolvePackagedApp(): { executablePath: string; cwd: string } | null {
   const platform = process.platform;
 
   if (platform === 'win32') {
-    // out/win-unpacked/AionUi.exe  or  out/win-x64-unpacked/AionUi.exe
+    // Current GEA packages and upstream AionUi packages.
     for (const dir of ['win-unpacked', 'win-x64-unpacked', 'win-arm64-unpacked']) {
-      const exe = path.join(outDir, dir, 'AionUi.exe');
-      if (fs.existsSync(exe)) return { executablePath: exe, cwd: path.join(outDir, dir) };
+      for (const executableName of ['GEA.exe', 'AionUi.exe']) {
+        const exe = path.join(outDir, dir, executableName);
+        if (fs.existsSync(exe)) return { executablePath: exe, cwd: path.join(outDir, dir) };
+      }
     }
   } else if (platform === 'darwin') {
-    // out/mac-arm64/AionUi.app/Contents/MacOS/AionUi  or  out/mac/AionUi.app/...
+    // out/mac-arm64/GEA.app/Contents/MacOS/GEA or upstream AionUi packages.
     for (const dir of ['mac-arm64', 'mac-x64', 'mac', 'mac-universal']) {
       const macDir = path.join(outDir, dir);
       if (!fs.existsSync(macDir)) continue;
       const appBundle = fs.readdirSync(macDir).find((f) => f.endsWith('.app'));
       if (appBundle) {
-        for (const executableName of ['GEAUi', 'AionUi']) {
+        for (const executableName of ['GEA', 'AionUi']) {
           const exe = path.join(macDir, appBundle, 'Contents', 'MacOS', executableName);
           if (fs.existsSync(exe)) return { executablePath: exe, cwd: macDir };
         }

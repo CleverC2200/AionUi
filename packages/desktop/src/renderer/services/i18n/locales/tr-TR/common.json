@@ -1,4 +1,14 @@
 {
+  "channelConflict": {
+    "owner": "OpenClaw is handling {{platformName}} messages, not GEA.",
+    "switching": "✗ Switching agents in GEA will have no effect",
+    "useChannels": "To use GEA Channels and switch agents:",
+    "restart": "Then restart OpenClaw and GEA.",
+    "newBot": "Create a new {{platformName}} bot with different credentials for GEA.",
+    "disable": "Disable {{platformName}} in GEA Channels and continue using OpenClaw's integration."
+  },
+  "componentShowcaseTitle": "GEA custom component showcase",
+  "appName": "GEA",
   "send": "Gönder",
   "cancel": "İptal",
   "save": "Kaydet",
@@ -65,10 +75,10 @@
   "more": "Daha Fazla",
   "refresh": "Yenile",
   "readOnly": "Salt okunur",
-  "tray.showWindow": "GEAUi'yi Göster",
+  "tray.showWindow": "GEA'yi Göster",
   "tray.newChat": "Yeni Sohbet",
   "tray.closeToTray": "Tepsiye Gizle",
-  "tray.about": "GEAUi Hakkında",
+  "tray.about": "GEA Hakkında",
   "tray.restart": "Uygulamayı Yeniden Başlat",
   "tray.quit": "Çıkış",
   "tray.runningTasks": "Çalışan Görevler",
@@ -79,26 +89,26 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "Bu sistem paketlenmiş backend tarafından desteklenmiyor",
-      "description": "GEAUi açıldı, ancak yerel GEACore backend bu Linux sürümünde çalışamaz. Desteklenen bir Linux dağıtımına yükseltip GEAUi'yi yeniden başlatın.",
+      "description": "GEA açıldı, ancak yerel GEACore backend bu Linux sürümünde çalışamaz. Desteklenen bir Linux dağıtımına yükseltip GEA'yi yeniden başlatın.",
       "requiredVersions": "Gerekli çalışma zamanı sembolleri: {{versions}}"
     },
     "incompleteInstallation": {
-      "title": "GEAUi kurulumu eksik",
-      "description": "Bu kurulumda gerekli yerel kaynaklar eksik, bu yüzden GEACore başlatılamıyor. Lütfen en son GEAUi sürümünü indirip yeniden kurun. Yeniden kurulumdan sonra sorun tekrarlarsa güvenlik veya antivirüs yazılımının GEACore'u karantinaya alıp almadığını kontrol edin.",
+      "title": "GEA kurulumu eksik",
+      "description": "Bu kurulumda gerekli yerel kaynaklar eksik, bu yüzden GEACore başlatılamıyor. Lütfen en son GEA sürümünü indirip yeniden kurun. Yeniden kurulumdan sonra sorun tekrarlarsa güvenlik veya antivirüs yazılımının GEACore'u karantinaya alıp almadığını kontrol edin.",
       "downloadLatest": "Son sürümü indir",
       "sendDiagnostics": "Tanı raporu gönder",
       "diagnosticsSent": "Tanı raporu gönderildi",
       "diagnosticsReportSuccess": "Tanı raporu gönderildi",
       "diagnosticsReportFailed": "Tanı raporu gönderilemedi",
-      "runtimeComponentDescription": "Bu kurulumda gerekli yerleşik çalışma zamanı bileşenleri eksik olduğu için {{resource}} başlatılamıyor. En son GEAUi paketini yeniden yükleyin. Yeniden yükledikten sonra da devam ederse güvenlik veya antivirüs yazılımının GEAUi bileşenlerini karantinaya alıp almadığını kontrol edin."
+      "runtimeComponentDescription": "Bu kurulumda gerekli yerleşik çalışma zamanı bileşenleri eksik olduğu için {{resource}} başlatılamıyor. En son GEA paketini yeniden yükleyin. Yeniden yükledikten sonra da devam ederse güvenlik veya antivirüs yazılımının GEA bileşenlerini karantinaya alıp almadığını kontrol edin."
     },
     "packageArchitectureMismatch": {
-      "title": "GEAUi package architecture mismatch",
-      "description": "This GEAUi package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
+      "title": "GEA package architecture mismatch",
+      "description": "This GEA package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
     },
     "dataMigration": {
       "title": "Local data migration failed",
-      "description": "GEAUi opened, but GEACore stopped while initializing local data. Reinstalling GEAUi may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
+      "description": "GEA opened, but GEACore stopped while initializing local data. Reinstalling GEA may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -111,7 +121,7 @@
     },
     "localDataRepair": {
       "title": "Local data repair failed",
-      "description": "GEAUi açıldı, ancak GEACore assistant veya agent kayıtları gibi yerel başlangıç verilerini hazırlarken durdu. GEAUi'yi yeniden yüklemek bu sorunu çözmeyebilir. Yerel veritabanının incelenebilmesi için tanılama raporu gönderin veya destek ekibiyle iletişime geçin.",
+      "description": "GEA açıldı, ancak GEACore assistant veya agent kayıtları gibi yerel başlangıç verilerini hazırlarken durdu. GEA'yi yeniden yüklemek bu sorunu çözmeyebilir. Yerel veritabanının incelenebilmesi için tanılama raporu gönderin veya destek ekibiyle iletişime geçin.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -119,7 +129,7 @@
     },
     "startupDirectory": {
       "title": "Startup directory is unavailable",
-      "description": "GEAUi opened, but GEACore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart GEAUi.",
+      "description": "GEA opened, but GEACore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart GEA.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -127,8 +137,7 @@
     },
     "recoverableDatabaseCorruption": {
       "title": "Yerel veriler bozulmuş",
-      "description": "GEAUi yerel veritabanının bozulduğunu algıladı ve başlatmaya devam edemiyor. Onaydan sonra eski veritabanı yedeklenecek ve başlatmaya devam etmek için yeni bir yerel veritabanı oluşturulacak. Geçmiş yerel veriler şimdilik gösterilmeyecek, eski veritabanı yedek olarak saklanacak.",
-
+      "description": "GEA yerel veritabanının bozulduğunu algıladı ve başlatmaya devam edemiyor. Onaydan sonra eski veritabanı yedeklenecek ve başlatmaya devam etmek için yeni bir yerel veritabanı oluşturulacak. Geçmiş yerel veriler şimdilik gösterilmeyecek, eski veritabanı yedek olarak saklanacak.",
       "confirmRebuild": "Eski DB'yi yedekle ve yeni DB oluştur",
       "sendDiagnostics": "Tanılama gönder",
       "diagnosticsHint": "Tanılama göndermek yerel veritabanını değiştirmez.",
@@ -144,8 +153,8 @@
       }
     },
     "transientConcurrentStartup": {
-      "title": "GEAUi başlatılıyor",
-      "description": "Bu pencere açıldığında başka bir GEAUi başlatma işlemi yerel verileri hâlâ kullanıyordu. Bu geçicidir ve verileriniz güvende — yeniden yükleme gerekmez. Lütfen biraz bekleyip tekrar deneyin veya GEAUi'yi yeniden başlatın.",
+      "title": "GEA başlatılıyor",
+      "description": "Bu pencere açıldığında başka bir GEA başlatma işlemi yerel verileri hâlâ kullanıyordu. Bu geçicidir ve verileriniz güvende — yeniden yükleme gerekmez. Lütfen biraz bekleyip tekrar deneyin veya GEA'yi yeniden başlatın.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -203,5 +212,10 @@
   },
   "selectedCount": "{{count}} seçili",
   "selectedSkills": "Seçili beceriler",
-  "aiAssistant": "Yapay Zekâ Asistanı"
+  "aiAssistant": "Yapay Zekâ Asistanı",
+  "appMenu": {
+    "about": "About {{appName}}",
+    "hide": "Hide {{appName}}",
+    "quit": "Quit {{appName}}"
+  }
 }

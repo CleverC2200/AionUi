@@ -544,7 +544,7 @@ jobs:
           Write-Host "SMOKE INSTALL: windows-x64"
           Write-Host "=========================================="
 
-          $installer = Get-ChildItem -Path out -Filter "GEAUi-*-win-*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $installer = Get-ChildItem -Path out -Filter "GEA-*-win-*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (-not $installer) {
             throw "No Windows installer found in out/"
           }
@@ -553,9 +553,9 @@ jobs:
           Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait -NoNewWindow
 
           $candidates = @(
-            "$env:LOCALAPPDATA\\Programs\\GEAUi\\GEAUi.exe",
-            "$env:ProgramFiles\\GEAUi\\GEAUi.exe",
-            "$env:ProgramFiles(x86)\\GEAUi\\GEAUi.exe"
+            "$env:LOCALAPPDATA\\Programs\\GEA\\GEA.exe",
+            "$env:ProgramFiles\\GEA\\GEA.exe",
+            "$env:ProgramFiles(x86)\\GEA\\GEA.exe"
           )
 
           $installedExe = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
@@ -586,7 +586,7 @@ jobs:
           hdiutil detach "$MOUNT_POINT"
 
           APP_PATH=$(ls -d "$APP_DIR"/*.app | head -n 1)
-          APP_BIN="$APP_PATH/Contents/MacOS/GEAUi"
+          APP_BIN="$APP_PATH/Contents/MacOS/GEA"
 
           test -x "$APP_BIN"
           "$APP_BIN" --version || true
@@ -604,7 +604,7 @@ jobs:
           PKG_NAME=$(dpkg-deb -f "$DEB_FILE" Package)
           sudo dpkg -i "$DEB_FILE" || sudo apt-get install -f -y
 
-          INSTALLED_BIN=$(dpkg -L "$PKG_NAME" | grep -Ei '/(bin|opt)/.*(aionui|geaui)$' | head -n 1 || true)
+          INSTALLED_BIN=$(dpkg -L "$PKG_NAME" | grep -Ei '/(bin/|opt/[^/]+/)(aionui|geaui|gea)$' | head -n 1 || true)
           if [ -z "$INSTALLED_BIN" ]; then
             echo "Package files:"
             dpkg -L "$PKG_NAME" | head -n 50
@@ -612,6 +612,7 @@ jobs:
             exit 1
           fi
 
+          test -f "$INSTALLED_BIN"
           test -x "$INSTALLED_BIN"
 
   # Job 5: Test release scripts (fast, no build required)

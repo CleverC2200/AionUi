@@ -11,7 +11,7 @@ Sentry 中的用户反馈已经包含 `type=user-feedback`、用户选择的模�
 
 ## 职责归属
 
-GEAUi 只负责组织反馈流程：
+GEA 只负责组织反馈流程：
 
 - 捕获 `route_at_open` 和 `route_at_submit`
 - 发送用户选择的模块
@@ -28,7 +28,7 @@ GEAUi 只负责组织反馈流程：
 - 脱敏和字段白名单
 - 响应 Schema
 
-GEAUi 主进程不得读取 SQLite，也不得暴露 `feedback:collect-db-diagnostics`。
+GEA 主进程不得读取 SQLite，也不得暴露 `feedback:collect-db-diagnostics`。
 
 ## Profile 解析
 

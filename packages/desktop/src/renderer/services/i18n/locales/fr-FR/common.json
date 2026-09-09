@@ -1,4 +1,14 @@
 {
+  "channelConflict": {
+    "owner": "OpenClaw is handling {{platformName}} messages, not GEA.",
+    "switching": "✗ Switching agents in GEA will have no effect",
+    "useChannels": "To use GEA Channels and switch agents:",
+    "restart": "Then restart OpenClaw and GEA.",
+    "newBot": "Create a new {{platformName}} bot with different credentials for GEA.",
+    "disable": "Disable {{platformName}} in GEA Channels and continue using OpenClaw's integration."
+  },
+  "componentShowcaseTitle": "GEA custom component showcase",
+  "appName": "GEA",
   "send": "Envoyer",
   "cancel": "Annuler",
   "save": "Enregistrer",
@@ -65,10 +75,10 @@
   "more": "Plus",
   "refresh": "Actualiser",
   "readOnly": "Lecture seule",
-  "tray.showWindow": "Afficher GEAUi",
+  "tray.showWindow": "Afficher GEA",
   "tray.newChat": "Nouveau chat",
   "tray.closeToTray": "Réduire dans la barre système",
-  "tray.about": "À propos d'GEAUi",
+  "tray.about": "À propos d'GEA",
   "tray.restart": "Redémarrer l'application",
   "tray.quit": "Quitter",
   "tray.runningTasks": "Tâches en cours",
@@ -79,26 +89,26 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "Ce système n'est pas pris en charge par le backend fourni",
-      "description": "GEAUi s'est ouvert, mais le backend local GEACore ne peut pas fonctionner sur cette version de Linux. Veuillez effectuer une mise à niveau vers une distribution Linux prise en charge et redémarrer GEAUi.",
+      "description": "GEA s'est ouvert, mais le backend local GEACore ne peut pas fonctionner sur cette version de Linux. Veuillez effectuer une mise à niveau vers une distribution Linux prise en charge et redémarrer GEA.",
       "requiredVersions": "Symboles d'exécution requis : {{versions}}"
     },
     "incompleteInstallation": {
-      "title": "L'installation d'GEAUi est incomplète",
-      "description": "Cette installation ne dispose pas des ressources locales requises, GEACore ne peut donc pas démarrer. Veuillez télécharger et réinstaller la dernière version d'GEAUi. Si le problème réapparaît après la réinstallation, vérifiez si un logiciel de sécurité ou antivirus a mis GEACore en quarantaine.",
+      "title": "L'installation d'GEA est incomplète",
+      "description": "Cette installation ne dispose pas des ressources locales requises, GEACore ne peut donc pas démarrer. Veuillez télécharger et réinstaller la dernière version d'GEA. Si le problème réapparaît après la réinstallation, vérifiez si un logiciel de sécurité ou antivirus a mis GEACore en quarantaine.",
       "downloadLatest": "Télécharger le dernier",
       "sendDiagnostics": "Envoyer des diagnostics",
       "diagnosticsSent": "Diagnostics envoyés",
       "diagnosticsReportSuccess": "Rapport de diagnostic envoyé",
       "diagnosticsReportFailed": "Échec de l'envoi du rapport de diagnostic",
-      "runtimeComponentDescription": "Il manque les composants d'exécution groupés requis dans cette installation, donc {{resource}} ne peut pas démarrer. Réinstallez le dernier package GEAUi. Si cela se produit toujours après la réinstallation, vérifiez si un logiciel de sécurité ou un antivirus a mis en quarantaine les composants GEAUi."
+      "runtimeComponentDescription": "Il manque les composants d'exécution groupés requis dans cette installation, donc {{resource}} ne peut pas démarrer. Réinstallez le dernier package GEA. Si cela se produit toujours après la réinstallation, vérifiez si un logiciel de sécurité ou un antivirus a mis en quarantaine les composants GEA."
     },
     "packageArchitectureMismatch": {
-      "title": "Inadéquation de l'architecture du package GEAUi",
-      "description": "Ce package GEAUi est pour {{packageArch}}, mais ce Mac est {{deviceArch}}. Vous avez peut-être téléchargé le mauvais package. Veuillez télécharger et installer le package {{expectedArch}}."
+      "title": "Inadéquation de l'architecture du package GEA",
+      "description": "Ce package GEA est pour {{packageArch}}, mais ce Mac est {{deviceArch}}. Vous avez peut-être téléchargé le mauvais package. Veuillez télécharger et installer le package {{expectedArch}}."
     },
     "dataMigration": {
       "title": "Échec de la migration des données locales",
-      "description": "GEAUi s'est ouvert, mais GEACore s'est arrêté lors de l'initialisation des données locales. La réinstallation d'GEAUi ne résoudra peut-être pas ce problème. Envoyez un rapport de diagnostic ou contactez le support afin que la migration de la base de données locale puisse être inspectée.",
+      "description": "GEA s'est ouvert, mais GEACore s'est arrêté lors de l'initialisation des données locales. La réinstallation d'GEA ne résoudra peut-être pas ce problème. Envoyez un rapport de diagnostic ou contactez le support afin que la migration de la base de données locale puisse être inspectée.",
       "sendDiagnostics": "Envoyer des diagnostics",
       "diagnosticsSent": "Diagnostics envoyés",
       "diagnosticsReportSuccess": "Rapport de diagnostic envoyé",
@@ -111,7 +121,7 @@
     },
     "localDataRepair": {
       "title": "La réparation des données locales a échoué",
-      "description": "GEAUi s'est ouvert, mais GEACore s'est arrêté lors de la préparation des données locales de démarrage, comme les enregistrements d'assistants ou d'agents. La réinstallation d'GEAUi ne résoudra peut-être pas ce problème. Envoyez un rapport de diagnostic ou contactez l'assistance afin que la base de données locale puisse être inspectée.",
+      "description": "GEA s'est ouvert, mais GEACore s'est arrêté lors de la préparation des données locales de démarrage, comme les enregistrements d'assistants ou d'agents. La réinstallation d'GEA ne résoudra peut-être pas ce problème. Envoyez un rapport de diagnostic ou contactez l'assistance afin que la base de données locale puisse être inspectée.",
       "sendDiagnostics": "Envoyer des diagnostics",
       "diagnosticsSent": "Diagnostics envoyés",
       "diagnosticsReportSuccess": "Rapport de diagnostic envoyé",
@@ -119,7 +129,7 @@
     },
     "startupDirectory": {
       "title": "Le répertoire de démarrage n'est pas disponible",
-      "description": "GEAUi s'est ouvert, mais GEACore n'a pas pu démarrer car le répertoire de travail ou de journal configuré est manquant, indisponible ou bloqué par les autorisations. Vérifiez que les répertoires configurés existent et sont accessibles en écriture, puis redémarrez GEAUi.",
+      "description": "GEA s'est ouvert, mais GEACore n'a pas pu démarrer car le répertoire de travail ou de journal configuré est manquant, indisponible ou bloqué par les autorisations. Vérifiez que les répertoires configurés existent et sont accessibles en écriture, puis redémarrez GEA.",
       "sendDiagnostics": "Envoyer des diagnostics",
       "diagnosticsSent": "Diagnostics envoyés",
       "diagnosticsReportSuccess": "Rapport de diagnostic envoyé",
@@ -127,8 +137,7 @@
     },
     "recoverableDatabaseCorruption": {
       "title": "Les données locales sont corrompues",
-      "description": "GEAUi a détecté que la base de données locale est corrompue et ne peut pas continuer le démarrage. Après confirmation, GEAUi sauvegardera l'ancienne base de données et créera une nouvelle base de données locale pour continuer le démarrage. Les données locales historiques ne seront pas affichées pour l'instant et l'ancienne base de données sera conservée comme sauvegarde.",
-
+      "description": "GEA a détecté que la base de données locale est corrompue et ne peut pas continuer le démarrage. Après confirmation, GEA sauvegardera l'ancienne base de données et créera une nouvelle base de données locale pour continuer le démarrage. Les données locales historiques ne seront pas affichées pour l'instant et l'ancienne base de données sera conservée comme sauvegarde.",
       "confirmRebuild": "Sauvegarder l'ancienne base de données et reconstruire la nouvelle base de données",
       "sendDiagnostics": "Envoyer des diagnostics",
       "diagnosticsHint": "L'envoi de diagnostics ne modifiera pas la base de données locale.",
@@ -144,8 +153,8 @@
       }
     },
     "transientConcurrentStartup": {
-      "title": "GEAUi démarre",
-      "description": "À l'ouverture de cette fenêtre, un autre démarrage d'GEAUi utilisait encore les données locales. C'est temporaire et vos données sont en sécurité — aucune réinstallation n'est nécessaire. Veuillez patienter un instant et réessayer, ou redémarrer GEAUi.",
+      "title": "GEA démarre",
+      "description": "À l'ouverture de cette fenêtre, un autre démarrage d'GEA utilisait encore les données locales. C'est temporaire et vos données sont en sécurité — aucune réinstallation n'est nécessaire. Veuillez patienter un instant et réessayer, ou redémarrer GEA.",
       "sendDiagnostics": "Envoyer des diagnostics",
       "diagnosticsSent": "Diagnostics envoyés",
       "diagnosticsReportSuccess": "Rapport de diagnostic envoyé",
@@ -203,5 +212,10 @@
   },
   "selectedCount": "{{count}} sélectionné(s)",
   "selectedSkills": "Compétences sélectionnées",
-  "aiAssistant": "Assistant IA"
+  "aiAssistant": "Assistant IA",
+  "appMenu": {
+    "about": "About {{appName}}",
+    "hide": "Hide {{appName}}",
+    "quit": "Quit {{appName}}"
+  }
 }

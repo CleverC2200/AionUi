@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "GEAUi Client Navigation V1 Integration API",
+    "title": "GEA Client Navigation V1 Integration API",
     "version": "1.5.0",
-    "description": "The production GEA V1 wire contract and the local AionCore boundary consumed by GEAUi. V1 opens an authorized Agent as a local conversation; V2 is intentionally excluded."
+    "description": "The production GEA V1 wire contract and the local AionCore boundary consumed by GEA. V1 opens an authorized Agent as a local conversation; V2 is intentionally excluded."
   },
   "paths": {
     "/api/v1/public/client-launch/capabilities": {
@@ -73,7 +73,7 @@
     "/api/deep-links/resolve": {
       "post": {
         "summary": "Resolve a reference to an authorized local conversation",
-        "description": "Local AionCore endpoint called by GEAUi. AionCore resolves the GEA Agent and prepares or restores its local conversation.",
+        "description": "Local AionCore endpoint called by GEA. AionCore resolves the GEA Agent and prepares or restores its local conversation.",
         "security": [{ "CoreSession": [] }],
         "requestBody": {
           "required": true,
@@ -134,7 +134,7 @@
         "minLength": 1,
         "maxLength": 512,
         "pattern": "^[A-Za-z0-9._-]+$",
-        "description": "Opaque. Never log or interpret the raw value in GEAUi."
+        "description": "Opaque. Never log or interpret the raw value in GEA."
       },
       "CapabilitiesResponse": {
         "type": "object",

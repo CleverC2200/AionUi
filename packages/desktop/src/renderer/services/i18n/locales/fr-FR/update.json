@@ -2,7 +2,7 @@
   "modalTitle": "Mise à jour du logiciel",
   "mandatory": {
     "title": "Mise à jour obligatoire",
-    "description": "Vous devez mettre à jour cette version avant de continuer à utiliser GEAUi.",
+    "description": "Vous devez mettre à jour cette version avant de continuer à utiliser GEA.",
     "downloadUnavailable": "Les informations de téléchargement sont indisponibles. Vérifiez votre connexion et réessayez."
   },
   "checking": "Vérification des mises à jour...",
@@ -35,7 +35,7 @@
   "errorTitle": "Échec de la mise à jour",
   "installerLastFailure": {
     "title": "La dernière mise à jour n'a pas été terminée",
-    "description": "GEAUi n'a pas pu être fermé lors de la précédente mise à jour silencieuse. Vous pouvez réessayer la mise à jour, afficher le journal du programme d'installation ou envoyer des commentaires.",
+    "description": "GEA n'a pas pu être fermé lors de la précédente mise à jour silencieuse. Vous pouvez réessayer la mise à jour, afficher le journal du programme d'installation ou envoyer des commentaires.",
     "retryUpdate": "Réessayez la mise à jour",
     "viewLog": "Afficher le journal"
   },

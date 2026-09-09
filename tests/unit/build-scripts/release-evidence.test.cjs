@@ -257,7 +257,7 @@ test(
       ]) {
         const dir = path.join(temp, platform);
         fs.mkdirSync(dir);
-        const filename = `GEAUi-1.0.0-test-${suffix}`;
+        const filename = `GEA-1.0.0-test-${suffix}`;
         fs.writeFileSync(path.join(dir, filename), `fixture installer ${platform}`);
         fs.writeFileSync(
           path.join(dir, 'package-evidence.json'),
@@ -336,7 +336,7 @@ if(args[0]==='api') {
       assert.ok(release.assets.some((asset) => asset.name === 'latest.yml'));
       const metadata = fs.readFileSync(path.join(temp, 'uploaded-latest.yml'), 'utf8');
       assert.match(metadata, /version: "1.0.0-test"/);
-      assert.match(metadata, /url: "GEAUi-1.0.0-test-win-x64.exe"/);
+      assert.match(metadata, /url: "GEA-1.0.0-test-win-x64.exe"/);
       result = run();
       assert.equal(result.status, 0, result.stderr);
       const calls = fs.readFileSync(path.join(temp, 'calls.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);

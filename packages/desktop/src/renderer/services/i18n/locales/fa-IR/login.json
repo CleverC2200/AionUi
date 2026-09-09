@@ -1,6 +1,6 @@
 {
-  "pageTitle": "GEAUi - ورود",
-  "brand": "GEAUi",
+  "pageTitle": "GEA - ورود",
+  "brand": "GEA",
   "subtitle": "خوش آمدید، لطفاً به حساب خود وارد شوید",
   "username": "نام کاربری",
   "usernamePlaceholder": "نام کاربری خود را وارد کنید",
@@ -46,7 +46,7 @@
     },
     "errors": {
       "networkError": "اتصال به GEA ممکن نیست. دوباره تلاش کنید",
-      "secureStorageUnavailable": "دسترسی به محل امن نگهداری اعتبارنامه‌های سیستم ممکن نشد. دسترسی GEAUi را مجاز کنید و دوباره تلاش کنید.",
+      "secureStorageUnavailable": "دسترسی به محل امن نگهداری اعتبارنامه‌های سیستم ممکن نشد. دسترسی GEA را مجاز کنید و دوباره تلاش کنید.",
       "serverError": "سرویس ورود GEA موقتاً در دسترس نیست",
       "invalidResponse": "GEA پاسخ ورود نامعتبری برگرداند"
     }

@@ -587,7 +587,7 @@ test.describe('Enterprise business lifecycle — GEA resources, managed work and
       });
       await page.reload();
       await navigateTo(page, '#/guid');
-      await expect(page.getByText('GEAUi', { exact: true }).first()).toBeVisible();
+      await expect(page.getByText('GEA', { exact: true }).first()).toBeVisible();
       await expect(page.getByTestId('guid-input')).toBeVisible();
       await takeScreenshot(page, 'enterprise-business-lifecycle/01-client-open.png');
 

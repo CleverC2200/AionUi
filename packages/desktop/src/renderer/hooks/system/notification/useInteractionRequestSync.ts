@@ -54,7 +54,7 @@ export const useInteractionRequestSync = (): void => {
 
     if (newlyActionable.length === 0 || !isElectronDesktop()) return;
     void ipcBridge.notification.show.invoke({
-      title: 'GEAUi',
+      title: t('common.appName'),
       body: t('conversation.attention.notification', { count: newlyActionable.length }),
       conversation_id: newlyActionable[0].conversation_id,
     });

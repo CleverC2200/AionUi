@@ -2,7 +2,7 @@
   "modalTitle": "Update Ready",
   "mandatory": {
     "title": "Update required",
-    "description": "You must update this version before you can continue using GEAUi.",
+    "description": "You must update this version before you can continue using GEA.",
     "downloadUnavailable": "Download information is unavailable. Check your network connection and try again."
   },
   "checking": "Checking for updates...",
@@ -35,7 +35,7 @@
   "errorTitle": "Update failed",
   "installerLastFailure": {
     "title": "Last update did not finish",
-    "description": "GEAUi could not be closed during the previous silent update. You can retry the update, view the installer log, or send feedback.",
+    "description": "GEA could not be closed during the previous silent update. You can retry the update, view the installer log, or send feedback.",
     "retryUpdate": "Retry update",
     "viewLog": "View log"
   },

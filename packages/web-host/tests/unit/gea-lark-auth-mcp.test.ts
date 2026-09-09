@@ -11,7 +11,7 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 }
 
 describe('GeaLarkAuthService MCP Resources', () => {
-  it('uses the production GEA root without the legacy 4443 port', () => {
+  it('uses the production GEA environment by default', () => {
     expect(DEFAULT_GEA_BASE_URL).toBe('https://gea.synear.cn/gea-boot');
   });
 

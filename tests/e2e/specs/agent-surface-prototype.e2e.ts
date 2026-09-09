@@ -288,7 +288,7 @@ test.describe('Agent Surface production host', () => {
     await expect(page.getByTestId('assistant-surface-contract')).toBeHidden();
     await expect(page.getByTestId('assistant-surface-navigation')).toBeHidden();
     await expect(page.getByText('新会话', { exact: true })).toBeVisible();
-    await expect(page.getByTestId('assistant-surface-switcher')).toContainText('GEAUi');
+    await expect(page.getByTestId('assistant-surface-switcher')).toContainText('GEA');
 
     await page.getByTestId('assistant-surface-switcher').click();
     await page.getByTestId('assistant-surface-option-business').click();
@@ -1395,7 +1395,7 @@ test.describe('Agent Surface production host', () => {
   test('falls back safely when a surface id is not registered', async ({ page }) => {
     await page.goto(`${page.url().split('#')[0]}#/assistant-surface/not-registered`);
     await expect.poll(() => new URL(page.url()).hash).toBe('#/guid');
-    await expect(page.getByTestId('assistant-surface-switcher')).toContainText('GEAUi');
+    await expect(page.getByTestId('assistant-surface-switcher')).toContainText('GEA');
 
     await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast/not-registered`);
     await expect.poll(() => new URL(page.url()).hash).toBe('#/assistant-surface/forecast');
@@ -1790,7 +1790,7 @@ test.describe('Agent Surface rollback gate', () => {
 
     await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
     await expect.poll(() => new URL(page.url()).hash).toBe('#/guid');
-    await expect(page.getByTestId('assistant-surface-switcher')).toContainText('GEAUi');
+    await expect(page.getByTestId('assistant-surface-switcher')).toContainText('GEA');
     await page.getByTestId('assistant-surface-switcher').click();
     const dialog = page.getByRole('dialog', { name: '切换工作模式' });
     await expect(dialog).toBeVisible();
