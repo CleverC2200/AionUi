@@ -487,6 +487,9 @@ const RegionalApprovalLiveActionDialog: React.FC<{
                           <div className={styles.adjustmentTableRow} role='row' key={comparison.sku.id}>
                             <span role='cell'>
                               <strong>{comparison.skuCode}</strong>
+                              {comparison.sku.materialDescription ? (
+                                <small>{comparison.sku.materialDescription}</small>
+                              ) : null}
                               <small>{comparison.sku.productCategName}</small>
                             </span>
                             <span role='cell' className={styles.nodeValue}>

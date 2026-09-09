@@ -463,6 +463,8 @@ export type GeaSalesPlanSku = {
   id: GeaSalesPlanId;
   versionId: string;
   skuCode: GeaSalesPlanId;
+  /** Optional description supplied by the todo/material endpoint. */
+  materialDescription?: string | null;
   productCategName: string;
   baseQty: GeaSalesPlanDecimal;
   qty: GeaSalesPlanDecimal;

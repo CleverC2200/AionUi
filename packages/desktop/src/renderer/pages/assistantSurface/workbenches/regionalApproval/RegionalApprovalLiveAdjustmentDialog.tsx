@@ -144,6 +144,7 @@ const RegionalApprovalLiveAdjustmentDialog: React.FC<{
       render: (_, group) => (
         <span className={styles.skuCell}>
           <strong>{group.skuCode}</strong>
+          {group.sku.materialDescription ? <small>{group.sku.materialDescription}</small> : null}
           <small>{group.categoryName || '—'}</small>
         </span>
       ),
