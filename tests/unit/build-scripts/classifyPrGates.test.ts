@@ -105,7 +105,10 @@ describe('desktop PR optimization safeguards', () => {
       { rest: { actions: { createWorkflowDispatch: dispatch } } },
       {
         repo: { owner: 'owner', repo: 'repo' },
-        payload: { repository: { full_name: 'owner/repo' }, pull_request: { number: 358 } },
+        payload: {
+          repository: { full_name: 'owner/repo' },
+          pull_request: { number: 358, head: { ref: 'codex/ci-scope', repo: { full_name: 'owner/repo' } } },
+        },
       }
     );
     expect(dispatch).toHaveBeenCalledWith({
