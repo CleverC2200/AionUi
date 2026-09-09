@@ -660,8 +660,12 @@ const RegionalApprovalWorkbench: React.FC<{
   const activeLiveDetailRow = liveRows.find((row) => row.planId === liveDetailPlanId);
   const activeLiveAdjustmentRow = liveRows.find((row) => row.planId === liveAdjustmentPlanId);
   const focusedLiveRow = liveRows.find((row) => row.planId === focusedLivePlanId) ?? liveRows[0];
+  const scopedPrimaryVersionId = liveVersions.some((version) => version.planId === focusedLiveRow?.planId && version.id === livePrimaryVersionId)
+    ? livePrimaryVersionId : undefined;
+  const scopedCompareVersionId = liveVersions.some((version) => version.planId === focusedLiveRow?.planId && version.id === liveCompareVersionId)
+    ? liveCompareVersionId : undefined;
   const historicalSummaryUnavailable = Boolean(
-    liveQuery.enabled && livePrimaryVersionId && livePrimaryVersionId !== focusedLiveRow?.versionId
+    liveQuery.enabled && scopedPrimaryVersionId && scopedPrimaryVersionId !== focusedLiveRow?.versionId
   );
   const scopeSummary = useMemo<typeof liveQuery.analysisSummary>(
     () => (historicalSummaryUnavailable ? { status: 'error', error: 'unavailable' } : liveQuery.analysisSummary),
@@ -928,7 +932,7 @@ const RegionalApprovalWorkbench: React.FC<{
         scope: {
           dimension,
           categoryComparison,
-          ...(usingLiveQueue ? { primaryVersionId: livePrimaryVersionId, compareVersionId: liveCompareVersionId } : {}),
+          ...(usingLiveQueue ? { primaryVersionId: scopedPrimaryVersionId, compareVersionId: scopedCompareVersionId } : {}),
           planType: liveQuery.selectedPeriod?.planTypeCode ?? (usingLiveQueue ? 'unknown' : 'monthly'),
           month: liveQuery.selectedPeriod?.periodMonth ?? (usingLiveQueue ? '' : '2026-09'),
           approvalStage: effectiveStage,
@@ -963,8 +967,8 @@ const RegionalApprovalWorkbench: React.FC<{
     scopeSummary,
     dimension,
     categoryComparison,
-    livePrimaryVersionId,
-    liveCompareVersionId,
+    scopedPrimaryVersionId,
+    scopedCompareVersionId,
     compareVersion,
     contextAppliedFilters,
     conversationId,
