@@ -604,7 +604,7 @@ jobs:
           PKG_NAME=$(dpkg-deb -f "$DEB_FILE" Package)
           sudo dpkg -i "$DEB_FILE" || sudo apt-get install -f -y
 
-          INSTALLED_BIN=$(dpkg -L "$PKG_NAME" | grep -Ei '/(bin|opt)/.*(aionui|geaui)$' | head -n 1 || true)
+          INSTALLED_BIN=$(dpkg -L "$PKG_NAME" | grep -Ei '/(bin/|opt/[^/]+/)(aionui|geaui|gea)$' | head -n 1 || true)
           if [ -z "$INSTALLED_BIN" ]; then
             echo "Package files:"
             dpkg -L "$PKG_NAME" | head -n 50
@@ -612,6 +612,7 @@ jobs:
             exit 1
           fi
 
+          test -f "$INSTALLED_BIN"
           test -x "$INSTALLED_BIN"
 
   # Job 5: Test release scripts (fast, no build required)
