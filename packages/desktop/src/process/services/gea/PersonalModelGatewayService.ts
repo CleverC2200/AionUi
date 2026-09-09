@@ -19,7 +19,11 @@ import { StringDecoder } from 'node:string_decoder';
 import { GEA_PERSONAL_PROVIDER_PREFIX } from '@/common/config/geaPersonalModel';
 import type { IProvider } from '@/common/config/storage';
 import type { LarkAuthUser, PersonalModelSyncResult } from '@/common/types/platform/larkAuth';
-import type { GeaClaimedPersonalModelCredential, GeaPersonalModelCredential } from '@aionui/web-host';
+import {
+  GeaPersonalModelError,
+  type GeaClaimedPersonalModelCredential,
+  type GeaPersonalModelCredential,
+} from '@aionui/web-host';
 
 const GEA_PERSONAL_LOGIN_REQUIRED = 'GEA_PERSONAL_LOGIN_REQUIRED';
 
@@ -71,6 +75,7 @@ export class PersonalModelGatewayService {
   private syncScope = '';
   private generation = 0;
   private readonly failedRecoveryClaims = new Set<string>();
+  private readonly activeProviderIds = new Set<string>();
 
   constructor(
     private readonly vault: PersonalModelSecretVault,
@@ -120,6 +125,7 @@ export class PersonalModelGatewayService {
 
   async deactivate(): Promise<void> {
     this.generation += 1;
+    this.activeProviderIds.clear();
     await this.proxy.deactivate();
     await this.syncPromise?.catch(() => {});
     let providers: IProvider[];
@@ -143,29 +149,6 @@ export class PersonalModelGatewayService {
     if (agentCodes.length === 0 || agentCodes.some((code) => !code || code.length > 100 || /[\r\n]/.test(code))) {
       return { configured: 0, failed: 1, skipped: 0, status: 'partial', reason: 'agentSelectionRequired' };
     }
-    if (!this.vault.isAvailable()) {
-      return {
-        configured: 0,
-        failed: 0,
-        reason: 'secureStorageUnavailable',
-        skipped: 0,
-        status: 'unavailable',
-      };
-    }
-
-    let credentials: GeaPersonalModelCredential[];
-    try {
-      credentials = await authClient.listPersonalModelCredentials();
-    } catch {
-      return {
-        configured: 0,
-        failed: 1,
-        reason: 'credentialListFailed',
-        skipped: 0,
-        status: 'partial',
-      };
-    }
-
     let providers: IProvider[];
     try {
       providers = await this.providerStore.list();
@@ -179,6 +162,40 @@ export class PersonalModelGatewayService {
       };
     }
     assertCurrent();
+    // Persisted loopback endpoints belong to an earlier process until this
+    // runtime has restored their routes. Keep a live route on a transient
+    // discovery failure, but never leave an old port advertised as enabled.
+    providers = await this.suspendManagedProviders(providers, true);
+    assertCurrent();
+
+    if (!this.vault.isAvailable()) {
+      return {
+        configured: 0,
+        failed: 0,
+        reason: 'secureStorageUnavailable',
+        skipped: 0,
+        status: 'unavailable',
+      };
+    }
+
+    let credentials: GeaPersonalModelCredential[];
+    try {
+      credentials = await authClient.listPersonalModelCredentials();
+    } catch (error) {
+      return {
+        configured: 0,
+        failed: 1,
+        reason:
+          error instanceof GeaPersonalModelError && error.code === 'GEA_PERSONAL_CREDENTIAL_AGENT_BOUND'
+            ? 'credentialContractMismatch'
+            : 'credentialListFailed',
+        skipped: 0,
+        status: 'partial',
+      };
+    }
+
+    assertCurrent();
+    this.activeProviderIds.clear();
     await this.proxy.deactivate();
     providers = await this.suspendManagedProviders(providers);
     assertCurrent();
@@ -263,12 +280,14 @@ export class PersonalModelGatewayService {
           throw new Error('GEA_PERSONAL_SYNC_CANCELLED');
         }
         providersById.set(providerId, provider);
+        this.activeProviderIds.add(providerId);
         configured += 1;
       } catch (error) {
         failed += 1;
         reason ??= failureReason;
         if (typeof error === 'object' && error !== null && 'httpStatus' in error && error.httpStatus === 401) {
           await this.vault.delete(this.environmentId, user.id, credential.credentialId, tenantId);
+          this.activeProviderIds.clear();
           await this.proxy.deactivate();
           await this.suspendManagedProviders(await this.providerStore.list());
           configured = 0;
@@ -288,13 +307,18 @@ export class PersonalModelGatewayService {
     };
   }
 
-  private async suspendManagedProviders(providers: IProvider[]): Promise<IProvider[]> {
+  private async suspendManagedProviders(providers: IProvider[], preserveActive = false): Promise<IProvider[]> {
     // A process restart may select a different GEA before that environment
     // can authenticate or finish a credential sync. Suspend every enabled
     // GEA-managed provider at that boundary so a provider from the previous
     // environment can never remain usable as a fallback.
     const updates = providers
-      .filter((provider) => provider.enabled !== false && provider.id.startsWith(GEA_PERSONAL_PROVIDER_PREFIX))
+      .filter(
+        (provider) =>
+          provider.enabled !== false &&
+          provider.id.startsWith(GEA_PERSONAL_PROVIDER_PREFIX) &&
+          (!preserveActive || !this.activeProviderIds.has(provider.id))
+      )
       .map(suspendManagedProviderForLogin);
     await Promise.all(updates.map((provider) => this.providerStore.save(provider, true).catch(() => {})));
     const updatesById = new Map(updates.map((provider) => [provider.id, provider]));

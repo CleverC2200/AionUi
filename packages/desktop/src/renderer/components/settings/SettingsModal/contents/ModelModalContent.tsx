@@ -367,6 +367,8 @@ const ModelModalContent: React.FC = () => {
         message.warning(t('settings.personalModelLoginRequired'));
       } else if (sync.status === 'unavailable') {
         message.warning(t('login.lark.personalModels.unavailable'));
+      } else if (sync.reason === 'credentialContractMismatch') {
+        message.error(t('settings.personalModelCredentialContractMismatch'));
       } else if (sync.reason === 'credentialRecoveryRequired') {
         message.error(t('settings.personalModelCredentialRecoveryRequired'));
       } else if (sync.status === 'partial') {

@@ -5,6 +5,7 @@
  */
 
 import type { IProvider, TProviderWithModel } from '@/common/config/storage';
+import { GEA_PERSONAL_PROVIDER_PREFIX } from '@/common/config/geaPersonalModel';
 import { useModelProviderList } from '@/renderer/hooks/agent/useModelProviderList';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -63,8 +64,21 @@ export const useAionrsModelSelection = ({
     [current_model, formatModelLabel]
   );
 
+  // Personal gateway URLs are process-local. A persisted conversation selection
+  // becomes usable only when the current provider list contains a restored route.
+  const restoredProvider = current_model?.id.startsWith(GEA_PERSONAL_PROVIDER_PREFIX)
+    ? providers.find(
+        (provider) => provider.id === current_model.id && getAvailableModels(provider).includes(current_model.use_model)
+      )
+    : undefined;
+  const resolvedModel = current_model?.id.startsWith(GEA_PERSONAL_PROVIDER_PREFIX)
+    ? restoredProvider
+      ? ({ ...restoredProvider, use_model: current_model.use_model } as TProviderWithModel)
+      : undefined
+    : current_model;
+
   return {
-    current_model,
+    current_model: resolvedModel,
     providers,
     getAvailableModels,
     handleSelectModel,
