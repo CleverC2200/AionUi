@@ -1380,21 +1380,6 @@ const RegionalApprovalWorkbench: React.FC<{
             >
               {organizationName}
             </Button>
-            <Tag
-              color={
-                !liveActionDisabledReason(row, 'SAVE') || !liveActionDisabledReason(row, 'APPROVE')
-                  ? 'arcoblue'
-                  : 'gray'
-              }
-            >
-              {t(
-                !liveActionDisabledReason(row, 'SAVE')
-                  ? 'common.assistantSurface.regionalApproval.liveAction.canSave'
-                  : !liveActionDisabledReason(row, 'APPROVE')
-                    ? 'common.assistantSurface.regionalApproval.liveAction.canApprove'
-                    : 'common.assistantSurface.regionalApproval.liveAdjustment.readOnly'
-              )}
-            </Tag>
             <span data-testid={`regional-approval-scope-${row.planId}`} title={projection.context.join(' / ')}>
               {projection.context.length > 0
                 ? projection.context.map((name, index) => (
@@ -1417,8 +1402,7 @@ const RegionalApprovalWorkbench: React.FC<{
         const row = tableRow.plan;
         return (
           <div className={styles.stackCell}>
-            <strong>{formatExactDecimal(category?.quantity ?? row.currentQty)} 件</strong>
-            <span>{exactMoney(category?.amount ?? row.currentAmount)}</span>
+            <span>{exactMoney(category?.targetAmount ?? row.targetAmount)}</span>
           </div>
         );
       },
@@ -1448,22 +1432,7 @@ const RegionalApprovalWorkbench: React.FC<{
               <small>
                 {t('common.assistantSurface.regionalApproval.query.target')} {exactMoney(tableRow.plan.targetAmount)}
               </small>
-              <strong>
-                {t('common.assistantSurface.regionalApproval.categoryRows.quantityProgress', {
-                  progress: formattedProgress(progress.quantity),
-                })}
-              </strong>
-              <Progress
-                percent={Math.min(progress.quantity ?? 0, 100)}
-                showText={false}
-                size='small'
-                color='rgb(var(--orange-6))'
-                width={100}
-              />
-              <small>
-                {t('common.assistantSurface.regionalApproval.query.target')}{' '}
-                {formatExactDecimal(tableRow.plan.targetQty)}
-              </small>
+              <small>{t('common.assistantSurface.regionalApproval.query.planQuantity')} {formatExactDecimal(tableRow.plan.currentQty)}</small>
             </div>
           );
         }
@@ -1487,23 +1456,7 @@ const RegionalApprovalWorkbench: React.FC<{
                 amount: exactMoney(category.baseAmount),
               })}
             </small>
-            <strong>
-              {t('common.assistantSurface.regionalApproval.categoryRows.quantityProgress', {
-                progress: formattedProgress(category.quantityProgress),
-              })}
-            </strong>
-            <Progress
-              percent={Math.min(category.quantityProgress ?? 0, 100)}
-              showText={false}
-              size='small'
-              color='rgb(var(--orange-6))'
-              width={100}
-            />
-            <small>
-              {t('common.assistantSurface.regionalApproval.categoryRows.baseQuantity', {
-                quantity: formatExactDecimal(category.baseQuantity),
-              })}
-            </small>
+            <small>{t('common.assistantSurface.regionalApproval.query.planQuantity')} {formatExactDecimal(category.quantity)}</small>
           </div>
         );
       },

@@ -163,7 +163,11 @@
     "general": {
       "name": "GEAUi",
       "description": "General conversations, files, projects, and tasks.",
-      "capabilities": { "chat": "General chat", "files": "File handling", "tasks": "Scheduled tasks" }
+      "capabilities": {
+        "chat": "General chat",
+        "files": "File handling",
+        "tasks": "Scheduled tasks"
+      }
     },
     "business": {
       "name": "GEA Business",
@@ -172,7 +176,11 @@
     "forecast": {
       "name": "Demand Forecast Agent",
       "description": "Review dealers and SKUs by month to prepare a sales plan.",
-      "capabilities": { "dealer": "Dealer review", "sku": "SKU planning", "approval": "Submission flow" }
+      "capabilities": {
+        "dealer": "Dealer review",
+        "sku": "SKU planning",
+        "approval": "Submission flow"
+      }
     },
     "forecastWorkbench": {
       "scopeDescription": "Review AI recommendations, confirmed results, and evidence gaps",
@@ -332,7 +340,8 @@
           "8": "Province return",
           "9": "Area return",
           "10": "Completed"
-        }
+        },
+        "planQuantity": "Plan quantity"
       },
       "stageLane": "Per-node data status",
       "stageProgress": "Progress {{progress}}%",
@@ -465,16 +474,28 @@
         "retainAndContinue": "Retain draft and continue",
         "discardAndContinue": "Discard and continue",
         "cancelTransition": "Cancel",
-        "tabs": { "adjustment": "Plan adjustment", "customers": "Customer evidence", "evidence": "Version evidence" },
+        "tabs": {
+          "adjustment": "Plan adjustment",
+          "customers": "Customer evidence",
+          "evidence": "Version evidence"
+        },
         "customerEvidence": "Customer submission evidence is a read-only sample. Return to the board's customer dimension to verify customer codes, names, and progress.",
         "versionEvidence": "This page fixes local sample evidence to the selected organization and version; it is not connected to the production version service.",
-        "products": { "dumpling": "Classic dumplings", "wonton": "Pork wontons", "rice-ball": "Sesame rice balls" },
+        "products": {
+          "dumpling": "Classic dumplings",
+          "wonton": "Pork wontons",
+          "rice-ball": "Sesame rice balls"
+        },
         "evidence": {
           "seasonal": "Sample holiday sales and the eight-week trend suggest {{quantity}} units.",
           "inventory": "Sample inventory turnover and in-transit stock suggest {{quantity}} units.",
           "policy": "Sample promotion policy and the high-delta rule suggest {{quantity}} units."
         },
-        "suggestionState": { "pending": "Pending", "accepted": "Accepted", "ignored": "Ignored" }
+        "suggestionState": {
+          "pending": "Pending",
+          "accepted": "Accepted",
+          "ignored": "Ignored"
+        }
       },
       "liveDetail": {
         "title": "Sales plan details and version evidence",
@@ -528,7 +549,11 @@
           "priceComparison": "Price comparison",
           "amountDelta": "Amount delta"
         },
-        "change": { "ADDED": "Added", "DELETED": "Deleted", "UPDATED": "Updated" },
+        "change": {
+          "ADDED": "Added",
+          "DELETED": "Deleted",
+          "UPDATED": "Updated"
+        },
         "errors": {
           "permission": "This account cannot read the requested sales plan details.",
           "expired": "The GEA user session expired. Sign in again, then retry.",
@@ -580,7 +605,10 @@
         "open": "Resubmit",
         "openFor": "Resubmit {{plan}}",
         "queueMode": "Queue type",
-        "queueModes": { "approval": "Pending approval", "resubmit": "Returned for resubmission" },
+        "queueModes": {
+          "approval": "Pending approval",
+          "resubmit": "Returned for resubmission"
+        },
         "firstSubmit": "First submission",
         "firstSubmitUnavailable": "First submission is unavailable: no endpoint currently supplies a real new-plan draft, dealer, and SKU source. The client will not submit sample organization values, AI guidance, or local edits as real data.",
         "boundary": "Resubmission uses only the effective GEA version's real SKUs, an OPEN period, and the current user. AionCore's trusted boundary owns the service identity and retries; Renderer never receives credentials.",
@@ -643,7 +671,7 @@
         "confirmSave": "Confirm save",
         "saveTitle": "Save sales plan adjustments",
         "save": "Save adjustments",
-        "title": "Live sales plan approval",
+        "title": "Sales Plan Approval",
         "column": "Approval action",
         "open": "Review",
         "openFor": "Review {{plan}}",
@@ -740,7 +768,10 @@
         "version": "Current version",
         "savedAdjustments": "Saved adjustments",
         "batchOrganizations": "{{count}} organizations selected",
-        "tabs": { "return": "Return", "submit": "Submit approval" },
+        "tabs": {
+          "return": "Return",
+          "submit": "Submit approval"
+        },
         "returnTarget": "Return target (required)",
         "returnTargetPlaceholder": "Select return target",
         "returnTargets": {
@@ -772,7 +803,10 @@
           "cancelled": "The local sample action was cancelled; late results will be ignored.",
           "batch": "Batch completed: {{success}} succeeded and {{failed}} failed."
         },
-        "rowStatus": { "return": "Returned · local sample", "submit": "Submitted · local sample" }
+        "rowStatus": {
+          "return": "Returned · local sample",
+          "submit": "Submitted · local sample"
+        }
       },
       "progressDialog": {
         "liveScope": "{{month}} · {{planType}} · {{stage}} · Applied filters",
@@ -822,7 +856,7 @@
         "organization": "Organization name",
         "aiOpinion": "AI review opinion",
         "scope": "Business scope",
-        "plan": "Monthly plan",
+        "plan": "Target Budget",
         "category": "Category",
         "quantity": "Plan quantity",
         "amount": "Plan amount",
@@ -852,8 +886,15 @@
         "frozen-pastry": "Frozen pastry",
         "rice-noodle": "Rice and noodle"
       },
-      "levels": { "area": "Area", "province": "Province" },
-      "health": { "healthy": "Healthy", "attention": "Attention", "warning": "Warning" },
+      "levels": {
+        "area": "Area",
+        "province": "Province"
+      },
+      "health": {
+        "healthy": "Healthy",
+        "attention": "Attention",
+        "warning": "Warning"
+      },
       "healthFilter": "Filter by {{health}}",
       "opinions": {
         "north": "3 customers have not submitted; 2 SKUs deviate from historical sales",
@@ -862,7 +903,11 @@
         "southwest": "Province approval is incomplete; area action is not available",
         "hebei": "Province approval is complete and summarized into North Area"
       },
-      "status": { "pending": "Pending", "approved": "Approved", "future": "Not at node" },
+      "status": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "future": "Not at node"
+      },
       "organizations": {
         "north": "North China Area",
         "east": "East China Area",
@@ -918,7 +963,11 @@
     "contract": {
       "name": "Contract Review Agent",
       "description": "Review contract text, evidence, risks, and recommendations side by side.",
-      "capabilities": { "reading": "Source text", "risk": "Risk detection", "review": "Review notes" },
+      "capabilities": {
+        "reading": "Source text",
+        "risk": "Risk detection",
+        "review": "Review notes"
+      },
       "workflow": {
         "source": "Read source contract",
         "risk": "AI risk detection",
@@ -1002,7 +1051,10 @@
         "monthlyPlan": "Initial monthly plan",
         "correctionPlan": "Correction plan",
         "currentDealer": "Beichen Food Trading (Fixture)",
-        "month": { "september": "September 2026", "august": "August 2026" },
+        "month": {
+          "september": "September 2026",
+          "august": "August 2026"
+        },
         "fixtureState": "Fixture data state",
         "stateReady": "Complete data",
         "stateLoading": "Loading",
@@ -1158,7 +1210,6 @@
     "recoverableDatabaseCorruption": {
       "title": "Local data is corrupted",
       "description": "GEAUi detected that the local database is corrupted and cannot continue startup. After confirmation, GEAUi will back up the old database and create a new local database to continue startup. Historical local data will not be shown for now, and the old database will be kept as a backup.",
-
       "confirmRebuild": "Back up old DB and rebuild new DB",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsHint": "Sending diagnostics will not modify the local database.",
