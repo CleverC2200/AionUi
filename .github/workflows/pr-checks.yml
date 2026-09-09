@@ -175,7 +175,7 @@ jobs:
         run: npm run postinstall || true
 
       - name: Run extension system tests
-        if: matrix.os == 'ubuntu-latest' || needs.classify-changes.outputs.cross_platform_tests == 'true'
+        if: matrix.os != 'ubuntu-latest' && needs.classify-changes.outputs.cross_platform_tests == 'true'
         run: bunx vitest run
 
       - name: Record completed full unit suite
