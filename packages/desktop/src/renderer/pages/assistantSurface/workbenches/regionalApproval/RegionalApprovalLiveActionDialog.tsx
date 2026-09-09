@@ -150,6 +150,12 @@ const RegionalApprovalLiveActionDialog: React.FC<{
       confirmedAmount: total(nodeComparisons.map((item) => item.confirmedAmount)),
     };
   }, [nodeComparisons]);
+  const visibleComparisons = kind === 'SAVE'
+    ? nodeComparisons
+    : nodeComparisons.filter((item) =>
+        (item.adjustmentValid && !ZERO_DECIMAL_PATTERN.test(item.adjustmentQty)) ||
+        Boolean(item.amountDelta && !ZERO_DECIMAL_PATTERN.test(item.amountDelta))
+      );
   const invalid =
     !confirmed ||
     !access?.allowedActions.includes(kind) ||
@@ -468,7 +474,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
                           {t('common.assistantSurface.regionalApproval.liveAction.adjustments.currentNode')}
                         </span>
                       </div>
-                      {nodeComparisons.map((comparison) => {
+                      {visibleComparisons.map((comparison) => {
                         const value = adjustmentValues[comparison.skuCode] ?? '';
                         const invalidValue = !comparison.adjustmentValid;
                         const inputLabel = t(
@@ -488,7 +494,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
                               <small>{displayDecimal(comparison.previousAmount, true)}</small>
                             </span>
                             <span role='cell'>
-                              <Input
+                              {kind === 'SAVE' ? <Input
                                 size='small'
                                 value={value}
                                 status={invalidValue ? 'error' : undefined}
@@ -500,7 +506,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
                                 onChange={(nextValue) =>
                                   setAdjustmentValues((current) => ({ ...current, [comparison.skuCode]: nextValue }))
                                 }
-                              />
+                              /> : <span>{signedDecimal(comparison.adjustmentQty)}</span>}
                             </span>
                             <span role='cell' className={styles.nodeValue}>
                               <strong>{displayDecimal(comparison.confirmedQty)}</strong>
