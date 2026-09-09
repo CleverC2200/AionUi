@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { GeaSalesPlanDetail } from '@/common/adapter/ipcBridge';
 import type { RegionalApprovalLiveRow } from '../regionalApprovalQueryModel';
 import type { SalesPlanDetailClient } from './useSalesPlanDetail';
-import { salesPlanDraftSnapshot } from '../models/salesPlanLocalDraftModel';
+import { salesPlanAccessForRow } from '../models/salesPlanAccessModel';
 
 export const useSalesPlanAccess = (
   rows: readonly RegionalApprovalLiveRow[],
@@ -10,9 +10,11 @@ export const useSalesPlanAccess = (
   enabled: boolean
 ) => {
   const [entries, setEntries] = useState<Record<string, GeaSalesPlanDetail>>({});
+  const [failedVersions, setFailedVersions] = useState<Set<string>>(new Set());
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     setEntries({});
+    setFailedVersions(new Set());
     if (!enabled || !client || rows.length === 0) return;
     const controller = new AbortController();
     let cursor = 0;
@@ -22,10 +24,11 @@ export const useSalesPlanAccess = (
         try {
           // oxlint-disable-next-line no-await-in-loop -- cap detail reads at four concurrent requests.
           const detail = await client.detail.invoke({ planId: row.planId, signal: controller.signal });
-          if (!controller.signal.aborted && salesPlanDraftSnapshot(row, detail)) {
+          if (!controller.signal.aborted && salesPlanAccessForRow(row, detail)) {
             setEntries((current) => ({ ...current, [row.versionId]: detail }));
           }
         } catch {
+          if (!controller.signal.aborted) setFailedVersions((current) => new Set(current).add(row.versionId));
           // Missing, denied or failed capability reads leave this object read-only.
         }
       }
@@ -33,5 +36,5 @@ export const useSalesPlanAccess = (
     void Promise.all(Array.from({ length: Math.min(4, rows.length) }, worker));
     return () => controller.abort();
   }, [rows, client, enabled, revision]);
-  return { entries, refresh: () => setRevision((value) => value + 1) };
+  return { entries, failedVersions, refresh: () => setRevision((value) => value + 1) };
 };

@@ -265,6 +265,31 @@ const nodeShell = (
 );
 
 describe('BusinessSurfaceShell context receipt', () => {
+  it('resolves all literal shell labels from the shipped Chinese and English resources', () => {
+    const source = readFileSync(
+      resolvePath(
+        process.cwd(),
+        'packages/desktop/src/renderer/pages/assistantSurface/components/BusinessSurfaceShell.tsx'
+      ),
+      'utf8'
+    );
+    const keys = [...new Set(source.match(/common\.assistantSurface\.[A-Za-z.]+/g))];
+    for (const locale of ['zh-CN', 'en-US']) {
+      const common = JSON.parse(
+        readFileSync(
+          resolvePath(process.cwd(), `packages/desktop/src/renderer/services/i18n/locales/${locale}/common.json`),
+          'utf8'
+        )
+      );
+      for (const key of keys) {
+        const value = key
+          .split('.')
+          .slice(1)
+          .reduce((node, segment) => node?.[segment], common);
+        expect(value, `${locale}: ${key}`).toBeTypeOf('string');
+      }
+    }
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();

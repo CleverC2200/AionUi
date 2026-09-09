@@ -322,6 +322,7 @@
 
 .controlToolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -337,6 +338,8 @@
 
 .dimensionControls {
   display: flex;
+  flex: 0 0 auto;
+  max-width: 100%;
   min-width: 0;
   align-items: center;
   gap: 10px;
@@ -436,6 +439,7 @@
 
 .toolbarActions {
   flex: 1 1 auto;
+  flex-wrap: wrap;
 }
 
 .approvalToolbarActions {
@@ -652,6 +656,12 @@
   gap: 5px;
   color: var(--text-secondary);
   font-size: 11px;
+}
+
+.organizationCell > .organizationPath {
+  display: block;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .organizationCell > small {

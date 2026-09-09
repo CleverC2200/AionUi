@@ -47,7 +47,7 @@ const ForecastAssistantSurface: React.FC<{
   permissionCodes?: readonly string[];
   draftStorageScope?: string;
   onRefreshPermissions?: () => Promise<void>;
-}> = ({ stateScope, businessView, permissionCodes, draftStorageScope, onRefreshPermissions }) => {
+}> = ({ stateScope, businessView, permissionCodes }) => {
   const { t } = useTranslation();
   const [analysisContext, setAnalysisContext] = useState<RegionalApprovalWorkbenchContext>();
   const [surfaceContext, setSurfaceContext] = useState<SurfaceContextSnapshot>();
@@ -186,8 +186,6 @@ const ForecastAssistantSurface: React.FC<{
           detailClient={salesPlan}
           liveActionsEnabled={liveActionsEnabled}
           permissionCodes={permissionCodes}
-          draftStorageScope={draftStorageScope}
-          onRefreshPermissions={onRefreshPermissions}
           automaticAnalysisEnabled
         />
       )}

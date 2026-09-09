@@ -463,6 +463,8 @@ export type GeaSalesPlanSku = {
   id: GeaSalesPlanId;
   versionId: string;
   skuCode: GeaSalesPlanId;
+  /** Optional description supplied by the todo/material endpoint. */
+  materialDescription?: string | null;
   productCategName: string;
   baseQty: GeaSalesPlanDecimal;
   qty: GeaSalesPlanDecimal;
@@ -583,7 +585,7 @@ export type GeaSalesPlanSubmitParams = {
   requestId: string;
 };
 
-export type GeaSalesPlanAction = 'APPROVE' | 'REJECT';
+export type GeaSalesPlanAction = 'APPROVE' | 'REJECT' | 'SAVE';
 
 export type GeaSalesPlanSkuAdjustment = {
   skuCode: GeaSalesPlanId;
@@ -592,6 +594,7 @@ export type GeaSalesPlanSkuAdjustment = {
 };
 
 export type GeaSalesPlanActionRequest = {
+  expectedSnapshot?: string;
   action: GeaSalesPlanAction;
   expectedStatus: number;
   remark?: string;
@@ -1066,6 +1069,16 @@ export const conversation = {
     (p) => `/api/conversations/${p.conversation_id}/side-question`,
     (p) => ({ question: p.question })
   ),
+  inferModel: {
+    provider: () => {},
+    invoke: (params: { conversation_id: string; question: string; signal?: AbortSignal }) =>
+      httpRequest<ConversationModelInferenceResult>(
+        'POST',
+        `/api/conversations/${encodeURIComponent(params.conversation_id)}/model-inference`,
+        { question: params.question },
+        { signal: params.signal, redactBodyFromLogs: true }
+      ),
+  },
   confirmMessage: httpPost<void, IConfirmMessageParams>(
     (p) => `/api/conversations/${p.conversation_id}/confirmations/${encodeURIComponent(p.call_id)}/confirm`,
     (p) => ({ msg_id: p.msg_id, data: p.confirm_key })
@@ -2770,6 +2783,13 @@ export type ConversationSideQuestionResult =
   | { status: 'unsupported' }
   | { status: 'invalid'; reason: 'emptyQuestion' }
   | { status: 'toolsRequired' };
+
+export type ConversationModelInferenceResult = {
+  status: 'ok' | 'noAnswer' | 'toolsRequired' | 'timeout' | 'failed';
+  provider_id: string;
+  model: string;
+  answer?: string;
+};
 
 interface IBridgeResponse<D = {}> {
   success: boolean;

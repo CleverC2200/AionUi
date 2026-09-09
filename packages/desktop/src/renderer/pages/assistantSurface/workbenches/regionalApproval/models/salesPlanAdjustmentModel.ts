@@ -15,6 +15,7 @@ export type SalesPlanAdjustmentGroup = {
   dimensionName: string;
   skuCode: string;
   categoryName: string;
+  materialDescription?: string;
   records: SalesPlanAdjustmentRecord[];
   baseQty: string;
   qty: string;
@@ -34,7 +35,7 @@ export type SalesPlanAdjustmentDraft = {
   amount: string;
 };
 
-const DIMENSION_ORDER: readonly ApprovalDimension[] = ['area', 'province', 'region', 'base', 'customer'];
+const DIMENSION_ORDER: readonly ApprovalDimension[] = ['base', 'area', 'province', 'region', 'customer'];
 
 export const adjustmentDimensionsFrom = (dimension: ApprovalDimension): ApprovalDimension[] =>
   DIMENSION_ORDER.slice(Math.max(0, DIMENSION_ORDER.indexOf(dimension)));
@@ -97,6 +98,9 @@ export const groupSalesPlanAdjustmentRecords = (
       dimensionName: adjustmentDimensionName(items[0].plan, dimension),
       skuCode: String(items[0].sku.skuCode),
       categoryName: items[0].sku.productCategName,
+      materialDescription:
+        [...new Set(items.map((item) => item.sku.materialDescription?.trim()).filter(Boolean))].join(' / ') ||
+        undefined,
       records: items,
       baseQty,
       qty,

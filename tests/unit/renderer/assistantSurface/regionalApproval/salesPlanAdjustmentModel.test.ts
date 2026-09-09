@@ -38,6 +38,7 @@ const sku = (versionId: string, id: string, baseQty: string): GeaSalesPlanSku =>
   versionId,
   skuCode: '10005817',
   productCategName: '水饺',
+  materialDescription: 'MOCK 猪肉白菜水饺 500g',
   baseQty,
   qty: baseQty,
   price: '12',
@@ -47,8 +48,10 @@ const sku = (versionId: string, id: string, baseQty: string): GeaSalesPlanSku =>
 
 describe('sales plan aggregate adjustment rules', () => {
   it('keeps the prototype dimension order from the clicked organization level', () => {
-    expect(adjustmentDimensionsFrom('region')).toEqual(['region', 'base', 'customer']);
-    expect(adjustmentDimensionsFrom('base')).toEqual(['base', 'customer']);
+    expect(adjustmentDimensionsFrom('region')).toEqual(['region', 'customer']);
+    expect(adjustmentDimensionsFrom('province')).toEqual(['province', 'region', 'customer']);
+    expect(adjustmentDimensionsFrom('area')).toEqual(['area', 'province', 'region', 'customer']);
+    expect(adjustmentDimensionsFrom('base')).toEqual(['base', 'area', 'province', 'region', 'customer']);
     expect(adjustmentDimensionsFrom('customer')).toEqual(['customer']);
   });
 
@@ -62,6 +65,7 @@ describe('sales plan aggregate adjustment rules', () => {
     const [group] = groupSalesPlanAdjustmentRecords(records, 'region');
 
     expect(group).toMatchObject({ baseQty: '100', qty: '100', baseAmount: '1200', amount: '1200' });
+    expect(group.materialDescription).toBe('MOCK 猪肉白菜水饺 500g');
     const distributed = distributeAggregateQuantity(group.records, 11);
     expect(distributed.map((record) => record.qty)).toEqual(['3', '8']);
     expect(distributed.map((record) => record.amount)).toEqual(['36', '96']);

@@ -64,7 +64,7 @@ export const salesPlanActionTargetStatus = (
   action: GeaSalesPlanActionRequest['action'],
   status: number
 ): number | undefined => {
-  if (action !== 'APPROVE' && action !== 'REJECT') return undefined;
+  if (action === 'SAVE') return [2, 3, 4, 5, 8, 9, 10].includes(status) ? status : undefined;
   const nodeOrder = salesPlanApprovalNodeForStatus(status);
   if (nodeOrder === undefined) return undefined;
   if (action === 'REJECT') return nodeOrder === 5 ? undefined : nodeOrder + 5;
@@ -86,8 +86,16 @@ const isValidAdjustment = (adjustment: GeaSalesPlanSkuAdjustment): boolean => {
 export const validateSalesPlanActionInput = (input: SalesPlanActionInput): void => {
   const { request } = input;
   if (!input.planId.trim() || !input.versionId.trim()) throw new SalesPlanActionError('validation', false);
-  if (request.action !== 'APPROVE' && request.action !== 'REJECT') throw new SalesPlanActionError('validation', false);
-  const approvalNodeOrder = salesPlanApprovalNodeForStatus(request.expectedStatus);
+  const approvalNodeOrder =
+    request.action === 'SAVE' && request.expectedStatus === 10
+      ? 5
+      : salesPlanApprovalNodeForStatus(request.expectedStatus);
+  if (
+    request.action === 'SAVE' &&
+    (!/^[a-f0-9]{64}$/.test(request.expectedSnapshot ?? '') || !request.adjustments?.length)
+  ) {
+    throw new SalesPlanActionError('validation', false);
+  }
   if (approvalNodeOrder === undefined) throw new SalesPlanActionError('validation', false);
   const remark = request.remark?.trim() ?? '';
   if (Array.from(remark).length > 1000) throw new SalesPlanActionError('validation', false);

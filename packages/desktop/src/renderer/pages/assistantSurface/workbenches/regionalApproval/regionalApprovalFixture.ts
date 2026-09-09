@@ -204,7 +204,7 @@ export const approvalRowsForStage = (
 export const APPROVAL_DIMENSIONS_BY_STAGE: Record<ApprovalStageId, readonly ApprovalDimension[]> = {
   customer: ['customer'],
   region: ['region', 'customer'],
-  province: ['region', 'customer'],
-  area: ['province', 'region', 'customer'],
-  category: ['area', 'province', 'region', 'base', 'customer'],
+  province: ['province', 'region', 'customer'],
+  area: ['area', 'province', 'region', 'customer'],
+  category: ['base', 'area', 'province', 'region', 'customer'],
 };
