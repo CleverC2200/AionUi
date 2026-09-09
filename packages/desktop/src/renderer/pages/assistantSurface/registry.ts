@@ -49,7 +49,7 @@ export const ASSISTANT_SURFACES: readonly AssistantSurfaceDefinition[] = [
     schemaVersion: 1,
     route: '/guid',
     nameKey: 'assistantSurface.general.name',
-    nameFallback: 'GEAUi',
+    nameFallback: 'GEA',
     descriptionKey: 'assistantSurface.general.description',
     descriptionFallback: '通用会话、文件、项目和任务。',
     tone: 'red',

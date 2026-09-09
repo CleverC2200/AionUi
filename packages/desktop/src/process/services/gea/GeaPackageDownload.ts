@@ -44,7 +44,7 @@ export async function downloadGeaPackage(options: {
       response.url
     );
     if (!response.body) throw new GeaClientError('CLIENT_PACKAGE_TYPE_UNAVAILABLE');
-    const target = path.join(directory, `GEAUi-${fresh.versionCode}-${randomUUID()}${extension}`);
+    const target = path.join(directory, `GEA-${fresh.versionCode}-${randomUUID()}${extension}`);
     partial = target + '.part';
     const checksum = createHash('sha256');
     let bytes = 0;

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../../resources/aionui-banner-1.png" alt="GEAUi - Cowork with AI Agents" width="100%">
+  <img src="../../resources/aionui-banner-1.png" alt="GEA - Cowork with AI Agents" width="100%">
 </p>
 
 <p align="center">
@@ -41,12 +41,12 @@
 
 <p align="center">
   <a href="https://x.com/AionUi/status/2079493379914961069">
-    <img src="../../resources/kimi/contributor-bonus-black-blue.jpg" alt="GEAUi × Kimi Bono para Contribuidores" width="600">
+    <img src="../../resources/kimi/contributor-bonus-black-blue.jpg" alt="GEA × Kimi Bono para Contribuidores" width="600">
   </a>
 </p>
 
 <p align="center">
-  🎁 <strong>Alianza GEAUi × Kimi</strong>: planes premium <strong>Kimi "Allegretto" gratis (valor $39/mes · ¥199/mes)</strong> para nuestros contribuidores.
+  🎁 <strong>Alianza GEA × Kimi</strong>: planes premium <strong>Kimi "Allegretto" gratis (valor $39/mes · ¥199/mes)</strong> para nuestros contribuidores.
 </p>
 
 <h3 align="center">
@@ -54,7 +54,7 @@
 </h3>
 
 <p align="center">
-  <sub><strong>Kimi K3</strong> ya está aquí y funciona de inmediato en GEAUi — <a href="https://www.kimi.com/code?aff=aionui" target="_blank">consigue un plan Kimi For Coding</a> o una clave API (<a href="https://platform.kimi.ai?track_id=track-32e04532b08d460fac729191744fa75c&aff=aionui" target="_blank">Global</a> / <a href="https://platform.kimi.com?track_id=track-98f92981df1c4c61b2c68930ba3ab658&aff=aionui" target="_blank">China</a>)</sub>
+  <sub><strong>Kimi K3</strong> ya está aquí y funciona de inmediato en GEA — <a href="https://www.kimi.com/code?aff=aionui" target="_blank">consigue un plan Kimi For Coding</a> o una clave API (<a href="https://platform.kimi.ai?track_id=track-32e04532b08d460fac729191744fa75c&aff=aionui" target="_blank">Global</a> / <a href="https://platform.kimi.com?track_id=track-98f92981df1c4c61b2c68930ba3ab658&aff=aionui" target="_blank">China</a>)</sub>
 </p>
 
 ---
@@ -64,7 +64,7 @@
 <p align="center">
 
 [✨ Cowork en acción](#-cowork-en-acción) ·
-[🤔 ¿Por qué elegir GEAUi?](#-por-qué-elegir-aionui-sobre-claude-cowork) ·
+[🤔 ¿Por qué elegir GEA?](#-por-qué-elegir-aionui-sobre-claude-cowork) ·
 [🚀 Inicio rápido](#-inicio-rápido) ·
 [💬 Comunidad](#-comunidad-y-soporte)
 
@@ -74,9 +74,9 @@
 
 ## Cowork — AI Agents que trabajan contigo
 
-**GEAUi es más que un cliente de chat.** Es una plataforma Cowork donde los AI Agents trabajan contigo en tu computadora — leyendo archivos, escribiendo código, navegando por la web y automatizando tareas. Puedes ver todo lo que hace el Agent y siempre tienes el control.
+**GEA es más que un cliente de chat.** Es una plataforma Cowork donde los AI Agents trabajan contigo en tu computadora — leyendo archivos, escribiendo código, navegando por la web y automatizando tareas. Puedes ver todo lo que hace el Agent y siempre tienes el control.
 
-|                                             | Clientes de chat AI tradicionales | **GEAUi (Cowork)**                                                                                                                |
+|                                             | Clientes de chat AI tradicionales | **GEA (Cowork)**                                                                                                                  |
 | :------------------------------------------ | :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
 | AI puede operar en tus archivos             | Limitado o No                     | **Sí — Agent integrado con acceso completo a archivos**                                                                           |
 | AI puede ejecutar tareas de múltiples pasos | Limitado                          | **Sí — autónomo con tu aprobación**                                                                                               |
@@ -86,14 +86,14 @@
 | Precio                                      | Gratis / Pago                     | **Gratis y de código abierto**                                                                                                    |
 
 <p align="center">
-  <img src="../../resources/offica-ai BANNER-function.png" alt="GEAUi Cowork Platform" width="800">
+  <img src="../../resources/offica-ai BANNER-function.png" alt="GEA Cowork Platform" width="800">
 </p>
 
 ---
 
 ## Agent integrado — Instalar y usar, configuración cero
 
-GEAUi viene con un motor de Agent AI completo. A diferencia de las herramientas que requieren instalar CLI Agents por separado, **GEAUi funciona en el momento en que lo instalas**.
+GEA viene con un motor de Agent AI completo. A diferencia de las herramientas que requieren instalar CLI Agents por separado, **GEA funciona en el momento en que lo instalas**.
 
 - **No hay herramientas CLI que instalar** — el motor Agent está integrado
 - **Sin configuración compleja** — pega cualquier clave API para empezar
@@ -159,7 +159,7 @@ Estos asistentes convierten una petición en archivos editables y reutilizables.
 
 ## Modo Multi-Agent — ¿Ya tienes CLI Agents? Tráelos
 
-Si ya usas Claude Code, Codex, Hermes Agent u OpenClaw, GEAUi los detecta automáticamente y te permite hacer Cowork con todos ellos — junto con el Agent integrado.
+Si ya usas Claude Code, Codex, Hermes Agent u OpenClaw, GEA los detecta automáticamente y te permite hacer Cowork con todos ellos — junto con el Agent integrado.
 
 **Agents compatibles:** Agent integrado (impulsado por el motor [aionrs](https://github.com/iOfficeAI/aionrs) incluido) • Claude Code • Codex • Qwen Code • Gemini CLI • Goose • OpenClaw • Augment Code • CodeBuddy • Kimi CLI • OpenCode • Factory Droid • GitHub Copilot • Qoder • Mistral Vibe • Nanobot • Snow • Hermes • Cursor Agent • Pi • MiMo Code • omp • Antigravity y más
 
@@ -170,7 +170,7 @@ Si ya usas Claude Code, Codex, Hermes Agent u OpenClaw, GEAUi los detecta autom�
 - **Detección automática** — reconoce automáticamente las herramientas CLI instaladas
 - **Interfaz unificada** — una plataforma Cowork para todos tus AI Agents
 - **Sesiones paralelas** — ejecuta múltiples Agents simultáneamente con contexto independiente
-- **Gestión unificada de MCP** — administra las herramientas MCP (Model Context Protocol) en un solo lugar; GEAUi inyecta o sincroniza transportes compatibles según las capacidades de cada Agent
+- **Gestión unificada de MCP** — administra las herramientas MCP (Model Context Protocol) en un solo lugar; GEA inyecta o sincroniza transportes compatibles según las capacidades de cada Agent
 - **Modo YOLO / completamente automático** — los Agents compatibles pueden ofrecer ejecución desatendida; los modos y permisos dependen del Agent seleccionado
 
 ### Team Mode — Colaboración Multi-Agent Coordinada
@@ -181,7 +181,7 @@ Ejecuta múltiples AI Agents como un equipo organizado: un agente **Leader** rec
   <img src="../../resources/AionUi_team.gif" alt="Team Mode overview" width="800">
 </p>
 
-- **Ejecución paralela multi-agent** — Leader divide y delega tareas a Teammates en paralelo; los Agents externos se conectan mediante ACP (Agent Client Protocol) y GEAUi coordina el equipo
+- **Ejecución paralela multi-agent** — Leader divide y delega tareas a Teammates en paralelo; los Agents externos se conectan mediante ACP (Agent Client Protocol) y GEA coordina el equipo
 - **Orquestación del Leader** — Leader asigna, rastrea y agrega resultados; backends compatibles: Claude Code, Codex, Hermes Agent, Gemini, Snow CLI y GEA CLI
 - **Espacio de trabajo aislado por equipo** — todos los Agents comparten la misma carpeta; cada uno tiene su propio diálogo de permisos con badge en la barra lateral para aprobaciones pendientes
 
@@ -202,7 +202,7 @@ Ejecuta múltiples AI Agents como un equipo organizado: un agente **Leader** rec
 
 ## Cualquier clave API, poder completo del Cowork Agent
 
-Otras apps de AI te dan una caja de chat con tu clave API. **GEAUi te da un Cowork Agent completo.**
+Otras apps de AI te dan una caja de chat con tu clave API. **GEA te da un Cowork Agent completo.**
 
 | Tu clave API               | Lo que obtienes                   |
 | :------------------------- | :-------------------------------- |
@@ -212,7 +212,7 @@ Otras apps de AI te dan una caja de chat con tu clave API. **GEAUi te da un Cowo
 | Ollama / LM Studio (local) | Cowork Agent de modelo local      |
 | NewAPI Gateway             | Acceso unificado a 20+ modelos    |
 
-Las mismas capacidades del Agent — lectura/escritura de archivos, búsqueda web, generación de imágenes, uso de herramientas — independientemente del modelo que lo impulse. GEAUi admite **30+ plataformas AI** incluyendo servicios en la nube y despliegues locales.
+Las mismas capacidades del Agent — lectura/escritura de archivos, búsqueda web, generación de imágenes, uso de herramientas — independientemente del modelo que lo impulse. GEA admite **30+ plataformas AI** incluyendo servicios en la nube y despliegues locales.
 
 <p align="center">
   <img src="../../resources/llm_newapi.png" alt="Multi-Model Support" width="800">
@@ -231,7 +231,7 @@ Las mismas capacidades del Agent — lectura/escritura de archivos, búsqueda we
 - **Plataformas internacionales** — DeepSeek, MiniMax, Novita, OpenRouter, SiliconFlow, xAI, Ark (Volcengine), Poe
 - **Modelos locales** — Ollama, LM Studio (a través de plataforma personalizada con endpoint API local)
 
-GEAUi también admite el servicio de puerta de enlace [NewAPI](https://github.com/QuantumNous/new-api) — un centro unificado de modelos AI que agrega y distribuye varios LLMs. Cambia flexiblemente entre diferentes modelos en la misma interfaz para satisfacer diversos requisitos de tareas.
+GEA también admite el servicio de puerta de enlace [NewAPI](https://github.com/QuantumNous/new-api) — un centro unificado de modelos AI que agrega y distribuye varios LLMs. Cambia flexiblemente entre diferentes modelos en la misma interfaz para satisfacer diversos requisitos de tareas.
 
 </details>
 
@@ -242,7 +242,7 @@ GEAUi también admite el servicio de puerta de enlace [NewAPI](https://github.co
 _Sistema de asistentes extensible con 21 asistentes profesionales integrados y un sistema de habilidades de tres niveles. Crea y gestiona tus propios asistentes y habilidades._
 
 - **Crear asistentes personalizados** — Define tus propios asistentes con reglas y capacidades personalizadas
-- **Habilidades de tres niveles** — Habilidades integradas (incluidas con GEAUi), habilidades personalizadas (las tuyas) y habilidades de Extension (aportadas por extensiones de terceros); habilita/deshabilita por conversación con el indicador de habilidades
+- **Habilidades de tres niveles** — Habilidades integradas (incluidas con GEA), habilidades personalizadas (las tuyas) y habilidades de Extension (aportadas por extensiones de terceros); habilita/deshabilita por conversación con el indicador de habilidades
 - **Control por conversación** — Un indicador de habilidades en el encabezado del chat muestra las habilidades activas para la conversación actual; busca y excluye habilidades según sea necesario
 
 <p align="center">
@@ -254,7 +254,7 @@ _Sistema de asistentes extensible con 21 asistentes profesionales integrados y u
 
 <br>
 
-GEAUi incluye **21 asistentes profesionales** con capacidades predefinidas, extensibles a través de habilidades personalizadas:
+GEA incluye **21 asistentes profesionales** con capacidades predefinidas, extensibles a través de habilidades personalizadas:
 
 - **🤝 Cowork** — Ejecución autónoma de tareas (operaciones de archivos, procesamiento de documentos, planificación de flujos de trabajo)
 - **📊 PPT Creator / Morph PPT / Morph PPT 3D** — Genera y anima presentaciones PPTX con transiciones Morph
@@ -275,11 +275,11 @@ GEAUi incluye **21 asistentes profesionales** con capacidades predefinidas, exte
 - **🔧 Configuración OpenClaw** — Asistente de configuración e instalación para integración OpenClaw
 - **📖 Rol de historia** — Rol de historia inmersivo con tarjetas de personajes e información del mundo (compatible con SillyTavern)
 
-- **🧭 GEAUi Butler** — Orientación del producto, ayuda de configuración y resolución de problemas dentro de GEAUi
+- **🧭 GEA Butler** — Orientación del producto, ayuda de configuración y resolución de problemas dentro de GEA
 
 **Habilidades personalizadas**: Importa o crea habilidades desde **Configuración → Skills** y asígnalas a los asistentes que las necesiten. Las habilidades proceden de tres fuentes: integradas, personalizadas y Extension. Las integradas incluyen `pptx`, `docx`, `pdf`, `xlsx`, `mermaid` y más.
 
-> 💡 Las definiciones integradas oficiales están en el [catálogo de asistentes](https://github.com/iOfficeAI/AionCore/blob/main/crates/aionui-app/assets/builtin-assistants/assistants.json) de GEACore. Las reglas siguen usando Markdown y se pueden personalizar en GEAUi.
+> 💡 Las definiciones integradas oficiales están en el [catálogo de asistentes](https://github.com/iOfficeAI/AionCore/blob/main/crates/aionui-app/assets/builtin-assistants/assistants.json) de GEACore. Las reglas siguen usando Markdown y se pueden personalizar en GEA.
 
 </details>
 
@@ -287,7 +287,7 @@ GEAUi incluye **21 asistentes profesionales** con capacidades predefinidas, exte
 
 ## Cowork desde cualquier lugar
 
-_Tu asistente AI 24/7 — accede a GEAUi desde cualquier dispositivo, en cualquier lugar._
+_Tu asistente AI 24/7 — accede a GEA desde cualquier dispositivo, en cualquier lugar._
 
 - **Modo WebUI** — accede a través del navegador desde teléfono, tableta o cualquier computadora. Admite LAN, red cruzada y despliegue en servidor. Inicio de sesión con código QR o contraseña.
 
@@ -298,7 +298,7 @@ _Tu asistente AI 24/7 — accede a GEAUi desde cualquier dispositivo, en cualqui
   - **WeChat** — Integración con cuenta personal de WeChat
   - **WeCom (企业微信), Slack, Discord** y más plataformas próximamente
 
-> **Configuración:** GEAUi Settings → WebUI Settings → Channel, configura el Bot Token.
+> **Configuración:** GEA Settings → WebUI Settings → Channel, configura el Bot Token.
 
 <p align="center">
   <img src="../../resources/webui-remote.gif" alt="WebUI remote access demo" width="800">
@@ -344,7 +344,7 @@ _Configúralo una vez, el AI Agent se ejecuta automáticamente según el horario
 - **Vinculado a conversación** — Cada tarea programada está vinculada a una conversación, manteniendo el contexto y el historial
 - **Ejecución automática** — Las tareas se ejecutan automáticamente en los horarios programados, enviando mensajes a la conversación
 - **Gestión fácil** — Crea, modifica, habilita/deshabilita, elimina y visualiza tareas programadas en cualquier momento
-- **Evitar suspensión** — GEAUi previene automáticamente la suspensión del sistema mientras las tareas están activas y detecta activaciones perdidas tras el despertar
+- **Evitar suspensión** — GEA previene automáticamente la suspensión del sistema mientras las tareas están activas y detecta activaciones perdidas tras el despertar
 - **Configuración avanzada** — cada tarea puede tener su propio modelo, directorio de espacio de trabajo y configuración de esfuerzo de razonamiento
 
 **Ejemplos del mundo real:**
@@ -522,16 +522,16 @@ _Abre múltiples conversaciones, las tareas no se mezclan, memoria independiente
 
 ---
 
-## 🤔 ¿Por qué elegir GEAUi sobre Claude Cowork?
+## 🤔 ¿Por qué elegir GEA sobre Claude Cowork?
 
 <details>
 <summary><strong>Haz clic para ver la comparación detallada</strong></summary>
 
 <br>
 
-GEAUi es un **Escritorio Multi-AI Agent gratuito y de código abierto**. En comparación con Claude Cowork que solo se ejecuta en macOS y está bloqueado a Claude, GEAUi es su versión mejorada de modelo completo y multiplataforma.
+GEA es un **Escritorio Multi-AI Agent gratuito y de código abierto**. En comparación con Claude Cowork que solo se ejecuta en macOS y está bloqueado a Claude, GEA es su versión mejorada de modelo completo y multiplataforma.
 
-| Dimensión          | Claude Cowork     | GEAUi                                                  |
+| Dimensión          | Claude Cowork     | GEA                                                    |
 | :----------------- | :---------------- | :----------------------------------------------------- |
 | SO                 | Solo macOS        | macOS / Windows / Linux                                |
 | Soporte de modelos | Solo Claude       | Gemini, Claude, DeepSeek, OpenAI, Ollama, ...          |
@@ -554,17 +554,17 @@ Soporte de escenarios de oficina AI profundos:
 
 <details>
 <summary><strong>P: ¿Necesito instalar primero Gemini CLI o Claude Code?</strong></summary>
-R: <strong>No.</strong> GEAUi tiene un AI Agent integrado que funciona inmediatamente después de la instalación. Solo ingresa cualquier clave API para empezar. Si también tienes herramientas CLI como Claude Code o Gemini CLI instaladas, GEAUi las detectará e integrará automáticamente para aún más capacidades.
+R: <strong>No.</strong> GEA tiene un AI Agent integrado que funciona inmediatamente después de la instalación. Solo ingresa cualquier clave API para empezar. Si también tienes herramientas CLI como Claude Code o Gemini CLI instaladas, GEA las detectará e integrará automáticamente para aún más capacidades.
 </details>
 
 <details>
-<summary><strong>P: ¿Qué puedo hacer con GEAUi?</strong></summary>
-R: GEAUi es tu <strong>espacio de trabajo Cowork privado</strong>. El Agent integrado puede organizar carpetas por lotes, procesar datos de Excel, generar documentos, buscar en la web y generar imágenes. Con el Modo Multi-Agent, también puedes aprovechar Claude Code, Codex y otros Agents CLI poderosos a través de la misma interfaz.
+<summary><strong>P: ¿Qué puedo hacer con GEA?</strong></summary>
+R: GEA es tu <strong>espacio de trabajo Cowork privado</strong>. El Agent integrado puede organizar carpetas por lotes, procesar datos de Excel, generar documentos, buscar en la web y generar imágenes. Con el Modo Multi-Agent, también puedes aprovechar Claude Code, Codex y otros Agents CLI poderosos a través de la misma interfaz.
 </details>
 
 <details>
 <summary><strong>P: ¿Es gratis?</strong></summary>
-R: GEAUi es completamente gratuito y de código abierto. Solo pagas por el uso de la API del proveedor que elijas, y puedes usar claves API de cualquier proveedor que prefieras.
+R: GEA es completamente gratuito y de código abierto. Solo pagas por el uso de la API del proveedor que elijas, y puedes usar claves API de cualquier proveedor que prefieras.
 </details>
 
 <details>
@@ -574,7 +574,7 @@ R: Todos los datos se almacenan localmente en una base de datos SQLite. No se su
 
 ---
 
-## Ver cómo la gente usa GEAUi
+## Ver cómo la gente usa GEA
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=vWxE6VO9TKo" target="_blank">
@@ -608,7 +608,7 @@ R: Todos los datos se almacenan localmente en una base de datos SQLite. No se su
 - [Hacer que la gente común use Claude Code como una APP](https://mp.weixin.qq.com/s/TsMojSbkUUFvsd-HQCazZg) — Gato perezoso ama pescar
 - [5500 Stars: Cómo el código abierto rompe el foso de herramientas AI de Anthropic](https://mp.weixin.qq.com/s/saEk49cYV6MqBgw19Lw6Gw) — Momento de silicio AI
 
-> **¿Hiciste un video sobre GEAUi?** [Avísanos en X](https://x.com/AionUi) y lo destacaremos aquí!
+> **¿Hiciste un video sobre GEA?** [Avísanos en X](https://x.com/AionUi) y lo destacaremos aquí!
 
 ---
 
@@ -639,7 +639,7 @@ brew install aionui
 
 ### Comenzar en 3 pasos
 
-1. **Instalar** GEAUi
+1. **Instalar** GEA
 2. **Ingresa** cualquier clave API para empezar
 3. **Comenzar a hacer Cowork** — el AI Agent integrado está listo para usar
 
@@ -702,7 +702,7 @@ Por favor, lee [CONTRIBUTING.md](../../CONTRIBUTING.md) antes de abrir un PR.
 
 ### Configuración de desarrollo
 
-El desarrollo local de GEAUi usa dos repositorios: GEAUi para el frontend de Electron y GEACore para el backend local. Consulta la [guía de desarrollo](../contributing/development.md) para la configuración completa en macOS, Linux y Windows.
+El desarrollo local de GEA usa dos repositorios: GEA para el frontend de Electron y GEACore para el backend local. Consulta la [guía de desarrollo](../contributing/development.md) para la configuración completa en macOS, Linux y Windows.
 
 ---
 

@@ -2,7 +2,7 @@
   "modalTitle": "Atualização disponível",
   "mandatory": {
     "title": "Atualização obrigatória",
-    "description": "Você precisa atualizar esta versão antes de continuar usando o GEAUi.",
+    "description": "Você precisa atualizar esta versão antes de continuar usando o GEA.",
     "downloadUnavailable": "As informações de download não estão disponíveis. Verifique a rede e tente novamente."
   },
   "checking": "Verificando atualizações...",
@@ -35,7 +35,7 @@
   "errorTitle": "A atualização falhou",
   "installerLastFailure": {
     "title": "A última atualização não foi concluída",
-    "description": "O GEAUi não pôde ser fechado durante a atualização silenciosa anterior. Você pode tentar atualizar novamente, ver o log do instalador ou enviar feedback.",
+    "description": "O GEA não pôde ser fechado durante a atualização silenciosa anterior. Você pode tentar atualizar novamente, ver o log do instalador ou enviar feedback.",
     "retryUpdate": "Tentar atualizar novamente",
     "viewLog": "Ver log"
   },

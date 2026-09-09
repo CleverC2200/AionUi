@@ -86,7 +86,7 @@ test('compression comparison holds packaged input fixed and reports each install
   const root = fixture(t);
   const app = path.join(root, 'win-unpacked');
   fs.mkdirSync(app);
-  fs.writeFileSync(path.join(app, 'GEAUi.exe'), 'fixed app');
+  fs.writeFileSync(path.join(app, 'GEA.exe'), 'fixed app');
   const calls = [];
   const result = compareCompression({
     prepackaged: app,
@@ -97,7 +97,7 @@ test('compression comparison holds packaged input fixed and reports each install
       const output = command.match(/--config.directories.output="([^"]+)"/)[1];
       fs.mkdirSync(output, { recursive: true });
       fs.writeFileSync(
-        path.join(output, 'GEAUi-test-win-x64.exe'),
+        path.join(output, 'GEA-test-win-x64.exe'),
         options.env.ELECTRON_BUILDER_COMPRESSION_LEVEL === '7' ? 'larger' : 'small'
       );
     },
@@ -164,8 +164,8 @@ test('builder artifact events record installer assembly separately from the over
   const previous = process.env.BUILD_STAGE_REPORT;
   process.env.BUILD_STAGE_REPORT = path.join(root, 'events.jsonl');
   try {
-    record({ file: path.join(root, 'GEAUi.exe'), targetPresentableName: 'nsis' });
-    record({ file: path.join(root, 'GEAUi.exe'), target: { name: 'nsis' } });
+    record({ file: path.join(root, 'GEA.exe'), targetPresentableName: 'nsis' });
+    record({ file: path.join(root, 'GEA.exe'), target: { name: 'nsis' } });
     const result = JSON.parse(fs.readFileSync(process.env.BUILD_STAGE_REPORT, 'utf8'));
     assert.equal(result.stage, 'installer-nsis-including-signing');
     assert.equal(result.status, 'ok');
@@ -212,8 +212,8 @@ test('cloud report separates installer size from installed content and preserves
   const root = fixture(t);
   const out = path.join(root, 'out');
   fs.mkdirSync(path.join(out, 'win-unpacked/resources'), { recursive: true });
-  fs.writeFileSync(path.join(out, 'GEAUi-1.0.0-win-x64.exe'), 'installer');
-  fs.writeFileSync(path.join(out, 'win-unpacked/GEAUi.exe'), 'application');
+  fs.writeFileSync(path.join(out, 'GEA-1.0.0-win-x64.exe'), 'installer');
+  fs.writeFileSync(path.join(out, 'win-unpacked/GEA.exe'), 'application');
   const header = Buffer.from(JSON.stringify({ files: { 'index.js': { size: 3, offset: '0' } } }));
   const prefix = Buffer.alloc(16);
   prefix.writeUInt32LE(header.length, 12);

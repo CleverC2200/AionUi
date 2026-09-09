@@ -90,7 +90,7 @@ for arch in x64 arm64; do
   for platform_ext in mac.dmg win.exe; do
     platform="${platform_ext%.*}"
     ext="${platform_ext#*.}"
-    asset="GEAUi-${VERSION}-${platform}-${arch}.${ext}"
+    asset="GEA-${VERSION}-${platform}-${arch}.${ext}"
     if [ ! -f "$OUTPUT_DIR/$asset" ]; then
       echo "::error::Missing desktop installer: $asset"
       MISSING=1

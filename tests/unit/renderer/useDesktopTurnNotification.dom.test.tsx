@@ -28,7 +28,9 @@ vi.mock('@/common', () => ({
 }));
 vi.mock('@/renderer/utils/platform', () => ({ isElectronDesktop: () => isDesktop }));
 vi.mock('@/common/config/configService', () => ({ configService: { get: () => settingEnabled } }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (k: string) => (k === 'common.appName' ? 'GEA' : k) }),
+}));
 
 import { useDesktopTurnNotification } from '@/renderer/hooks/system/notification/useDesktopTurnNotification';
 
@@ -47,7 +49,7 @@ describe('useDesktopTurnNotification', () => {
     emitStream({ type: 'finish', conversation_id: 's1', turn_id: 't1' });
     expect(showInvoke).toHaveBeenCalledTimes(1);
     expect(showInvoke).toHaveBeenCalledWith({
-      title: 'GEAUi',
+      title: 'GEA',
       body: 'settings.browserNotification.bodyTurnCompleted',
       conversation_id: 's1',
     });

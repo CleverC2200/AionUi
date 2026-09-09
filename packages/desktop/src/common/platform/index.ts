@@ -1,4 +1,5 @@
 import path from 'path';
+import { mkdirSync } from 'fs';
 import type { IPlatformServices } from './IPlatformServices';
 import { NodePlatformServices } from './NodePlatformServices';
 
@@ -11,6 +12,30 @@ let _services: IPlatformServices | null = null;
 export function getDevAppName(): string {
   const isMultiInstance = process.env.AIONUI_MULTI_INSTANCE === '1';
   return isMultiInstance ? 'AionUi-Dev-2' : 'AionUi-Dev';
+}
+
+/** Apply storage identity before any module reads userData, including shared chunks. */
+export function configureElectronAppPaths(app: {
+  isPackaged: boolean;
+  getPath(name: 'appData'): string;
+  setPath(name: 'userData', value: string): void;
+  setName(name: string): void;
+}): void {
+  const sandbox = process.env.AIONUI_E2E_TEST === '1' ? process.env.AIONUI_E2E_USER_DATA_DIR : undefined;
+  if (sandbox?.trim()) {
+    mkdirSync(sandbox, { recursive: true });
+    app.setPath('userData', sandbox);
+    return;
+  }
+  // Product branding may change; retain the existing profile, credentials and
+  // Chromium session instead of silently creating an empty GEA profile.
+  const storageName = app.isPackaged ? 'GEAUi' : getDevAppName();
+  // Electron also derives the macOS Safe Storage keychain identity from this
+  // internal name. The bundle, window, tray and renderer display GEA separately.
+  app.setName(storageName);
+  const directory = path.join(app.getPath('appData'), storageName);
+  mkdirSync(directory, { recursive: true });
+  app.setPath('userData', directory);
 }
 
 export function registerPlatformServices(services: IPlatformServices): void {
@@ -36,14 +61,8 @@ export function getPlatformServices(): IPlatformServices {
       } else {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { app, net } = require('electron') as typeof import('electron');
-        // Dev isolation: set app name before any getPath('userData') call.
-        // Rollup may load this chunk before configureChromium.ts runs, so we
-        // must apply the dev name here as a safety net.
-        if (!app.isPackaged) {
-          const devAppName = getDevAppName();
-          app.setName(devAppName);
-          app.setPath('userData', path.join(path.dirname(app.getPath('userData')), devAppName));
-        }
+        // Rollup can load this chunk before configureChromium.ts.
+        configureElectronAppPaths(app);
         // Typed as IPlatformPaths so tsc enforces completeness: any new method
         // added to the interface will cause a compile error here if omitted below.
         const paths: import('./IPlatformServices').IPlatformPaths = {

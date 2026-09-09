@@ -74,7 +74,7 @@ describe('AssistantSelectionArea', () => {
     expect(screen.queryByText('Summarize today')).not.toBeInTheDocument();
   });
 
-  it('shows the GEAUi brand icon for the generated Aion CLI pill', () => {
+  it('shows the GEA brand icon for the generated Aion CLI pill', () => {
     render(
       <AssistantSelectionArea
         selectedAssistantId='bare-aionrs'

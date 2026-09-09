@@ -38,7 +38,10 @@ vi.mock('@/common', () => ({
 
 vi.mock('@/renderer/utils/platform', () => ({ isElectronDesktop: () => fixtures.isDesktop }));
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string, options?: { count?: number }) => `${key}:${options?.count ?? ''}` }),
+  useTranslation: () => ({
+    t: (key: string, options?: { count?: number }) =>
+      key === 'common.appName' ? 'GEA' : `${key}:${options?.count ?? ''}`,
+  }),
 }));
 
 import { useInteractionRequestSync } from '@/renderer/hooks/system/notification/useInteractionRequestSync';
@@ -97,7 +100,7 @@ describe('useInteractionRequestSync', () => {
     await waitFor(() => expect(fixtures.listInvoke).toHaveBeenCalledTimes(2));
     await waitFor(() =>
       expect(fixtures.showInvoke).toHaveBeenCalledWith({
-        title: 'GEAUi',
+        title: 'GEA',
         body: 'conversation.attention.notification:1',
         conversation_id: 'conversation-1',
       })

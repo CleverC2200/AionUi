@@ -16,11 +16,11 @@
   },
   "connect": {
     "scanTitle": "Сканировать QR-код",
-    "scanHint": "Откройте GEAUi на ПК → Настройки → WebUI → Показать QR-код",
+    "scanHint": "Откройте GEA на ПК → Настройки → WebUI → Показать QR-код",
     "cameraPermissionTitle": "Нужен доступ к камере",
-    "cameraPermissionMessage": "GEAUi требуется доступ к камере для сканирования QR-кодов быстрого входа на сервер.",
+    "cameraPermissionMessage": "GEA требуется доступ к камере для сканирования QR-кодов быстрого входа на сервер.",
     "requestPermission": "Разрешить камеру",
-    "invalidQRCode": "Неверный QR-код. Отсканируйте QR-код из настольного GEAUi.",
+    "invalidQRCode": "Неверный QR-код. Отсканируйте QR-код из настольного GEA.",
     "verifying": "Проверка...",
     "connectionFailed": "Ошибка подключения",
     "invalidToken": "Неверный или просроченный токен",
@@ -29,7 +29,7 @@
     "pasteLinkHint": "Вставьте ссылку QR-кода с компьютера",
     "urlPlaceholder": "Вставьте сюда URL QR-входа",
     "connect": "Подключиться",
-    "invalidURL": "Неверный URL. Вставьте URL QR-входа из настольного GEAUi."
+    "invalidURL": "Неверный URL. Вставьте URL QR-входа из настольного GEA."
   },
   "tabs": {
     "chat": "Чат",

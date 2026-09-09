@@ -115,7 +115,7 @@ describe('release packaging configuration', () => {
     const root = mkdtempSync(resolve(tmpdir(), 'pr-mac-artifacts-'));
     try {
       mkdirSync(resolve(root, 'out'));
-      const dmg = resolve(root, 'out/GEAUi-test-mac-arm64.dmg');
+      const dmg = resolve(root, 'out/GEA-test-mac-arm64.dmg');
       writeFileSync(dmg, 'fixture installer');
       writeFileSync(resolve(root, 'out/latest-mac.yml'), 'version: test');
       const run = () => spawnSync('bash', ['-e', '-o', 'pipefail', '-c', script], { cwd: root, encoding: 'utf8' });
@@ -170,11 +170,11 @@ describe('release packaging configuration', () => {
   it('uploads only supported desktop installers', () => {
     const workflow = readProjectFile('.github/workflows/_build-reusable.yml');
 
-    expect(workflow).not.toContain('out/GEAUi-*-mac-*.zip');
+    expect(workflow).not.toContain('out/GEA-*-mac-*.zip');
     expect(workflow).not.toContain('out/*.deb');
     expect(workflow).toContain('out/*.dmg');
     expect(workflow).toContain('out/*.exe');
-    expect(workflow).not.toContain('out/GEAUi-*-win32-*.zip');
+    expect(workflow).not.toContain('out/GEA-*-win32-*.zip');
   });
 
   it('fetches stable AionCore artifacts without freezing provenance as product identity', () => {
@@ -289,13 +289,13 @@ describe('release packaging configuration', () => {
     const commands: string[] = [];
     const command = `bunx electron-builder ${args} --publish=never`;
     runInNewContext(`${helper}; createMacArtifactsWithPrepackaged('/tmp/output', command);`, {
-      fs: { readdirSync: () => ['GEAUi.app'] },
+      fs: { readdirSync: () => ['GEA.app'] },
       path: { join: (...parts: string[]) => parts.join('/') },
       execSync: (value: string) => commands.push(value),
       process: { platform: 'darwin' },
       command,
     });
-    expect(commands).toEqual([`${command} --prepackaged "/tmp/output/GEAUi.app"`]);
+    expect(commands).toEqual([`${command} --prepackaged "/tmp/output/GEA.app"`]);
   });
 
   itWithBash('publishes only DMG and EXE even when legacy artifacts are present', () => {
@@ -312,7 +312,7 @@ describe('release packaging configuration', () => {
       });
       expect(createResult.status).toBe(0);
 
-      rmSync(resolve(artifactsDir, 'macos-build-arm64', 'GEAUi-1.0.0-mac-arm64.zip'), { force: true });
+      rmSync(resolve(artifactsDir, 'macos-build-arm64', 'GEA-1.0.0-mac-arm64.zip'), { force: true });
 
       const prepareResult = spawnSync('bash', ['scripts/prepare-release-assets.sh', artifactsDir, outputDir], {
         cwd: projectRoot,
@@ -322,10 +322,10 @@ describe('release packaging configuration', () => {
 
       expect(prepareResult.status, prepareResult.stderr).toBe(0);
       expect(readdirSync(outputDir).toSorted()).toEqual([
-        'GEAUi-1.0.0-mac-arm64.dmg',
-        'GEAUi-1.0.0-mac-x64.dmg',
-        'GEAUi-1.0.0-win-arm64.exe',
-        'GEAUi-1.0.0-win-x64.exe',
+        'GEA-1.0.0-mac-arm64.dmg',
+        'GEA-1.0.0-mac-x64.dmg',
+        'GEA-1.0.0-win-arm64.exe',
+        'GEA-1.0.0-win-x64.exe',
         'SHA256SUMS.txt',
         'latest-win-arm64.yml',
         'latest.yml',
@@ -335,14 +335,14 @@ describe('release packaging configuration', () => {
         encoding: 'utf8',
       });
       expect(verify.status, verify.stdout + verify.stderr).toBe(0);
-      writeFileSync(resolve(outputDir, 'GEAUi-1.0.0-mac-arm64.dmg'), 'tampered');
+      writeFileSync(resolve(outputDir, 'GEA-1.0.0-mac-arm64.dmg'), 'tampered');
       const corrupted = spawnSync('bash', ['scripts/verify-release-assets.sh', outputDir], {
         cwd: projectRoot,
         encoding: 'utf8',
       });
       expect(corrupted.status).not.toBe(0);
       expect(corrupted.stdout).toContain('FAIL: release checksums');
-      rmSync(resolve(artifactsDir, 'macos-build-arm64', 'GEAUi-1.0.0-mac-arm64.dmg'));
+      rmSync(resolve(artifactsDir, 'macos-build-arm64', 'GEA-1.0.0-mac-arm64.dmg'));
       const missing = spawnSync('bash', ['scripts/prepare-release-assets.sh', artifactsDir, outputDir], {
         cwd: projectRoot,
         env,

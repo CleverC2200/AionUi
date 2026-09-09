@@ -9,7 +9,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: (key: string) => (key === 'common.appName' ? 'GEA' : key) }),
 }));
 
 vi.mock('@/renderer/components/settings/SettingsModal/settingsViewContext', () => ({
@@ -44,7 +44,7 @@ describe('AboutModalContent GEA remote service placeholder', () => {
   it('keeps app identity and exposes local runtime provenance without external links', async () => {
     const { container } = render(<AboutModalContent />);
 
-    expect(screen.getByText('GEAUi')).toBeInTheDocument();
+    expect(screen.getByText('GEA')).toBeInTheDocument();
     expect(screen.getByText('v2.1.13')).toBeInTheDocument();
     expect(screen.getByTestId('gea-remote-services-placeholder')).toHaveTextContent(
       'GEA · settings.channels.comingSoon'

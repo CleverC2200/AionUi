@@ -87,7 +87,7 @@ describe('deepLink', () => {
   });
 
   it('registers the packaged macOS application as the protocol client', () => {
-    registerDefaultProtocolClient(false, 'darwin', '/Applications/GEAUi.app/Contents/MacOS/GEAUi', '/unused');
+    registerDefaultProtocolClient(false, 'darwin', '/Applications/GEA.app/Contents/MacOS/GEA', '/unused');
 
     expect(electronApp.setAsDefaultProtocolClient).toHaveBeenCalledWith('aionui');
   });
@@ -118,7 +118,7 @@ describe('deepLink', () => {
   });
 
   it('creates a typed pending intent directly from cold-start argv', () => {
-    expect(findInitialDeepLink(['GEAUi', `aionui://open-conversation?ref=${REFERENCE}&v=1`])).toEqual({
+    expect(findInitialDeepLink(['GEA', `aionui://open-conversation?ref=${REFERENCE}&v=1`])).toEqual({
       payload: { action: 'open-conversation', params: { ref: REFERENCE, v: '1' } },
       url: `aionui://open-conversation?ref=${REFERENCE}&v=1`,
     });

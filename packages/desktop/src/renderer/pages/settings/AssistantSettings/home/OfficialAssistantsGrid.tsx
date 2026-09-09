@@ -113,7 +113,7 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
                   defaultValue: 'Managed by your enterprise · core capabilities stay protected',
                 })
               : t('settings.officialAssistantsHintShort', {
-                  defaultValue: 'Maintained by GEAUi · enable to use, duplicate to customize',
+                  defaultValue: 'Maintained by GEA · enable to use, duplicate to customize',
                 })}
           </span>
         </span>

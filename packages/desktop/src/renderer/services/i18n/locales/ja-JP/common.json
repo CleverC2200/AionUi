@@ -1,4 +1,14 @@
 {
+  "channelConflict": {
+    "owner": "OpenClaw is handling {{platformName}} messages, not GEA.",
+    "switching": "✗ Switching agents in GEA will have no effect",
+    "useChannels": "To use GEA Channels and switch agents:",
+    "restart": "Then restart OpenClaw and GEA.",
+    "newBot": "Create a new {{platformName}} bot with different credentials for GEA.",
+    "disable": "Disable {{platformName}} in GEA Channels and continue using OpenClaw's integration."
+  },
+  "componentShowcaseTitle": "GEA custom component showcase",
+  "appName": "GEA",
   "send": "送信",
   "cancel": "キャンセル",
   "save": "保存",
@@ -65,10 +75,10 @@
   "more": "その他",
   "refresh": "更新",
   "readOnly": "読み取り専用",
-  "tray.showWindow": "GEAUi を表示",
+  "tray.showWindow": "GEA を表示",
   "tray.newChat": "新しいチャット",
   "tray.closeToTray": "トレイに隠す",
-  "tray.about": "GEAUi について",
+  "tray.about": "GEA について",
   "tray.restart": "アプリを再起動",
   "tray.quit": "終了",
   "tray.runningTasks": "実行中のタスク",
@@ -79,26 +89,26 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "このシステムは同梱バックエンドに対応していません",
-      "description": "GEAUi は開きましたが、ローカルの GEACore バックエンドはこの Linux バージョンでは実行できません。対応している Linux ディストリビューションにアップグレードしてから GEAUi を再起動してください。",
+      "description": "GEA は開きましたが、ローカルの GEACore バックエンドはこの Linux バージョンでは実行できません。対応している Linux ディストリビューションにアップグレードしてから GEA を再起動してください。",
       "requiredVersions": "必要なランタイムシンボル: {{versions}}"
     },
     "incompleteInstallation": {
-      "title": "GEAUi のインストールが不完全です",
-      "description": "このインストールには必要なローカルリソースが不足しているため、GEACore を起動できません。最新の GEAUi をダウンロードして再インストールしてください。再インストール後も問題が再発する場合は、セキュリティソフトまたはウイルス対策ソフトが GEACore を隔離していないか確認してください。",
+      "title": "GEA のインストールが不完全です",
+      "description": "このインストールには必要なローカルリソースが不足しているため、GEACore を起動できません。最新の GEA をダウンロードして再インストールしてください。再インストール後も問題が再発する場合は、セキュリティソフトまたはウイルス対策ソフトが GEACore を隔離していないか確認してください。",
       "downloadLatest": "最新版をダウンロード",
       "sendDiagnostics": "診断レポートを送信",
       "diagnosticsSent": "診断レポートを送信済み",
       "diagnosticsReportSuccess": "診断レポートを送信しました",
       "diagnosticsReportFailed": "診断レポートの送信に失敗しました",
-      "runtimeComponentDescription": "このインストールには必要な組み込み実行コンポーネントが不足しているため、{{resource}} を起動できません。最新版の GEAUi パッケージを再インストールしてください。再インストール後も続く場合は、セキュリティソフトまたはウイルス対策ソフトが GEAUi コンポーネントを隔離していないか確認してください。"
+      "runtimeComponentDescription": "このインストールには必要な組み込み実行コンポーネントが不足しているため、{{resource}} を起動できません。最新版の GEA パッケージを再インストールしてください。再インストール後も続く場合は、セキュリティソフトまたはウイルス対策ソフトが GEA コンポーネントを隔離していないか確認してください。"
     },
     "packageArchitectureMismatch": {
-      "title": "GEAUi package architecture mismatch",
-      "description": "This GEAUi package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
+      "title": "GEA package architecture mismatch",
+      "description": "This GEA package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
     },
     "dataMigration": {
       "title": "Local data migration failed",
-      "description": "GEAUi opened, but GEACore stopped while initializing local data. Reinstalling GEAUi may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
+      "description": "GEA opened, but GEACore stopped while initializing local data. Reinstalling GEA may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -111,7 +121,7 @@
     },
     "localDataRepair": {
       "title": "Local data repair failed",
-      "description": "GEAUi は開きましたが、GEACore は assistant またはエージェントのレコードなどのローカル起動データを準備中に停止しました。GEAUi を再インストールしても解決しない可能性があります。ローカルデータベースを確認できるよう、診断レポートを送信するかサポートに連絡してください。",
+      "description": "GEA は開きましたが、GEACore は assistant またはエージェントのレコードなどのローカル起動データを準備中に停止しました。GEA を再インストールしても解決しない可能性があります。ローカルデータベースを確認できるよう、診断レポートを送信するかサポートに連絡してください。",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -119,7 +129,7 @@
     },
     "startupDirectory": {
       "title": "Startup directory is unavailable",
-      "description": "GEAUi opened, but GEACore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart GEAUi.",
+      "description": "GEA opened, but GEACore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart GEA.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -127,8 +137,7 @@
     },
     "recoverableDatabaseCorruption": {
       "title": "ローカルデータが破損しています",
-      "description": "ローカルデータベースの破損を検出したため、GEAUi は起動を続行できません。確認後、古いデータベースをバックアップし、新しいローカルデータベースを作成して起動を続行します。過去のローカルデータは当面表示されず、古いデータベースはバックアップとして保持されます。",
-
+      "description": "ローカルデータベースの破損を検出したため、GEA は起動を続行できません。確認後、古いデータベースをバックアップし、新しいローカルデータベースを作成して起動を続行します。過去のローカルデータは当面表示されず、古いデータベースはバックアップとして保持されます。",
       "confirmRebuild": "古いDBをバックアップして新しいDBを再作成",
       "sendDiagnostics": "診断レポートを送信",
       "diagnosticsHint": "診断レポートの送信ではローカルデータベースは変更されません。",
@@ -144,8 +153,8 @@
       }
     },
     "transientConcurrentStartup": {
-      "title": "GEAUi を起動しています",
-      "description": "このウィンドウを開いたとき、別の GEAUi の起動処理がまだローカルデータを使用していました。これは一時的なもので、データは安全です。再インストールの必要はありません。少し待ってから再試行するか、GEAUi を再起動してください。",
+      "title": "GEA を起動しています",
+      "description": "このウィンドウを開いたとき、別の GEA の起動処理がまだローカルデータを使用していました。これは一時的なもので、データは安全です。再インストールの必要はありません。少し待ってから再試行するか、GEA を再起動してください。",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -203,5 +212,10 @@
   },
   "selectedCount": "選択済み {{count}}",
   "selectedSkills": "選択済みスキル",
-  "aiAssistant": "AI アシスタント"
+  "aiAssistant": "AI アシスタント",
+  "appMenu": {
+    "about": "About {{appName}}",
+    "hide": "Hide {{appName}}",
+    "quit": "Quit {{appName}}"
+  }
 }

@@ -1,6 +1,6 @@
 {
-  "pageTitle": "GEAUi - 로그인",
-  "brand": "GEAUi",
+  "pageTitle": "GEA - 로그인",
+  "brand": "GEA",
   "subtitle": "다시 오신 것을 환영합니다. 계정에 로그인하세요",
   "username": "사용자 이름",
   "usernamePlaceholder": "사용자 이름을 입력하세요",
@@ -46,7 +46,7 @@
     },
     "errors": {
       "networkError": "GEA에 연결할 수 없습니다. 다시 시도하세요",
-      "secureStorageUnavailable": "시스템 보안 자격 증명 저장소에 접근할 수 없습니다. GEAUi의 접근을 허용한 후 다시 시도하세요.",
+      "secureStorageUnavailable": "시스템 보안 자격 증명 저장소에 접근할 수 없습니다. GEA의 접근을 허용한 후 다시 시도하세요.",
       "serverError": "GEA 로그인 서비스를 일시적으로 사용할 수 없습니다",
       "invalidResponse": "GEA에서 잘못된 로그인 응답을 반환했습니다"
     }
