@@ -57,7 +57,7 @@ const AboutModalContent: React.FC = () => {
         <div className='mx-auto flex max-w-500px flex-col'>
           <div className='flex flex-col items-center pb-24px'>
             <Typography.Title heading={3} className='mb-8px text-24px font-bold text-t-primary'>
-              GEAUi
+              {t('common.appName')}
             </Typography.Title>
             <Typography.Text className='mb-12px text-center text-14px text-t-secondary'>
               {t('settings.appDescription')}

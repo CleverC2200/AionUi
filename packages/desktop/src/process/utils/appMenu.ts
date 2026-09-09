@@ -5,27 +5,30 @@
  */
 
 import { ipcBridge } from '@/common';
+import i18n from '@process/services/i18n';
 import type { MenuItemConstructorOptions } from 'electron';
 import { Menu, app } from 'electron';
 
 export function setupApplicationMenu(): void {
   const isMac = process.platform === 'darwin';
+  const productName = i18n.t('common.appName');
+  app.setAboutPanelOptions({ applicationName: productName });
 
   const template: MenuItemConstructorOptions[] = [];
 
   if (isMac) {
     template.push({
-      label: app.name,
+      label: productName,
       submenu: [
-        { role: 'about' },
+        { role: 'about', label: i18n.t('common.appMenu.about', { appName: productName }) },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
-        { role: 'hide' },
+        { role: 'hide', label: i18n.t('common.appMenu.hide', { appName: productName }) },
         { role: 'hideOthers' },
         { role: 'unhide' },
         { type: 'separator' },
-        { role: 'quit' },
+        { role: 'quit', label: i18n.t('common.appMenu.quit', { appName: productName }) },
       ],
     });
   }

@@ -1,5 +1,9 @@
 # 开发指南
 
+产品名称为 GEA。正式版 Electron 配置仍使用系统应用数据目录下的 `GEAUi` 文件夹，以保留升级前的配置与会话。应用 ID（`com.aionui.app`）和 `aionui://` 协议保持稳定；开发环境与显式 E2E 配置继续隔离。 Electron 内部应用名也保留 `GEAUi`，以沿用 macOS Safe Storage 钥匙串身份；对外显示名称为 GEA。
+
+默认连接正式 GEA：`https://gea.synear.cn/gea-boot`。已保存的地址与显式环境变量仍优先；测试时请显式配置 `https://gea.synear.cn:4443/gea-boot`。
+
 ## 前置条件
 
 - **Node.js** 22 或更高版本
@@ -12,10 +16,10 @@
 
 ## 仓库布局
 
-GEAUi 的开发使用两个仓库：
+GEA 的开发使用两个仓库：
 
 - **GEACore**（`https://github.com/iOfficeAI/AionCore.git`）用于构建本地后端二进制文件：macOS/Linux 上为 `aioncore`，Windows 上为 `aioncore.exe`。
-- **GEAUi**（`https://github.com/iOfficeAI/AionUi.git`）用于启动 Electron 桌面应用，并自动启动后端二进制文件。
+- **GEA**（`https://github.com/iOfficeAI/AionUi.git`）用于启动 Electron 桌面应用，并自动启动后端二进制文件。
 
 建议尽可能将两个仓库放在同一级目录：
 
@@ -25,7 +29,7 @@ workspace/
 `-- AionUi/
 ```
 
-桌面开发服务器会从 `bun run start` 继承的 `PATH` 中查找后端。请先安装 GEACore，确认在同一个终端中能够找到该二进制文件，然后再启动 GEAUi。
+桌面开发服务器会从 `bun run start` 继承的 `PATH` 中查找后端。请先安装 GEACore，确认在同一个终端中能够找到该二进制文件，然后再启动 GEA。
 
 ## 快速开始
 
@@ -76,7 +80,7 @@ aioncore --help
 
 如果 `where.exe aioncore` 没有输出，请确认 `%USERPROFILE%\.cargo\bin` 已加入用户的 `Path`，重新打开 PowerShell 窗口后再次验证。
 
-### 3. 启动 GEAUi
+### 3. 启动 GEA
 
 请在能够找到 `aioncore` 的终端中，从 `AionUi` 仓库运行以下命令。
 
@@ -90,11 +94,11 @@ bun install
 bun run start
 ```
 
-启动过程中，GEAUi 会自动启动 `aioncore`，并将后端端口传给渲染进程。无需在另一个终端中单独启动 GEACore。
+启动过程中，GEA 会自动启动 `aioncore`，并将后端端口传给渲染进程。无需在另一个终端中单独启动 GEACore。
 
 ## 更新本地后端
 
-拉取或修改 GEACore 后，请重新安装后端二进制文件并重启 GEAUi：
+拉取或修改 GEACore 后，请重新安装后端二进制文件并重启 GEA：
 
 ```bash
 cd ../AionCore
@@ -110,9 +114,9 @@ bun run start
 
 ### `Cannot find "aioncore" binary`
 
-GEAUi 无法从 `bun run start` 继承的 `PATH` 中找到后端。
+GEA 无法从 `bun run start` 继承的 `PATH` 中找到后端。
 
-请在启动 GEAUi 的同一个终端中检查：
+请在启动 GEA 的同一个终端中检查：
 
 ```bash
 # macOS / Linux
@@ -122,15 +126,15 @@ which aioncore
 where.exe aioncore
 ```
 
-如果命令失败，请将 Cargo 的二进制目录添加到 `PATH`，然后从新打开的终端启动 GEAUi。
+如果命令失败，请将 Cargo 的二进制目录添加到 `PATH`，然后从新打开的终端启动 GEA。
 
-### 在终端中可以运行 `aioncore`，但 GEAUi 仍然找不到它
+### 在终端中可以运行 `aioncore`，但 GEA 仍然找不到它
 
 请确保从能够执行 `aioncore --help` 的同一个终端环境运行 `bun run start`。IDE 终端和通过图形界面启动的 Shell 可能继承不同的 `PATH`；更新 `PATH` 后，请重启 IDE，或者从终端启动 IDE。
 
 ### 后端改动没有生效
 
-退出 GEAUi，使用 `cargo install --path crates/aionui-app --locked --force` 重新安装 GEACore，然后再次启动 GEAUi。开发过程中，Electron 应用持有后端子进程，因此正在运行的 GEAUi 实例必须重启后才能使用新安装的二进制文件。
+退出 GEA，使用 `cargo install --path crates/aionui-app --locked --force` 重新安装 GEACore，然后再次启动 GEA。开发过程中，Electron 应用持有后端子进程，因此正在运行的 GEA 实例必须重启后才能使用新安装的二进制文件。
 
 ### Windows Rust 构建错误
 
@@ -257,7 +261,7 @@ prek run --from-ref origin/main --to-ref HEAD
 
 ## 构建系统
 
-GEAUi 使用 **electron-vite** 进行快速打包：
+GEA 使用 **electron-vite** 进行快速打包：
 
 - **主进程**：使用 Vite 打包（ESM）
 - **渲染进程**：使用 Vite 打包（React + TypeScript）

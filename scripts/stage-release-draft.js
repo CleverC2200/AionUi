@@ -144,7 +144,7 @@ function stage() {
       const archive = path.join(temp, `${platform}.zip`);
       fs.writeFileSync(archive, bytes);
       const members = execFileSync('unzip', ['-Z1', archive], { encoding: 'utf8' }).trim().split('\n');
-      const filename = `GEAUi-${tag.slice(1)}-${suffix}`;
+      const filename = `GEA-${tag.slice(1)}-${suffix}`;
       if (members.filter((name) => name === filename).length !== 1)
         throw new Error(`Expected versioned installer missing: ${filename}`);
       if (members.filter((name) => name === 'package-evidence.json').length !== 1)

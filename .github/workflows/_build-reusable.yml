@@ -793,11 +793,11 @@ jobs:
           set -euo pipefail
           if [[ "${{ matrix.platform }}" == windows-* ]]; then
             APP="out/win-unpacked"
-            EXECUTABLE="$APP/GEAUi.exe"
+            EXECUTABLE="$APP/GEA.exe"
             ASAR="$APP/resources/app.asar"
           else
-            APP="out/mac-arm64/GEAUi.app"
-            EXECUTABLE="$APP/Contents/MacOS/GEAUi"
+            APP="out/mac-arm64/GEA.app"
+            EXECUTABLE="$APP/Contents/MacOS/GEA"
             ASAR="$APP/Contents/Resources/app.asar"
           fi
           ELECTRON_RUN_AS_NODE=1 "$EXECUTABLE" scripts/packaging/dependency-smoke.cjs "$ASAR" out/packaged-dependency-smoke.json

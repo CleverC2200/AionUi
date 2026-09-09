@@ -89,7 +89,7 @@ const ConversationLayoutIcon: React.FC<{
 
 const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   const { t } = useTranslation();
-  const appTitle = useMemo(() => 'GEAUi', []);
+  const appTitle = t('common.appName');
   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(readWorkspaceCollapsedState);
   const [mobileCenterTitle, setMobileCenterTitle] = useState(appTitle);
   const [mobileCenterOffset, setMobileCenterOffset] = useState(0);

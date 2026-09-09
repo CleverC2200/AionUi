@@ -1,6 +1,6 @@
 {
-  "pageTitle": "GEAUi - Sign In",
-  "brand": "GEAUi",
+  "pageTitle": "GEA - Sign In",
+  "brand": "GEA",
   "subtitle": "Welcome back, please sign in to your account",
   "username": "Username",
   "usernamePlaceholder": "Enter your username",
@@ -46,7 +46,7 @@
     },
     "errors": {
       "networkError": "Unable to connect to GEA. Please try again",
-      "secureStorageUnavailable": "The system secure credential store could not be accessed. Allow GEAUi to access it, then try again.",
+      "secureStorageUnavailable": "The system secure credential store could not be accessed. Allow GEA to access it, then try again.",
       "serverError": "The GEA sign-in service is temporarily unavailable",
       "invalidResponse": "GEA returned an invalid sign-in response"
     }

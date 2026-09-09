@@ -22,10 +22,10 @@ describe('CredentialStoragePolicy', () => {
         inspect,
         isPackaged: true,
         platform: 'darwin',
-        resourcesPath: '/Applications/GEAUi.app/Contents/Resources',
+        resourcesPath: '/Applications/GEA.app/Contents/Resources',
       })
     ).toBe(false);
-    expect(inspect).toHaveBeenCalledWith(path.resolve('/Applications/GEAUi.app'));
+    expect(inspect).toHaveBeenCalledWith(path.resolve('/Applications/GEA.app'));
   });
 
   it('allows persistent credentials for a stable signed packaged macOS app', () => {
@@ -34,7 +34,7 @@ describe('CredentialStoragePolicy', () => {
         inspect: () => 'Signature size=8978\nTeamIdentifier=TEAM123456\n',
         isPackaged: true,
         platform: 'darwin',
-        resourcesPath: '/Applications/GEAUi.app/Contents/Resources',
+        resourcesPath: '/Applications/GEA.app/Contents/Resources',
       })
     ).toBe(true);
   });
@@ -45,7 +45,7 @@ describe('CredentialStoragePolicy', () => {
         inspect: () => 'Authority=GEAUi Local Code Signing\nSignature size=2048\nTeamIdentifier=not set\n',
         isPackaged: true,
         platform: 'darwin',
-        resourcesPath: '/Applications/GEAUi.app/Contents/Resources',
+        resourcesPath: '/Applications/GEA.app/Contents/Resources',
       })
     ).toBe(true);
   });

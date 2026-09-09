@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../../resources/aionui-banner-1.png" alt="GEAUi - Cowork with AI Agents" width="100%">
+  <img src="../../resources/aionui-banner-1.png" alt="GEA - Cowork with AI Agents" width="100%">
 </p>
 
 <p align="center">
@@ -41,12 +41,12 @@
 
 <p align="center">
   <a href="https://x.com/AionUi/status/2079493379914961069">
-    <img src="../../resources/kimi/contributor-bonus-black-blue.jpg" alt="GEAUi × Kimi 貢獻者激勵" width="600">
+    <img src="../../resources/kimi/contributor-bonus-black-blue.jpg" alt="GEA × Kimi 貢獻者激勵" width="600">
   </a>
 </p>
 
 <p align="center">
-  🎁 <strong>GEAUi × Kimi 戰略合作</strong>：面向貢獻者免費贈送 <strong>Kimi「Allegretto」訂閱方案（價值 $39/月 · ¥199/月）</strong>！
+  🎁 <strong>GEA × Kimi 戰略合作</strong>：面向貢獻者免費贈送 <strong>Kimi「Allegretto」訂閱方案（價值 $39/月 · ¥199/月）</strong>！
 </p>
 
 <h3 align="center">
@@ -54,7 +54,7 @@
 </h3>
 
 <p align="center">
-  <sub><strong>Kimi K3</strong> 已發布，在 GEAUi 中開箱即用——<a href="https://www.kimi.com/code?aff=aionui" target="_blank">訂閱 Kimi For Coding</a>，或取得 API Key（<a href="https://platform.kimi.com?track_id=track-98f92981df1c4c61b2c68930ba3ab658&aff=aionui" target="_blank">中國</a> / <a href="https://platform.kimi.ai?track_id=track-32e04532b08d460fac729191744fa75c&aff=aionui" target="_blank">國際</a>）</sub>
+  <sub><strong>Kimi K3</strong> 已發布，在 GEA 中開箱即用——<a href="https://www.kimi.com/code?aff=aionui" target="_blank">訂閱 Kimi For Coding</a>，或取得 API Key（<a href="https://platform.kimi.com?track_id=track-98f92981df1c4c61b2c68930ba3ab658&aff=aionui" target="_blank">中國</a> / <a href="https://platform.kimi.ai?track_id=track-32e04532b08d460fac729191744fa75c&aff=aionui" target="_blank">國際</a>）</sub>
 </p>
 
 ---
@@ -64,7 +64,7 @@
 <p align="center">
 
 [✨ Cowork 演示](#-cowork-演示) ·
-[🤔 為什麼選擇 GEAUi？](#-為什麼選擇-aionui-而非-claude-cowork) ·
+[🤔 為什麼選擇 GEA？](#-為什麼選擇-aionui-而非-claude-cowork) ·
 [🚀 快速開始](#-快速開始) ·
 [💬 社群](#-社群與支援)
 
@@ -74,9 +74,9 @@
 
 ## Cowork — AI Agent 與您並肩工作
 
-**GEAUi 不只是個聊天工具。** 它是一個真正的 Cowork 平台，AI Agent 就像您的得力助手，在電腦上幫您處理各種任務——讀檔案、寫程式碼、查資料、自動化工作流。Agent 的一舉一動都在您的掌控之中，透明可見。
+**GEA 不只是個聊天工具。** 它是一個真正的 Cowork 平台，AI Agent 就像您的得力助手，在電腦上幫您處理各種任務——讀檔案、寫程式碼、查資料、自動化工作流。Agent 的一舉一動都在您的掌控之中，透明可見。
 
-|                       | 傳統 AI 聊天客戶端 | **GEAUi (Cowork)**                                                                                                      |
+|                       | 傳統 AI 聊天客戶端 | **GEA (Cowork)**                                                                                                        |
 | :-------------------- | :----------------- | :---------------------------------------------------------------------------------------------------------------------- |
 | AI 可以操作您的檔案   | 有限或不可用       | **是 — 內建 Agent，完全檔案存取**                                                                                       |
 | AI 可以執行多步驟任務 | 有限               | **是 — 自主執行，需您批准**                                                                                             |
@@ -86,14 +86,14 @@
 | 價格                  | 免費 / 付費        | **免費且開源**                                                                                                          |
 
 <p align="center">
-  <img src="../../resources/offica-ai BANNER-function.png" alt="GEAUi Cowork Platform" width="800">
+  <img src="../../resources/offica-ai BANNER-function.png" alt="GEA Cowork Platform" width="800">
 </p>
 
 ---
 
 ## 內建 Agent — 安裝即用，零配置
 
-GEAUi 自帶完整的 AI Agent 引擎。不像其他工具需要您手動安裝各種 CLI 工具，**GEAUi 裝好就能用，開箱即用**。
+GEA 自帶完整的 AI Agent 引擎。不像其他工具需要您手動安裝各種 CLI 工具，**GEA 裝好就能用，開箱即用**。
 
 - **無需安裝 CLI 工具** — Agent 引擎已內建
 - **無需複雜配置** — 貼上任意 API 金鑰即可開始
@@ -106,7 +106,7 @@ GEAUi 自帶完整的 AI Agent 引擎。不像其他工具需要您手動安裝�
 
 ### **辦公助手（PPT / Word / Excel）**
 
-想把文件/表格直接交給 Agent？GEAUi 內建 **[OfficeCLI](https://github.com/iOfficeAI/OfficeCLI)**，讓 PPT（Morph 轉場）、Word（`.docx`）與 Excel（`.xlsx/.xlsm/.csv`）從需求到可交付結果更高效、更穩定。
+想把文件/表格直接交給 Agent？GEA 內建 **[OfficeCLI](https://github.com/iOfficeAI/OfficeCLI)**，讓 PPT（Morph 轉場）、Word（`.docx`）與 Excel（`.xlsx/.xlsm/.csv`）從需求到可交付結果更高效、更穩定。
 三類助手對應各自的文件工作流：生成的成稿可直接編輯、可復用。
 
 #### **PPT 助手**
@@ -161,7 +161,7 @@ GEAUi 自帶完整的 AI Agent 引擎。不像其他工具需要您手動安裝�
 
 ## 多 Agent 模式 — 已有 CLI 工具？一起用起來
 
-如果您已經在用 Claude Code、Codex 或 Qwen Code，GEAUi 會自動發現它們，讓您同時和這些 Agent 一起 Cowork——當然，還有內建 Agent。
+如果您已經在用 Claude Code、Codex 或 Qwen Code，GEA 會自動發現它們，讓您同時和這些 Agent 一起 Cowork——當然，還有內建 Agent。
 
 **支援的 Agent：** 內建 Agent（由嵌入式 [aionrs](https://github.com/iOfficeAI/aionrs) Agent 引擎驅動） • Claude Code • Codex • Qwen Code • Gemini CLI • Goose • OpenClaw • Augment Code • CodeBuddy • Kimi CLI • OpenCode • Factory Droid • GitHub Copilot • Qoder • Mistral Vibe • Nanobot • Snow • Hermes • Cursor Agent • Pi • MiMo Code • omp • Antigravity 等
 
@@ -172,7 +172,7 @@ GEAUi 自帶完整的 AI Agent 引擎。不像其他工具需要您手動安裝�
 - **自動偵測** — 自動識別已安裝的 CLI 工具
 - **統一介面** — 一個 Cowork 平台管理所有 AI Agent
 - **並行會話** — 同時執行多個 Agent，各自獨立上下文
-- **MCP 統一管理** — 在一處管理 MCP（模型上下文協定）工具；GEAUi 會依各 Agent 的能力注入或同步相容的傳輸方式
+- **MCP 統一管理** — 在一處管理 MCP（模型上下文協定）工具；GEA 會依各 Agent 的能力注入或同步相容的傳輸方式
 - **YOLO / 全自動模式** — 支援的 Agent 可提供無人值守模式；可用模式和權限行為取決於所選 Agent
 
 ### Team Mode — 多 Agent 有序協作
@@ -183,7 +183,7 @@ GEAUi 自帶完整的 AI Agent 引擎。不像其他工具需要您手動安裝�
   <img src="../../resources/AionUi_team.gif" alt="Team Mode overview" width="800">
 </p>
 
-- **多 Agent 並行執行** — Leader 將任務拆分並委派給並行運行的 Teammate；外部 Agent 透過 ACP（Agent Client Protocol）連線，由 GEAUi 負責團隊協調
+- **多 Agent 並行執行** — Leader 將任務拆分並委派給並行運行的 Teammate；外部 Agent 透過 ACP（Agent Client Protocol）連線，由 GEA 負責團隊協調
 - **Leader 統籌編排** — Leader 分配、追蹤並彙總結果；支援的後端包括 Claude Code、Codex、Hermes Agent、Gemini、Snow CLI 和 GEA CLI
 - **團隊隔離工作空間** — 所有 Agent 共享同一資料夾；每個 Agent 有獨立的權限確認彈窗，側邊欄角標顯示待確認項
 
@@ -204,7 +204,7 @@ GEAUi 自帶完整的 AI Agent 引擎。不像其他工具需要您手動安裝�
 
 ## 任意 API 金鑰，都能獲得完整 Cowork 能力
 
-其他 AI 應用可能只給您個聊天視窗，**但 GEAUi 給您的是完整的 Cowork Agent**。
+其他 AI 應用可能只給您個聊天視窗，**但 GEA 給您的是完整的 Cowork Agent**。
 
 | 您的 API 金鑰              | 您獲得的功能                                |
 | :------------------------- | :------------------------------------------ |
@@ -215,7 +215,7 @@ GEAUi 自帶完整的 AI Agent 引擎。不像其他工具需要您手動安裝�
 | Ollama / LM Studio（本地） | 本地模型 Cowork Agent                       |
 | NewAPI 閘道                | 統一存取 20+ 模型                           |
 
-不管用哪個模型，Agent 的能力都一樣強大——檔案讀寫、網路搜尋、圖像生成、工具調用，一個不少。GEAUi 支援 **30+ 個 AI 平台**，雲端本地都能用。
+不管用哪個模型，Agent 的能力都一樣強大——檔案讀寫、網路搜尋、圖像生成、工具調用，一個不少。GEA 支援 **30+ 個 AI 平台**，雲端本地都能用。
 
 <p align="center">
   <img src="../../resources/llm_newapi.png" alt="Multi-Model Support" width="800">
@@ -234,7 +234,7 @@ GEAUi 自帶完整的 AI Agent 引擎。不像其他工具需要您手動安裝�
 - **國際平台** — DeepSeek、MiniMax、Novita、OpenRouter、SiliconFlow、xAI、Ark (火山引擎)、Poe
 - **本地模型** — Ollama、LM Studio（透過自訂平台設定本地 API 端點）
 
-GEAUi 還支援 [NewAPI](https://github.com/QuantumNous/new-api) 閘道服務 — 一個統一的 AI 模型中心，聚合和分發各種大語言模型。在同一個介面中靈活切換不同模型，滿足各種任務需求。
+GEA 還支援 [NewAPI](https://github.com/QuantumNous/new-api) 閘道服務 — 一個統一的 AI 模型中心，聚合和分發各種大語言模型。在同一個介面中靈活切換不同模型，滿足各種任務需求。
 
 </details>
 
@@ -245,7 +245,7 @@ GEAUi 還支援 [NewAPI](https://github.com/QuantumNous/new-api) 閘道服務 �
 _靈活的助手系統，內建 21 個專業助手，支援三層技能體系，可自由建立和管理助手與技能。_
 
 - **打造專屬助手** — 按您的需求自訂助手，設定專屬規則和能力
-- **三層技能體系** — 內建技能（隨 GEAUi 附帶）、自訂技能（您自己的）以及擴展技能（第三方擴展貢獻）；透過技能指示器按對話啟用/停用
+- **三層技能體系** — 內建技能（隨 GEA 附帶）、自訂技能（您自己的）以及擴展技能（第三方擴展貢獻）；透過技能指示器按對話啟用/停用
 - **對話級控制** — 聊天標頭的技能指示器顯示當前對話的活躍技能；可隨時搜尋和排除技能
 
 <p align="center">
@@ -257,7 +257,7 @@ _靈活的助手系統，內建 21 個專業助手，支援三層技能體系，
 
 <br>
 
-GEAUi 內建 **21 個專業助手**，每個都有獨特能力，還能透過自訂技能繼續擴展：
+GEA 內建 **21 個專業助手**，每個都有獨特能力，還能透過自訂技能繼續擴展：
 
 - **🤝 Cowork** — 自主任務執行（檔案操作、文件處理、工作流程規劃）
 - **📊 PPT 生成器 / Morph PPT / Morph PPT 3D** — 生成並製作帶 Morph 轉場的 PPTX 簡報
@@ -278,11 +278,11 @@ GEAUi 內建 **21 個專業助手**，每個都有獨特能力，還能透過自
 - **🔧 OpenClaw 設定** — OpenClaw 整合的設定和配置助手
 - **📖 故事角色扮演** — 沉浸式故事角色扮演，支援角色卡和世界資訊（相容 SillyTavern）
 
-- **🧭 GEAUi Butler** — 在 GEAUi 內提供產品使用指引、設定協助和故障排查
+- **🧭 GEA Butler** — 在 GEA 內提供產品使用指引、設定協助和故障排查
 
-**自訂技能**：在 **設定 → Skills** 中匯入或建立技能，再按需綁定到助手。技能來源分三層：內建（隨 GEAUi 附帶）、自訂（您自己的）以及擴展（透過擴展 SDK 貢獻）。內建技能有 `pptx`、`docx`、`pdf`、`xlsx`、`mermaid` 等。
+**自訂技能**：在 **設定 → Skills** 中匯入或建立技能，再按需綁定到助手。技能來源分三層：內建（隨 GEA 附帶）、自訂（您自己的）以及擴展（透過擴展 SDK 貢獻）。內建技能有 `pptx`、`docx`、`pdf`、`xlsx`、`mermaid` 等。
 
-> 💡 內建定義的權威來源是 GEACore 的[助手目錄](https://github.com/iOfficeAI/AionCore/blob/main/crates/aionui-app/assets/builtin-assistants/assistants.json)；助手規則仍使用 Markdown，並可在 GEAUi 中自訂。
+> 💡 內建定義的權威來源是 GEACore 的[助手目錄](https://github.com/iOfficeAI/AionCore/blob/main/crates/aionui-app/assets/builtin-assistants/assistants.json)；助手規則仍使用 Markdown，並可在 GEA 中自訂。
 
 </details>
 
@@ -301,7 +301,7 @@ _您的 24/7 AI 助手 — 手機、平板、電腦，隨時隨地都能用。_
   - **WeChat** — 微信個人號接入
   - **WeCom（企業微信）**、**Slack**、**Discord** 等更多平台即將推出
 
-> **設定：** GEAUi 設定 → WebUI 設定 → Channel，配置 Bot Token。
+> **設定：** GEA 設定 → WebUI 設定 → Channel，配置 Bot Token。
 
 <p align="center">
   <img src="../../resources/webui-remote.gif" alt="WebUI remote access demo" width="800">
@@ -347,7 +347,7 @@ _一次設定，AI Agent 就會按您的計劃自動工作 — 真正的 24/7 �
 - **綁定會話** — 每個定時任務都綁定到特定會話，上下文和歷史記錄都會保留
 - **自動執行** — 到點就自動執行，結果直接發到對應會話
 - **管理方便** — 隨時建立、修改、開啟/關閉、刪除或查看定時任務
-- **防休眠** — GEAUi 會自動阻止系統休眠，任務啟用期間偵測喚醒後的漏觸發
+- **防休眠** — GEA 會自動阻止系統休眠，任務啟用期間偵測喚醒後的漏觸發
 - **進階設定** — 每個任務可單獨設定模型、工作目錄和推理力度
 
 **實際範例：**
@@ -525,16 +525,16 @@ _同時開啟多個對話，任務不會亂，每個都有獨立記憶，效率�
 
 ---
 
-## 🤔 為什麼選擇 GEAUi 而非 Claude Cowork？
+## 🤔 為什麼選擇 GEA 而非 Claude Cowork？
 
 <details>
 <summary><strong>點擊查看詳細對比</strong></summary>
 
 <br>
 
-GEAUi 是一個**免費開源的 Multi-AI Agent 桌面應用**。相比只能在 macOS 上用、還只能綁定 Claude 的 Claude Cowork，GEAUi 支援全模型、跨平台，是它的全面升級版。
+GEA 是一個**免費開源的 Multi-AI Agent 桌面應用**。相比只能在 macOS 上用、還只能綁定 Claude 的 Claude Cowork，GEA 支援全模型、跨平台，是它的全面升級版。
 
-| 維度     | Claude Cowork | GEAUi                                                  |
+| 維度     | Claude Cowork | GEA                                                    |
 | :------- | :------------ | :----------------------------------------------------- |
 | OS       | 僅 macOS      | macOS / Windows / Linux                                |
 | 模型支援 | 僅 Claude     | Gemini、Claude、DeepSeek、OpenAI、Ollama 等            |
@@ -557,17 +557,17 @@ GEAUi 是一個**免費開源的 Multi-AI Agent 桌面應用**。相比只能在
 
 <details>
 <summary><strong>問：我需要先安裝 Gemini CLI 或 Claude Code 嗎？</strong></summary>
-答：<strong>完全不需要。</strong> GEAUi 自帶 AI Agent，裝好就能用。輸入任意 API 金鑰即可開始。如果您已經裝了 Claude Code 或 Gemini CLI 這些 CLI 工具，GEAUi 會自動發現並整合它們，功能更強大。
+答：<strong>完全不需要。</strong> GEA 自帶 AI Agent，裝好就能用。輸入任意 API 金鑰即可開始。如果您已經裝了 Claude Code 或 Gemini CLI 這些 CLI 工具，GEA 會自動發現並整合它們，功能更強大。
 </details>
 
 <details>
-<summary><strong>問：我可以用 GEAUi 做什麼？</strong></summary>
-答：GEAUi 就是您的<strong>私有 Cowork 工作空間</strong>。內建 Agent 可以幫您批次整理資料夾、處理 Excel 資料、產生文件、搜尋網路、產生圖像。透過多 Agent 模式，您還能在同一介面同時使用 Claude Code、Codex 和其他強大的 CLI Agent。
+<summary><strong>問：我可以用 GEA 做什麼？</strong></summary>
+答：GEA 就是您的<strong>私有 Cowork 工作空間</strong>。內建 Agent 可以幫您批次整理資料夾、處理 Excel 資料、產生文件、搜尋網路、產生圖像。透過多 Agent 模式，您還能在同一介面同時使用 Claude Code、Codex 和其他強大的 CLI Agent。
 </details>
 
 <details>
 <summary><strong>問：它是免費的嗎？</strong></summary>
-答：GEAUi 完全免費且開源。您只需為所選服務商的 API 用量付費，可以使用任何您喜歡的服務商的 API 金鑰。
+答：GEA 完全免費且開源。您只需為所選服務商的 API 用量付費，可以使用任何您喜歡的服務商的 API 金鑰。
 </details>
 
 <details>
@@ -577,7 +577,7 @@ GEAUi 是一個**免費開源的 Multi-AI Agent 桌面應用**。相比只能在
 
 ---
 
-## 看看大家是怎麼用 GEAUi 的
+## 看看大家是怎麼用 GEA 的
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=vWxE6VO9TKo" target="_blank">
@@ -611,7 +611,7 @@ GEAUi 是一個**免費開源的 Multi-AI Agent 桌面應用**。相比只能在
 - [讓普通人像使用 APP 一樣使用 Claude Code](https://mp.weixin.qq.com/s/TsMojSbkUUFvsd-HQCazZg) — 懶貓愛摸魚
 - [5500 Stars：開源如何打破 Anthropic 的 AI 工具護城河](https://mp.weixin.qq.com/s/saEk49cYV6MqBgw19Lw6Gw) — AI 矽基時刻
 
-> **製作了關於 GEAUi 的影片？** [在 X 上告訴我們](https://x.com/AionUi)，我們會在這裡展示！
+> **製作了關於 GEA 的影片？** [在 X 上告訴我們](https://x.com/AionUi)，我們會在這裡展示！
 
 ---
 
@@ -642,7 +642,7 @@ brew install aionui
 
 ### 三步上手
 
-1. **安裝** GEAUi
+1. **安裝** GEA
 2. **輸入** 任意 API 金鑰即可開始
 3. **開始 Cowork** — 內建 AI Agent 已經準備好了
 
@@ -705,7 +705,7 @@ brew install aionui
 
 ### 開發環境設定
 
-GEAUi 本機開發涉及兩個倉庫：GEAUi 負責 Electron 前端，GEACore 負責本機後端。完整的 macOS、Linux 和 Windows 設定流程請見 [開發指南](../contributing/development.md)。
+GEA 本機開發涉及兩個倉庫：GEA 負責 Electron 前端，GEACore 負責本機後端。完整的 macOS、Linux 和 Windows 設定流程請見 [開發指南](../contributing/development.md)。
 
 ---
 
@@ -729,7 +729,7 @@ GEAUi 本機開發涉及兩個倉庫：GEAUi 負責 Electron 前端，GEACore �
   </a>
 </td>
 <td>
-  <a href="https://packycode.com" target="_blank">PackyCode</a> 是一家可靠高效的 API 中繼服務提供商，為 Claude Code、Codex、Gemini 等平台提供中繼服務。感謝 PackyCode 為支持 GEAUi 用戶低成本使用，為我們的用戶提供專屬 <a href="https://www.packyapi.com/register?aff=aionui" target="_blank">9折優惠</a>，點擊此連結並在付款時使用優惠碼 <code>aionui</code> 可立減 10%。
+  <a href="https://packycode.com" target="_blank">PackyCode</a> 是一家可靠高效的 API 中繼服務提供商，為 Claude Code、Codex、Gemini 等平台提供中繼服務。感謝 PackyCode 為支持 GEA 用戶低成本使用，為我們的用戶提供專屬 <a href="https://www.packyapi.com/register?aff=aionui" target="_blank">9折優惠</a>，點擊此連結並在付款時使用優惠碼 <code>aionui</code> 可立減 10%。
 </td>
 </tr>
 </table>

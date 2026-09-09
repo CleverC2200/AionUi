@@ -29,7 +29,7 @@ beforeEach(() => {
 });
 
 describe('resolveGeaEnvironment', () => {
-  it('uses the production HTTPS endpoint without a non-standard port by default', () => {
+  it('uses the production GEA environment by default', () => {
     expect(resolveGeaEnvironment({ env: {}, isPackaged: true })).toMatchObject({
       baseUrl: 'https://gea.synear.cn/gea-boot',
       editable: true,

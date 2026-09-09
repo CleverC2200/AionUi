@@ -1,6 +1,6 @@
 {
-  "pageTitle": "GEAUi - Connexion",
-  "brand": "GEAUi",
+  "pageTitle": "GEA - Connexion",
+  "brand": "GEA",
   "subtitle": "Bienvenue, veuillez vous connecter à votre compte",
   "username": "Nom d'utilisateur",
   "usernamePlaceholder": "Entrez votre nom d'utilisateur",
@@ -46,7 +46,7 @@
     },
     "errors": {
       "networkError": "Impossible de se connecter à GEA. Veuillez réessayer",
-      "secureStorageUnavailable": "Impossible d’accéder au stockage sécurisé des identifiants système. Autorisez GEAUi à y accéder, puis réessayez.",
+      "secureStorageUnavailable": "Impossible d’accéder au stockage sécurisé des identifiants système. Autorisez GEA à y accéder, puis réessayez.",
       "serverError": "Le service de connexion GEA est temporairement indisponible",
       "invalidResponse": "GEA a renvoyé une réponse de connexion invalide"
     }

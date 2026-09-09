@@ -1,4 +1,4 @@
-# GEAUi
+# GEA
 
 <!-- impeccable:product-schema 1 -->
 
@@ -14,13 +14,13 @@ GEA 管理员在平台侧配置企业 Assistant Template、能力和权限，不
 
 ## Product Purpose
 
-GEAUi 是基于官方 AionUi 增强的企业 Agent 客户端。它让用户在持续的 Conversation 工作空间中安全使用企业受管 Assistant 与 Team，并完成从能力准备到结果交付的连续工作。
+GEA 是基于官方 AionUi 增强的企业 Agent 客户端。它让用户在持续的 Conversation 工作空间中安全使用企业受管 Assistant 与 Team，并完成从能力准备到结果交付的连续工作。
 
 成功意味着用户无需在多个功能中心之间搬运上下文，即可清楚知道当前使用的企业能力、工作进度、需要自己处理的事项以及最终交付结果。
 
 ## Positioning
 
-GEAUi 不以增加独立管理模块为目标，而是在官方 AionUi 的现有客户端旅程中接入 GEA 管理的企业 Assistant、Agent、Skill、MCP 和策略。企业基座保持受管，用户可以在策略允许的范围内增加个人辅助能力。
+GEA 不以增加独立管理模块为目标，而是在官方 AionUi 的现有客户端旅程中接入 GEA 管理的企业 Assistant、Agent、Skill、MCP 和策略。企业基座保持受管，用户可以在策略允许的范围内增加个人辅助能力。
 
 ## Operating Context
 
@@ -42,7 +42,7 @@ GEAUi 不以增加独立管理模块为目标，而是在官方 AionUi 的现有
 
 ## Brand Commitments
 
-保留 GEAUi 名称与现有品牌资产，同时沿用官方 AionUi 的界面语言、主导航、组件体系和交互习惯。本轮升级是现有产品的结构增强，不是视觉重品牌。
+保留 GEA 名称与现有品牌资产，同时沿用官方 AionUi 的界面语言、主导航、组件体系和交互习惯。本轮升级是现有产品的结构增强，不是视觉重品牌。
 
 ## Evidence on Hand
 

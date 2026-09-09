@@ -1,9 +1,9 @@
-# GEAUi Client Navigation V1 接入规范
+# GEA Client Navigation V1 接入规范
 
 状态：AionUi 客户端已实现并通过模拟契约、单元测试、构建及 macOS 安装包 Scheme 唤醒验证；真实飞书新消息到指定 Agent
 会话的完整生产链路，以及 Windows 新安装包，仍需联合验收。机器可读契约见
 [`gea-client-navigation-v1.openapi.json`](./gea-client-navigation-v1.openapi.json)。GEA 服务端字段和能力开关以《Client Navigation 与
-GEAUi 唤醒接入规范》v1.5 或更新版本为权威，本文件只冻结 AionUi 与 AionCore 的客户端边界。
+GEA 唤醒接入规范》v1.5 或更新版本为权威，本文件只冻结 AionUi 与 AionCore 的客户端边界。
 
 ## 当前范围
 
@@ -15,12 +15,12 @@ GEAUi 唤醒接入规范》v1.5 或更新版本为权威，本文件只冻结 Ai
 ```text
 飞书卡片
   -> https://<gea-host>/aiportal/client-launch#ref=<opaque>&v=1&profile=production
-  -> 用户点击“打开 GEAUi”
+  -> 用户点击“打开 GEA”
   -> aionui://open-conversation?ref=<opaque>&v=1
-  -> GEAUi / AionCore resolve
+  -> GEA / AionCore resolve
   -> GEA V1 AGENT target
   -> AionCore 创建或恢复本地 Conversation
-  -> GEAUi 显示 Conversation
+  -> GEA 显示 Conversation
   -> AionCore 转发 TARGET_VISIBLE / SUCCESS ACK
 ```
 
@@ -41,7 +41,7 @@ aionui://open-conversation?ref=<opaque>&v=1
 
 ## AionCore 本地 resolve
 
-GEAUi 调用：
+GEA 调用：
 
 ```http
 POST /api/deep-links/resolve
@@ -55,7 +55,7 @@ POST /api/deep-links/resolve
 ```
 
 AionCore 使用当前登录用户调用 GEA Gateway resolve，严格校验 V1 `AGENT` target，创建或恢复对应 Agent 的 Gateway Session，然后只向
-GEAUi 返回本地闭合目标：
+GEA 返回本地闭合目标：
 
 ```json
 {
@@ -71,11 +71,11 @@ GEAUi 返回本地闭合目标：
 ```
 
 所有字段必填，未知字段拒绝。V1 的 `target` 只能包含 `type` 和 `conversation_id`；不得返回 `assistant_id`、`agentCode`、URL、route、
-Reference 或凭据。GEAUi 只按 `conversation_id` 打开现有 Conversation 路由。
+Reference 或凭据。GEA 只按 `conversation_id` 打开现有 Conversation 路由。
 
 ## 目标可见 ACK
 
-Conversation 已加载且页面确认目标可见后，GEAUi 调用：
+Conversation 已加载且页面确认目标可见后，GEA 调用：
 
 ```http
 POST /api/deep-links/ack

@@ -1,4 +1,4 @@
-# GEAUi Docs
+# GEA Docs
 
 Documentation is organized by reader intent, not by document type. The root `readme.md` is the development entry point; product introductions live in `readme/`.
 

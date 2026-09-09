@@ -1,4 +1,14 @@
 {
+  "channelConflict": {
+    "owner": "OpenClaw is handling {{platformName}} messages, not GEA.",
+    "switching": "✗ Switching agents in GEA will have no effect",
+    "useChannels": "To use GEA Channels and switch agents:",
+    "restart": "Then restart OpenClaw and GEA.",
+    "newBot": "Create a new {{platformName}} bot with different credentials for GEA.",
+    "disable": "Disable {{platformName}} in GEA Channels and continue using OpenClaw's integration."
+  },
+  "componentShowcaseTitle": "GEA custom component showcase",
+  "appName": "GEA",
   "send": "Надіслати",
   "cancel": "Скасувати",
   "save": "Зберегти",
@@ -67,10 +77,10 @@
   "more": "Більше",
   "refresh": "Оновити",
   "readOnly": "Лише читання",
-  "tray.showWindow": "Показати GEAUi",
+  "tray.showWindow": "Показати GEA",
   "tray.newChat": "Новий чат",
   "tray.closeToTray": "Згорнути в трей",
-  "tray.about": "Про GEAUi",
+  "tray.about": "Про GEA",
   "tray.restart": "Перезапустити програму",
   "tray.quit": "Вийти",
   "tray.runningTasks": "Запущені завдання",
@@ -81,26 +91,26 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "Ця система не підтримується вбудованим backend",
-      "description": "GEAUi відкрився, але локальний backend GEACore не може працювати в цій версії Linux. Оновіться до підтримуваного дистрибутива Linux і перезапустіть GEAUi.",
+      "description": "GEA відкрився, але локальний backend GEACore не може працювати в цій версії Linux. Оновіться до підтримуваного дистрибутива Linux і перезапустіть GEA.",
       "requiredVersions": "Потрібні символи середовища виконання: {{versions}}"
     },
     "incompleteInstallation": {
-      "title": "Встановлення GEAUi неповне",
-      "description": "У цьому встановленні бракує потрібних локальних ресурсів, тому GEACore не може запуститися. Завантажте та перевстановіть останню версію GEAUi. Якщо проблема повториться після перевстановлення, перевірте, чи захисне або антивірусне ПЗ не помістило GEACore у карантин.",
+      "title": "Встановлення GEA неповне",
+      "description": "У цьому встановленні бракує потрібних локальних ресурсів, тому GEACore не може запуститися. Завантажте та перевстановіть останню версію GEA. Якщо проблема повториться після перевстановлення, перевірте, чи захисне або антивірусне ПЗ не помістило GEACore у карантин.",
       "downloadLatest": "Завантажити останню версію",
       "sendDiagnostics": "Надіслати діагностику",
       "diagnosticsSent": "Діагностику надіслано",
       "diagnosticsReportSuccess": "Діагностичний звіт надіслано",
       "diagnosticsReportFailed": "Не вдалося надіслати діагностичний звіт",
-      "runtimeComponentDescription": "У цій інсталяції бракує потрібних вбудованих компонентів середовища виконання, тому {{resource}} не може запуститися. Перевстановіть найновіший пакет GEAUi. Якщо проблема повториться після перевстановлення, перевірте, чи не помістило програмне забезпечення безпеки або антивірус компоненти GEAUi у карантин."
+      "runtimeComponentDescription": "У цій інсталяції бракує потрібних вбудованих компонентів середовища виконання, тому {{resource}} не може запуститися. Перевстановіть найновіший пакет GEA. Якщо проблема повториться після перевстановлення, перевірте, чи не помістило програмне забезпечення безпеки або антивірус компоненти GEA у карантин."
     },
     "packageArchitectureMismatch": {
-      "title": "GEAUi package architecture mismatch",
-      "description": "This GEAUi package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
+      "title": "GEA package architecture mismatch",
+      "description": "This GEA package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
     },
     "dataMigration": {
       "title": "Local data migration failed",
-      "description": "GEAUi opened, but GEACore stopped while initializing local data. Reinstalling GEAUi may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
+      "description": "GEA opened, but GEACore stopped while initializing local data. Reinstalling GEA may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -113,7 +123,7 @@
     },
     "localDataRepair": {
       "title": "Local data repair failed",
-      "description": "GEAUi відкрився, але GEACore зупинився під час підготовки локальних даних запуску, як-от записи assistants або агентів. Повторне встановлення GEAUi може не вирішити проблему. Надішліть діагностичний звіт або зверніться до підтримки, щоб можна було перевірити локальну базу даних.",
+      "description": "GEA відкрився, але GEACore зупинився під час підготовки локальних даних запуску, як-от записи assistants або агентів. Повторне встановлення GEA може не вирішити проблему. Надішліть діагностичний звіт або зверніться до підтримки, щоб можна було перевірити локальну базу даних.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -121,7 +131,7 @@
     },
     "startupDirectory": {
       "title": "Startup directory is unavailable",
-      "description": "GEAUi opened, but GEACore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart GEAUi.",
+      "description": "GEA opened, but GEACore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart GEA.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -129,8 +139,7 @@
     },
     "recoverableDatabaseCorruption": {
       "title": "Локальні дані пошкоджено",
-      "description": "GEAUi виявив пошкодження локальної бази даних і не може продовжити запуск. Після підтвердження стару базу даних буде збережено як резервну копію, а для продовження запуску буде створено нову локальну базу даних. Історичні локальні дані поки не відображатимуться, стара база даних збережеться як резервна копія.",
-
+      "description": "GEA виявив пошкодження локальної бази даних і не може продовжити запуск. Після підтвердження стару базу даних буде збережено як резервну копію, а для продовження запуску буде створено нову локальну базу даних. Історичні локальні дані поки не відображатимуться, стара база даних збережеться як резервна копія.",
       "confirmRebuild": "Зберегти стару БД і створити нову",
       "sendDiagnostics": "Надіслати діагностику",
       "diagnosticsHint": "Надсилання діагностики не змінить локальну базу даних.",
@@ -146,8 +155,8 @@
       }
     },
     "transientConcurrentStartup": {
-      "title": "GEAUi запускається",
-      "description": "Коли це вікно відкрилося, інший процес запуску GEAUi усе ще використовував локальні дані. Це тимчасово, і ваші дані в безпеці — перевстановлення не потрібне. Зачекайте трохи та повторіть спробу або перезапустіть GEAUi.",
+      "title": "GEA запускається",
+      "description": "Коли це вікно відкрилося, інший процес запуску GEA усе ще використовував локальні дані. Це тимчасово, і ваші дані в безпеці — перевстановлення не потрібне. Зачекайте трохи та повторіть спробу або перезапустіть GEA.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -206,5 +215,10 @@
   },
   "selectedCount": "Вибрано {{count}}",
   "selectedSkills": "Вибрані навички",
-  "aiAssistant": "ШІ-асистент"
+  "aiAssistant": "ШІ-асистент",
+  "appMenu": {
+    "about": "About {{appName}}",
+    "hide": "Hide {{appName}}",
+    "quit": "Quit {{appName}}"
+  }
 }

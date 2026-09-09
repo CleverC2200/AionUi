@@ -204,7 +204,7 @@ describe('UpdateNotificationCard', () => {
           draft: false,
           assets: [],
           recommendedAsset: {
-            name: 'GEAUi-120',
+            name: 'GEA-120',
             url: 'https://gea.example/download/120',
             size: 100,
           },
@@ -269,7 +269,7 @@ describe('UpdateNotificationCard', () => {
           prerelease: false,
           draft: false,
           assets: [],
-          recommendedAsset: { name: 'GEAUi-120', url: 'https://gea.example/download/120', size: 100 },
+          recommendedAsset: { name: 'GEA-120', url: 'https://gea.example/download/120', size: 100 },
         },
       },
     });

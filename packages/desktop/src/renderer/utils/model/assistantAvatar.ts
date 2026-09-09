@@ -52,7 +52,7 @@ export function resolveAssistantAvatar(avatar: string | undefined): AssistantAva
 }
 
 /**
- * Keep the product's default Aion CLI identity aligned with the GEAUi brand.
+ * Keep the product's default Aion CLI identity aligned with the GEA brand.
  * User-created and builtin assistants backed by aionrs keep their own avatars.
  */
 export function resolveAssistantDisplayAvatar(
