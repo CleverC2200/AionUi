@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   salesPlanAccessForRow,
+  salesPlanStagesForPermissions,
   verifySavedSalesPlan,
 } from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/models/salesPlanAccessModel';
 import type {
@@ -21,6 +22,17 @@ const detail = {
 } as GeaSalesPlanDetail;
 
 describe('sales plan authoritative action projection', () => {
+  it('defaults to no role and orders only explicit node permissions', () => {
+    expect(salesPlanStagesForPermissions()).toEqual([]);
+    expect(salesPlanStagesForPermissions(['sales-plan:plan:approve'])).toEqual([]);
+    expect(
+      salesPlanStagesForPermissions([
+        'sales-plan:plan:category-approve',
+        'sales-plan:plan:region-approve',
+        'sales-plan:plan:region-approve',
+      ])
+    ).toEqual(['region', 'category']);
+  });
   it('allows standalone category saving without inferring approval from readability', () => {
     expect(salesPlanAccessForRow(row, detail)?.allowedActions).toEqual(['SAVE']);
     expect(salesPlanAccessForRow(row, { ...detail, actionContext: undefined })).toBeUndefined();

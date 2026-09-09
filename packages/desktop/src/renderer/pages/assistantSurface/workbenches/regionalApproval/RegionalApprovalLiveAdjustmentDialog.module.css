@@ -1,5 +1,5 @@
 .modal {
-  width: min(1180px, calc(100vw - 32px));
+  width: min(1320px, calc(100vw - 32px));
 }
 
 .body {
@@ -40,10 +40,12 @@
 }
 
 .positive {
+  white-space: nowrap;
   color: rgb(var(--danger-6));
 }
 
 .negative {
+  white-space: nowrap;
   color: rgb(var(--success-6));
 }
 

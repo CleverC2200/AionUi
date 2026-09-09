@@ -9,6 +9,21 @@ import type {
 import { addExactDecimals, multiplyExactDecimals } from '../regionalApprovalQueryModel';
 import { salesPlanSkusMatchVersion } from './salesPlanDetailModel';
 import { salesPlanActionTargetStatus, salesPlanApprovalNodeForStatus } from './salesPlanActionModel';
+import type { ApprovalStageId } from '../regionalApprovalFixture';
+
+const NODE_PERMISSIONS: readonly [ApprovalStageId, string][] = [
+  ['customer', 'sales-confirm'],
+  ['region', 'region-approve'],
+  ['province', 'province-approve'],
+  ['area', 'area-approve'],
+  ['category', 'category-approve'],
+];
+
+/** Role permissions choose UI entry points; object-level actionContext still authorizes writes. */
+export const salesPlanStagesForPermissions = (permissions: readonly string[] = []): ApprovalStageId[] =>
+  NODE_PERMISSIONS.filter(([, permission]) => permissions.includes(`sales-plan:plan:${permission}`)).map(
+    ([stage]) => stage
+  );
 
 /** Capabilities come from the existing authenticated detail response, never from row visibility. */
 export const salesPlanAccessForRow = (

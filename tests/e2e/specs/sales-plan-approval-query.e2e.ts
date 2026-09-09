@@ -28,6 +28,7 @@ test.describe('Sales-plan approval query', () => {
           id: `${versionId}-${skuCode}`,
           versionId,
           skuCode,
+          materialDescription: `MOCK 物料描述 ${skuCode}`,
           productCategName: 'E2E 饮品',
           baseQty: '10',
           qty,
@@ -263,6 +264,30 @@ test.describe('Sales-plan approval query', () => {
     await page.goto(`${page.url().split('#')[0]}#/guid`);
     await page.reload();
     await expect(page.getByTestId('assistant-surface-switcher')).toBeVisible();
+  });
+
+  test('keeps no-role browsing read-only with disabled approval nodes', async ({ page }) => {
+    await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
+    const board = page.getByTestId('regional-approval-workbench');
+    await expect(board.getByRole('row').filter({ hasText: 'E2E 第 1 页基地' }).first()).toBeVisible();
+    await Promise.all(
+      ['customer', 'region', 'province', 'area', 'category'].map((stage) =>
+        expect(board.getByTestId(`regional-approval-stage-${stage}`)).toBeDisabled()
+      )
+    );
+    await Promise.all(
+      ['通过', '退回', '保存调整'].map((action) =>
+        expect(board.getByRole('button', { name: action, exact: true })).toHaveCount(0)
+      )
+    );
+    await expect(board.getByRole('button', { name: '只读浏览全部节点数据', exact: true })).toBeVisible();
+    await board
+      .getByRole('row')
+      .filter({ hasText: 'E2E 第 1 页基地' })
+      .first()
+      .getByRole('button', { name: /调整明细/ })
+      .click();
+    await expect(page.getByRole('dialog').getByText('MOCK 物料描述 REAL-E2E-SKU', { exact: true })).toBeVisible();
   });
 
   test('keeps General unchanged and loads the Business queue through the Renderer HTTP adapter', async ({ page }) => {

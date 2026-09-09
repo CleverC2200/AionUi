@@ -14,10 +14,11 @@ import {
   type SalesPlanActionClient,
   type SalesPlanActionErrorKind,
 } from './models/salesPlanActionModel';
-import { salesPlanSkusMatchVersion } from './models/salesPlanDetailModel';
+import { salesPlanSkusMatchVersion, salesPlanSkuNodeComparison } from './models/salesPlanDetailModel';
 import {
   addExactDecimals,
   multiplyExactDecimals,
+  subtractExactDecimals,
   formatExactDecimal,
   type RegionalApprovalLiveRow,
 } from './regionalApprovalQueryModel';
@@ -51,8 +52,16 @@ const signedDecimal = (value: string, currency = false) => {
 const errorKey = (kind: SalesPlanActionErrorKind) =>
   `common.assistantSurface.regionalApproval.liveAction.errors.${kind}` as const;
 
+const InlineAction: React.FC<React.ComponentProps<typeof Modal>> = ({ children, footer }) => (
+  <div>
+    {children}
+    {typeof footer === 'function' ? footer(null, null) : footer}
+  </div>
+);
+
 const RegionalApprovalLiveActionDialog: React.FC<{
   visible: boolean;
+  embedded?: boolean;
   row: RegionalApprovalLiveRow;
   approvalStage: ApprovalStageId;
   initialAction?: LiveActionKind;
@@ -65,6 +74,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
   onClose: () => void;
 }> = ({
   visible,
+  embedded = false,
   row,
   approvalStage,
   initialAction = 'APPROVE',
@@ -77,6 +87,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
   onClose,
 }) => {
   const [snapshot] = useState(evidence);
+  const Container = embedded ? InlineAction : Modal;
   const access = snapshot && salesPlanAccessForRow(row, snapshot);
   const submittedRequest = useRef<GeaSalesPlanActionRequest | undefined>(undefined);
   const [kind, setKind] = useState<LiveActionKind>(initialAction);
@@ -86,6 +97,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [discardConfirmVisible, setDiscardConfirmVisible] = useState(false);
   const [adjustmentValues, setAdjustmentValues] = useState<Record<string, string>>({});
+  const [confirmedInputs, setConfirmedInputs] = useState<Record<string, string>>({});
   const [adjustmentSkus, setAdjustmentSkus] = useState<AdjustmentSkuState>({ status: 'idle' });
   const action = useSalesPlanAction({ client });
   const loading = action.state.status === 'loading';
@@ -120,6 +132,20 @@ const RegionalApprovalLiveActionDialog: React.FC<{
       const previousAmount = previousQty && price ? multiplyExactDecimals(previousQty, price) : undefined;
       const confirmedQty = previousQty && adjustmentValid ? addExactDecimals([previousQty, adjustmentQty]) : undefined;
       const normalizedConfirmedQty = confirmedQty === '—' ? undefined : confirmedQty;
+      if (kind !== 'SAVE') {
+        const saved = salesPlanSkuNodeComparison(sku, approvalStage);
+        return {
+          sku,
+          skuCode,
+          adjustmentQty: saved.qtyDelta,
+          adjustmentValid: SIGNED_DECIMAL_PATTERN.test(saved.qtyDelta),
+          previousQty: saved.previousQty,
+          previousAmount: saved.previousAmount,
+          confirmedQty: saved.currentQty,
+          confirmedAmount: saved.currentAmount,
+          amountDelta: saved.amountDelta,
+        };
+      }
       return {
         sku,
         skuCode,
@@ -133,7 +159,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
         amountDelta: adjustmentValid && price ? multiplyExactDecimals(adjustmentQty, price) : undefined,
       };
     });
-  }, [adjustmentSkus, adjustmentValues, row.status]);
+  }, [adjustmentSkus, adjustmentValues, row.status, kind, approvalStage]);
   const nodeTotals = useMemo(() => {
     if (nodeComparisons.length === 0) return undefined;
     const total = (values: Array<string | undefined>) => {
@@ -150,12 +176,14 @@ const RegionalApprovalLiveActionDialog: React.FC<{
       confirmedAmount: total(nodeComparisons.map((item) => item.confirmedAmount)),
     };
   }, [nodeComparisons]);
-  const visibleComparisons = kind === 'SAVE'
-    ? nodeComparisons
-    : nodeComparisons.filter((item) =>
-        (item.adjustmentValid && !ZERO_DECIMAL_PATTERN.test(item.adjustmentQty)) ||
-        Boolean(item.amountDelta && !ZERO_DECIMAL_PATTERN.test(item.amountDelta))
-      );
+  const visibleComparisons =
+    kind === 'SAVE'
+      ? nodeComparisons
+      : nodeComparisons.filter(
+          (item) =>
+            (item.adjustmentValid && !ZERO_DECIMAL_PATTERN.test(item.adjustmentQty)) ||
+            Boolean(item.amountDelta && !ZERO_DECIMAL_PATTERN.test(item.amountDelta))
+        );
   const invalid =
     !confirmed ||
     !access?.allowedActions.includes(kind) ||
@@ -205,26 +233,6 @@ const RegionalApprovalLiveActionDialog: React.FC<{
         planCount: 1,
         skuCount: Number.isSafeInteger(row.skuCount) && row.skuCount >= 0 ? row.skuCount : unknown,
       }),
-    },
-    {
-      label: t('common.assistantSurface.regionalApproval.liveAction.checksum.decision'),
-      value: t('common.assistantSurface.regionalApproval.liveAction.checksum.decisionValue', {
-        action: t(
-          kind === 'SAVE'
-            ? 'common.assistantSurface.regionalApproval.liveAction.save'
-            : kind === 'APPROVE'
-              ? 'common.assistantSurface.regionalApproval.liveAction.approve'
-              : 'common.assistantSurface.regionalApproval.liveAction.reject'
-        ),
-        target:
-          targetStatus === undefined
-            ? unknown
-            : t(`common.assistantSurface.regionalApproval.query.status.${targetStatus}`),
-      }),
-    },
-    {
-      label: t('common.assistantSurface.regionalApproval.liveAction.checksum.identity'),
-      value: t('common.assistantSurface.regionalApproval.liveAction.checksum.identityValue'),
     },
   ];
 
@@ -287,7 +295,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
 
   return (
     <>
-      <Modal
+      <Container
         visible={visible}
         className={styles.liveModal}
         title={t(
@@ -414,7 +422,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
                   <strong>{t('common.assistantSurface.regionalApproval.liveAction.adjustments.title')}</strong>
                   <span>
                     {t('common.assistantSurface.regionalApproval.liveAction.adjustments.summary', {
-                      count: adjustments.length,
+                      count: kind === 'SAVE' ? adjustments.length : visibleComparisons.length,
                     })}
                   </span>
                 </div>
@@ -497,23 +505,57 @@ const RegionalApprovalLiveActionDialog: React.FC<{
                               <small>{displayDecimal(comparison.previousAmount, true)}</small>
                             </span>
                             <span role='cell'>
-                              {kind === 'SAVE' ? <Input
-                                size='small'
-                                value={value}
-                                status={invalidValue ? 'error' : undefined}
-                                disabled={intentLocked}
-                                aria-label={inputLabel}
-                                placeholder={t(
-                                  'common.assistantSurface.regionalApproval.liveAction.adjustments.placeholder'
-                                )}
-                                onChange={(nextValue) =>
-                                  setAdjustmentValues((current) => ({ ...current, [comparison.skuCode]: nextValue }))
-                                }
-                              /> : <span>{signedDecimal(comparison.adjustmentQty)}</span>}
+                              {kind === 'SAVE' ? (
+                                <Input
+                                  size='small'
+                                  value={
+                                    embedded
+                                      ? (confirmedInputs[comparison.skuCode] ?? comparison.confirmedQty ?? '')
+                                      : value
+                                  }
+                                  status={invalidValue ? 'error' : undefined}
+                                  disabled={intentLocked}
+                                  aria-label={
+                                    embedded
+                                      ? t('common.assistantSurface.regionalApproval.liveAdjustment.editQty', {
+                                          sku: comparison.skuCode,
+                                        })
+                                      : inputLabel
+                                  }
+                                  placeholder={t(
+                                    'common.assistantSurface.regionalApproval.liveAction.adjustments.placeholder'
+                                  )}
+                                  onChange={(nextValue) => {
+                                    if (embedded)
+                                      setConfirmedInputs((current) => ({
+                                        ...current,
+                                        [comparison.skuCode]: nextValue,
+                                      }));
+                                    setAdjustmentValues((current) => ({
+                                      ...current,
+                                      [comparison.skuCode]: embedded
+                                        ? subtractExactDecimals(nextValue, comparison.previousQty ?? '0')
+                                        : nextValue,
+                                    }));
+                                  }}
+                                />
+                              ) : (
+                                <span>{signedDecimal(comparison.adjustmentQty)}</span>
+                              )}
                             </span>
                             <span role='cell' className={styles.nodeValue}>
                               <strong>{displayDecimal(comparison.confirmedQty)}</strong>
-                              <small>{displayDecimal(comparison.confirmedAmount, true)}</small>
+                              {embedded ? (
+                                <Input
+                                  readOnly
+                                  value={displayDecimal(comparison.confirmedAmount, true)}
+                                  aria-label={t('common.assistantSurface.regionalApproval.liveAdjustment.editAmount', {
+                                    sku: comparison.skuCode,
+                                  })}
+                                />
+                              ) : (
+                                <small>{displayDecimal(comparison.confirmedAmount, true)}</small>
+                              )}
                               <em>
                                 {comparison.adjustmentValid && comparison.amountDelta
                                   ? `${signedDecimal(comparison.adjustmentQty)} · ${signedDecimal(comparison.amountDelta, true)}`
@@ -641,7 +683,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
             />
           ) : null}
         </div>
-      </Modal>
+      </Container>
       <Modal
         visible={discardConfirmVisible}
         title={t('common.assistantSurface.regionalApproval.liveAction.adjustments.discardTitle')}

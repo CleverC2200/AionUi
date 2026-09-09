@@ -48,7 +48,11 @@ const writeNodeConversation = (surfaceId: SpecializedSurfaceId, key: string, con
 const createPreparationIdempotencyKey = (): string =>
   globalThis.crypto?.randomUUID?.() ?? `conversation-preparation-${Date.now()}`;
 
-const BusinessSurfaceSessionContext = React.createContext<{ conversationId: string | null }>({
+const BusinessSurfaceSessionContext = React.createContext<{
+  conversationId: string | null;
+  startAnalysis?: () => void;
+  preparingAnalysis?: boolean;
+}>({
   conversationId: null,
 });
 
@@ -750,7 +754,12 @@ const BusinessSurfaceShell: React.FC<BusinessSurfaceShellProps> = ({
             </div>
           ) : null}
           <BusinessSurfaceSessionContext.Provider
-            value={{ conversationId: nodeMode ? (nodeReady ? boundNodeId : null) : selectedConversationId }}
+            value={{
+              conversationId: nodeMode ? (nodeReady ? boundNodeId : null) : selectedConversationId,
+              startAnalysis:
+                nodeMode && analysisKey && nodeAnalysis?.snapshot && !boundNodeId ? startAnalysis : undefined,
+              preparingAnalysis: creatingConversation,
+            }}
           >
             <div className={styles.boardContent}>{children}</div>
           </BusinessSurfaceSessionContext.Provider>

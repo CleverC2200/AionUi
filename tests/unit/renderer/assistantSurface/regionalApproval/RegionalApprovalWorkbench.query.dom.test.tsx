@@ -167,7 +167,7 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     window.sessionStorage.clear();
   });
 
-  it('persists a local draft across remounts, isolates users and submits it only with APPROVE', async () => {
+  it('keeps edits session-only and saves them independently of approval', async () => {
     window.localStorage.clear();
     const row = liveRow('draft-plan', 5);
     const sku = {
@@ -179,7 +179,19 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
       price: '2',
     } as GeaSalesPlanSku;
     const version = { ...liveVersion(row.planId, row.versionId, 3), status: 5 };
-    const detail = { currentVersion: version, skus: [sku], versions: [version], logs: [] } as GeaSalesPlanDetail;
+    const detail = {
+      currentVersion: version,
+      skus: [sku],
+      versions: [version],
+      logs: [],
+      actionContext: {
+        versionId: row.versionId,
+        status: 5,
+        nodeOrder: 5,
+        allowedActions: ['SAVE'],
+        snapshotHash: 'a'.repeat(64),
+      },
+    } as GeaSalesPlanDetail;
     const queryClient: SalesPlanQueryClient = {
       periods: { invoke: vi.fn().mockResolvedValue(periodPage) },
       list: { invoke: listMockFor([row]) },
@@ -195,7 +207,7 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
       planId: row.planId,
       versionId: row.versionId,
       fromStatus: 5,
-      toStatus: 10,
+      toStatus: 5,
       requestId: params.requestId,
       traceId: 'trace',
       auditId: 'audit',
@@ -222,31 +234,21 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     };
     let view = render(<RegionalApprovalWorkbench {...props} draftStorageScope='env:tenant:user-a' />);
     fireEvent.change(await openSave(), { target: { value: '2.125' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存到本地' }));
-    await screen.findByText('调整已保存到本地看板草稿；尚未发送或提交。');
     expect(invoke).not.toHaveBeenCalled();
     view.unmount();
-    view = render(<RegionalApprovalWorkbench {...props} draftStorageScope='env:tenant:user-b' />);
-    expect(await openSave()).toHaveValue('');
-    view.unmount();
     view = render(<RegionalApprovalWorkbench {...props} draftStorageScope='env:tenant:user-a' />);
-    expect(await openSave()).toHaveValue('2.125');
-    fireEvent.click(screen.getByRole('button', { name: '保存到本地' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    const approve = screen.getByRole('button', { name: '通过' });
-    fireEvent.click(approve);
-    expect(await screen.findByRole('textbox', { name: 'SKU 10001 调整量' })).toHaveValue('2.125');
+    const input = await openSave();
+    expect(input).toHaveValue('');
+    fireEvent.change(input, { target: { value: '2.125' } });
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: '确认通过' }));
+    fireEvent.click(screen.getByRole('button', { name: '确认保存' }));
     await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
     expect(invoke.mock.calls[0][0].request).toEqual({
-      action: 'APPROVE',
+      action: 'SAVE',
       expectedStatus: 5,
+      expectedSnapshot: 'a'.repeat(64),
       adjustments: [{ skuCode: '10001', adjustQty: '2.125' }],
     });
-    await waitFor(() =>
-      expect(window.localStorage.getItem('aionui:sales-plan-local-drafts:v1:env%3Atenant%3Auser-a')).toBe('{}')
-    );
   });
 
   it('shows all four filtered-scope totals including records beyond the visible page', async () => {
@@ -524,6 +526,7 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
       render(
         <RegionalApprovalWorkbench
           stateScope='delayed-export'
+          permissionCodes={['sales-plan:plan:region-approve', 'sales-plan:plan:category-approve']}
           t={t}
           onContextChange={vi.fn()}
           queryClient={{
@@ -559,7 +562,13 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     const createUrl = vi.spyOn(URL, 'createObjectURL');
     try {
       render(
-        <RegionalApprovalWorkbench stateScope='scope-export' t={t} onContextChange={vi.fn()} queryClient={client} />
+        <RegionalApprovalWorkbench
+          stateScope='scope-export'
+          permissionCodes={['sales-plan:plan:region-approve', 'sales-plan:plan:category-approve']}
+          t={t}
+          onContextChange={vi.fn()}
+          queryClient={client}
+        />
       );
       await screen.findAllByText('scope-export 基地');
       await waitFor(() => expect(screen.getByTestId('regional-approval-stage-category')).toBeEnabled());
@@ -641,18 +650,18 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     expect(screen.queryByTestId('regional-approval-current-stage')).not.toBeInTheDocument();
     expect(screen.queryByText('审批操作已安全关闭')).not.toBeInTheDocument();
     const toolbarActions = screen.getByTestId('regional-approval-toolbar-actions');
-    expect(within(toolbarActions).getByRole('button', { name: '通过' })).toBeDisabled();
-    expect(within(toolbarActions).getByRole('button', { name: '退回' })).toBeDisabled();
+    expect(within(toolbarActions).queryByRole('button', { name: '通过' })).not.toBeInTheDocument();
+    expect(within(toolbarActions).queryByRole('button', { name: '退回' })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: '审批操作' })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: '业务范围' })).not.toBeInTheDocument();
     const dimensionTabs = screen.getByRole('tablist', { name: '审批队列维度' });
-    expect(within(dimensionTabs).getByRole('tab', { name: '按省区' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(dimensionTabs).getByRole('tab', { name: '按大区' })).toHaveAttribute('aria-selected', 'true');
     expect(within(dimensionTabs).getByRole('tab', { name: '按区域' })).toBeVisible();
     expect(within(dimensionTabs).getByRole('tab', { name: '按客户' })).toBeVisible();
-    expect(screen.getByText('浙江省区')).toBeVisible();
+    expect(screen.getAllByText('华东大区')[0]).toBeVisible();
     expect(screen.queryByText('9007199254740997')).not.toBeInTheDocument();
     expect(screen.queryByText('经销商 9007199254740997')).not.toBeInTheDocument();
-    expect(screen.getByTestId('regional-approval-scope-plan-live')).toHaveTextContent('华东大区 / plan-live 基地');
+    expect(screen.getByTestId('regional-approval-scope-plan-live')).toHaveTextContent('plan-live 基地');
     expect(screen.queryByText('AREA-01')).not.toBeInTheDocument();
     expect(screen.queryByText('PROVINCE-01 · ORG-001')).not.toBeInTheDocument();
     const analysisSelection = screen.getByRole('checkbox');
@@ -666,8 +675,8 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
         'conversation-query'
       )
     );
-    expect(within(toolbarActions).getByRole('button', { name: '通过' })).toBeDisabled();
-    expect(within(toolbarActions).getByRole('button', { name: '退回' })).toBeDisabled();
+    expect(within(toolbarActions).queryByRole('button', { name: '通过' })).not.toBeInTheDocument();
+    expect(within(toolbarActions).queryByRole('button', { name: '退回' })).not.toBeInTheDocument();
     fireEvent.click(analysisSelection);
     await waitFor(() =>
       expect(onContextChange).toHaveBeenLastCalledWith(
@@ -688,15 +697,12 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     fireEvent.click(adjustmentTrigger);
     expect(await screen.findByText('调整明细 · plan-live 经销分区')).toBeVisible();
     expect(screen.getByRole('tab', { name: '区域' })).toBeVisible();
-    expect(screen.getByRole('tab', { name: '基地' })).toBeVisible();
+    expect(screen.queryByRole('tab', { name: '基地' })).not.toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '客户' })).toBeVisible();
-    expect(screen.getByRole('columnheader', { name: 'SKU 编码 / 品类' })).toBeVisible();
+    expect(screen.getByRole('columnheader', { name: 'SKU 编码 / 物料描述' })).toBeVisible();
     expect(screen.getByRole('columnheader', { name: '原计划量' })).toBeVisible();
-    expect(screen.getByRole('columnheader', { name: '新计划量' })).toBeVisible();
-    const quantityInput = screen.getByRole('spinbutton', { name: '10001 新计划量' });
-    expect(quantityInput).toBeDisabled();
-    fireEvent.change(quantityInput, { target: { value: '6' } });
-    expect(screen.queryByText(/整体差异 \+5 件/)).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '确认计划量' })).toBeVisible();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     expect(screen.getByText('当前节点仅可查看；服务端尚未确认调整权限。')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '关闭' }));
     fireEvent.click(within(dimensionTabs).getByRole('tab', { name: '按客户' }));
@@ -727,14 +733,14 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     expect(screen.getByText('水饺品类')).toBeVisible();
     expect(screen.getByText('1 个 SKU · 不可按品类审批')).toBeVisible();
     expect(screen.getAllByText('金额 100.0%').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('数量 100.0%').length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText('数量 100.0%')).not.toBeInTheDocument();
     expect(screen.getByText('水饺品类计划与原计划基本一致')).toBeVisible();
     fireEvent.click(screen.getByRole('switch', { name: '品类维度' }));
     expect(screen.queryByTestId('regional-approval-category-row-plan-live-水饺')).not.toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: '月计划' })).toBeVisible();
+    expect(screen.getByRole('columnheader', { name: '目标预算' })).toBeVisible();
     expect(screen.getByRole('columnheader', { name: '计划进度' })).toBeVisible();
     expect(screen.getByText('金额 100.0%')).toBeVisible();
-    expect(screen.getByText('数量 100.0%')).toBeVisible();
+    expect(screen.queryByText('数量 100.0%')).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: '调整' })).not.toBeInTheDocument();
     expect(screen.queryByText('GEA · 用户会话队列')).not.toBeInTheDocument();
 
@@ -899,6 +905,7 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     render(
       <RegionalApprovalWorkbench
         stateScope='user:forecast-live-stage-filter'
+        permissionCodes={['sales-plan:plan:region-approve', 'sales-plan:plan:category-approve']}
         t={t}
         onContextChange={vi.fn()}
         queryClient={client}
@@ -923,7 +930,7 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     expect(screen.queryByText('region-returned 基地')).not.toBeInTheDocument();
     expect(screen.queryByText('customer-returned 基地')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('regional-approval-stage-region'));
+    fireEvent.click(screen.getByRole('button', { name: '只读浏览全部节点数据' }));
     await waitFor(() => expect(screen.getAllByText('category-pending 基地')[0]).toBeVisible());
     expect(screen.getByTestId('regional-approval-stage-region')).toHaveAttribute('aria-pressed', 'false');
   });
@@ -986,7 +993,7 @@ describe('RegionalApprovalWorkbench live sales-plan query', () => {
     expect((await screen.findAllByText('plan-numeric 基地'))[0]).toBeVisible();
     expect(screen.getAllByText(/141,862\.04/).length).toBeGreaterThan(0);
     expect(screen.getAllByText('目标 ¥142,500').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('目标 2,075').length).toBeGreaterThan(0);
+    expect(screen.queryByText('目标 2,075')).not.toBeInTheDocument();
   });
 
   it('refreshes periods and queue, and keeps an honest empty state', async () => {

@@ -168,6 +168,14 @@
   text-align: start;
 }
 
+.conversationState > :global(.arco-btn) {
+  max-width: 100%;
+  height: auto;
+  min-height: 32px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .historyDrawerWrapper {
   top: var(--titlebar-height);
   bottom: 0;

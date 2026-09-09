@@ -69,7 +69,12 @@ const cases = [
 ] as const;
 
 describe('RegionalApprovalLiveActionDialog', () => {
-  it.each([5, 10])('saves status %s on the same version and only rereads after a received receipt', async (status) => {
+  it.each([
+    { status: 5, embedded: false },
+    { status: 10, embedded: false },
+    { status: 5, embedded: true },
+    { status: 10, embedded: true },
+  ])('saves status $status embedded=$embedded and only rereads after a receipt', async ({ status, embedded }) => {
     const sku = {
       id: 's',
       versionId: row.versionId,
@@ -96,6 +101,7 @@ describe('RegionalApprovalLiveActionDialog', () => {
         row={{ ...row, status }}
         approvalStage='category'
         initialAction='SAVE'
+        embedded={embedded}
         evidence={evidenceFor(status, [sku])}
         t={t}
         client={{ action: { invoke } }}
@@ -105,16 +111,27 @@ describe('RegionalApprovalLiveActionDialog', () => {
         onClose={vi.fn()}
       />
     );
-    const dialog = screen.getByRole('dialog', { name: '保存销售计划调整' });
+    const dialog = embedded
+      ? screen.getByTestId('regional-approval-live-action-dialog')
+      : screen.getByRole('dialog', { name: '保存销售计划调整' });
+    const controls = embedded ? screen : within(dialog);
     expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: '确认保存' })).toBeDisabled();
+    expect(controls.getByRole('button', { name: '确认保存' })).toBeDisabled();
     const summary = within(dialog).getByLabelText('审批节点差异汇总');
     expect(summary).toHaveTextContent('当前基准数量 / 金额13 · ¥26.00');
-    fireEvent.change(within(dialog).getByRole('textbox', { name: 'SKU 10001 调整量' }), { target: { value: '2.125' } });
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: embedded ? '10001 确认计划量' : 'SKU 10001 调整量' }),
+      { target: { value: embedded ? '15.125' : '2.125' } }
+    );
     expect(summary).toHaveTextContent('本节点确认数量 / 金额15.125 · ¥30.25');
+    if (embedded) {
+      const amount = within(dialog).getByRole('textbox', { name: '10001 确认计划金额' });
+      expect(amount).toHaveValue('¥30.25');
+      expect(amount).toHaveAttribute('readonly');
+    }
     fireEvent.click(within(dialog).getByRole('checkbox'));
-    fireEvent.click(within(dialog).getByRole('button', { name: '确认保存' }));
-    const verify = await within(dialog).findByRole('button', { name: '重新核验保存结果' });
+    fireEvent.click(controls.getByRole('button', { name: '确认保存' }));
+    const verify = await controls.findByRole('button', { name: '重新核验保存结果' });
     expect(invoke).toHaveBeenCalledTimes(1);
     expect(invoke).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -170,13 +187,13 @@ describe('RegionalApprovalLiveActionDialog', () => {
       />
     );
 
-    const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
+    const dialog = screen.getByRole('dialog', { name: '销售计划审批' });
     expect(within(dialog).getByText(/区域首节点只确认提交数据/)).toBeVisible();
     expect(within(dialog).queryByText('节点调整明细')).not.toBeInTheDocument();
     expect(versionSkus).not.toHaveBeenCalled();
   });
 
-  it('loads live SKUs and submits non-zero signed quantity adjustments for an approval node', async () => {
+  it('shows saved quantity and amount differences without resubmitting adjustments', async () => {
     const invoke = vi
       .fn()
       .mockImplementation(
@@ -207,6 +224,8 @@ describe('RegionalApprovalLiveActionDialog', () => {
         amtBase: '60',
         provinceConfirmedQty: '12',
         provinceConfirmedAmount: '90',
+        areaConfirmedQty: '9.5',
+        areaConfirmedAmount: '71.25',
       },
     ]);
     const client = {
@@ -229,25 +248,21 @@ describe('RegionalApprovalLiveActionDialog', () => {
       />
     );
 
-    const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
+    const dialog = screen.getByRole('dialog', { name: '销售计划审批' });
     expect(await within(dialog).findByText('节点调整明细')).toBeVisible();
     expect(versionSkus).toHaveBeenCalledTimes(1); // Only the fixture reads it; the dialog uses its matching detail snapshot.
     const nodeSummary = within(dialog).getByLabelText('审批节点差异汇总');
     expect(nodeSummary).toHaveTextContent('当前基准数量 / 金额12 · ¥90');
-    expect(nodeSummary).toHaveTextContent('本节点变化数量 / 金额0 · ¥0.00');
-    expect(nodeSummary).toHaveTextContent('本节点确认数量 / 金额12 · ¥90.00');
-    fireEvent.change(within(dialog).getByRole('textbox', { name: 'SKU 10001 调整量' }), {
-      target: { value: '-2.5' },
-    });
     expect(nodeSummary).toHaveTextContent('本节点变化数量 / 金额-2.5 · -¥18.75');
     expect(nodeSummary).toHaveTextContent('本节点确认数量 / 金额9.5 · ¥71.25');
+    expect(within(dialog).queryByRole('textbox', { name: 'SKU 10001 调整量' })).not.toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole('checkbox'));
     fireEvent.click(within(dialog).getByRole('button', { name: '确认通过' }));
 
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(
         expect.objectContaining({
-          request: expect.objectContaining({ adjustments: [{ skuCode: '10001', adjustQty: '-2.5' }] }),
+          request: expect.not.objectContaining({ adjustments: expect.anything() }),
         })
       )
     );
@@ -264,6 +279,8 @@ describe('RegionalApprovalLiveActionDialog', () => {
         qty: 1,
         price: 113.27,
         provinceConfirmedQty: 1,
+        areaConfirmedQty: 1,
+        areaConfirmedAmount: 120,
         amt: 113.27,
         amtBase: 113.27,
       },
@@ -288,8 +305,10 @@ describe('RegionalApprovalLiveActionDialog', () => {
       />
     );
 
-    const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
+    const dialog = screen.getByRole('dialog', { name: '销售计划审批' });
     expect((await within(dialog).findAllByText('¥113.27')).length).toBeGreaterThan(0);
+    expect(within(dialog).getByText('¥120')).toBeVisible();
+    expect(within(dialog).queryByRole('textbox', { name: /调整量/ })).not.toBeInTheDocument();
     expect(dialog).toBeVisible();
   });
 
@@ -311,9 +330,10 @@ describe('RegionalApprovalLiveActionDialog', () => {
     render(
       <RegionalApprovalLiveActionDialog
         visible
-        evidence={evidenceFor(row.status, await versionSkus())}
-        row={row}
-        approvalStage='area'
+        initialAction='SAVE'
+        evidence={evidenceFor(5, await versionSkus())}
+        row={{ ...row, status: 5 }}
+        approvalStage='category'
         t={t}
         client={{ action: { invoke: vi.fn() }, versionSkus: { invoke: versionSkus } }}
         onPermissionDenied={vi.fn()}
@@ -323,7 +343,7 @@ describe('RegionalApprovalLiveActionDialog', () => {
       />
     );
 
-    const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
+    const dialog = screen.getByRole('dialog', { name: '保存销售计划调整' });
     fireEvent.change(await within(dialog).findByRole('textbox', { name: 'SKU 10001 调整量' }), {
       target: { value: '2' },
     });
@@ -358,7 +378,7 @@ describe('RegionalApprovalLiveActionDialog', () => {
       />
     );
 
-    const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
+    const dialog = screen.getByRole('dialog', { name: '销售计划审批' });
     fireEvent.click(within(dialog).getByRole('checkbox'));
     fireEvent.click(within(dialog).getByRole('button', { name: '确认通过' }));
     expect(await within(dialog).findByText(message)).toBeVisible();
@@ -371,7 +391,7 @@ describe('RegionalApprovalLiveActionDialog', () => {
     }
   });
 
-  it('shows the business checksum and updates the action target before confirmation', () => {
+  it('omits action and identity checksum items while retaining action selection', () => {
     render(
       <RegionalApprovalLiveActionDialog
         visible
@@ -392,13 +412,13 @@ describe('RegionalApprovalLiveActionDialog', () => {
     expect(checksum).toHaveTextContent('目标 10 → 当前 12');
     expect(checksum).toHaveTextContent('目标 ¥100 → 当前 ¥120');
     expect(checksum).toHaveTextContent('1 个计划 · 1 个 SKU');
-    expect(checksum).toHaveTextContent('通过 → 品类审批');
-    expect(checksum).toHaveTextContent('当前登录用户（由 GEA 服务端会话校验）');
+    expect(checksum).not.toHaveTextContent('通过 → 品类审批');
+    expect(checksum).not.toHaveTextContent('当前登录用户');
     expect(screen.queryByText(/本操作通过当前 GEA 用户会话提交/)).not.toBeInTheDocument();
     expect(screen.queryByText(/结果未知时仅以原幂等键重试同一意图/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('radio', { name: '退回' }));
-    expect(checksum).toHaveTextContent('退回 → 大区退回');
+    expect(screen.getByRole('button', { name: '确认退回' })).toBeVisible();
   });
 
   it('labels absent checksum values as unknown instead of inventing business data', () => {
@@ -444,7 +464,7 @@ describe('RegionalApprovalLiveActionDialog', () => {
         onClose={vi.fn()}
       />
     );
-    const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
+    const dialog = screen.getByRole('dialog', { name: '销售计划审批' });
     expect(within(dialog).getByRole('radio', { name: '退回' })).toBeDisabled();
     expect(within(dialog).getByRole('radio', { name: '通过' })).not.toBeDisabled();
     expect(client.action.invoke).not.toHaveBeenCalled();
@@ -466,7 +486,7 @@ describe('RegionalApprovalLiveActionDialog', () => {
         onClose={vi.fn()}
       />
     );
-    const dialog = screen.getByRole('dialog', { name: '真实销售计划审批' });
+    const dialog = screen.getByRole('dialog', { name: '销售计划审批' });
     expect(within(dialog).getByRole('radio', { name: '退回' })).toBeDisabled();
     expect(within(dialog).getByRole('radio', { name: '通过' })).toBeDisabled();
     expect(within(dialog).getByText(/已完成品类审批/)).toBeVisible();
