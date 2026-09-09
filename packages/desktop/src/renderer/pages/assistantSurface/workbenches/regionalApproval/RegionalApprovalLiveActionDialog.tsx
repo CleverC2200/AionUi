@@ -521,6 +521,13 @@ const RegionalApprovalLiveActionDialog: React.FC<{
                         );
                       })}
                     </div>
+                    {kind !== 'SAVE' && visibleComparisons.length === 0 ? (
+                      <Alert
+                        type='info'
+                        showIcon
+                        content={t('common.assistantSurface.regionalApproval.liveAction.adjustments.empty')}
+                      />
+                    ) : null}
                   </>
                 ) : (
                   <Alert
