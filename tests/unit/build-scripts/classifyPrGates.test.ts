@@ -36,6 +36,14 @@ describe('classifyPrGates', () => {
     expect(result.installer_smoke).toBe(true);
   });
 
+  it('does not package installers for CI-routing tests but retains packaging regressions', () => {
+    expect(
+      classifyPrGates(['.github/workflows/pr-checks.yml', 'tests/unit/build-scripts/classifyPrGates.test.ts'])
+        .installer_smoke
+    ).toBe(false);
+    expect(classifyPrGates(['tests/unit/build-scripts/packaging-entry.test.cjs']).installer_smoke).toBe(true);
+  });
+
   it('runs release script checks only when their contract changes', () => {
     const result = classifyPrGates(['scripts/prepare-release-assets.sh']);
 

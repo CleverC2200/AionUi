@@ -31,18 +31,20 @@ function classifyPrGates(paths) {
       /^\.github\/(actions|workflows)\//,
     ])
   );
-  const installerSmoke = normalizedPaths.some((path) =>
-    matches(path, [
-      /^package\.json$/,
-      /^bun\.lock$/,
-      /^electron-builder.*\.(json|ya?ml)$/,
-      /^packages\/desktop\/electron\.vite\.config\.ts$/,
-      /^packages\/shared-scripts\//,
-      /^resources\//,
-      /^scripts\/(build-with-builder|prepare-aioncore|verify-bundled|smoke-installer|build-fast)/,
-      /^tests\/(e2e\/.*installer|unit\/(assets|build-scripts))\//,
-      /^\.github\/workflows\/(_build-reusable|build-and-release|build-manual|release-distribute)\.yml$/,
-    ])
+  const installerSmoke = normalizedPaths.some(
+    (path) =>
+      path !== 'tests/unit/build-scripts/classifyPrGates.test.ts' &&
+      matches(path, [
+        /^package\.json$/,
+        /^bun\.lock$/,
+        /^electron-builder.*\.(json|ya?ml)$/,
+        /^packages\/desktop\/electron\.vite\.config\.ts$/,
+        /^packages\/shared-scripts\//,
+        /^resources\//,
+        /^scripts\/(build-with-builder|prepare-aioncore|verify-bundled|smoke-installer|build-fast)/,
+        /^tests\/(e2e\/.*installer|unit\/(assets|build-scripts))\//,
+        /^\.github\/workflows\/(_build-reusable|build-and-release|build-manual|release-distribute)\.yml$/,
+      ])
   );
   const releaseScripts = normalizedPaths.some((path) =>
     matches(path, [
