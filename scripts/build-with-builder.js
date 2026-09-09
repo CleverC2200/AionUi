@@ -742,7 +742,11 @@ try {
   );
 
   // Execute native binaries only; a cross-target receipt must not claim runtime coverage.
-  if (targetPlatform === process.platform && targetArch === process.arch) {
+  if (
+    ['darwin', 'win32'].includes(targetPlatform) &&
+    targetPlatform === process.platform &&
+    targetArch === process.arch
+  ) {
     // Check the downloaded binary, not a development Core found on PATH.
     const coreProbe = spawnSync(
       process.execPath,
@@ -767,7 +771,7 @@ try {
       JSON.stringify(
         {
           status: 'not-run',
-          reason: 'cross-target',
+          reason: ['darwin', 'win32'].includes(targetPlatform) ? 'cross-target' : 'non-desktop-release',
           targetPlatform,
           targetArch,
         },
