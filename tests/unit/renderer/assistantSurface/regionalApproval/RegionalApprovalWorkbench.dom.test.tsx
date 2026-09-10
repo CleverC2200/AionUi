@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { TFunction } from 'i18next';
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import zhCN from '@/renderer/services/i18n/locales/zh-CN/common.json';
 import RegionalApprovalWorkbench from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/RegionalApprovalWorkbench';
@@ -108,17 +108,20 @@ describe('RegionalApprovalWorkbench', () => {
       versionSkus: { invoke: versionSkus },
       compare: { invoke: async () => [] },
     } satisfies SalesPlanDetailClient;
-    render(
-      <RegionalApprovalWorkbench
-        stateScope='customer-leaf-regression'
-        t={t}
-        onContextChange={vi.fn()}
-        queryClient={queryClient}
-        detailClient={detailClient}
-        permissionCodes={[]}
-      />
-    );
-    fireEvent.click(await screen.findByRole('button', { name: '展开 测试大区 下级组织' }));
+    // Settle the mocked period and queue effects before inspecting the hierarchy.
+    await act(async () => {
+      render(
+        <RegionalApprovalWorkbench
+          stateScope='customer-leaf-regression'
+          t={t}
+          onContextChange={vi.fn()}
+          queryClient={queryClient}
+          detailClient={detailClient}
+          permissionCodes={[]}
+        />
+      );
+    });
+    fireEvent.click(screen.getByRole('button', { name: '展开 测试大区 下级组织' }));
     fireEvent.click(screen.getByRole('button', { name: '展开 测试省区 下级组织' }));
     fireEvent.click(screen.getByRole('button', { name: '展开 测试区域 下级组织' }));
     versionSkus.mockClear();
