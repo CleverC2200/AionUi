@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures';
 const PERIOD_ID = '9007199254740993';
 
 test.describe('Sales-plan approval query', () => {
-  test.beforeEach(async ({ page }, testInfo) => {
+  test.beforeEach(async ({ page, electronApp }, testInfo) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
     test.skip(
       process.env.AIONUI_ASSISTANT_SURFACE_FIXTURES !== '1' ||
@@ -11,6 +11,26 @@ test.describe('Sales-plan approval query', () => {
         process.env.AIONUI_E2E_SALES_PLAN_QUERY !== '1',
       'Run with the isolated Assistant Surface, E2E auth-bypass, and sales-plan query flags.'
     );
+    const permissions = testInfo.title.includes('standalone SAVE') ? ['sales-plan:plan:category-approve'] : [];
+    await electronApp.evaluate(({ BrowserWindow }, permissionCodes) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        const contents = window.webContents as typeof window.webContents & {
+          __salesPlanOriginalSend?: typeof window.webContents.send;
+        };
+        const original = contents.__salesPlanOriginalSend ?? contents.send.bind(contents);
+        contents.__salesPlanOriginalSend = original;
+        contents.send = (channel, ...args) => {
+          if (channel === 'office-ai-bridge-adapter' && typeof args[0] === 'string') {
+            const payload = JSON.parse(args[0]);
+            if (payload.name?.startsWith('subscribe.callback-lark-auth.status') && payload.data?.data?.user) {
+              payload.data.data.user.permissionCodes = permissionCodes;
+              args[0] = JSON.stringify(payload);
+            }
+          }
+          original(channel, ...args);
+        };
+      }
+    }, permissions);
     await page.addInitScript(
       ({ periodId, saveStatus }) => {
         let savedQty = '13';
@@ -194,7 +214,8 @@ test.describe('Sales-plan approval query', () => {
               '9': 1,
               '10': 1,
             };
-            const isQueueRequest = requestedStatus === null;
+            const isQueueRequest =
+              requestedStatus === null || (saveStatus !== undefined && requestedStatus === String(saveStatus));
             data = {
               records: isQueueRequest
                 ? [
@@ -219,12 +240,19 @@ test.describe('Sales-plan approval query', () => {
                     },
                   ]
                 : [],
-              total: isQueueRequest ? 100 : (statusTotals[requestedStatus] ?? 0),
+              total:
+                saveStatus !== undefined
+                  ? isQueueRequest
+                    ? 1
+                    : 0
+                  : isQueueRequest
+                    ? 100
+                    : (statusTotals[requestedStatus!] ?? 0),
               size: Number(url.searchParams.get('pageSize') ?? '20'),
               current: requestedPage,
-              pages: isQueueRequest ? 5 : 1,
+              pages: isQueueRequest && saveStatus === undefined ? 5 : 1,
             };
-            if (isQueueRequest && Number(url.searchParams.get('pageSize')) === 200) {
+            if (isQueueRequest && saveStatus === undefined && Number(url.searchParams.get('pageSize')) === 200) {
               const summaryPage = data as { records: Array<Record<string, unknown>>; pages: number };
               const template = summaryPage.records[0];
               summaryPage.records = Array.from({ length: 100 }, (_, index) => ({
@@ -264,6 +292,20 @@ test.describe('Sales-plan approval query', () => {
     await page.goto(`${page.url().split('#')[0]}#/guid`);
     await page.reload();
     await expect(page.getByTestId('assistant-surface-switcher')).toBeVisible();
+  });
+
+  test.afterEach(async ({ electronApp }) => {
+    await electronApp.evaluate(({ BrowserWindow }) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        const contents = window.webContents as typeof window.webContents & {
+          __salesPlanOriginalSend?: typeof window.webContents.send;
+        };
+        if (contents.__salesPlanOriginalSend) {
+          contents.send = contents.__salesPlanOriginalSend;
+          delete contents.__salesPlanOriginalSend;
+        }
+      }
+    });
   });
 
   test('keeps no-role browsing read-only with disabled approval nodes', async ({ page }) => {
@@ -468,9 +510,9 @@ test.describe('Sales-plan approval query', () => {
     await expect(page.getByTestId('regional-approval-stage-province')).toHaveAttribute('data-state', 'partial');
     await expect(page.getByTestId('regional-approval-stage-area')).toHaveAttribute('data-state', 'critical');
     await expect(page.getByTestId('regional-approval-stage-province')).not.toHaveAttribute('aria-current');
-    await expect(page.getByTestId('regional-approval-stage-area')).toBeEnabled();
-    await expect(page.getByRole('button', { name: '退回' })).toBeDisabled();
-    await expect(page.getByRole('button', { name: '通过' })).toBeDisabled();
+    await expect(page.getByTestId('regional-approval-stage-area')).toBeDisabled();
+    await expect(page.getByRole('button', { name: '退回', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '通过', exact: true })).toHaveCount(0);
     await expect(page.getByRole('columnheader', { name: '审批操作' })).toHaveCount(0);
     await expect(page.getByRole('tablist', { name: '审批队列维度' })).toBeVisible();
     await page.getByRole('button', { name: '筛选条件', exact: true }).click();
@@ -492,8 +534,9 @@ test.describe('Sales-plan approval query', () => {
     expect(queueRequest.searchParams.has('orgCode')).toBe(false);
     expect(queueRequest.searchParams.has('dealerCode')).toBe(false);
 
-    await page.getByTestId('regional-approval-stage-province').click();
-    await expect(page.getByTestId('regional-approval-stage-province')).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('combobox', { name: '审批状态', exact: true }).click();
+    await page.locator('.arco-select-popup:visible').getByRole('option', { name: '省区审批', exact: true }).click();
+    await page.getByRole('button', { name: '查询', exact: true }).click();
     await expect
       .poll(async () => {
         const currentRequests = await page.evaluate(
