@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { GeaSalesPlanDetail } from '@/common/adapter/ipcBridge';
 import type { RegionalApprovalLiveRow } from '../regionalApprovalQueryModel';
 import type { SalesPlanDetailClient } from './useSalesPlanDetail';
-import { salesPlanAccessForRow } from '../models/salesPlanAccessModel';
 
 export const useSalesPlanAccess = (
   rows: readonly RegionalApprovalLiveRow[],
@@ -24,7 +23,7 @@ export const useSalesPlanAccess = (
         try {
           // oxlint-disable-next-line no-await-in-loop -- cap detail reads at four concurrent requests.
           const detail = await client.detail.invoke({ planId: row.planId, signal: controller.signal });
-          if (!controller.signal.aborted && salesPlanAccessForRow(row, detail)) {
+          if (!controller.signal.aborted) {
             setEntries((current) => ({ ...current, [row.versionId]: detail }));
           }
         } catch {

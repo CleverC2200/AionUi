@@ -40,7 +40,6 @@ export type SalesPlanAnalysisSummary = {
   count: number;
   quantity: string;
   amount: string;
-  targetQuantity: string;
   targetAmount: string;
 };
 
@@ -112,6 +111,7 @@ export const useRegionalApprovalQuery = ({
   >(idle);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>();
   const [queueSettledPage, setQueueSettledPage] = useState<number>();
+  const [queueSettledStageKey, setQueueSettledStageKey] = useState<string>();
   const [periodRevision, setPeriodRevision] = useState(0);
   const [queueRevision, setQueueRevision] = useState(0);
   const periodsRequest = useRef(0);
@@ -128,12 +128,13 @@ export const useRegionalApprovalQuery = ({
     }),
     [scope?.areaCode, scope?.baseName, scope?.dealerCode, scope?.orgCode, scope?.provinceCode, scope?.status]
   );
+  const stageStatusesKey = stageStatuses
+    ? [...new Set(stageStatuses.filter((status) => Number.isSafeInteger(status)))].toSorted((a, b) => a - b).join(',')
+    : undefined;
   const stableStageStatuses = useMemo(
     () =>
-      stageStatuses
-        ? [...new Set(stageStatuses.filter((status) => Number.isSafeInteger(status)))].toSorted((a, b) => a - b)
-        : undefined,
-    [stageStatuses]
+      stageStatusesKey === undefined ? undefined : stageStatusesKey ? stageStatusesKey.split(',').map(Number) : [],
+    [stageStatusesKey]
   );
   useEffect(() => {
     if (!client) {
@@ -142,6 +143,7 @@ export const useRegionalApprovalQuery = ({
       setProgressState(idle);
       setSelectedPeriodId(undefined);
       setQueueSettledPage(undefined);
+      setQueueSettledStageKey(undefined);
       return;
     }
     const requestId = ++periodsRequest.current;
@@ -182,6 +184,7 @@ export const useRegionalApprovalQuery = ({
     const requestId = ++queueRequest.current;
     const request = beginTimedRequest();
     setQueueState((current) => ({ status: 'loading', data: current.data }));
+    setQueueSettledStageKey(undefined);
     const requestedPage = clampSalesPlanPageNumber(page);
     const baseQuery = {
       periodId: selectedPeriodId,
@@ -251,6 +254,7 @@ export const useRegionalApprovalQuery = ({
         if (queueRequest.current !== requestId || request.signal.aborted) return;
         setQueueState({ status: 'success', data: response });
         setQueueSettledPage(requestedPage);
+        setQueueSettledStageKey(stableStageStatuses?.join(',') ?? '');
       })
       .catch((error: unknown) => {
         if (queueRequest.current !== requestId) return;
@@ -281,7 +285,9 @@ export const useRegionalApprovalQuery = ({
     const request = beginTimedRequest();
     setProgressState((current) => ({ status: 'loading', data: current.data }));
     const statuses = SALES_PLAN_PROGRESS_STATUSES.filter(
-      (status) => stableScope.status === undefined || status === stableScope.status
+      (status) =>
+        (stableScope.status === undefined || status === stableScope.status) &&
+        (!stableStageStatuses || stableStageStatuses.includes(status))
     );
     const baseQuery = {
       periodId: selectedPeriodId,
@@ -303,7 +309,12 @@ export const useRegionalApprovalQuery = ({
         );
         setProgressState({
           status: 'success',
-          data: approvalStageProgressForSalesPlanStatusTotals(allRows.total, statusTotals),
+          data: approvalStageProgressForSalesPlanStatusTotals(
+            stableStageStatuses
+              ? statusPages.reduce((total, statusPage) => total + statusPage.total, 0)
+              : allRows.total,
+            statusTotals
+          ),
           statusTotals,
         });
       })
@@ -316,7 +327,15 @@ export const useRegionalApprovalQuery = ({
       })
       .finally(request.finish);
     return request.cancel;
-  }, [client, loadStageProgress, queueRevision, selectedPeriodId, selectedPeriodPlanTypeCode, stableScope]);
+  }, [
+    client,
+    loadStageProgress,
+    queueRevision,
+    selectedPeriodId,
+    selectedPeriodPlanTypeCode,
+    stableScope,
+    stableStageStatuses,
+  ]);
 
   useEffect(() => {
     if (!client || !loadAnalysisSummary || !selectedPeriodId || !selectedPeriodPlanTypeCode) {
@@ -379,7 +398,7 @@ export const useRegionalApprovalQuery = ({
           }
           for (const row of response.records) {
             if (
-              [row.currentQty, row.currentAmount, row.targetQty, row.targetAmount].some(
+              [row.currentQty, row.currentAmount, row.targetAmount].some(
                 (value) => !/^-?\d+(?:\.\d+)?$/.test(String(value))
               )
             ) {
@@ -403,7 +422,6 @@ export const useRegionalApprovalQuery = ({
           count: records.length,
           quantity: addExactDecimals(records.map((row) => String(row.currentQty))),
           amount: addExactDecimals(records.map((row) => String(row.currentAmount))),
-          targetQuantity: addExactDecimals(records.map((row) => String(row.targetQty))),
           targetAmount: addExactDecimals(records.map((row) => String(row.targetAmount))),
         } satisfies SalesPlanAnalysisSummary,
       };
@@ -444,6 +462,7 @@ export const useRegionalApprovalQuery = ({
     queueState,
     progressState,
     queueSettledPage,
+    queueSettledStageKey,
     periods,
     selectedPeriod,
     refreshing,

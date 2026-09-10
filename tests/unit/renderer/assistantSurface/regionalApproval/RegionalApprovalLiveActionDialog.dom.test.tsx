@@ -69,6 +69,56 @@ const cases = [
 ] as const;
 
 describe('RegionalApprovalLiveActionDialog', () => {
+  it('shows current quantity and amount targets without a quantity target in the approval checksum', () => {
+    render(
+      <RegionalApprovalLiveActionDialog
+        visible
+        row={row}
+        approvalStage='area'
+        evidence={evidenceFor()}
+        t={t}
+        onPermissionDenied={vi.fn()}
+        onSucceeded={vi.fn()}
+        onRefresh={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+    expect(screen.getByText('当前数量 12；目标金额 ¥100 → 当前金额 ¥120')).toBeVisible();
+    expect(screen.queryByText(/目标 10 → 当前 12/)).not.toBeInTheDocument();
+  });
+
+  it('submits the existing GEA approval request with node permission and without optional actionContext', async () => {
+    const invoke = vi.fn().mockImplementation(async (params) => ({
+      planId: row.planId,
+      versionId: row.versionId,
+      fromStatus: 2,
+      toStatus: 4,
+      requestId: params.requestId,
+      traceId: 'trace',
+      auditId: 'audit',
+      replayed: false,
+    }));
+    const onSucceeded = vi.fn();
+    render(
+      <RegionalApprovalLiveActionDialog
+        visible
+        row={{ ...row, status: 2 }}
+        approvalStage='region'
+        permissionCodes={['sales-plan:plan:region-approve']}
+        evidence={{ ...evidenceFor(2), actionContext: undefined }}
+        t={t}
+        client={{ action: { invoke } }}
+        onPermissionDenied={vi.fn()}
+        onSucceeded={onSucceeded}
+        onRefresh={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: '确认通过' }));
+    await waitFor(() => expect(onSucceeded).toHaveBeenCalledTimes(1));
+    expect(invoke.mock.calls[0][0].request).toEqual({ action: 'APPROVE', expectedStatus: 2 });
+  });
   it.each([
     { status: 5, embedded: false },
     { status: 10, embedded: false },
@@ -409,8 +459,9 @@ describe('RegionalApprovalLiveActionDialog', () => {
     const checksum = screen.getByTestId('regional-approval-live-action-checksum');
     expect(checksum).toHaveTextContent('真实计划 · 华北大区 / 河北省区 / 石家庄经销分区');
     expect(checksum).toHaveTextContent('大区审批');
-    expect(checksum).toHaveTextContent('目标 10 → 当前 12');
-    expect(checksum).toHaveTextContent('目标 ¥100 → 当前 ¥120');
+    expect(checksum).toHaveTextContent('当前数量 12');
+    expect(checksum).toHaveTextContent('目标金额 ¥100 → 当前金额 ¥120');
+    expect(checksum).not.toHaveTextContent('目标 10');
     expect(checksum).toHaveTextContent('1 个计划 · 1 个 SKU');
     expect(checksum).not.toHaveTextContent('通过 → 品类审批');
     expect(checksum).not.toHaveTextContent('当前登录用户');

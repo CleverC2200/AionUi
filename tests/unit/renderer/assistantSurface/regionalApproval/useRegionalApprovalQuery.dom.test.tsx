@@ -163,7 +163,7 @@ describe('useRegionalApprovalQuery refresh', () => {
       periods: { invoke: vi.fn().mockResolvedValue(periodsPage([september])) },
       list: { invoke: list },
     };
-    const { result } = renderHook(() =>
+    const { result, rerender } = renderHook(() =>
       useRegionalApprovalQuery({ client, page: 11, pageSize: 20, stageStatuses: [1, 7] })
     );
 
@@ -177,6 +177,9 @@ describe('useRegionalApprovalQuery refresh', () => {
         { status: 7, pageNo: 1, pageSize: 200 },
       ])
     );
+    expect(list).toHaveBeenCalledTimes(3);
+    await act(async () => rerender());
+    expect(list).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -195,6 +198,22 @@ describe('complete analysis summaries', () => {
   const clientFor = (summary: SalesPlanQueryClient['list']['invoke']): SalesPlanQueryClient => ({
     periods: { invoke: async () => periodsPage([period('period-september', '2026-09')]) },
     list: { invoke: (query) => (query?.pageSize === 200 ? summary(query) : Promise.resolve(emptyQueue)) },
+  });
+
+  it('summarizes valid quantities and amounts when the retired quantity target is absent', async () => {
+    const entry = record('no-quantity-target');
+    Reflect.deleteProperty(entry, 'targetQty');
+    const client = clientFor(async () => ({ records: [entry], total: 1, size: 200, current: 1, pages: 1 }));
+    const { result } = renderHook(() =>
+      useRegionalApprovalQuery({ client, page: 1, pageSize: 20, loadAnalysisSummary: true })
+    );
+    await waitFor(() => expect(result.current.analysisSummary.status).toBe('success'));
+    expect(result.current.analysisSummary.data).toMatchObject({
+      quantity: '1',
+      amount: '100.01',
+      targetAmount: '200.02',
+    });
+    expect(result.current.analysisSummary.data).not.toHaveProperty('targetQuantity');
   });
 
   it.each(['invalid decimal', 'changed page size'])(
@@ -255,7 +274,6 @@ describe('complete analysis summaries', () => {
       count: empty ? 0 : 1,
       quantity: '0',
       amount: empty ? '0' : '0.00',
-      targetQuantity: '0',
       targetAmount: empty ? '0' : '0.00',
     });
   });

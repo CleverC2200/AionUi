@@ -134,14 +134,14 @@ export const projectRegionalApprovalLiveDimension = (
 ): RegionalApprovalLiveDimensionProjection => {
   const name =
     dimension === 'area'
-      ? row.areaName?.trim() || row.regionName?.trim()
+      ? row.areaName?.trim() || row.regionName?.trim() || row.areaCode?.trim()
       : dimension === 'province'
-        ? row.provinceName?.trim() || row.provinceRegionName?.trim()
+        ? row.provinceName?.trim() || row.provinceRegionName?.trim() || row.provinceCode?.trim()
         : dimension === 'region'
-          ? row.orgName?.trim() || row.salesGroupName?.trim()
+          ? row.orgName?.trim() || row.salesGroupName?.trim() || row.orgCode?.trim()
           : dimension === 'base'
             ? row.baseName?.trim()
-            : row.dealerName?.trim();
+            : row.dealerName?.trim() || row.dealerCode?.trim();
   const context =
     dimension === 'customer'
       ? uniqueNames(
@@ -176,6 +176,45 @@ export const projectRegionalApprovalLiveDimension = (
 
 export const chooseInitialSalesPlanPeriod = (periods: readonly GeaSalesPlanPeriod[]): GeaSalesPlanPeriod | undefined =>
   periods.find((period) => period.status.toUpperCase() === 'OPEN') ?? periods[0];
+
+/** Group display totals without turning several plan versions into a writable object. */
+export const groupRegionalApprovalLiveRows = (
+  rows: readonly RegionalApprovalLiveRow[],
+  dimension: ApprovalDimension
+) => {
+  const groups = new Map<string, RegionalApprovalLiveRow[]>();
+  for (const row of rows) {
+    const projection = projectRegionalApprovalLiveDimension(row, dimension);
+    const code =
+      dimension === 'customer'
+        ? row.dealerCode
+        : dimension === 'region'
+          ? row.orgCode
+          : dimension === 'province'
+            ? row.provinceCode
+            : dimension === 'area'
+              ? row.areaCode
+              : row.baseName;
+    const key = JSON.stringify([dimension, code || projection.name || row.planId]);
+    const members = groups.get(key) ?? [];
+    members.push(row);
+    groups.set(key, members);
+  }
+  return [...groups].map(([key, members]) => ({
+    key,
+    members,
+    summary:
+      members.length === 1
+        ? members[0]
+        : {
+            ...members[0],
+            targetAmount: addExactDecimals(members.map((row) => row.targetAmount)),
+            currentAmount: addExactDecimals(members.map((row) => row.currentAmount)),
+            currentQty: addExactDecimals(members.map((row) => row.currentQty)),
+            skuCount: members.reduce((total, row) => total + row.skuCount, 0),
+          },
+  }));
+};
 
 export const isOpenSalesPlanPeriod = (period: GeaSalesPlanPeriod | undefined): boolean =>
   period?.status.toUpperCase() === 'OPEN';

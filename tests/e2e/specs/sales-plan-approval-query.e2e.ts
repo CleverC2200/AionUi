@@ -280,7 +280,7 @@ test.describe('Sales-plan approval query', () => {
         expect(board.getByRole('button', { name: action, exact: true })).toHaveCount(0)
       )
     );
-    await expect(board.getByRole('button', { name: '只读浏览全部节点数据', exact: true })).toBeVisible();
+    await expect(board.getByRole('button', { name: '只读浏览全部节点数据', exact: true })).toHaveCount(0);
     await board
       .getByRole('row')
       .filter({ hasText: 'E2E 第 1 页基地' })
@@ -288,6 +288,157 @@ test.describe('Sales-plan approval query', () => {
       .getByRole('button', { name: /调整明细/ })
       .click();
     await expect(page.getByRole('dialog').getByText('MOCK 物料描述 REAL-E2E-SKU', { exact: true })).toBeVisible();
+  });
+
+  test('groups duplicate organizations and keeps compact headers in both themes', async ({ page }, testInfo) => {
+    await page.addInitScript(() => {
+      const original = window.fetch.bind(window);
+      window.fetch = async (input, init) => {
+        const response = await original(input, init);
+        const raw = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const url = new URL(raw, location.href);
+        if (!url.pathname.endsWith('/api/gea/sales-plan/plans')) return response;
+        const body = await response.clone().json();
+        if (url.searchParams.has('status') && url.searchParams.get('status') !== '2') {
+          body.data.records = [];
+          body.data.total = 0;
+          body.data.pages = 1;
+          return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
+        const record = body.data?.records?.[0];
+        if (!record) return response;
+        const first = {
+          ...record,
+          areaName: 'E2E 华东大区',
+          provinceName: 'E2E 江苏省区',
+          orgName: 'E2E 苏南区域',
+          dealerName: 'E2E 第一客户',
+          currentQty: '100',
+          currentAmount: '12500.50',
+          targetAmount: '10000.00',
+        };
+        body.data.records = [
+          first,
+          {
+            ...first,
+            planId: 'e2e-plan-other',
+            versionId: 'e2e-version-other',
+            dealerCode: 'other',
+            dealerName: 'E2E 第二客户',
+            currentQty: '150',
+            currentAmount: '14500.00',
+          },
+        ];
+        body.data.total = 2;
+        body.data.pages = 1;
+        if (url.searchParams.has('status') && url.searchParams.get('status') !== '2') {
+          body.data.records = [];
+          body.data.total = 0;
+        }
+        return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      };
+    });
+    await page.reload();
+    await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
+    const board = page.getByTestId('regional-approval-workbench');
+    await expect(board.getByText('2 份计划')).toBeVisible();
+    const groupRow = board.getByRole('row').filter({ hasText: '2 份计划' });
+    await expect(groupRow.getByRole('button', { name: /展开.*下级组织/ })).toHaveCount(1);
+    await expect(board.getByText('目标数量', { exact: true })).toHaveCount(0);
+    await expect(board.getByText(/未取得当前版本的操作授权信息/)).toHaveCount(0);
+    /* oxlint-disable no-await-in-loop -- verify the same isolated Electron view across sizes and themes. */
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((themeName) => {
+        document.documentElement.dataset.theme = themeName;
+        document.body.setAttribute('arco-theme', themeName);
+      }, theme);
+      for (const width of [1500, 1100]) {
+        await page.setViewportSize({ width, height: 1000 });
+        const title = await board.getByRole('heading', { name: '销售计划审批', exact: true }).boundingBox();
+        const versions = await board.getByTestId('regional-approval-version-controls').boundingBox();
+        expect(Math.abs(title!.y - versions!.y)).toBeLessThan(20);
+        const colors = await board.evaluate((element) => ({
+          disabled: getComputedStyle(element.querySelector('[data-testid="regional-approval-stage-province"] strong')!)
+            .color,
+          heading: getComputedStyle(element.querySelector('h2')!).color,
+        }));
+        expect(colors.disabled).not.toBe(colors.heading);
+        await page.screenshot({ path: testInfo.outputPath(`approval-${theme}-${width}.png`), animations: 'disabled' });
+      }
+    }
+    /* oxlint-enable no-await-in-loop */
+    await page.setViewportSize({ width: 1500, height: 1000 });
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'light';
+      document.body.setAttribute('arco-theme', 'light');
+    });
+    await groupRow.getByRole('button', { name: /展开.*下级组织/ }).click();
+    await expect(board.getByRole('button', { name: '展开 E2E 江苏省区 下级组织' })).toBeVisible();
+    await board.getByRole('button', { name: '展开 E2E 江苏省区 下级组织' }).click();
+    await board.getByRole('button', { name: '展开 E2E 苏南区域 下级组织' }).click();
+    await expect(board.getByText('E2E 第二客户', { exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('approval-group-expanded.png'), animations: 'disabled' });
+  });
+
+  test('generates independent SKU advice without starting the right conversation', async ({ page }) => {
+    await page.evaluate(() => {
+      const previousFetch = window.fetch.bind(window);
+      const state = window as Window & {
+        __independentAdviceBodies?: unknown[];
+        __independentConversationWrites?: string[];
+        __restoreAdviceFetch?: () => void;
+      };
+      state.__independentAdviceBodies = [];
+      state.__independentConversationWrites = [];
+      state.__restoreAdviceFetch = () => {
+        window.fetch = previousFetch;
+      };
+      window.fetch = async (input, init) => {
+        const rawUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const url = new URL(rawUrl, window.location.href);
+        if (init?.method === 'POST' && url.pathname.startsWith('/api/conversations'))
+          state.__independentConversationWrites?.push(url.pathname);
+        if (url.pathname !== '/api/models/inference') return previousFetch(input, init);
+        const body = JSON.parse(String(init?.body));
+        state.__independentAdviceBodies?.push(body);
+        const scope = JSON.parse(body.question.slice(body.question.indexOf('\n') + 1));
+        return new Response(
+          JSON.stringify({
+            data: {
+              status: 'ok',
+              provider_id: 'e2e-default',
+              model: 'e2e-connected',
+              answer: JSON.stringify({ [scope.rows[0].id]: 'E2E 独立意见：核实当前数量变化' }),
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      };
+    });
+    await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
+    const board = page.getByTestId('regional-approval-workbench');
+    await board
+      .getByRole('row')
+      .filter({ hasText: 'E2E 第 1 页基地' })
+      .first()
+      .getByRole('button', { name: /调整明细/ })
+      .click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('E2E 独立意见：核实当前数量变化', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: '生成审批建议', exact: true })).toHaveCount(0);
+    const captured = await page.evaluate(() => {
+      const state = window as Window & {
+        __independentAdviceBodies?: unknown[];
+        __independentConversationWrites?: string[];
+      };
+      return { bodies: state.__independentAdviceBodies, conversationWrites: state.__independentConversationWrites };
+    });
+    expect(captured.bodies).toHaveLength(1);
+    expect(Object.keys(captured.bodies![0] as object)).toEqual(['question']);
+    expect(captured.conversationWrites).toEqual([]);
+    await page.screenshot({ path: 'tests/e2e/results/independent-advice.png', fullPage: true, animations: 'disabled' });
+    await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+    await page.evaluate(() => (window as Window & { __restoreAdviceFetch?: () => void }).__restoreAdviceFetch?.());
   });
 
   test('keeps General unchanged and loads the Business queue through the Renderer HTTP adapter', async ({ page }) => {

@@ -68,6 +68,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
   t: TFunction;
   client?: SalesPlanActionClient;
   evidence?: GeaSalesPlanDetail;
+  permissionCodes?: readonly string[];
   onPermissionDenied: (versionId: string) => void;
   onSucceeded: (receipt: GeaSalesPlanActionReceipt, request: GeaSalesPlanActionRequest) => void | Promise<void>;
   onRefresh: () => void;
@@ -81,6 +82,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
   t,
   client,
   evidence,
+  permissionCodes,
   onPermissionDenied,
   onSucceeded,
   onRefresh,
@@ -88,7 +90,7 @@ const RegionalApprovalLiveActionDialog: React.FC<{
 }) => {
   const [snapshot] = useState(evidence);
   const Container = embedded ? InlineAction : Modal;
-  const access = snapshot && salesPlanAccessForRow(row, snapshot);
+  const access = snapshot && salesPlanAccessForRow(row, snapshot, permissionCodes, approvalStage);
   const submittedRequest = useRef<GeaSalesPlanActionRequest | undefined>(undefined);
   const [kind, setKind] = useState<LiveActionKind>(initialAction);
   const [remark, setRemark] = useState('');
@@ -221,7 +223,6 @@ const RegionalApprovalLiveActionDialog: React.FC<{
     {
       label: t('common.assistantSurface.regionalApproval.liveAction.checksum.difference'),
       value: t('common.assistantSurface.regionalApproval.liveAction.checksum.differenceValue', {
-        targetQty: displayDecimal(row.targetQty),
         currentQty: displayDecimal(row.currentQty),
         targetAmount: displayDecimal(row.targetAmount, true),
         currentAmount: displayDecimal(row.currentAmount, true),
@@ -271,12 +272,19 @@ const RegionalApprovalLiveActionDialog: React.FC<{
     const request: GeaSalesPlanActionRequest = {
       action: kind,
       expectedStatus: row.status,
-      expectedSnapshot: access?.snapshotHash,
+      ...(access?.snapshotHash ? { expectedSnapshot: access.snapshotHash } : {}),
       ...(remark.trim() ? { remark: remark.trim() } : {}),
       ...(kind !== 'REJECT' && adjustments.length > 0 ? { adjustments } : {}),
     };
     submittedRequest.current = request;
-    void complete(action.execute({ planId: row.planId, versionId: row.versionId, request }));
+    void complete(
+      action.execute({
+        planId: row.planId,
+        versionId: row.versionId,
+        request,
+        serverWorkflowResult: !access?.snapshotHash,
+      })
+    );
   };
 
   const retry = () => {

@@ -9,9 +9,51 @@ import {
   formatExactDecimal,
   projectRegionalApprovalLiveDimension,
   toRegionalApprovalLiveRow,
+  groupRegionalApprovalLiveRows,
 } from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/regionalApprovalQueryModel';
 
 describe('regionalApprovalQueryModel', () => {
+  it('merges organization totals while retaining each plan for an explicit individual action', () => {
+    const first = toRegionalApprovalLiveRow({
+      planId: 'p1',
+      versionId: 'v1',
+      dealerCode: 'd1',
+      orgCode: 'r',
+      orgName: '同一区域',
+      baseName: '同一基地',
+      currentQty: '10',
+      currentAmount: '20.25',
+      targetAmount: '30.50',
+      targetQty: '999',
+      skuCount: 1,
+      status: 2,
+    } as Parameters<typeof toRegionalApprovalLiveRow>[0]);
+    const second = {
+      ...first,
+      planId: 'p2',
+      versionId: 'v2',
+      dealerCode: 'd2',
+      currentQty: '12',
+      currentAmount: '40.25',
+    };
+    const groups = groupRegionalApprovalLiveRows([first, second], 'region');
+    expect(groups).toHaveLength(1);
+    expect(groups[0].summary).toMatchObject({
+      currentQty: '22',
+      currentAmount: '60.50',
+      targetAmount: '61.00',
+      skuCount: 2,
+    });
+    expect(groups[0].members.map((row) => row.versionId)).toEqual(['v1', 'v2']);
+    expect(groupRegionalApprovalLiveRows([first, second], 'customer')).toHaveLength(2);
+    expect(approvalStageProgressForSalesPlanStatusTotals(2, { 2: 2 })).toEqual({
+      customer: 100,
+      region: 0,
+      province: 0,
+      area: 0,
+      category: 0,
+    });
+  });
   it('maps all five approval stages to the frozen GEA page status semantics', () => {
     expect(SALES_PLAN_STATUS_BY_STAGE).toEqual({ customer: 1, region: 2, province: 3, area: 4, category: 5 });
     expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(approvalStageForSalesPlanStatus)).toEqual([
@@ -250,7 +292,7 @@ describe('regionalApprovalQueryModel', () => {
     });
   });
 
-  it('does not substitute a code or another hierarchy name when the selected level has no display name', () => {
+  it('uses the actual organization code when its display name is missing without substituting another level', () => {
     const row = toRegionalApprovalLiveRow({
       planId: 'plan-1',
       versionId: 'version-1',
@@ -271,7 +313,7 @@ describe('regionalApprovalQueryModel', () => {
     });
 
     expect(projectRegionalApprovalLiveDimension(row, 'province')).toEqual({
-      name: undefined,
+      name: 'PROVINCE-01',
       context: ['华东'],
     });
   });
