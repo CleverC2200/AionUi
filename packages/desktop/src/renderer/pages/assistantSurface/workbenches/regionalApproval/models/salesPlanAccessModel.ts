@@ -19,24 +19,40 @@ const NODE_PERMISSIONS: readonly [ApprovalStageId, string][] = [
   ['category', 'category-approve'],
 ];
 
-/** Role permissions choose UI entry points; object-level actionContext still authorizes writes. */
+/** Authenticated node permissions choose UI entry points; GEA validates each write. */
 export const salesPlanStagesForPermissions = (permissions: readonly string[] = []): ApprovalStageId[] =>
   NODE_PERMISSIONS.filter(([, permission]) => permissions.includes(`sales-plan:plan:${permission}`)).map(
     ([stage]) => stage
   );
 
-/** Capabilities come from the existing authenticated detail response, never from row visibility. */
+export type SalesPlanAccess = Omit<GeaSalesPlanActionContext, 'snapshotHash'> & { snapshotHash?: string };
+
+/** Prefer object capabilities. Older GEA details omit them and enforce candidates on POST. */
 export const salesPlanAccessForRow = (
   row: Pick<GeaSalesPlanListItem, 'planId' | 'versionId' | 'status'>,
-  detail: GeaSalesPlanDetail
-): GeaSalesPlanActionContext | undefined => {
+  detail: GeaSalesPlanDetail,
+  permissions: readonly string[] = [],
+  stage?: ApprovalStageId
+): SalesPlanAccess | undefined => {
   const context = detail.actionContext;
   if (
-    !context ||
     detail.currentVersion.id !== row.versionId ||
     detail.currentVersion.planId !== row.planId ||
     !detail.currentVersion.effective ||
-    detail.currentVersion.status !== row.status ||
+    detail.currentVersion.status !== row.status
+  )
+    return undefined;
+  if (!context) {
+    if (!stage || !salesPlanStagesForPermissions(permissions).includes(stage) || ![1, 2, 3, 4].includes(row.status))
+      return undefined;
+    return {
+      versionId: row.versionId,
+      status: row.status,
+      nodeOrder: NODE_PERMISSIONS.findIndex(([id]) => id === stage) + 1,
+      allowedActions: ['APPROVE', 'REJECT'],
+    };
+  }
+  if (
     context.versionId !== row.versionId ||
     context.status !== row.status ||
     !/^[a-f0-9]{64}$/.test(context.snapshotHash) ||

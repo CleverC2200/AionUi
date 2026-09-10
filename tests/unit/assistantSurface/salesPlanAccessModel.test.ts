@@ -22,6 +22,23 @@ const detail = {
 } as GeaSalesPlanDetail;
 
 describe('sales plan authoritative action projection', () => {
+  it('offers existing approval actions with an explicit node permission when the detail omits optional actionContext', () => {
+    const pending = { ...row, status: 2 };
+    const current = { ...detail, currentVersion: { ...detail.currentVersion, status: 2 }, actionContext: undefined };
+    expect(
+      salesPlanAccessForRow(pending, current, ['sales-plan:plan:region-approve'], 'region')?.allowedActions
+    ).toEqual(['APPROVE', 'REJECT']);
+    expect(salesPlanAccessForRow(pending, current, [], 'region')).toBeUndefined();
+    expect(salesPlanAccessForRow(pending, current, ['sales-plan:plan:province-approve'], 'region')).toBeUndefined();
+    expect(
+      salesPlanAccessForRow(
+        pending,
+        { ...current, currentVersion: { ...current.currentVersion, effective: false } },
+        ['sales-plan:plan:region-approve'],
+        'region'
+      )
+    ).toBeUndefined();
+  });
   it('defaults to no role and orders only explicit node permissions', () => {
     expect(salesPlanStagesForPermissions()).toEqual([]);
     expect(salesPlanStagesForPermissions(['sales-plan:plan:approve'])).toEqual([]);

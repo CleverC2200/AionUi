@@ -2784,12 +2784,24 @@ export type ConversationSideQuestionResult =
   | { status: 'invalid'; reason: 'emptyQuestion' }
   | { status: 'toolsRequired' };
 
-export type ConversationModelInferenceResult = {
+export const modelInference = {
+  invoke: (params: { question: string; signal?: AbortSignal }) =>
+    httpRequest<ModelInferenceResult>(
+      'POST',
+      '/api/models/inference',
+      { question: params.question },
+      { signal: params.signal, redactBodyFromLogs: true }
+    ),
+};
+
+export type ModelInferenceResult = {
   status: 'ok' | 'noAnswer' | 'toolsRequired' | 'timeout' | 'failed';
   provider_id: string;
   model: string;
   answer?: string;
 };
+
+export type ConversationModelInferenceResult = ModelInferenceResult;
 
 interface IBridgeResponse<D = {}> {
   success: boolean;

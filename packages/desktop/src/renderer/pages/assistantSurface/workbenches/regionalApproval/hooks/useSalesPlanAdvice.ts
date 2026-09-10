@@ -1,106 +1,171 @@
-import { conversation } from '@/common/adapter/ipcBridge';
+import { modelInference } from '@/common/adapter/ipcBridge';
 import { BackendHttpError } from '@/common/adapter/httpBridge';
 import { useEffect, useRef, useState } from 'react';
 
-export type SalesPlanAdviceState =
-  | { key: string; status: 'ready'; answers: Record<string, string> }
-  | {
-      key: string;
-      status: 'loading' | 'noSession' | 'noAnswer' | 'noModel' | 'toolsRequired' | 'failed' | 'timeout';
-    };
+type AdviceStatus =
+  | 'ready'
+  | 'idle'
+  | 'loading'
+  | 'partial'
+  | 'noAnswer'
+  | 'noModel'
+  | 'toolsRequired'
+  | 'failed'
+  | 'timeout'
+  | 'unavailable';
+export type SalesPlanAdviceState = {
+  key: string;
+  status: AdviceStatus;
+  answers: Record<string, string>;
+  completed: number;
+  total: number;
+};
+const empty = (key: string, status: AdviceStatus): SalesPlanAdviceState => ({
+  key,
+  status,
+  answers: {},
+  completed: 0,
+  total: 0,
+});
 
-/** Core resolves the owning conversation's model and performs text-only inference. */
-export const useSalesPlanAdvice = (conversationId: string | null, scope: string | undefined, prompt: string) => {
-  const key = JSON.stringify([conversationId, scope]);
+/** Stateless inference: two concurrent batches, five rows each, without a chat session. */
+export const useSalesPlanAdvice = (scope: string | undefined, prompt: string) => {
+  const key = JSON.stringify([scope, prompt]);
   const [revision, setRevision] = useState(0);
-  const selectedModel = useRef<string | undefined>(undefined);
+  const [state, setState] = useState<SalesPlanAdviceState>(empty('', 'idle'));
+  const completedAdvice = useRef<{ key: string; answers: Record<string, string> } | undefined>(undefined);
   useEffect(() => {
-    selectedModel.current = undefined;
-    let active = true;
-    const unsubscribe = conversation.listChanged.on((event) => {
-      if (!conversationId || event.conversation_id !== conversationId || event.action !== 'updated') return;
-      void conversation.get
-        .invoke({ id: conversationId })
-        .then((current) => {
-          if (!active) return;
-          const model = current.type === 'aionrs' ? current.model : undefined;
-          const modelKey = JSON.stringify([model?.id, model?.use_model]);
-          if (selectedModel.current !== modelKey) {
-            selectedModel.current = modelKey;
-            setRevision((value) => value + 1);
-          }
-        })
-        .catch(() => {
-          if (active) setState({ key, status: 'failed' });
-        });
-    });
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [conversationId, key]);
-  const [state, setState] = useState<SalesPlanAdviceState>({ key: '', status: 'loading' });
-  useEffect(() => {
-    let active = true;
-    if (!scope) return;
-    if (!conversationId) {
-      setState({ key, status: 'noSession' });
+    if (!scope) {
+      completedAdvice.current = undefined;
       return;
     }
-    setState({ key, status: 'loading' });
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      active = false;
-      controller.abort();
-      setState({ key, status: 'timeout' });
-    }, 60000);
-    void conversation.inferModel
-      .invoke({ conversation_id: conversationId, question: `${prompt}\n${scope}`, signal: controller.signal })
-      .then((response) => {
-        if (!active) return;
-        if (response.status !== 'ok') {
-          setState({ key, status: response.status });
-          return;
-        }
-        selectedModel.current = JSON.stringify([response.provider_id, response.model]);
-        const raw = (response.answer ?? '')
-          .trim()
-          .replace(/^```(?:json)?\s*/, '')
-          .replace(/\s*```$/, '');
-        const parsed: unknown = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid advice');
-        const answers = Object.fromEntries(
-          Object.entries(parsed).filter(
-            (entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim().length > 0
+    let active = true;
+    const retrying = completedAdvice.current?.key === key && revision > 0;
+    const answers: Record<string, string> = retrying ? { ...completedAdvice.current!.answers } : {};
+    completedAdvice.current = { key, answers };
+    let payload: Record<string, unknown> | undefined;
+    try {
+      const value = JSON.parse(scope);
+      if (value && Array.isArray(value.rows)) payload = value;
+    } catch {
+      /* Opaque scopes remain supported. */
+    }
+    const rows = (payload?.rows ?? []) as Array<{ id: string; [key: string]: unknown }>;
+    const aliases = new Map(rows.map((row, index) => ['r' + index, row.id]));
+    const pendingRows = rows
+      .map((row, index) => ({ ...row, id: 'r' + index }))
+      .filter((row) => !answers[aliases.get(row.id)!]);
+    const batchSize = retrying ? 1 : 5;
+    const batches =
+      payload && rows.length
+        ? Array.from({ length: Math.ceil(pendingRows.length / batchSize) }, (_, index) => {
+            const batchRows = pendingRows.slice(index * batchSize, index * batchSize + batchSize);
+            return {
+              question: prompt + '\n' + JSON.stringify({ ...payload, rows: batchRows }),
+              ids: batchRows.map((row) => row.id),
+            };
+          })
+        : [{ question: prompt + '\n' + scope, ids: [] as string[] }];
+    const failures: AdviceStatus[] = [];
+    const controllers = new Set<AbortController>();
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    let next = 0;
+    let settled = 0;
+    setState({
+      key,
+      status: batches.length ? 'loading' : 'ready',
+      answers: { ...answers },
+      completed: Object.keys(answers).length,
+      total: rows.length,
+    });
+    const launch = () => {
+      if (!active || next >= batches.length) return;
+      const batch = batches[next++];
+      const controller = new AbortController();
+      controllers.add(controller);
+      let done = false;
+      const finish = (status: AdviceStatus, result: Record<string, string> = {}) => {
+        if (!active || done) return;
+        done = true;
+        clearTimeout(timer);
+        timers.delete(timer);
+        controllers.delete(controller);
+        if (status !== 'ready') failures.push(status);
+        if (batch.ids.length) {
+          for (const alias of batch.ids) {
+            const id = aliases.get(alias)!;
+            if (result[alias]?.trim()) answers[id] = result[alias];
+            else if (status === 'ready') failures.push('noAnswer');
+          }
+        } else Object.assign(answers, result);
+        settled++;
+        const completed = Object.keys(answers).length;
+        setState({
+          key,
+          answers: { ...answers },
+          completed,
+          total: rows.length,
+          status:
+            settled < batches.length
+              ? 'loading'
+              : failures.length
+                ? completed
+                  ? 'partial'
+                  : failures[0]
+                : completed
+                  ? 'ready'
+                  : 'noAnswer',
+        });
+        launch();
+      };
+      const timer = setTimeout(() => {
+        controller.abort();
+        finish('timeout');
+      }, 60000);
+      timers.add(timer);
+      void modelInference
+        .invoke({ question: batch.question, signal: controller.signal })
+        .then((response) => {
+          if (response.status !== 'ok') {
+            finish(response.status);
+            return;
+          }
+          const raw = (response.answer ?? '')
+            .trim()
+            .replace(/^```(?:json)?\s*/, '')
+            .replace(/\s*```$/, '');
+          const value: unknown = JSON.parse(raw);
+          if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid advice');
+          finish(
+            'ready',
+            Object.fromEntries(
+              Object.entries(value).filter(
+                (entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim().length > 0
+              )
+            )
+          );
+        })
+        .catch((error: unknown) =>
+          finish(
+            error instanceof BackendHttpError
+              ? error.message.includes('MODEL_NOT_SELECTED')
+                ? 'noModel'
+                : error.status === 404
+                  ? 'unavailable'
+                  : 'failed'
+              : 'failed'
           )
         );
-        setState(Object.keys(answers).length ? { key, status: 'ready', answers } : { key, status: 'noAnswer' });
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        if (
-          error instanceof BackendHttpError &&
-          error.status === 409 &&
-          error.message.includes('MODEL_SELECTION_CHANGED')
-        ) {
-          setRevision((value) => value + 1);
-        } else {
-          setState({
-            key,
-            status:
-              error instanceof BackendHttpError && error.message.includes('MODEL_NOT_SELECTED') ? 'noModel' : 'failed',
-          });
-        }
-      })
-      .finally(() => clearTimeout(timer));
+    };
+    for (let index = 0; index < Math.min(2, batches.length); index++) launch();
     return () => {
       active = false;
-      controller.abort();
-      clearTimeout(timer);
+      controllers.forEach((controller) => controller.abort());
+      timers.forEach((timer) => clearTimeout(timer));
     };
-  }, [conversationId, key, scope, prompt, revision]);
+  }, [key, scope, prompt, revision]);
   return {
-    state: state.key === key ? state : { key, status: 'loading' as const },
+    state: !scope ? empty(key, 'idle') : state.key === key ? state : empty(key, 'loading'),
     retry: () => setRevision((value) => value + 1),
   };
 };

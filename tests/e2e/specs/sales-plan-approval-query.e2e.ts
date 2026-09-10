@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures';
 const PERIOD_ID = '9007199254740993';
 
 test.describe('Sales-plan approval query', () => {
-  test.beforeEach(async ({ page }, testInfo) => {
+  test.beforeEach(async ({ page, electronApp }, testInfo) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
     test.skip(
       process.env.AIONUI_ASSISTANT_SURFACE_FIXTURES !== '1' ||
@@ -11,6 +11,26 @@ test.describe('Sales-plan approval query', () => {
         process.env.AIONUI_E2E_SALES_PLAN_QUERY !== '1',
       'Run with the isolated Assistant Surface, E2E auth-bypass, and sales-plan query flags.'
     );
+    const permissions = testInfo.title.includes('standalone SAVE') ? ['sales-plan:plan:category-approve'] : [];
+    await electronApp.evaluate(({ BrowserWindow }, permissionCodes) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        const contents = window.webContents as typeof window.webContents & {
+          __salesPlanOriginalSend?: typeof window.webContents.send;
+        };
+        const original = contents.__salesPlanOriginalSend ?? contents.send.bind(contents);
+        contents.__salesPlanOriginalSend = original;
+        contents.send = (channel, ...args) => {
+          if (channel === 'office-ai-bridge-adapter' && typeof args[0] === 'string') {
+            const payload = JSON.parse(args[0]);
+            if (payload.name?.startsWith('subscribe.callback-lark-auth.status') && payload.data?.data?.user) {
+              payload.data.data.user.permissionCodes = permissionCodes;
+              args[0] = JSON.stringify(payload);
+            }
+          }
+          original(channel, ...args);
+        };
+      }
+    }, permissions);
     await page.addInitScript(
       ({ periodId, saveStatus }) => {
         let savedQty = '13';
@@ -194,7 +214,8 @@ test.describe('Sales-plan approval query', () => {
               '9': 1,
               '10': 1,
             };
-            const isQueueRequest = requestedStatus === null;
+            const isQueueRequest =
+              requestedStatus === null || (saveStatus !== undefined && requestedStatus === String(saveStatus));
             data = {
               records: isQueueRequest
                 ? [
@@ -219,12 +240,19 @@ test.describe('Sales-plan approval query', () => {
                     },
                   ]
                 : [],
-              total: isQueueRequest ? 100 : (statusTotals[requestedStatus] ?? 0),
+              total:
+                saveStatus !== undefined
+                  ? isQueueRequest
+                    ? 1
+                    : 0
+                  : isQueueRequest
+                    ? 100
+                    : (statusTotals[requestedStatus!] ?? 0),
               size: Number(url.searchParams.get('pageSize') ?? '20'),
               current: requestedPage,
-              pages: isQueueRequest ? 5 : 1,
+              pages: isQueueRequest && saveStatus === undefined ? 5 : 1,
             };
-            if (isQueueRequest && Number(url.searchParams.get('pageSize')) === 200) {
+            if (isQueueRequest && saveStatus === undefined && Number(url.searchParams.get('pageSize')) === 200) {
               const summaryPage = data as { records: Array<Record<string, unknown>>; pages: number };
               const template = summaryPage.records[0];
               summaryPage.records = Array.from({ length: 100 }, (_, index) => ({
@@ -266,6 +294,20 @@ test.describe('Sales-plan approval query', () => {
     await expect(page.getByTestId('assistant-surface-switcher')).toBeVisible();
   });
 
+  test.afterEach(async ({ electronApp }) => {
+    await electronApp.evaluate(({ BrowserWindow }) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        const contents = window.webContents as typeof window.webContents & {
+          __salesPlanOriginalSend?: typeof window.webContents.send;
+        };
+        if (contents.__salesPlanOriginalSend) {
+          contents.send = contents.__salesPlanOriginalSend;
+          delete contents.__salesPlanOriginalSend;
+        }
+      }
+    });
+  });
+
   test('keeps no-role browsing read-only with disabled approval nodes', async ({ page }) => {
     await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
     const board = page.getByTestId('regional-approval-workbench');
@@ -280,7 +322,7 @@ test.describe('Sales-plan approval query', () => {
         expect(board.getByRole('button', { name: action, exact: true })).toHaveCount(0)
       )
     );
-    await expect(board.getByRole('button', { name: '只读浏览全部节点数据', exact: true })).toBeVisible();
+    await expect(board.getByRole('button', { name: '只读浏览全部节点数据', exact: true })).toHaveCount(0);
     await board
       .getByRole('row')
       .filter({ hasText: 'E2E 第 1 页基地' })
@@ -288,6 +330,157 @@ test.describe('Sales-plan approval query', () => {
       .getByRole('button', { name: /调整明细/ })
       .click();
     await expect(page.getByRole('dialog').getByText('MOCK 物料描述 REAL-E2E-SKU', { exact: true })).toBeVisible();
+  });
+
+  test('groups duplicate organizations and keeps compact headers in both themes', async ({ page }, testInfo) => {
+    await page.addInitScript(() => {
+      const original = window.fetch.bind(window);
+      window.fetch = async (input, init) => {
+        const response = await original(input, init);
+        const raw = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const url = new URL(raw, location.href);
+        if (!url.pathname.endsWith('/api/gea/sales-plan/plans')) return response;
+        const body = await response.clone().json();
+        if (url.searchParams.has('status') && url.searchParams.get('status') !== '2') {
+          body.data.records = [];
+          body.data.total = 0;
+          body.data.pages = 1;
+          return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
+        const record = body.data?.records?.[0];
+        if (!record) return response;
+        const first = {
+          ...record,
+          areaName: 'E2E 华东大区',
+          provinceName: 'E2E 江苏省区',
+          orgName: 'E2E 苏南区域',
+          dealerName: 'E2E 第一客户',
+          currentQty: '100',
+          currentAmount: '12500.50',
+          targetAmount: '10000.00',
+        };
+        body.data.records = [
+          first,
+          {
+            ...first,
+            planId: 'e2e-plan-other',
+            versionId: 'e2e-version-other',
+            dealerCode: 'other',
+            dealerName: 'E2E 第二客户',
+            currentQty: '150',
+            currentAmount: '14500.00',
+          },
+        ];
+        body.data.total = 2;
+        body.data.pages = 1;
+        if (url.searchParams.has('status') && url.searchParams.get('status') !== '2') {
+          body.data.records = [];
+          body.data.total = 0;
+        }
+        return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      };
+    });
+    await page.reload();
+    await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
+    const board = page.getByTestId('regional-approval-workbench');
+    await expect(board.getByText('2 份计划')).toBeVisible();
+    const groupRow = board.getByRole('row').filter({ hasText: '2 份计划' });
+    await expect(groupRow.getByRole('button', { name: /展开.*下级组织/ })).toHaveCount(1);
+    await expect(board.getByText('目标数量', { exact: true })).toHaveCount(0);
+    await expect(board.getByText(/未取得当前版本的操作授权信息/)).toHaveCount(0);
+    /* oxlint-disable no-await-in-loop -- verify the same isolated Electron view across sizes and themes. */
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((themeName) => {
+        document.documentElement.dataset.theme = themeName;
+        document.body.setAttribute('arco-theme', themeName);
+      }, theme);
+      for (const width of [1500, 1100]) {
+        await page.setViewportSize({ width, height: 1000 });
+        const title = await board.getByRole('heading', { name: '销售计划审批', exact: true }).boundingBox();
+        const versions = await board.getByTestId('regional-approval-version-controls').boundingBox();
+        expect(Math.abs(title!.y - versions!.y)).toBeLessThan(20);
+        const colors = await board.evaluate((element) => ({
+          disabled: getComputedStyle(element.querySelector('[data-testid="regional-approval-stage-province"] strong')!)
+            .color,
+          heading: getComputedStyle(element.querySelector('h2')!).color,
+        }));
+        expect(colors.disabled).not.toBe(colors.heading);
+        await page.screenshot({ path: testInfo.outputPath(`approval-${theme}-${width}.png`), animations: 'disabled' });
+      }
+    }
+    /* oxlint-enable no-await-in-loop */
+    await page.setViewportSize({ width: 1500, height: 1000 });
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'light';
+      document.body.setAttribute('arco-theme', 'light');
+    });
+    await groupRow.getByRole('button', { name: /展开.*下级组织/ }).click();
+    await expect(board.getByRole('button', { name: '展开 E2E 江苏省区 下级组织' })).toBeVisible();
+    await board.getByRole('button', { name: '展开 E2E 江苏省区 下级组织' }).click();
+    await board.getByRole('button', { name: '展开 E2E 苏南区域 下级组织' }).click();
+    await expect(board.getByText('E2E 第二客户', { exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('approval-group-expanded.png'), animations: 'disabled' });
+  });
+
+  test('generates independent SKU advice without starting the right conversation', async ({ page }) => {
+    await page.evaluate(() => {
+      const previousFetch = window.fetch.bind(window);
+      const state = window as Window & {
+        __independentAdviceBodies?: unknown[];
+        __independentConversationWrites?: string[];
+        __restoreAdviceFetch?: () => void;
+      };
+      state.__independentAdviceBodies = [];
+      state.__independentConversationWrites = [];
+      state.__restoreAdviceFetch = () => {
+        window.fetch = previousFetch;
+      };
+      window.fetch = async (input, init) => {
+        const rawUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const url = new URL(rawUrl, window.location.href);
+        if (init?.method === 'POST' && url.pathname.startsWith('/api/conversations'))
+          state.__independentConversationWrites?.push(url.pathname);
+        if (url.pathname !== '/api/models/inference') return previousFetch(input, init);
+        const body = JSON.parse(String(init?.body));
+        state.__independentAdviceBodies?.push(body);
+        const scope = JSON.parse(body.question.slice(body.question.indexOf('\n') + 1));
+        return new Response(
+          JSON.stringify({
+            data: {
+              status: 'ok',
+              provider_id: 'e2e-default',
+              model: 'e2e-connected',
+              answer: JSON.stringify({ [scope.rows[0].id]: 'E2E 独立意见：核实当前数量变化' }),
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      };
+    });
+    await page.goto(`${page.url().split('#')[0]}#/assistant-surface/forecast`);
+    const board = page.getByTestId('regional-approval-workbench');
+    await board
+      .getByRole('row')
+      .filter({ hasText: 'E2E 第 1 页基地' })
+      .first()
+      .getByRole('button', { name: /调整明细/ })
+      .click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('E2E 独立意见：核实当前数量变化', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: '生成审批建议', exact: true })).toHaveCount(0);
+    const captured = await page.evaluate(() => {
+      const state = window as Window & {
+        __independentAdviceBodies?: unknown[];
+        __independentConversationWrites?: string[];
+      };
+      return { bodies: state.__independentAdviceBodies, conversationWrites: state.__independentConversationWrites };
+    });
+    expect(captured.bodies).toHaveLength(1);
+    expect(Object.keys(captured.bodies![0] as object)).toEqual(['question']);
+    expect(captured.conversationWrites).toEqual([]);
+    await page.screenshot({ path: 'tests/e2e/results/independent-advice.png', fullPage: true, animations: 'disabled' });
+    await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+    await page.evaluate(() => (window as Window & { __restoreAdviceFetch?: () => void }).__restoreAdviceFetch?.());
   });
 
   test('keeps General unchanged and loads the Business queue through the Renderer HTTP adapter', async ({ page }) => {
@@ -317,9 +510,9 @@ test.describe('Sales-plan approval query', () => {
     await expect(page.getByTestId('regional-approval-stage-province')).toHaveAttribute('data-state', 'partial');
     await expect(page.getByTestId('regional-approval-stage-area')).toHaveAttribute('data-state', 'critical');
     await expect(page.getByTestId('regional-approval-stage-province')).not.toHaveAttribute('aria-current');
-    await expect(page.getByTestId('regional-approval-stage-area')).toBeEnabled();
-    await expect(page.getByRole('button', { name: '退回' })).toBeDisabled();
-    await expect(page.getByRole('button', { name: '通过' })).toBeDisabled();
+    await expect(page.getByTestId('regional-approval-stage-area')).toBeDisabled();
+    await expect(page.getByRole('button', { name: '退回', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '通过', exact: true })).toHaveCount(0);
     await expect(page.getByRole('columnheader', { name: '审批操作' })).toHaveCount(0);
     await expect(page.getByRole('tablist', { name: '审批队列维度' })).toBeVisible();
     await page.getByRole('button', { name: '筛选条件', exact: true }).click();
@@ -341,8 +534,9 @@ test.describe('Sales-plan approval query', () => {
     expect(queueRequest.searchParams.has('orgCode')).toBe(false);
     expect(queueRequest.searchParams.has('dealerCode')).toBe(false);
 
-    await page.getByTestId('regional-approval-stage-province').click();
-    await expect(page.getByTestId('regional-approval-stage-province')).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('combobox', { name: '审批状态', exact: true }).click();
+    await page.locator('.arco-select-popup:visible').getByRole('option', { name: '省区审批', exact: true }).click();
+    await page.getByRole('button', { name: '查询', exact: true }).click();
     await expect
       .poll(async () => {
         const currentRequests = await page.evaluate(

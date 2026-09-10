@@ -17,6 +17,7 @@ export type SalesPlanActionInput = {
   planId: string;
   versionId: string;
   request: GeaSalesPlanActionRequest;
+  serverWorkflowResult?: boolean;
 };
 
 export type SalesPlanActionErrorKind =
@@ -149,7 +150,9 @@ export const salesPlanActionReceiptMatches = (
   receipt.planId === input.planId &&
   receipt.versionId === input.versionId &&
   receipt.fromStatus === input.request.expectedStatus &&
-  receipt.toStatus === salesPlanActionTargetStatus(input.request.action, input.request.expectedStatus) &&
+  (input.serverWorkflowResult && input.request.action === 'APPROVE'
+    ? Number.isInteger(receipt.toStatus) && receipt.toStatus >= receipt.fromStatus && receipt.toStatus <= 5
+    : receipt.toStatus === salesPlanActionTargetStatus(input.request.action, input.request.expectedStatus)) &&
   receipt.requestId === requestId &&
   receipt.traceId.trim().length > 0 &&
   receipt.auditId.trim().length > 0;
@@ -159,6 +162,7 @@ const normalizedInput = (input: SalesPlanActionInput): SalesPlanActionInput => {
   return {
     planId: input.planId,
     versionId: input.versionId,
+    ...(input.serverWorkflowResult ? { serverWorkflowResult: true } : {}),
     request: {
       ...request,
       ...(remark?.trim() ? { remark: remark.trim() } : {}),

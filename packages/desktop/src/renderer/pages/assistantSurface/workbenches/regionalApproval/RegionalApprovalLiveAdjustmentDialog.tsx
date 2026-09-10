@@ -22,7 +22,6 @@ import { salesPlanSkusMatchVersion } from './models/salesPlanDetailModel';
 import { addExactDecimals, formatExactDecimal, type RegionalApprovalLiveRow } from './regionalApprovalQueryModel';
 import type { ApprovalDimension } from './regionalApprovalFixture';
 import styles from './RegionalApprovalLiveAdjustmentDialog.module.css';
-import { useBusinessSurfaceSession } from '../../components/BusinessSurfaceShell';
 import { useSalesPlanAdvice } from './hooks/useSalesPlanAdvice';
 
 type LoadState =
@@ -110,9 +109,8 @@ const RegionalApprovalLiveAdjustmentDialog: React.FC<{
   const records = state.status === 'success' ? state.records : [];
   const groups = useMemo(() => groupSalesPlanAdjustmentRecords(records, dimension), [dimension, records]);
   const pageGroups = groups.slice((advicePage - 1) * 20, advicePage * 20);
-  const { conversationId, startAnalysis, preparingAnalysis } = useBusinessSurfaceSession();
   const adviceScope =
-    state.status === 'success' && !editor
+    visible && state.status === 'success' && !editor && pageGroups.length > 0
       ? JSON.stringify({
           organization: adjustmentDimensionName(row, initialDimension),
           dimension,
@@ -131,7 +129,6 @@ const RegionalApprovalLiveAdjustmentDialog: React.FC<{
         })
       : undefined;
   const advice = useSalesPlanAdvice(
-    conversationId,
     adviceScope,
     t('common.assistantSurface.regionalApproval.liveAdjustment.advicePrompt')
   );
@@ -256,12 +253,13 @@ const RegionalApprovalLiveAdjustmentDialog: React.FC<{
       fixed: 'right',
       render: (_, group) => (
         <span>
-          {advice.state.status === 'noSession'
-            ? '—'
-            : advice.state.status === 'ready'
-              ? advice.state.answers[group.id] ||
-                t('common.assistantSurface.regionalApproval.liveAdjustment.advice.noAnswer')
-              : t(`common.assistantSurface.regionalApproval.liveAdjustment.advice.${advice.state.status}`)}
+          {advice.state.answers[group.id] ||
+            (advice.state.status === 'idle'
+              ? '—'
+              : advice.state.status === 'ready'
+                ? advice.state.answers[group.id] ||
+                  t('common.assistantSurface.regionalApproval.liveAdjustment.advice.noAnswer')
+                : t(`common.assistantSurface.regionalApproval.liveAdjustment.advice.${advice.state.status}`))}
         </span>
       ),
     },
@@ -331,16 +329,14 @@ const RegionalApprovalLiveAdjustmentDialog: React.FC<{
               )}
             </Tag>
           </div>
-          {state.status === 'success' && advice.state.status === 'noSession' ? (
+          {state.status === 'success' && !['ready', 'idle', 'loading'].includes(advice.state.status) ? (
             <Alert
-              type='info'
-              content={t('common.assistantSurface.regionalApproval.liveAdjustment.advice.noSession')}
+              type='warning'
+              content={t(`common.assistantSurface.regionalApproval.liveAdjustment.advice.${advice.state.status}`)}
               action={
-                startAnalysis ? (
-                  <Button size='small' loading={preparingAnalysis} onClick={startAnalysis}>
-                    {t('common.assistantSurface.approvalAnalysis.start')}
-                  </Button>
-                ) : undefined
+                <Button size='small' onClick={advice.retry}>
+                  {t('common.assistantSurface.regionalApproval.liveAdjustment.adviceRetry')}
+                </Button>
               }
             />
           ) : null}

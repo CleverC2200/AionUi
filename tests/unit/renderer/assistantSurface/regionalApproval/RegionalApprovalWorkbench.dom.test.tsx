@@ -2,10 +2,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { TFunction } from 'i18next';
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import zhCN from '@/renderer/services/i18n/locales/zh-CN/common.json';
 import RegionalApprovalWorkbench from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/RegionalApprovalWorkbench';
+import type { GeaSalesPlanDetail, GeaSalesPlanListItem } from '@/common/adapter/ipcBridge';
+import type { SalesPlanQueryClient } from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/useRegionalApprovalQuery';
+import type { SalesPlanDetailClient } from '@/renderer/pages/assistantSurface/workbenches/regionalApproval/hooks/useSalesPlanDetail';
 
 const session = vi.hoisted(() => ({ conversationId: 'conversation-a' as string | null }));
 const workbenchStyles = readFileSync(
@@ -46,6 +49,227 @@ const StatefulWorkbenchHarness: React.FC = () => {
 };
 
 describe('RegionalApprovalWorkbench', () => {
+  it('opens only the selected customer scope after expanding an organization group', async () => {
+    const rows = ['first', 'second'].map((name) => ({
+      planId: name,
+      versionId: `${name}-version`,
+      seq: 1,
+      periodId: 'period',
+      planTypeCode: 'Y',
+      status: 2,
+      areaCode: 'area',
+      areaName: '测试大区',
+      provinceCode: 'province',
+      provinceName: '测试省区',
+      orgCode: 'region',
+      orgName: '测试区域',
+      dealerCode: name,
+      dealerName: `${name}客户`,
+      baseName: '测试基地',
+      currentQty: '12',
+      currentAmount: '120',
+      targetQty: '999',
+      targetAmount: '100',
+      skuCount: 0,
+    }));
+    const queryClient: SalesPlanQueryClient = {
+      periods: {
+        invoke: async () => ({
+          records: [{ periodId: 'period', periodMonth: '2026-09', planTypeCode: 'Y', status: 'OPEN' }],
+          total: 1,
+          size: 20,
+          current: 1,
+          pages: 1,
+        }),
+      },
+      list: {
+        invoke: async (query) => ({
+          records: query?.status !== undefined && query.status !== 2 ? [] : rows,
+          total: query?.status !== undefined && query.status !== 2 ? 0 : rows.length,
+          size: query?.pageSize ?? 20,
+          current: 1,
+          pages: 1,
+        }),
+      },
+    };
+    const versionSkus = vi.fn(async () => []);
+    const detailClient = {
+      detail: {
+        invoke: async () =>
+          ({
+            currentVersion: { ...rows[0], id: rows[0].versionId, effective: true },
+            skus: [],
+            versions: [],
+            logs: [],
+          }) as unknown as GeaSalesPlanDetail,
+      },
+      versions: { invoke: async () => [] },
+      logs: { invoke: async () => [] },
+      versionSkus: { invoke: versionSkus },
+      compare: { invoke: async () => [] },
+    } satisfies SalesPlanDetailClient;
+    // Settle the mocked period and queue effects before inspecting the hierarchy.
+    await act(async () => {
+      render(
+        <RegionalApprovalWorkbench
+          stateScope='customer-leaf-regression'
+          t={t}
+          onContextChange={vi.fn()}
+          queryClient={queryClient}
+          detailClient={detailClient}
+          permissionCodes={[]}
+        />
+      );
+    });
+    fireEvent.click(screen.getByRole('button', { name: '展开 测试大区 下级组织' }));
+    fireEvent.click(screen.getByRole('button', { name: '展开 测试省区 下级组织' }));
+    fireEvent.click(screen.getByRole('button', { name: '展开 测试区域 下级组织' }));
+    versionSkus.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: '打开 second客户 调整明细' }));
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() => expect(versionSkus).toHaveBeenCalledTimes(1));
+    expect(versionSkus).toHaveBeenCalledWith(expect.objectContaining({ versionId: 'second-version' }));
+    expect(within(dialog).getByRole('tab', { name: '客户' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(dialog).queryByRole('tab', { name: '大区' })).not.toBeInTheDocument();
+  });
+
+  it('keeps other visible plans browsable when the initial permitted node is empty', async () => {
+    const row = {
+      planId: 'visible-category-plan',
+      versionId: 'visible-category-version',
+      seq: 1,
+      periodId: 'period',
+      planTypeCode: 'Y',
+      status: 5,
+      orgCode: 'region',
+      orgName: '可见区域',
+      dealerCode: 'dealer',
+      baseName: '可见基地',
+      currentQty: '26445',
+      currentAmount: '2064404.28',
+      targetAmount: '1539999.99',
+      skuCount: 0,
+    } as GeaSalesPlanListItem;
+    const queryClient: SalesPlanQueryClient = {
+      periods: {
+        invoke: async () => ({
+          records: [{ periodId: 'period', periodMonth: '2026-09', planTypeCode: 'Y', status: 'OPEN' }],
+          total: 1,
+          size: 20,
+          current: 1,
+          pages: 1,
+        }),
+      },
+      list: {
+        invoke: async (query) => ({
+          records: query?.status !== undefined && query.status !== 5 ? [] : [row],
+          total: query?.status !== undefined && query.status !== 5 ? 0 : 1,
+          size: query?.pageSize ?? 20,
+          current: 1,
+          pages: 1,
+        }),
+      },
+    };
+    const onContextChange = vi.fn();
+    render(
+      <RegionalApprovalWorkbench
+        stateScope='visible-plan-regression'
+        t={t}
+        onContextChange={onContextChange}
+        queryClient={queryClient}
+        permissionCodes={['sales-plan:plan:sales-confirm', 'sales-plan:plan:region-approve']}
+      />
+    );
+    const queue = screen.getByRole('region', { name: '审批核对队列' });
+    await waitFor(() => expect(within(queue).getByText('可见基地', { exact: true })).toBeVisible());
+    expect(screen.getByTestId('regional-approval-stage-category')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '只读浏览全部节点数据' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '通过', exact: true })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('regional-approval-stage-region')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('regional-approval-stage-region'));
+    await waitFor(() => expect(within(queue).queryByText('可见基地', { exact: true })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('regional-approval-stage-region')).toBeEnabled());
+    expect(screen.getByTestId('regional-approval-stage-region')).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByTestId('regional-approval-stage-region'));
+    await waitFor(() => expect(within(queue).getByText('可见基地', { exact: true })).toBeVisible());
+    expect(screen.getByTestId('regional-approval-stage-region')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('enables approval from the authenticated region permission with a current detail and no actionContext', async () => {
+    const row = {
+      planId: 'p',
+      versionId: 'v',
+      seq: 1,
+      periodId: 'period',
+      planTypeCode: 'Y',
+      status: 2,
+      orgCode: 'region',
+      orgName: '测试区域',
+      dealerCode: 'dealer',
+      baseName: '测试基地',
+      currentQty: '12',
+      currentAmount: '120',
+      targetQty: '999',
+      targetAmount: '100',
+      skuCount: 0,
+    } as GeaSalesPlanListItem;
+    const detail = {
+      currentVersion: { ...row, id: 'v', effective: true },
+      skus: [],
+      versions: [],
+      logs: [],
+    } as GeaSalesPlanDetail;
+    const queryClient: SalesPlanQueryClient = {
+      periods: {
+        invoke: async () => ({
+          records: [{ periodId: 'period', periodMonth: '2026-09', planTypeCode: 'Y', status: 'OPEN' }],
+          total: 1,
+          size: 20,
+          current: 1,
+          pages: 1,
+        }),
+      },
+      list: {
+        invoke: async (query) => ({
+          records: query?.status !== undefined && query.status !== 2 ? [] : [row],
+          total: query?.status !== undefined && query.status !== 2 ? 0 : 1,
+          size: query?.pageSize ?? 20,
+          current: 1,
+          pages: 1,
+        }),
+      },
+    };
+    const detailClient = {
+      detail: { invoke: async () => detail },
+      versions: { invoke: async () => [detail.currentVersion] },
+      logs: { invoke: async () => [] },
+      versionSkus: { invoke: async () => [] },
+      compare: { invoke: async () => [] },
+    } satisfies SalesPlanDetailClient;
+    const onContextChange = vi.fn();
+    render(
+      <RegionalApprovalWorkbench
+        stateScope='permission-regression'
+        t={t}
+        onContextChange={onContextChange}
+        queryClient={queryClient}
+        detailClient={detailClient}
+        liveActionsEnabled
+        permissionCodes={['sales-plan:plan:region-approve']}
+      />
+    );
+    const queue = screen.getByRole('region', { name: '审批核对队列' });
+    await waitFor(() => expect(within(queue).getByText('测试区域', { exact: true })).toBeVisible());
+    fireEvent.click(within(queue).getByRole('checkbox'));
+    await waitFor(() => expect(screen.getByRole('button', { name: '通过', exact: true })).toBeEnabled());
+    expect(screen.getByRole('button', { name: '退回', exact: true })).toBeEnabled();
+    expect(screen.getByTestId('regional-approval-stage-province')).toBeDisabled();
+    expect(screen.getByTestId('regional-approval-stage-province')).toHaveTextContent('进度 0%');
+    expect(screen.queryByText('目标数量', { exact: true })).not.toBeInTheDocument();
+    expect(JSON.stringify(onContextChange.mock.calls.at(-1)?.[0])).not.toContain('targetQty');
+    fireEvent.click(screen.getByRole('button', { name: '通过', exact: true }));
+    expect(await screen.findByRole('dialog', { name: '销售计划审批' })).toBeVisible();
+  });
   beforeEach(() => {
     window.sessionStorage.clear();
     session.conversationId = 'conversation-a';
@@ -264,9 +488,9 @@ describe('RegionalApprovalWorkbench', () => {
     expect(scopeItemRule).toContain('flex: 0 0 auto');
     expect(mediumStart).toBeGreaterThan(-1);
     expect(compactStart).toBeGreaterThan(mediumStart);
-    expect(mediumRules).toContain('flex-direction: column');
-    expect(mediumRules).toContain('min-height: 77px');
-    expect(mediumRules).toContain('width: 100%');
+    expect(mediumRules).toContain('flex-direction: row');
+    expect(mediumRules).toContain('min-height: 53px');
+    expect(mediumRules).toContain('flex: 1 1 auto');
     expect(mediumRules).toContain('overflow-x: auto');
   });
 
